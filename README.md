@@ -35,5 +35,6 @@ Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architect
 - [Persistance partagée Supabase](docs/SHARED-STORAGE.md)
 - [File d'exécution et reprise](docs/EXECUTION-QUEUE.md)
 - [Registre de handlers et permissions](docs/HANDLER-PERMISSIONS.md)
+- [Worker contrôlé](docs/WORKER.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à construire et tester.
