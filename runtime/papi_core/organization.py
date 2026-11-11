@@ -33,6 +33,7 @@ def build_organization(agents: list[dict[str, Any]], owner_id: str = "president"
         manager = agent.get("manager_agent_id")
         if manager is None or manager == owner_id:
             roots.append(agent_id)
+            children[owner_id].append(agent_id)
         elif not isinstance(manager, str) or manager not in by_id:
             raise OrganizationError(f"Responsable inconnu pour {agent_id}: {manager}.")
         else:
