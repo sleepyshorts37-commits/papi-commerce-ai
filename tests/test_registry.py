@@ -2,7 +2,10 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+import json
+import tempfile
 from papi_core.registry import load_agents, validate_task, validate_registries
+from papi_core.audit import AuditError, append_event, new_event, read_events
 from papi_core.orchestrator import build_dispatch_plan
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,11 +68,6 @@ class RegistryTests(unittest.TestCase):
         self.assertFalse(plan["proposals"][0]["dispatch_allowed"])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-from papi_core.audit import AuditError, append_event, new_event, read_events
-
 
 class AuditTests(unittest.TestCase):
     def make_event(self, event_id="EVT-001", details=None):
@@ -103,3 +101,7 @@ class AuditTests(unittest.TestCase):
             path.write_text("{broken json}\n", encoding="utf-8")
             with self.assertRaises(AuditError):
                 read_events(path)
+
+
+if __name__ == "__main__":
+    unittest.main()
