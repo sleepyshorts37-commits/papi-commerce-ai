@@ -33,3 +33,23 @@ PYTHONPATH=runtime python -m unittest discover -s tests -p 'test_identity.py' -v
 
 ## État
 Prototype cryptographique local livré. Pas de déploiement, pas de connexion multi-instance, pas d'action externe et aucun modèle IA connecté.
+
+
+## Intégration contrôle d'accès et file d'exécution
+
+Chaque job doit transporter une propriété `agent_identity` contenant l'enveloppe signée. Le payload signé doit correspondre exactement à :
+```json
+{"permission":"read_reports","task_id":"task-id","handler":"report.preview"}
+```
+L'identifiant dans l'enveloppe doit être identique à `owner_agent` de la tâche. Le worker vérifie la signature et le nonce, puis vérifie le statut actif, la permission du registre et la politique globale avant d'appeler le handler. Une enveloppe absente, altérée, expirée, rejouée ou liée à un autre job bloque le travail et le marque en échec contrôlé.
+
+La table `papi_jobs` possède la colonne JSONB `agent_identity`; la fonction RPC de réservation la retourne au worker. La migration SQL ajoute cette colonne de manière compatible avec une table existante. Il faut réexécuter le script SQL dans le projet Supabase par le propriétaire avant d'utiliser cette évolution. Aucun projet distant n'a été modifié par le commit GitHub.
+
+Les classes de handler sont associées à une permission explicite :
+- `read_only` → `read_reports`
+- `internal_write` → `update_internal_state`
+- `external_communication` → `send_message`
+- `financial` → `make_payment`
+- `legal` → `accept_legal_commitments`
+
+Ces permissions ne remplacent pas les validations de la politique globale ni les approbations du propriétaire. Les actions externes, financières et juridiques restent désactivées dans la configuration actuelle.
