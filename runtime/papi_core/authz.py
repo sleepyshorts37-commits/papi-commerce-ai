@@ -58,6 +58,8 @@ def authorize_agent(agent_id: str, permission: str, agents_path: Path = AGENTS_F
     if isinstance(prohibited, list) and permission in prohibited:
         raise AccessDenied("Action explicitement interdite pour cet agent.")
     active_policy = policy if policy is not None else load_policy()
+    if not isinstance(active_policy, dict):
+        raise AccessDenied("Politique globale invalide : accès fermé.")
     never_allowed = active_policy.get("never_allowed", [])
     requires_owner_approval = active_policy.get("requires_owner_approval", [])
     if not isinstance(never_allowed, list) or not all(isinstance(item, str) for item in never_allowed):
