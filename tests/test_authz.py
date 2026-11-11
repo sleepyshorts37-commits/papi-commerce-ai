@@ -5,6 +5,7 @@ from pathlib import Path
 
 from papi_core.authz import AccessDenied, authorize_agent, authorize_authenticated_agent
 from papi_core.identity import provision_agent_key, sign_request
+from papi_core.identity_ed25519 import provision_ed25519_agent, sign_ed25519_request
 
 
 class AgentAccessTests(unittest.TestCase):
@@ -97,6 +98,20 @@ class AgentAccessTests(unittest.TestCase):
         authorize_authenticated_agent("agent-a", "read_reports", envelope, **kwargs)
         with self.assertRaises(AccessDenied):
             authorize_authenticated_agent("agent-a", "read_reports", envelope, **kwargs)
+
+    def test_ed25519_identity_is_accepted_by_authenticated_authorizer(self):
+        private_dir = self.root / "ed-private"
+        public_registry = self.root / "public-keys.json"
+        private = provision_ed25519_agent("agent-a", private_dir, public_registry)
+        envelope = sign_ed25519_request("agent-a", {
+            "permission": "read_reports", "task_id": "task-1", "handler": "report.preview"
+        }, private, timestamp=1000, nonce="z" * 16)
+        result = authorize_authenticated_agent("agent-a", "read_reports", envelope,
+            task_id="task-1", handler="report.preview", agents_path=self.path,
+            policy=self.policy, replay_db=self.root / "ed-replay.sqlite3",
+            public_registry=public_registry)
+        self.assertTrue(result["identity_authenticated"])
+        self.assertEqual(result["identity_algorithm"], "Ed25519")
 
 
 if __name__ == "__main__":
