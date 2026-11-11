@@ -1,6 +1,8 @@
 """File de travaux avec baux, idempotence et reprise contrôlée."""
 from __future__ import annotations
 
+import re
+
 from typing import Any
 from uuid import uuid4
 
