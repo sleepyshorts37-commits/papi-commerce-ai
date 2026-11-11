@@ -11,6 +11,7 @@ from .scheduler import SchedulerError, due_schedules
 from .sales import SalesError, build_sales_report, load_sales
 from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
+from .authz import AccessDenied, authorize_agent
 
 
 def main() -> int:
@@ -19,6 +20,9 @@ def main() -> int:
     sub.add_parser("validate", help="Valider les registres agents et tâches")
     route = sub.add_parser("route", help="Lister les agents candidats d'un département")
     route.add_argument("department")
+    agent_check = sub.add_parser("agent-check", help="Contrôler localement une permission d'agent")
+    agent_check.add_argument("agent_id")
+    agent_check.add_argument("permission")
     sub.add_parser("plan", help="Préparer un plan consultatif des tâches en attente")
     sub.add_parser("doctor", help="Diagnostiquer la configuration locale sans réseau ni secret affiché")
     sub.add_parser("dashboard", help="Afficher PAPI COMMAND CENTER en lecture seule")
@@ -30,6 +34,9 @@ def main() -> int:
     sub.add_parser("security-check", help="Vérifier la posture de sécurité locale en lecture seule")
     args = parser.parse_args()
     try:
+        if args.command == "agent-check":
+            print(json.dumps(authorize_agent(args.agent_id, args.permission), ensure_ascii=False, indent=2))
+            return 0
         if args.command == "dashboard":
             print(json.dumps(build_command_center(), ensure_ascii=False, indent=2))
             return 0
@@ -68,7 +75,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
