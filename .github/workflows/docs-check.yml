@@ -1,0 +1,36 @@
+name: PAPI documentation checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Verify core documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            README.md
+            docs/ORGANISATION.md
+            docs/GOUVERNANCE-SECURITE.md
+            docs/ARCHITECTURE.md
+            docs/ROADMAP.md
+            agents/ASTOU.md
+            agents/MARIETOU.md
+            agents/IBRAHIMA.md
+          )
+          for file in "${required[@]}"; do
+            test -s "$file" || { echo "Missing or empty: $file"; exit 1; }
+          done
+          echo "PAPI foundation documents are present."
