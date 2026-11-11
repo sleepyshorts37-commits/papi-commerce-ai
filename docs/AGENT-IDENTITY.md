@@ -53,3 +53,16 @@ Les classes de handler sont associées à une permission explicite :
 - `legal` → `accept_legal_commitments`
 
 Ces permissions ne remplacent pas les validations de la politique globale ni les approbations du propriétaire. Les actions externes, financières et juridiques restent désactivées dans la configuration actuelle.
+
+
+## Révocation et rotation locales
+
+- `revoke_agent_key(agent_id)` inscrit l'identité dans `~/.papi/identity/revocations.json` ; toute vérification ultérieure échoue en mode fermé.
+- `rotate_agent_key(agent_id)` remplace la clé par 32 octets aléatoires via un remplacement atomique. Les signatures de l'ancienne clé deviennent invalides.
+- Le registre de révocation et les clés restent locaux, hors dépôt, avec permissions restrictives.
+- La rotation doit être coordonnée : arrêter l'agent, révoquer, remplacer la clé, provisionner le nouveau secret uniquement dans l'environnement de confiance, puis reprendre après test.
+- Une rotation locale ne distribue pas automatiquement la nouvelle clé aux autres machines. Le registre JSON local n'est pas un service de révocation distribué.
+
+## Préparation multi-instance
+
+Le HMAC actuel et SQLite anti-rejeu restent mono-hôte. Avant d'autoriser plusieurs instances, migrer vers Ed25519 (clés privées détenues par chaque agent, clés publiques côté vérificateur), registre central de clés versionnées et révocables, stockage anti-rejeu transactionnel partagé, horloges synchronisées et audit central append-only. Les instances doivent refuser toute identité inconnue, révoquée ou dont la version de clé n'est pas active. Aucun secret partagé ne doit être distribué entre workers.
