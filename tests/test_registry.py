@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from papi_core.registry import load_agents, validate_task, validate_registries
@@ -331,6 +332,9 @@ class HandlerPermissionTests(unittest.TestCase):
 
 class WorkerTests(unittest.TestCase):
     def make_worker(self, policy=None, job=None, task=None):
+        identity_patch = patch('papi_core.worker.authorize_authenticated_agent')
+        identity_patch.start()
+        self.addCleanup(identity_patch.stop)
         from papi_core.execution_queue import ExecutionQueue
         from papi_core.handler_registry import HandlerRegistry
         from papi_core.worker import PapiWorker
