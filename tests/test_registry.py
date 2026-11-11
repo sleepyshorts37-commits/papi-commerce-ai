@@ -2,13 +2,11 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-import json
-import tempfile
+
 from papi_core.registry import load_agents, validate_task, validate_registries
 from papi_core.audit import AuditError, append_event, new_event, read_events
 from papi_core.orchestrator import build_dispatch_plan
-
-ROOT = Path(__file__).resolve().parents[1]
+from papi_core.state_machine import TransitionError, approve_task, transition_task
 
 
 class RegistryTests(unittest.TestCase):
@@ -68,7 +66,6 @@ class RegistryTests(unittest.TestCase):
         self.assertFalse(plan["proposals"][0]["dispatch_allowed"])
 
 
-
 class AuditTests(unittest.TestCase):
     def make_event(self, event_id="EVT-001", details=None):
         return new_event(
@@ -101,6 +98,52 @@ class AuditTests(unittest.TestCase):
             path.write_text("{broken json}\n", encoding="utf-8")
             with self.assertRaises(AuditError):
                 read_events(path)
+
+
+class StateMachineTests(unittest.TestCase):
+    def base_task(self, **changes):
+        task = {
+            "id": "PAPI-STATE-001", "status": "backlog",
+            "approval_required": False, "evidence": []
+        }
+        task.update(changes)
+        return task
+
+    def test_valid_lifecycle_requires_quality_review_and_evidence(self):
+        task, event1 = transition_task(self.base_task(), "ready", actor="marietou")
+        task, event2 = transition_task(task, "in_progress", actor="astou")
+        task, event3 = transition_task(task, "review", actor="astou")
+        with self.assertRaises(TransitionError):
+            transition_task(task, "done", actor="mariama")
+        task, event4 = transition_task(task, "done", actor="mariama", evidence=["https://example.org/result"])
+        self.assertEqual(task["status"], "done")
+        self.assertEqual(event4["details"]["from_status"], "review")
+        self.assertEqual(len({event1["event_id"], event2["event_id"], event3["event_id"], event4["event_id"]}), 4)
+
+    def test_invalid_transition_is_rejected(self):
+        with self.assertRaises(TransitionError):
+            transition_task(self.base_task(), "done", actor="astou")
+
+    def test_approval_is_required_before_execution(self):
+        task = self.base_task(approval_required=True, approval_status="pending")
+        with self.assertRaises(TransitionError):
+            transition_task(task, "ready", actor="marietou")
+        task, event = approve_task(task, approver="owner", decision="approved")
+        task, _ = transition_task(task, "ready", actor="marietou")
+        task, _ = transition_task(task, "in_progress", actor="astou")
+        self.assertEqual(task["status"], "in_progress")
+        self.assertEqual(task["approval_status"], "approved")
+
+    def test_approval_decision_cannot_be_overwritten(self):
+        task = self.base_task(approval_required=True, approval_status="pending")
+        task, _ = approve_task(task, approver="owner", decision="rejected")
+        with self.assertRaises(TransitionError):
+            approve_task(task, approver="owner", decision="approved")
+
+    def test_cancelled_task_is_terminal(self):
+        task, _ = transition_task(self.base_task(), "cancelled", actor="owner")
+        with self.assertRaises(TransitionError):
+            transition_task(task, "ready", actor="owner")
 
 
 if __name__ == "__main__":
