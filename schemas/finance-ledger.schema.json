@@ -1,0 +1,13 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"PAPI financial ledger",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["project","currency","entries","policy"],
+  "properties":{
+    "project":{"const":"PAPI COMMERCE AI"},
+    "currency":{"const":"XOF"},
+    "policy":{"type":"string"},
+    "entries":{"type":"array","items":{"type":"object","required":["id","kind","status","amount_xof","occurred_at","description","reference"]}}
+  }
+}
