@@ -25,7 +25,9 @@
 - [x] PAPI CHAT : socle local de communication interne.
 - [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
 - [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
-- [ ] Migrer vers Ed25519 / identité de workload et registre central de clés avant déploiement multi-instance.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
+- [x] Ajouter un prototype Ed25519, registre public versionné, révocation, rotation et tests unitaires.
+- [ ] Brancher Ed25519 au worker et aux enveloppes de jobs (remplacement contrôlé du HMAC).
+- [ ] Déployer un registre central transactionnel de clés publiques et un anti-rejeu partagé avant toute exécution multi-instance.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
 - [ ] Mettre en place un registre central de clés publiques, révocation/versionnement et anti-rejeu transactionnel partagé.
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
