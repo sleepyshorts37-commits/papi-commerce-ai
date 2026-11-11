@@ -27,5 +27,7 @@ Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architect
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Plan de réalisation](docs/ROADMAP.md)
+- [Exploitation et gestion des tâches](docs/OPERATIONS.md)
+- [Noyau de coordination](docs/CORE-ENGINE.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à construire et tester.
