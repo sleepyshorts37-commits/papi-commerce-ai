@@ -34,8 +34,8 @@ def prepare_agent_onboarding(*, agent_id: str, name: str, role: str,
         existing = load_agents(agents_path or AGENTS_FILE)
     except RegistryError as exc:
         raise OnboardingError("Registre agents invalide : intégration refusée.") from exc
-    if agent_id in existing:
-        raise OnboardingError("Identifiant déjà utilisé.")
+    if any(existing_id.casefold() == agent_id.casefold() for existing_id in existing):
+        raise OnboardingError("Identifiant déjà utilisé (comparaison sans distinction de casse).")
     manager = existing.get(manager_agent_id)
     if manager is None or manager.get("status") in {"suspended", "revoked"}:
         raise OnboardingError("Responsable inconnu ou indisponible.")
