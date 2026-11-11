@@ -16,7 +16,7 @@ Le module est un registre local append-only en XOF. Il sait valider et rapporter
 - Aucun transfert, retrait, achat, remboursement ou paiement n'est déclenché par ce module.
 
 ## Registre
-Le journal conserve les écritures et n'autorise pas la modification/suppression via son API. L'ajout est conçu pour un seul écrivain local ; pas de verrou multi-processus ni de réplication distante. Sauvegardes et rapprochements périodiques restent à mettre en place.
+Les écritures sont stockées dans `data/finance/entries.jsonl`, une par ligne, en ajout uniquement. Le manifeste `data/finance-ledger.json` décrit la devise et la politique, mais le journal JSONL est la source des écritures. L'ajout est conçu pour un seul écrivain local ; pas de verrou multi-processus ni de réplication distante. Sauvegardes et rapprochements périodiques restent à mettre en place.
 
 ## Commandes
 - `PYTHONPATH=runtime python -m papi_core finance-validate`
