@@ -14,7 +14,7 @@ def diagnose_environment(environ: dict[str, str] | None = None) -> dict:
     url_ok = bool(parsed and parsed.scheme == "https" and parsed.hostname and
                   parsed.hostname.endswith(".supabase.co"))
     key_ok = bool(key)
-    policy_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "config", "policy.json"))
+    policy_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "config", "policy.json"))
     try:
         import json
         with open(policy_path, encoding="utf-8") as stream:
