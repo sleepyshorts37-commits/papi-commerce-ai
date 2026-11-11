@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papi_core.identity import IdentityError, provision_agent_key, sign_request, verify_request
+from papi_core.identity import (IdentityError, provision_agent_key, revoke_agent_key, rotate_agent_key, sign_request, verify_request)
 
 
 class AgentIdentityTests(unittest.TestCase):
@@ -47,6 +47,21 @@ class AgentIdentityTests(unittest.TestCase):
     def test_key_is_not_overwritten(self):
         with self.assertRaises(IdentityError):
             provision_agent_key("agent-a", self.keys)
+
+    def test_revoked_key_is_rejected(self):
+        envelope = sign_request("agent-a", {"action": "read"}, self.key, timestamp=1000, nonce="v" * 16)
+        revocations = self.root / "revocations.json"
+        revoke_agent_key("agent-a", self.keys, revocations, revoked_at=1000)
+        with self.assertRaisesRegex(IdentityError, "révoquée"):
+            verify_request(envelope, self.keys, self.db, now=1000, revocation_file=revocations)
+
+    def test_rotation_invalidates_old_signatures(self):
+        old = sign_request("agent-a", {"action": "read"}, self.key, timestamp=1000, nonce="o" * 16)
+        revocations = self.root / "revocations.json"
+        revoke_agent_key("agent-a", self.keys, revocations, revoked_at=1000)
+        rotate_agent_key("agent-a", self.keys, revocations)
+        with self.assertRaises(IdentityError):
+            verify_request(old, self.keys, self.db, now=1000, revocation_file=revocations)
 
 
 if __name__ == "__main__":
