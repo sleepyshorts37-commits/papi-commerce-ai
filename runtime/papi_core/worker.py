@@ -26,13 +26,13 @@ class PapiWorker:
     def __init__(self, *, queue: ExecutionQueue, registry: HandlerRegistry,
                  policy: dict[str, Any], worker_id: str,
                  key_dir: Path = DEFAULT_KEY_DIR, replay_db: Path = DEFAULT_REPLAY_DB,
-                 public_registry: Path = DEFAULT_PUBLIC_REGISTRY) -> None:
+                 public_registry: Path = DEFAULT_PUBLIC_REGISTRY,\n                 shared_identity_verifier: Any | None = None) -> None:
         if not isinstance(worker_id, str) or not worker_id.strip():
             raise WorkerError("Identifiant worker obligatoire.")
         if not isinstance(policy, dict):
             raise WorkerError("Politique invalide.")
         self.queue, self.registry, self.policy, self.worker_id = queue, registry, policy, worker_id
-        self.key_dir, self.replay_db, self.public_registry = key_dir, replay_db, public_registry
+        self.key_dir, self.replay_db, self.public_registry = key_dir, replay_db, public_registry\n        self.shared_identity_verifier = shared_identity_verifier
 
     def run_once(self) -> dict[str, Any]:
         """Traite au maximum un travail ; aucune réservation si l'exécution est désactivée."""
@@ -62,7 +62,7 @@ class PapiWorker:
                 agent_id, permission, job.get("agent_identity"),
                 task_id=task_id, handler=handler, policy=self.policy,
                 key_dir=self.key_dir, replay_db=self.replay_db,
-                public_registry=self.public_registry,
+                public_registry=self.public_registry,\n                shared_identity_verifier=self.shared_identity_verifier,
             )
             result = execute_authorized_job(job, task, self.policy, self.registry,
                 context={"worker_id": self.worker_id, "task_id": task_id, "authenticated_agent_id": agent_id})
