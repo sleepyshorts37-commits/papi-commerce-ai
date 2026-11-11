@@ -1,17 +1,16 @@
-"""Contrôle d'accès local des agents (sans authentification cryptographique).
-
-La présence d'un identifiant d'agent ne prouve pas l'identité du processus appelant.
-Ce module applique uniquement les permissions déclarées et refuse les agents non actifs.
-"""
+"""Contrôle d'accès et authentification cryptographique des agents."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
+from .identity import IdentityError, verify_request
 from .registry import RegistryError, load_agents
 
 ROOT = Path(__file__).resolve().parents[2]
 AGENTS_FILE = ROOT / "data" / "agents.json"
+POLICY_FILE = ROOT / "config" / "policy.json"
 OWNER_ONLY = {"spend_money", "withdraw_funds", "transfer_funds", "accept_legal_commitments",
               "grant_sensitive_access", "create_account", "subscribe_service", "buy_api_credits"}
 EXTERNAL = {"send_email", "send_message", "publish_content", "contact_prospect"}
@@ -23,9 +22,19 @@ class AccessDenied(PermissionError):
     """Accès refusé par la politique locale."""
 
 
+def load_policy(path: Path = POLICY_FILE) -> dict[str, Any]:
+    try:
+        policy = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AccessDenied("Politique globale absente ou invalide : accès fermé.") from exc
+    if not isinstance(policy, dict):
+        raise AccessDenied("Politique globale invalide : accès fermé.")
+    return policy
+
+
 def authorize_agent(agent_id: str, permission: str, agents_path: Path = AGENTS_FILE,
                     policy: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Autorise une capacité déclarée pour un agent dont le statut est explicitement active."""
+    """Vérifie les permissions déclarées. Ne prouve pas l'identité du processus."""
     if not isinstance(agent_id, str) or not agent_id.strip():
         raise AccessDenied("Identifiant d'agent obligatoire.")
     if not isinstance(permission, str) or not permission.strip():
@@ -46,19 +55,43 @@ def authorize_agent(agent_id: str, permission: str, agents_path: Path = AGENTS_F
     if isinstance(prohibited, list) and permission in prohibited:
         raise AccessDenied("Action explicitement interdite pour cet agent.")
     if permission in OWNER_ONLY:
-        raise AccessDenied("Action réservée au propriétaire ; aucun agent ne peut l'exécuter.")
-    if policy is not None:
-        if permission in EXTERNAL and policy.get("external_actions_enabled") is not True:
-            raise AccessDenied("Actions externes désactivées par la politique.")
-        if permission in FINANCIAL:
-            permissions_policy = policy.get("action_permissions", {})
-            financial = permissions_policy.get("financial", {}) if isinstance(permissions_policy, dict) else {}
-            if not isinstance(financial, dict) or financial.get("enabled") is not True:
-                raise AccessDenied("Actions financières désactivées par la politique.")
-        if permission in LEGAL:
-            permissions_policy = policy.get("action_permissions", {})
-            legal = permissions_policy.get("legal", {}) if isinstance(permissions_policy, dict) else {}
-            if not isinstance(legal, dict) or legal.get("enabled") is not True:
-                raise AccessDenied("Actions juridiques désactivées par la politique.")
+        raise AccessDenied("Action réservée au propriétaire.")
+    if not isinstance(policy, dict):
+        raise AccessDenied("Politique globale obligatoire : accès fermé.")
+    if permission in EXTERNAL and policy.get("external_actions_enabled") is not True:
+        raise AccessDenied("Actions externes désactivées par la politique.")
+    permissions_policy = policy.get("action_permissions", {})
+    if permission in FINANCIAL:
+        financial = permissions_policy.get("financial", {}) if isinstance(permissions_policy, dict) else {}
+        if not isinstance(financial, dict) or financial.get("enabled") is not True:
+            raise AccessDenied("Actions financières désactivées par la politique.")
+    if permission in LEGAL:
+        legal = permissions_policy.get("legal", {}) if isinstance(permissions_policy, dict) else {}
+        if not isinstance(legal, dict) or legal.get("enabled") is not True:
+            raise AccessDenied("Actions juridiques désactivées par la politique.")
     return {"authorized": True, "agent_id": agent_id, "permission": permission,
             "mode": "local_policy_check", "identity_authenticated": False}
+
+
+def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict[str, Any],
+                                  *, task_id: str, handler: str,
+                                  agents_path: Path = AGENTS_FILE,
+                                  policy: dict[str, Any] | None = None,
+                                  key_dir: Path | None = None,
+                                  replay_db: Path | None = None) -> dict[str, Any]:
+    """Vérifie signature, liaison au job, anti-rejeu et autorisation métier."""
+    from .identity import DEFAULT_KEY_DIR, DEFAULT_REPLAY_DB
+    if not isinstance(envelope, dict):
+        raise AccessDenied("Preuve cryptographique obligatoire.")
+    signed_payload = envelope.get("payload")
+    expected_payload = {"permission": permission, "task_id": task_id, "handler": handler}
+    if envelope.get("agent_id") != agent_id or signed_payload != expected_payload:
+        raise AccessDenied("Identité ou contenu signé non lié à cette tâche.")
+    try:
+        identity = verify_request(envelope, key_dir or DEFAULT_KEY_DIR, replay_db or DEFAULT_REPLAY_DB)
+    except IdentityError as exc:
+        raise AccessDenied(str(exc)) from exc
+    active_policy = policy if policy is not None else load_policy()
+    authorization = authorize_agent(agent_id, permission, agents_path, active_policy)
+    return {**authorization, "identity_authenticated": True,
+            "identity_algorithm": identity["algorithm"], "replay_protected": True}
