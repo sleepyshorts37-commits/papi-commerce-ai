@@ -14,7 +14,7 @@ def income(**changes):
 
 def write_entries(path, entries):
     path.parent.mkdir(parents=True,exist_ok=True)
-    path.write_text("".join(json.dumps(e)+"\\n" for e in entries),encoding="utf-8")
+    path.write_text("".join(json.dumps(e)+"\n" for e in entries),encoding="utf-8")
 
 class FinanceTests(unittest.TestCase):
     def test_verified_income_requires_independent_evidence(self):
