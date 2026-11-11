@@ -129,8 +129,10 @@ class StateMachineTests(unittest.TestCase):
         task = self.base_task(approval_required=True, approval_status="pending")
         with self.assertRaises(TransitionError):
             transition_task(task, "ready", actor="marietou")
-        task, event = approve_task(task, approver="owner", decision="approved")
         task, _ = transition_task(task, "ready", actor="marietou")
+        with self.assertRaises(TransitionError):
+            transition_task(task, "in_progress", actor="astou")
+        task, event = approve_task(task, approver="owner", decision="approved")
         task, _ = transition_task(task, "in_progress", actor="astou")
         self.assertEqual(task["status"], "in_progress")
         self.assertEqual(task["approval_status"], "approved")
