@@ -1,4 +1,4 @@
-"""Persistance Supabase/PostgREST avec contrôle optimiste de version."""
+"""Persistance Supabase/PostgREST avec contrôle optimiste et transitions atomiques."""
 from __future__ import annotations
 
 import json
@@ -41,13 +41,12 @@ class SupabaseStore:
                 raw = response.read()
                 return json.loads(raw.decode("utf-8")) if raw else None
         except HTTPError as exc:
-            # Ne jamais remonter le corps brut : il pourrait contenir des données sensibles.
             raise StoreError(f"Supabase a répondu HTTP {exc.code}.") from exc
         except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
             raise StoreError(f"Échec de communication avec Supabase ({type(exc).__name__}).") from exc
 
     def get_task(self, task_id: str) -> dict[str, Any] | None:
-        rows = self._request("GET", f"papi_tasks?id=eq.{quote(task_id)}&select=task,version")
+        rows = self._request("GET", f"papi_tasks?id=eq.{quote(task_id, safe='')}&select=task,version")
         if not isinstance(rows, list):
             raise StoreError("Réponse inattendue du stockage.")
         if not rows:
@@ -72,7 +71,7 @@ class SupabaseStore:
             raise StoreError("Version attendue invalide.")
         rows = self._request(
             "PATCH",
-            f"papi_tasks?id=eq.{quote(task_id)}&version=eq.{expected_version}",
+            f"papi_tasks?id=eq.{quote(task_id, safe='')}&version=eq.{expected_version}",
             {"task": task, "version": expected_version + 1},
             prefer="return=representation",
         )
@@ -82,9 +81,67 @@ class SupabaseStore:
 
     def append_audit_event(self, event: dict[str, Any]) -> bool:
         validate_event(event)
-        rows = self._request(
-            "POST", "papi_audit_events",
-            event,
-            prefer="return=representation",
-        )
+        rows = self._request("POST", "papi_audit_events", event, prefer="return=representation")
         return isinstance(rows, list) and len(rows) == 1
+
+    def commit_task_change(
+        self, task: dict[str, Any], event: dict[str, Any], *, expected_version: int
+    ) -> int:
+        """Enregistre tâche + audit dans une seule transaction PostgreSQL via RPC."""
+        validate_event(event)
+        task_id = task.get("id")
+        if not isinstance(task_id, str) or not task_id or event["entity_type"] != "task" or event["entity_id"] != task_id:
+            raise StoreError("La tâche et l'événement d'audit doivent désigner la même mission.")
+        if not isinstance(expected_version, int) or expected_version < 1:
+            raise StoreError("Version attendue invalide.")
+        result = self._request(
+            "POST",
+            "rpc/papi_commit_task_change",
+            {
+                "p_task_id": task_id,
+                "p_expected_version": expected_version,
+                "p_task": task,
+                "p_event": event,
+            },
+        )
+        if not isinstance(result, int) or result != expected_version + 1:
+            raise StoreError("La transaction n'a pas retourné une nouvelle version valide.")
+        return result
+
+    def transition_and_save(
+        self, task_id: str, new_status: str, *, actor: str,
+        expected_version: int, reason: str = "", evidence: list[str] | None = None,
+    ) -> tuple[dict[str, Any], int]:
+        """Relit, vérifie la version, calcule la transition puis la valide atomiquement."""
+        from .state_machine import TransitionError, transition_task
+
+        current = self.get_task(task_id)
+        if not current or current.get("version") != expected_version:
+            raise StoreError("Conflit de version ou mission introuvable ; relire avant de réessayer.")
+        try:
+            updated, event = transition_task(
+                current["task"], new_status, actor=actor, reason=reason, evidence=evidence
+            )
+        except (KeyError, TransitionError) as exc:
+            raise StoreError(f"Transition refusée : {exc}") from exc
+        version = self.commit_task_change(updated, event, expected_version=expected_version)
+        return updated, version
+
+    def approve_and_save(
+        self, task_id: str, *, approver: str, decision: str,
+        expected_version: int, reason: str = "",
+    ) -> tuple[dict[str, Any], int]:
+        """Enregistre une approbation explicite sans déclencher la mission."""
+        from .state_machine import TransitionError, approve_task
+
+        current = self.get_task(task_id)
+        if not current or current.get("version") != expected_version:
+            raise StoreError("Conflit de version ou mission introuvable ; relire avant de réessayer.")
+        try:
+            updated, event = approve_task(
+                current["task"], approver=approver, decision=decision, reason=reason
+            )
+        except (KeyError, TransitionError) as exc:
+            raise StoreError(f"Approbation refusée : {exc}") from exc
+        version = self.commit_task_change(updated, event, expected_version=expected_version)
+        return updated, version
