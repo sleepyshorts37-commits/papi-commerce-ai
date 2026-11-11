@@ -28,3 +28,7 @@ Le dépôt ignore `.env`, les fichiers `.env.*` (sauf le modèle `.env.example`)
 - `execution_enabled` reste désactivé par défaut ; les actions externes, financières et juridiques restent bloquées.
 - Le diagnostic ne constitue pas un test de disponibilité ni un audit des droits.
 - Le worker ne doit pas être lancé avant revue de sécurité, configuration serveur et tests d'intégration autorisés.
+
+
+## Adaptateur d'identité partagé
+Le runtime expose `papi_core.shared_identity.SupabaseIdentityVerifier`, à injecter explicitement dans le worker côté serveur. Il nécessite les tables et la RPC du schéma SQL, ainsi qu'un `SUPABASE_KEY` conservé dans les secrets serveur. Ne jamais exposer une clé `service_role` dans un client ou un dépôt. Avant utilisation, appliquer le SQL, vérifier les droits du rôle serveur, puis effectuer les tests d'intégration avec des identités de test.
