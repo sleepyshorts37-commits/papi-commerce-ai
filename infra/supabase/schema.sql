@@ -265,3 +265,67 @@ revoke all on function public.papi_fail_job(text, text, uuid, text) from public,
 grant execute on function public.papi_claim_job(text, uuid, integer) to service_role;
 grant execute on function public.papi_complete_job(text, text, uuid, jsonb) to service_role;
 grant execute on function public.papi_fail_job(text, text, uuid, text) to service_role;
+
+-- Identités Ed25519 partagées entre workers (migration additive).
+-- Les clés privées ne sont JAMAIS stockées dans Supabase.
+create table if not exists public.papi_agent_public_keys (
+    agent_id text not null check (agent_id ~ '^[A-Za-z0-9_-]{1,100}$'),
+    key_version integer not null check (key_version >= 1),
+    public_key_hex text not null check (public_key_hex ~ '^[0-9a-f]{64}$'),
+    status text not null default 'active' check (status in ('active', 'revoked')),
+    created_at timestamptz not null default now(),
+    revoked_at timestamptz,
+    primary key (agent_id, key_version),
+    check ((status = 'revoked') = (revoked_at is not null))
+);
+create unique index if not exists papi_agent_one_active_key_idx
+    on public.papi_agent_public_keys(agent_id) where status = 'active';
+
+create table if not exists public.papi_agent_used_nonces (
+    agent_id text not null,
+    nonce text not null check (length(nonce) between 16 and 128),
+    expires_at timestamptz not null,
+    consumed_at timestamptz not null default now(),
+    primary key (agent_id, nonce)
+);
+create index if not exists papi_agent_used_nonces_expiry_idx
+    on public.papi_agent_used_nonces(expires_at);
+
+alter table public.papi_agent_public_keys enable row level security;
+alter table public.papi_agent_used_nonces enable row level security;
+revoke all on public.papi_agent_public_keys from public, anon, authenticated;
+revoke all on public.papi_agent_used_nonces from public, anon, authenticated;
+grant select, insert, update on public.papi_agent_public_keys to service_role;
+grant select, insert, delete on public.papi_agent_used_nonces to service_role;
+
+-- L'insertion atomique garantit qu'un nonce ne peut être consommé que par un worker.
+create or replace function public.papi_consume_agent_nonce(
+    p_agent_id text, p_nonce text, p_expires_at timestamptz
+) returns boolean
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare v_inserted integer;
+begin
+    if p_agent_id is null or p_agent_id !~ '^[A-Za-z0-9_-]{1,100}$'
+       or p_nonce is null or length(p_nonce) < 16 or length(p_nonce) > 128
+       or p_expires_at is null or p_expires_at <= now()
+       or p_expires_at > now() + interval '10 minutes' then
+        raise exception 'Invalid agent nonce' using errcode = '22023';
+    end if;
+
+    delete from public.papi_agent_used_nonces where expires_at < now();
+
+    insert into public.papi_agent_used_nonces(agent_id, nonce, expires_at)
+    values (p_agent_id, p_nonce, p_expires_at)
+    on conflict (agent_id, nonce) do nothing;
+
+    get diagnostics v_inserted = row_count;
+    return v_inserted = 1;
+end;
+$$;
+revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
+    from public, anon, authenticated;
+grant execute on function public.papi_consume_agent_nonce(text, text, timestamptz)
+    to service_role;
