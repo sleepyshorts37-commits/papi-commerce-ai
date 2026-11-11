@@ -392,3 +392,33 @@ class WorkerTests(unittest.TestCase):
              patch.object(worker.queue, "complete", return_value=False):
             result = worker.run_once()
         self.assertEqual(result["status"], "lease_lost")
+
+
+class DoctorTests(unittest.TestCase):
+    def test_missing_environment_is_reported_without_secrets(self):
+        from papi_core.doctor import diagnose_environment
+        result = diagnose_environment({})
+        self.assertEqual(result["status"], "configuration_incomplete")
+        self.assertFalse(result["network_test_performed"])
+        self.assertFalse(result["secrets_displayed"])
+        self.assertFalse(result["worker_start_allowed"])
+
+    def test_valid_shaped_environment_is_not_claimed_as_connected(self):
+        from papi_core.doctor import diagnose_environment
+        result = diagnose_environment({
+            "SUPABASE_URL": "https://project.supabase.co",
+            "SUPABASE_KEY": "dummy-secret-value",
+        })
+        self.assertEqual(result["status"], "configuration_present")
+        self.assertTrue(result["checks"]["supabase_url_configured"])
+        self.assertTrue(result["checks"]["supabase_key_configured"])
+        self.assertFalse(result["network_test_performed"])
+        self.assertNotIn("dummy-secret-value", json.dumps(result))
+
+    def test_non_https_url_is_rejected(self):
+        from papi_core.doctor import diagnose_environment
+        result = diagnose_environment({
+            "SUPABASE_URL": "http://project.supabase.co",
+            "SUPABASE_KEY": "dummy",
+        })
+        self.assertFalse(result["checks"]["supabase_url_configured"])
