@@ -327,3 +327,68 @@ class HandlerPermissionTests(unittest.TestCase):
         job = {"handler": "internal.bad", "payload": {}}
         with self.assertRaises(PermissionError):
             execute_authorized_job(job, self.task, policy, registry)
+
+
+class WorkerTests(unittest.TestCase):
+    def make_worker(self, policy=None, job=None, task=None):
+        from papi_core.execution_queue import ExecutionQueue
+        from papi_core.handler_registry import HandlerRegistry
+        from papi_core.worker import PapiWorker
+        queue = ExecutionQueue(SupabaseStore(url="https://example.supabase.co", key="test-key"))
+        registry = HandlerRegistry()
+        registry.register("internal.echo", "read_only", lambda payload, context: {"echo": payload})
+        effective_policy = policy or {
+            "execution_enabled": True, "external_actions_enabled": False,
+            "allowed_handlers": ["internal.echo"],
+            "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
+        }
+        return PapiWorker(queue=queue, registry=registry, policy=effective_policy, worker_id="worker-test")
+
+    def test_disabled_worker_does_not_claim(self):
+        worker = self.make_worker(policy={"execution_enabled": False})
+        with patch.object(worker.queue, "claim") as claim:
+            self.assertEqual(worker.run_once(), {"status": "disabled", "claimed": False})
+        claim.assert_not_called()
+
+    def test_idle_worker_claims_nothing(self):
+        worker = self.make_worker()
+        with patch.object(worker.queue, "claim", return_value=None):
+            self.assertEqual(worker.run_once(), {"status": "idle", "claimed": False})
+
+    def test_worker_executes_one_authorized_job(self):
+        worker = self.make_worker()
+        job = {"id": "JOB-1", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {"a": 1}, "lease_token": "lease-1"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False}
+             }), \
+             patch.object(worker.queue, "complete", return_value=True) as complete:
+            result = worker.run_once()
+        self.assertEqual(result["status"], "completed")
+        complete.assert_called_once()
+
+    def test_worker_blocks_unknown_handler_and_releases_job_to_retry(self):
+        worker = self.make_worker()
+        job = {"id": "JOB-2", "task_id": "TASK-1", "handler": "not.registered",
+               "payload": {}, "lease_token": "lease-2"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False}
+             }), \
+             patch.object(worker.queue, "fail", return_value="retry") as fail:
+            result = worker.run_once()
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(fail.call_args.kwargs["error_code"], "permission_denied")
+
+    def test_worker_does_not_complete_if_lease_was_lost(self):
+        worker = self.make_worker()
+        job = {"id": "JOB-3", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-3"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False}
+             }), \
+             patch.object(worker.queue, "complete", return_value=False):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "lease_lost")
