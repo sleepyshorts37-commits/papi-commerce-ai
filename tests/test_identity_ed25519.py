@@ -85,5 +85,32 @@ class Ed25519IdentityTests(unittest.TestCase):
                                  timestamp=1000, nonce="short")
 
 
+    def test_one_agents_key_cannot_authenticate_another_agent(self):
+        provision_ed25519_agent("agent-b", self.private_dir, self.registry)
+        envelope = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
+                                        timestamp=1000, nonce="j" * 16)
+        envelope["agent_id"] = "agent-b"
+        with self.assertRaises(Ed25519IdentityError):
+            verify_ed25519_request(envelope, self.registry, self.replay, now=1000)
+
+    def test_concurrent_replay_allows_exactly_one_verification(self):
+        from concurrent.futures import ThreadPoolExecutor
+
+        envelope = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
+                                        timestamp=1000, nonce="k" * 24)
+
+        def attempt():
+            try:
+                verify_ed25519_request(envelope, self.registry, self.replay, now=1000)
+                return "accepted"
+            except Ed25519IdentityError:
+                return "rejected"
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: attempt(), range(2)))
+        self.assertEqual(results.count("accepted"), 1)
+        self.assertEqual(results.count("rejected"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
