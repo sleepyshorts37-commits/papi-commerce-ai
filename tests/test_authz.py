@@ -55,6 +55,18 @@ class AgentAccessTests(unittest.TestCase):
         with self.assertRaises(AccessDenied):
             authorize_agent("agent-a", "spend_money", self.path, self.policy)
 
+    def test_all_owner_approval_actions_are_denied_to_agents(self):
+        owner_only_actions = [
+            "publish_public_content", "send_outbound_messages",
+            "accept_contract", "process_customer_data",
+        ]
+        self.agents["agents"][0]["permissions"].extend(owner_only_actions)
+        self.write()
+        for permission in owner_only_actions:
+            with self.subTest(permission=permission):
+                with self.assertRaises(AccessDenied):
+                    authorize_agent("agent-a", permission, self.path, self.policy)
+
     def test_external_action_is_denied_by_policy(self):
         self.agents["agents"][0]["permissions"].append("send_message")
         self.write()
