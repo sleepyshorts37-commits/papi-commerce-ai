@@ -13,6 +13,7 @@
 - [x] Mémoire partagée locale.
 - [x] Planificateur déterministe sans exécution autonome.
 - [x] Outils commerciaux locaux : prospects, opportunités, offres, pipeline et interactions.
+- [x] Registre financier append-only : recettes vérifiées, dépenses approuvées/payées, remboursements et rapports XOF.
 - [ ] Configurer les secrets et permissions d'hébergement après choix explicite du propriétaire.
 - [ ] Tester un workflow non sensible de bout en bout dans un environnement déployé.
 
@@ -37,7 +38,8 @@
 - [ ] PAPI SERVICES et PAPI FREELANCE.
 - [ ] PAPI AFFILIATION.
 - [ ] PAPI MARKET et PAPI DROPSHIPPING.
-- [ ] Intégrer paiements, recettes et comptabilité.
+- [ ] Intégrer les prestataires de paiement après validation de l'éligibilité, des frais, des permissions et des conditions.
+- [ ] Mettre en place sauvegardes, rapprochement périodique et séparation des rôles comptables.
 
 ## Mise en service
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
