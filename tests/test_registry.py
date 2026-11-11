@@ -257,3 +257,73 @@ class ExecutionQueueTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HandlerPermissionTests(unittest.TestCase):
+    def setUp(self):
+        from papi_core.handler_registry import HandlerRegistry
+        self.registry = HandlerRegistry()
+        self.registry.register("internal.echo", "read_only", lambda payload, context: {"ok": True})
+        self.policy = {
+            "execution_enabled": True, "external_actions_enabled": False,
+            "allowed_handlers": ["internal.echo"],
+            "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
+        }
+        self.job = {"handler": "internal.echo", "payload": {"hello": "world"}}
+        self.task = {"status": "in_progress", "approval_required": False}
+
+    def test_registered_and_allowed_handler_executes(self):
+        from papi_core.handler_registry import execute_authorized_job
+        result = execute_authorized_job(self.job, self.task, self.policy, self.registry)
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["result"], {"ok": True})
+
+    def test_execution_disabled_is_rejected(self):
+        from papi_core.handler_registry import PermissionError, execute_authorized_job
+        self.policy["execution_enabled"] = False
+        with self.assertRaises(PermissionError):
+            execute_authorized_job(self.job, self.task, self.policy, self.registry)
+
+    def test_unknown_handler_is_rejected(self):
+        from papi_core.handler_registry import PermissionError, authorize_job
+        self.job["handler"] = "python.eval"
+        with self.assertRaises(PermissionError):
+            authorize_job(self.job, self.task, self.policy, self.registry)
+
+    def test_handler_must_be_allowlisted_by_policy(self):
+        from papi_core.handler_registry import PermissionError, authorize_job
+        self.policy["allowed_handlers"] = []
+        with self.assertRaises(PermissionError):
+            authorize_job(self.job, self.task, self.policy, self.registry)
+
+    def test_task_must_be_running_and_approved(self):
+        from papi_core.handler_registry import PermissionError, authorize_job
+        self.task["status"] = "ready"
+        with self.assertRaises(PermissionError):
+            authorize_job(self.job, self.task, self.policy, self.registry)
+        self.task.update(status="in_progress", approval_required=True, approval_status="pending")
+        with self.assertRaises(PermissionError):
+            authorize_job(self.job, self.task, self.policy, self.registry)
+
+    def test_external_action_is_blocked(self):
+        from papi_core.handler_registry import HandlerRegistry, PermissionError, authorize_job
+        registry = HandlerRegistry()
+        registry.register("mail.send", "external_communication", lambda payload, context: {"sent": True})
+        job = {"handler": "mail.send", "payload": {}}
+        policy = {
+            "execution_enabled": True, "external_actions_enabled": False,
+            "allowed_handlers": ["mail.send"],
+            "action_permissions": {"external_communication": {"enabled": True, "owner_approval": True}},
+        }
+        task = {"status": "in_progress", "approval_required": True, "approval_status": "approved"}
+        with self.assertRaises(PermissionError):
+            authorize_job(job, task, policy, registry)
+
+    def test_non_object_handler_result_is_rejected(self):
+        from papi_core.handler_registry import HandlerRegistry, PermissionError, execute_authorized_job
+        registry = HandlerRegistry()
+        registry.register("internal.bad", "read_only", lambda payload, context: "bad")
+        policy = dict(self.policy, allowed_handlers=["internal.bad"])
+        job = {"handler": "internal.bad", "payload": {}}
+        with self.assertRaises(PermissionError):
+            execute_authorized_job(job, self.task, policy, registry)
