@@ -96,6 +96,8 @@ class AgentAccessTests(unittest.TestCase):
         for policy in (
             {**self.policy, "never_allowed": "impersonate_people"},
             {**self.policy, "requires_owner_approval": [None]},
+            [],
+            "invalid-policy",
         ):
             with self.subTest(policy=policy):
                 with self.assertRaises(AccessDenied):
