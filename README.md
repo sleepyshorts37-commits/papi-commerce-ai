@@ -1,6 +1,6 @@
 # PAPI COMMERCE AI
 
-Groupe commercial numérique assisté par agents IA. **État : fondations documentaires ; aucun agent autonome n'est encore déployé.**
+Groupe commercial numérique assisté par agents IA. **État : fondations techniques ; aucun agent autonome n'est encore déployé.**
 
 ## Activités prévues
 1. **PAPI MARKET** — vente de produits finis.
@@ -19,10 +19,19 @@ Groupe commercial numérique assisté par agents IA. **État : fondations docume
 - Aucun retrait, transfert ou paiement par un agent sans autorisation.
 - Une capacité n'est déclarée opérationnelle qu'après implémentation et test concluant.
 
-## Architecture prévue
-Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architecture des agents), Cheikh Fall (fiabilité), Aminou (alternatives), PAPI CHAT (communication interne), PAPI COMMAND CENTER (suivi).
+## Architecture
+Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architecture des agents), Cheikh Fall (fiabilité), Aminou (alternatives), PAPI CHAT (communication interne), PAPI COMMAND CENTER (suivi), mémoire partagée locale et planificateur déterministe.
 
-## Diagnostic local\n\nDepuis le dossier `runtime`, exécuter `python -m papi_core doctor` avec `PYTHONPATH=.` pour vérifier la présence des variables Supabase sans afficher leurs valeurs ni effectuer de connexion réseau. Le worker reste désactivé par défaut.\n\n## Documents
+## Commandes locales
+Depuis la racine du dépôt :
+- `PYTHONPATH=runtime python -m papi_core validate` — valider les registres.
+- `PYTHONPATH=runtime python -m papi_core doctor` — vérifier la présence des variables Supabase sans afficher leurs valeurs ni effectuer de connexion réseau.
+- `PYTHONPATH=runtime python -m papi_core dashboard` — afficher le tableau de bord en lecture seule.
+- `PYTHONPATH=runtime python -m papi_core schedule-preview` — calculer les échéances récurrentes à examiner, sans exécuter de tâche.
+
+Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
+
+## Documents
 - [Organisation](docs/ORGANISATION.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
@@ -30,12 +39,14 @@ Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architect
 - [Exploitation et gestion des tâches](docs/OPERATIONS.md)
 - [Noyau de coordination](docs/CORE-ENGINE.md)
 - [Orchestrateur consultatif](docs/ORCHESTRATOR.md)
-- [Journal d'audit et mémoire opérationnelle](docs/AUDIT-MEMORY.md)
+- [Journal d'audit](docs/AUDIT-MEMORY.md)
+- [Mémoire partagée](docs/SHARED-MEMORY.md)
 - [Machine à états des missions](docs/STATE-MACHINE.md)
 - [Persistance partagée Supabase](docs/SHARED-STORAGE.md)
 - [File d'exécution et reprise](docs/EXECUTION-QUEUE.md)
 - [Registre de handlers et permissions](docs/HANDLER-PERMISSIONS.md)
 - [Worker contrôlé](docs/WORKER.md)
+- [Planificateur](docs/SCHEDULER.md)
 - [Préparation de l'environnement Supabase](docs/ENVIRONMENT-SETUP.md)
 
-GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à construire et tester.
+GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à déployer et tester.
