@@ -48,7 +48,7 @@ La migration SQL ajoute :
 - `papi_agent_used_nonces` : unicité transactionnelle du couple agent/nonce ;
 - `papi_consume_agent_nonce` : RPC atomique qui refuse un nonce déjà consommé et limite sa durée de validité.
 
-Les tables sont privées aux rôles serveur. Aucune clé privée n'est stockée dans Supabase. Les workers ne doivent jamais recevoir une clé `service_role) dans le navigateur ou dans un dépôt. Le backend serveur doit vérifier l'état et la version de la clé publique, puis consommer le nonce via la RPC.
+Les tables sont privées aux rôles serveur. Aucune clé privée n'est stockée dans Supabase. Les workers ne doivent jamais recevoir une clé `service_role` dans le navigateur ou dans un dépôt. Le backend serveur doit vérifier l'état et la version de la clé publique, puis consommer le nonce via la RPC.
 
 **Limite actuelle :** le runtime utilise encore le registre JSON et SQLite locaux par défaut. Le schéma partagé est préparé, mais aucun adaptateur Supabase n'est encore implémenté, aucune migration distante n'a été exécutée et la révocation/anti-rejeu multi-instance ne sont donc pas opérationnels.
 
