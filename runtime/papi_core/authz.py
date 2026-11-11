@@ -56,16 +56,17 @@ def authorize_agent(agent_id: str, permission: str, agents_path: Path = AGENTS_F
         raise AccessDenied("Action explicitement interdite pour cet agent.")
     if permission in OWNER_ONLY:
         raise AccessDenied("Action réservée au propriétaire.")
-    if not isinstance(policy, dict):
-        raise AccessDenied("Politique globale obligatoire : accès fermé.")
-    if permission in EXTERNAL and policy.get("external_actions_enabled") is not True:
+    active_policy = policy if policy is not None else load_policy()
+    if permission in EXTERNAL and active_policy.get("external_actions_enabled") is not True:
         raise AccessDenied("Actions externes désactivées par la politique.")
     permissions_policy = policy.get("action_permissions", {})
     if permission in FINANCIAL:
+        permissions_policy = active_policy.get("action_permissions", {})
         financial = permissions_policy.get("financial", {}) if isinstance(permissions_policy, dict) else {}
         if not isinstance(financial, dict) or financial.get("enabled") is not True:
             raise AccessDenied("Actions financières désactivées par la politique.")
     if permission in LEGAL:
+        permissions_policy = active_policy.get("action_permissions", {})
         legal = permissions_policy.get("legal", {}) if isinstance(permissions_policy, dict) else {}
         if not isinstance(legal, dict) or legal.get("enabled") is not True:
             raise AccessDenied("Actions juridiques désactivées par la politique.")
