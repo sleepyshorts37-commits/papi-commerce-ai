@@ -1,16 +1,55 @@
 {
   "project": "PAPI COMMERCE AI",
   "mode": "safe_scaffold",
+  "execution_enabled": false,
   "default_budget_xof": 0,
   "external_actions_enabled": false,
+  "allowed_handlers": [
+    "internal.echo",
+    "report.preview"
+  ],
+  "action_permissions": {
+    "read_only": {
+      "enabled": true,
+      "owner_approval": false
+    },
+    "internal_write": {
+      "enabled": true,
+      "owner_approval": false
+    },
+    "external_communication": {
+      "enabled": false,
+      "owner_approval": true
+    },
+    "financial": {
+      "enabled": false,
+      "owner_approval": true
+    },
+    "legal": {
+      "enabled": false,
+      "owner_approval": true
+    }
+  },
   "requires_owner_approval": [
-    "spend_money", "subscribe_service", "buy_api_credits", "withdraw_funds",
-    "transfer_funds", "publish_public_content", "send_outbound_messages",
-    "accept_contract", "create_account", "grant_sensitive_access", "process_customer_data"
+    "spend_money",
+    "subscribe_service",
+    "buy_api_credits",
+    "withdraw_funds",
+    "transfer_funds",
+    "publish_public_content",
+    "send_outbound_messages",
+    "accept_contract",
+    "create_account",
+    "grant_sensitive_access",
+    "process_customer_data"
   ],
   "never_allowed": [
-    "store_credentials_in_repository", "request_otp_or_pin_in_chat", "impersonate_people",
-    "spam_or_evade_platform_limits", "fabricate_revenue_or_sales", "bypass_kyc_or_access_controls"
+    "store_credentials_in_repository",
+    "request_otp_or_pin_in_chat",
+    "impersonate_people",
+    "spam_or_evade_platform_limits",
+    "fabricate_revenue_or_sales",
+    "bypass_kyc_or_access_controls"
   ],
   "revenue_recognition": "Only after payment is independently verified through an authorized provider source.",
   "agent_execution_status": "not_deployed"
