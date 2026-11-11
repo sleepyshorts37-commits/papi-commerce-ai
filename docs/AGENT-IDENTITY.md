@@ -66,3 +66,17 @@ Ces permissions ne remplacent pas les validations de la politique globale ni les
 ## Préparation multi-instance
 
 Le HMAC actuel et SQLite anti-rejeu restent mono-hôte. Avant d'autoriser plusieurs instances, migrer vers Ed25519 (clés privées détenues par chaque agent, clés publiques côté vérificateur), registre central de clés versionnées et révocables, stockage anti-rejeu transactionnel partagé, horloges synchronisées et audit central append-only. Les instances doivent refuser toute identité inconnue, révoquée ou dont la version de clé n'est pas active. Aucun secret partagé ne doit être distribué entre workers.
+
+
+## Prototype Ed25519 (socle de migration)
+
+Le module `papi_core.identity_ed25519` introduit des signatures asymétriques :
+- la clé privée Ed25519 reste sur l'environnement de l'agent, fichier PEM local avec permissions 0600 ;
+- seul le matériel public est inscrit dans un registre JSON local versionné ;
+- chaque enveloppe signe l'identifiant, la version de clé, l'horodatage, le nonce et le payload ;
+- le vérificateur refuse les identités révoquées, les versions obsolètes, les signatures invalides, expirées ou rejouées ;
+- la rotation incrémente la version et invalide les anciennes signatures ; la révocation bloque l'identité.
+
+Dépendance : `cryptography` (voir `requirements.txt`). Les tests CI l'installent explicitement.
+
+**Limite importante :** le registre JSON et la base SQLite anti-rejeu sont encore locaux à une machine. Ce module n'est pas encore branché au worker HMAC existant et ne fournit pas de révocation ou d'anti-rejeu entre plusieurs hôtes. Ne pas l'utiliser pour déclarer un déploiement multi-instance opérationnel. La prochaine étape est un backend transactionnel partagé, puis une migration contrôlée du worker et des jobs vers les enveloppes Ed25519.
