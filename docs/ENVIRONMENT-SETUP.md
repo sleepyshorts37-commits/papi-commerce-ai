@@ -16,9 +16,9 @@ Le diagnostic n'effectue **aucune connexion réseau**, ne valide pas la clé, n'
 3. Il conserve l'URL du projet et une clé serveur dans le gestionnaire de secrets de l'environnement d'exécution.
 4. Il définit `SUPABASE_URL` et `SUPABASE_KEY` comme variables d'environnement côté serveur uniquement.
 5. Il lance `python -m papi_core doctor` dans l'environnement serveur.
-6. Avant toute donnée réelle, il vérifie les permissions, politiques RLS, sauvegardes et procédures de restauration.
+6. Le fichier `runtime/.env.example` est un modèle sans secret ; le copier localement en `.env` est facultatif, mais le vrai fichier doit rester ignoré par Git.\n7. Avant toute donnée réelle, il vérifie les permissions, politiques RLS, sauvegardes et procédures de restauration.
 
-Ne jamais utiliser une clé `service_role` dans une application mobile/navigateur, une issue GitHub, un dépôt, un journal ou une conversation. Ne jamais commiter un fichier `.env`. Si une clé est exposée, la révoquer/renouveler immédiatement depuis Supabase.
+Le dépôt ignore `.env`, les fichiers `.env.*` (sauf le modèle `.env.example`) et les fichiers locaux de base de données. Vérifier `git status` avant chaque commit.\n\nNe jamais utiliser une clé `service_role` dans une application mobile/navigateur, une issue GitHub, un dépôt, un journal ou une conversation. Ne jamais commiter un fichier `.env`. Si une clé est exposée, la révoquer/renouveler immédiatement depuis Supabase.
 
 ## État actuel et limites
 
