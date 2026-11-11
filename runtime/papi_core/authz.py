@@ -80,7 +80,7 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
                                   policy: dict[str, Any] | None = None,
                                   key_dir: Path | None = None,
                                   replay_db: Path | None = None,
-                                  public_registry: Path = DEFAULT_PUBLIC_REGISTRY) -> dict[str, Any]:
+                                  public_registry: Path = DEFAULT_PUBLIC_REGISTRY,\n                                  shared_identity_verifier: Any | None = None) -> dict[str, Any]:
     """Vérifie signature, liaison au job, anti-rejeu et autorisation métier."""
     from .identity import DEFAULT_KEY_DIR, DEFAULT_REPLAY_DB
     if not isinstance(envelope, dict):
