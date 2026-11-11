@@ -24,7 +24,7 @@
 - [x] PAPI COMMAND CENTER local en lecture seule.
 - [x] PAPI CHAT : socle local de communication interne.
 - [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
-- [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [ ] Migrer vers Ed25519 / identité de workload et révocation avant déploiement multi-instance.
+- [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [ ] Migrer vers Ed25519 / identité de workload et révocation avant déploiement multi-instance.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
