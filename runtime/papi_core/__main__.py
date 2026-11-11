@@ -4,6 +4,7 @@ import json
 import sys
 from .registry import RegistryError, route_department, validate_registries
 from .orchestrator import build_dispatch_plan
+from .doctor import diagnose_environment
 
 
 def main() -> int:
@@ -13,8 +14,12 @@ def main() -> int:
     route = sub.add_parser("route", help="Lister les agents candidats d'un département")
     route.add_argument("department")
     sub.add_parser("plan", help="Préparer un plan consultatif des tâches en attente")
+    sub.add_parser("doctor", help="Diagnostiquer la configuration locale sans réseau ni secret affiché")
     args = parser.parse_args()
     try:
+        if args.command == "doctor":
+            print(json.dumps(diagnose_environment(), ensure_ascii=False, indent=2))
+            return 0
         if args.command == "validate":
             errors = validate_registries()
             if errors:
