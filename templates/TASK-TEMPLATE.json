@@ -1,0 +1,14 @@
+{
+  "id": "PAPI-EXAMPLE-001",
+  "title": "Exemple de tâche à remplacer",
+  "description": "Décrire le résultat attendu et les critères de réussite.",
+  "department": "Direction",
+  "owner_agent": "Marietou Diouf",
+  "status": "backlog",
+  "priority": "normal",
+  "created_at": "2026-11-11T00:00:00Z",
+  "approval_required": true,
+  "approval_status": "pending",
+  "evidence": [],
+  "notes": "Exemple documentaire uniquement. Ne pas considérer comme une tâche exécutée."
+}
