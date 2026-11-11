@@ -42,6 +42,11 @@ class AgentOnboardingTests(unittest.TestCase):
         with self.assertRaises(OnboardingError):
             prepare_agent_onboarding(**args)
 
+    def test_rejects_identifier_collision_ignoring_case(self):
+        args = {**self.args, "agent_id": "ASTOU"}
+        with self.assertRaises(OnboardingError):
+            prepare_agent_onboarding(**args)
+
     def test_rejects_missing_or_suspended_manager(self):
         args = {**self.args, "manager_agent_id": "missing"}
         with self.assertRaises(OnboardingError):
