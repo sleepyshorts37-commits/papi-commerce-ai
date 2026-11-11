@@ -67,6 +67,40 @@ class AgentAccessTests(unittest.TestCase):
                 with self.assertRaises(AccessDenied):
                     authorize_agent("agent-a", permission, self.path, self.policy)
 
+    def test_policy_owner_approval_list_is_enforced(self):
+        actions = ["spend_money", "subscribe_service", "buy_api_credits",
+                   "withdraw_funds", "transfer_funds", "publish_public_content",
+                   "send_outbound_messages", "accept_contract", "create_account",
+                   "grant_sensitive_access", "process_customer_data"]
+        self.agents["agents"][0]["permissions"].extend(actions)
+        self.write()
+        policy = {**self.policy, "requires_owner_approval": actions}
+        for permission in actions:
+            with self.subTest(permission=permission):
+                with self.assertRaises(AccessDenied):
+                    authorize_agent("agent-a", permission, self.path, policy)
+
+    def test_policy_never_allowed_list_is_enforced(self):
+        actions = ["store_credentials_in_repository", "request_otp_or_pin_in_chat",
+                   "impersonate_people", "spam_or_evade_platform_limits",
+                   "fabricate_revenue_or_sales", "bypass_kyc_or_access_controls"]
+        self.agents["agents"][0]["permissions"].extend(actions)
+        self.write()
+        policy = {**self.policy, "never_allowed": actions}
+        for permission in actions:
+            with self.subTest(permission=permission):
+                with self.assertRaises(AccessDenied):
+                    authorize_agent("agent-a", permission, self.path, policy)
+
+    def test_malformed_policy_security_lists_fail_closed(self):
+        for policy in (
+            {**self.policy, "never_allowed": "impersonate_people"},
+            {**self.policy, "requires_owner_approval": [None]},
+        ):
+            with self.subTest(policy=policy):
+                with self.assertRaises(AccessDenied):
+                    authorize_agent("agent-a", "read_reports", self.path, policy)
+
     def test_external_action_is_denied_by_policy(self):
         self.agents["agents"][0]["permissions"].append("send_message")
         self.write()
