@@ -193,7 +193,42 @@ as $$
 declare v_job public.papi_jobs%rowtype;
 declare v_status text;
 begin
-    if p_error_code is null or length(trim(p_error_code)) = 0 or length(p_error_code) > 80 then
+    if p_error_code is null or p_error_code !~ '^[a-z0-9_]{1,80}
+        raise exception 'Invalid error code' using errcode = '22023';
+    end if;
+    select * into v_job from public.papi_jobs
+     where id = p_job_id and status = 'running'
+       and lease_owner = p_worker_id and lease_token = p_lease_token
+       and lease_until > now()
+     for update;
+    if not found then
+        raise exception 'Job lease lost or expired' using errcode = '40001';
+    end if;
+    if v_job.attempts >= v_job.max_attempts then
+        v_status := 'failed';
+    else
+        v_status := 'retry';
+    end if;
+    update public.papi_jobs
+       set status = v_status,
+           available_at = case when v_status = 'retry'
+             then now() + make_interval(secs => least(3600, 15 * power(2, attempts - 1)::integer))
+             else available_at end,
+           last_error_code = p_error_code,
+           updated_at = now(),
+           lease_owner = null, lease_token = null, lease_until = null
+     where id = p_job_id;
+    return v_status;
+end;
+$$;
+
+revoke all on function public.papi_claim_job(text, uuid, integer) from public, anon, authenticated;
+revoke all on function public.papi_complete_job(text, text, uuid, jsonb) from public, anon, authenticated;
+revoke all on function public.papi_fail_job(text, text, uuid, text) from public, anon, authenticated;
+grant execute on function public.papi_claim_job(text, uuid, integer) to service_role;
+grant execute on function public.papi_complete_job(text, text, uuid, jsonb) to service_role;
+grant execute on function public.papi_fail_job(text, text, uuid, text) to service_role;
+ then
         raise exception 'Invalid error code' using errcode = '22023';
     end if;
     select * into v_job from public.papi_jobs
