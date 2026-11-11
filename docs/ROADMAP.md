@@ -23,7 +23,8 @@
 - [x] Briefing déterministe d'Astou.
 - [x] PAPI COMMAND CENTER local en lecture seule.
 - [x] PAPI CHAT : socle local de communication interne.
-- [ ] Authentifier les agents dans le runtime.
+- [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
+- [ ] Authentification cryptographique des identités de service.
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
@@ -47,4 +48,4 @@
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 
 ## Statut
-Fondations de code et documentation présentes. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+Fondations de code et documentation présentes. Le contrôle d'accès local n'authentifie pas cryptographiquement les processus. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
