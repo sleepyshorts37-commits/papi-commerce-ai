@@ -69,7 +69,7 @@ class WorkerSafetyTests(unittest.TestCase):
             result = worker.run_once()
             self.assertEqual(result["status"], "blocked")
             self.assertEqual(len(queue.fail_calls), 1)
-            self.assertEqual(queue.fail_calls[0]["error_code"], "authentication_or_permission_denied")
+            self.assertEqual(queue.fail_calls[0]["error_code"], "authentication_failed")
 
 
 if __name__ == "__main__":
