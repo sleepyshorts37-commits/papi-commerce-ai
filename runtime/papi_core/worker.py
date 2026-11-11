@@ -66,8 +66,11 @@ class PapiWorker:
             if not self.queue.complete(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, result=result):
                 return {"status": "lease_lost", "claimed": True, "job_id": job_id}
             return {"status": "completed", "claimed": True, "job_id": job_id}
-        except (AccessDenied, HandlerPermissionError):
-            self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, error_code="authentication_or_permission_denied")
+        except AccessDenied:
+            self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, error_code="authentication_failed")
+            return {"status": "blocked", "claimed": True, "job_id": job_id}
+        except HandlerPermissionError:
+            self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, error_code="permission_denied")
             return {"status": "blocked", "claimed": True, "job_id": job_id}
         except (WorkerError, StoreError, QueueError):
             self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, error_code="worker_validation_error")
