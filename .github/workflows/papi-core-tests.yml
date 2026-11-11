@@ -13,6 +13,20 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: papi_test_password
+          POSTGRES_DB: papi_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d papi_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - name: Python version
@@ -23,3 +37,28 @@ jobs:
         run: PYTHONPATH=runtime python -m papi_core validate
       - name: Run unit tests
         run: PYTHONPATH=runtime python -m unittest discover -s tests -v
+
+      - name: Apply Supabase schema to disposable PostgreSQL
+        env:
+          PGPASSWORD: papi_test_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -c "create role anon; create role authenticated; create role service_role;"
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/schema.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          select public.papi_consume_agent_nonce(
+            'ci-agent', 'nonce-ci-000000000001', now() + interval '5 minutes'
+          ) as first_use \gset
+          \if :first_use
+          \else
+            \quit 1
+          \endif
+          select public.papi_consume_agent_nonce(
+            'ci-agent', 'nonce-ci-000000000001', now() + interval '5 minutes'
+          ) as replay_use \gset
+          \if :replay_use
+            \quit 1
+          \endif
+          SQL
