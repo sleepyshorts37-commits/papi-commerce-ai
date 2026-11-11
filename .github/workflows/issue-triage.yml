@@ -1,0 +1,49 @@
+name: PAPI issue triage
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply safe intake labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = (issue.title || "").toUpperCase();
+            const labels = title.startsWith("[INCIDENT]")
+              ? ["type:incident", "statut:a-trier"]
+              : title.startsWith("[TACHE]")
+                ? ["type:tache", "statut:a-trier"]
+                : ["statut:a-trier"];
+            for (const name of labels) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                  color: name.includes("incident") ? "B60205" : "1D76DB",
+                  description: "Label de triage automatique PAPI"
+                });
+              }
+            }
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels
+            });
