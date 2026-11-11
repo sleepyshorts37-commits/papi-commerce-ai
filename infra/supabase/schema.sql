@@ -126,6 +126,12 @@ set search_path = public, pg_temp
 as $$
 declare v_job public.papi_jobs%rowtype;
 begin
+    -- Une réservation qui expire à sa dernière tentative est terminale : ne pas la laisser bloquée.
+    update public.papi_jobs
+       set status = 'failed', last_error_code = 'lease_expired_max_attempts',
+           updated_at = now(), lease_owner = null, lease_token = null, lease_until = null
+     where status = 'running' and lease_until < now() and attempts >= max_attempts;
+
     if p_worker_id is null or length(trim(p_worker_id)) = 0 or length(p_worker_id) > 120
        or p_lease_token is null or p_lease_seconds < 15 or p_lease_seconds > 900 then
         raise exception 'Invalid worker lease request' using errcode = '22023';
