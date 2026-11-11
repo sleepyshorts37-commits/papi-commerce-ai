@@ -67,3 +67,39 @@ class RegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+from papi_core.audit import AuditError, append_event, new_event, read_events
+
+
+class AuditTests(unittest.TestCase):
+    def make_event(self, event_id="EVT-001", details=None):
+        return new_event(
+            event_id=event_id, actor="astou", action="task.reviewed",
+            entity_type="task", entity_id="PAPI-001", details=details or {"decision": "review"}
+        )
+
+    def test_append_and_read_audit_event(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            event = self.make_event()
+            self.assertTrue(append_event(event, path))
+            self.assertEqual(read_events(path), [event])
+
+    def test_duplicate_event_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            event = self.make_event()
+            self.assertTrue(append_event(event, path))
+            self.assertFalse(append_event(event, path))
+            self.assertEqual(len(read_events(path)), 1)
+
+    def test_sensitive_fields_are_rejected(self):
+        with self.assertRaises(AuditError):
+            self.make_event(details={"access_token": "never-store"})
+
+    def test_corrupt_log_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            path.write_text("{broken json}\n", encoding="utf-8")
+            with self.assertRaises(AuditError):
+                read_events(path)
