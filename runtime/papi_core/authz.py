@@ -59,7 +59,6 @@ def authorize_agent(agent_id: str, permission: str, agents_path: Path = AGENTS_F
     active_policy = policy if policy is not None else load_policy()
     if permission in EXTERNAL and active_policy.get("external_actions_enabled") is not True:
         raise AccessDenied("Actions externes désactivées par la politique.")
-    permissions_policy = policy.get("action_permissions", {})
     if permission in FINANCIAL:
         permissions_policy = active_policy.get("action_permissions", {})
         financial = permissions_policy.get("financial", {}) if isinstance(permissions_policy, dict) else {}
