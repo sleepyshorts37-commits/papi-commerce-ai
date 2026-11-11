@@ -98,8 +98,8 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
                 identity = verify_ed25519_request(envelope, public_registry, replay_db or DEFAULT_REPLAY_DB)
         else:
             identity = verify_request(envelope, key_dir or DEFAULT_KEY_DIR, replay_db or DEFAULT_REPLAY_DB)
-    except (IdentityError, Ed25519IdentityError) as exc:
-        raise AccessDenied(str(exc)) from exc
+    except Exception as exc:
+        raise AccessDenied("Authentification cryptographique refusée : accès fermé.") from exc
     active_policy = policy if policy is not None else load_policy()
     authorization = authorize_agent(agent_id, permission, agents_path, active_policy)
     return {**authorization, "identity_authenticated": True,
