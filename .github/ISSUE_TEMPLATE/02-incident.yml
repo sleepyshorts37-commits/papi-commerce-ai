@@ -1,0 +1,47 @@
+name: "Signaler un incident"
+description: "Déclarer un échec technique, une panne ou un blocage."
+title: "[INCIDENT] "
+labels: ["type:incident", "statut:a-trier"]
+body:
+  - type: markdown
+    attributes:
+      value: "Retirez les secrets des journaux avant de les coller. Ne publiez jamais de tokens, mots de passe, OTP ou données personnelles."
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Gravité
+      options: ["Faible", "Modérée", "Élevée", "Critique"]
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Système ou workflow concerné
+      placeholder: "Ex. GitHub Actions / papi-registry-check"
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Symptôme observé
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Étapes pour reproduire
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Journaux expurgés
+      description: Masquer tout secret et toute donnée personnelle.
+    validations:
+      required: false
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact et solution temporaire
+    validations:
+      required: true
