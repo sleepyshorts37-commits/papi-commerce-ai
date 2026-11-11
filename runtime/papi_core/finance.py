@@ -106,7 +106,7 @@ def append_entry(entry: dict[str,Any], path: Path=FINANCE_FILE) -> bool:
     errors=validate_ledger({**data,"entries":[*data["entries"],entry]})
     if errors: raise FinanceError("; ".join(errors))
     target=Path(path); target.parent.mkdir(parents=True,exist_ok=True)
-    payload=(json.dumps(entry,ensure_ascii=False,sort_keys=True)+"\\n").encode("utf-8")
+    payload=(json.dumps(entry,ensure_ascii=False,sort_keys=True)+"\n").encode("utf-8")
     fd=os.open(target,os.O_WRONLY|os.O_CREAT|os.O_APPEND,0o600)
     try: os.write(fd,payload); os.fsync(fd)
     finally: os.close(fd)
