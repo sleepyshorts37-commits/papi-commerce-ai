@@ -113,6 +113,48 @@ class AgentAccessTests(unittest.TestCase):
         self.assertTrue(result["identity_authenticated"])
         self.assertEqual(result["identity_algorithm"], "Ed25519")
 
+    def test_shared_ed25519_verifier_is_used_when_injected(self):
+        private = provision_ed25519_agent("agent-a", self.root / "shared-private",
+                                          self.root / "shared-public.json")
+        envelope = sign_ed25519_request("agent-a", {
+            "permission": "read_reports", "task_id": "task-1", "handler": "report.preview"
+        }, private, nonce="s" * 24)
+
+        class SharedVerifier:
+            def __init__(self):
+                self.calls = 0
+
+            def verify(self, received):
+                self.calls += 1
+                if received is not envelope:
+                    raise ValueError("unexpected envelope")
+                return {"authenticated": True, "algorithm": "Ed25519",
+                        "replay_protected": True, "registry": "supabase"}
+
+        verifier = SharedVerifier()
+        result = authorize_authenticated_agent("agent-a", "read_reports", envelope,
+            task_id="task-1", handler="report.preview", agents_path=self.path,
+            policy=self.policy, shared_identity_verifier=verifier)
+        self.assertTrue(result["identity_authenticated"])
+        self.assertEqual(result["identity_algorithm"], "Ed25519")
+        self.assertEqual(verifier.calls, 1)
+
+    def test_shared_ed25519_verifier_failure_denies_authorization(self):
+        private = provision_ed25519_agent("agent-a", self.root / "shared-private-fail",
+                                          self.root / "shared-public-fail.json")
+        envelope = sign_ed25519_request("agent-a", {
+            "permission": "read_reports", "task_id": "task-1", "handler": "report.preview"
+        }, private, nonce="t" * 24)
+
+        class RejectingVerifier:
+            def verify(self, received):
+                raise ValueError("shared nonce rejected")
+
+        with self.assertRaises(AccessDenied):
+            authorize_authenticated_agent("agent-a", "read_reports", envelope,
+                task_id="task-1", handler="report.preview", agents_path=self.path,
+                policy=self.policy, shared_identity_verifier=RejectingVerifier())
+
 
 if __name__ == "__main__":
     unittest.main()
