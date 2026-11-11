@@ -22,7 +22,7 @@ Groupe commercial numérique assisté par agents IA. **État : fondations docume
 ## Architecture prévue
 Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architecture des agents), Cheikh Fall (fiabilité), Aminou (alternatives), PAPI CHAT (communication interne), PAPI COMMAND CENTER (suivi).
 
-## Documents
+## Diagnostic local\n\nDepuis le dossier `runtime`, exécuter `python -m papi_core doctor` avec `PYTHONPATH=.` pour vérifier la présence des variables Supabase sans afficher leurs valeurs ni effectuer de connexion réseau. Le worker reste désactivé par défaut.\n\n## Documents
 - [Organisation](docs/ORGANISATION.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
@@ -36,5 +36,6 @@ Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architect
 - [File d'exécution et reprise](docs/EXECUTION-QUEUE.md)
 - [Registre de handlers et permissions](docs/HANDLER-PERMISSIONS.md)
 - [Worker contrôlé](docs/WORKER.md)
+- [Préparation de l'environnement Supabase](docs/ENVIRONMENT-SETUP.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à construire et tester.
