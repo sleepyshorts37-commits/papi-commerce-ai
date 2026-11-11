@@ -1,0 +1,43 @@
+name: PAPI registry validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate JSON files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in [
+              Path("data/agents.json"),
+              Path("data/tasks.json"),
+              Path("schemas/task.schema.json"),
+              Path("templates/TASK-TEMPLATE.json"),
+          ]:
+              json.loads(path.read_text(encoding="utf-8"))
+              print(f"OK JSON: {path}")
+          PY
+      - name: Check task registry structure
+        run: |
+          python - <<'PY'
+          import json
+          data = json.loads(Path("data/tasks.json").read_text()) if False else json.loads(open("data/tasks.json", encoding="utf-8").read())
+          assert data.get("project") == "PAPI COMMERCE AI"
+          assert isinstance(data.get("tasks"), list)
+          agents = json.loads(open("data/agents.json", encoding="utf-8").read())
+          assert isinstance(agents.get("agents"), list) and agents["agents"]
+          print("PAPI registries are structurally valid.")
+          PY
