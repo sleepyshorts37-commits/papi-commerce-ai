@@ -213,5 +213,49 @@ class StorageTests(unittest.TestCase):
         request.assert_called_once()
 
 
+
+class ExecutionQueueTests(unittest.TestCase):
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_enqueue_uses_idempotency_key(self):
+        from papi_core.execution_queue import ExecutionQueue
+        queue = ExecutionQueue(SupabaseStore())
+        with patch.object(queue.store, "_request", return_value=[{"id": "JOB-1"}]) as request:
+            result = queue.enqueue(job_id="JOB-1", task_id="PAPI-1", handler="report.generate",
+                                   payload={"format": "pdf"}, idempotency_key="PAPI-1:report:v1")
+        self.assertEqual(result["id"], "JOB-1")
+        self.assertEqual(request.call_args.args[1], "papi_jobs")
+        self.assertEqual(request.call_args.args[2]["idempotency_key"], "PAPI-1:report:v1")
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_claim_returns_none_when_queue_empty(self):
+        from papi_core.execution_queue import ExecutionQueue
+        queue = ExecutionQueue(SupabaseStore())
+        with patch.object(queue.store, "_request", return_value=None):
+            self.assertIsNone(queue.claim(worker_id="worker-01"))
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_claim_rejects_invalid_lease_duration(self):
+        from papi_core.execution_queue import ExecutionQueue, QueueError
+        queue = ExecutionQueue(SupabaseStore())
+        with self.assertRaises(QueueError):
+            queue.claim(worker_id="worker-01", lease_seconds=5)
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_complete_requires_current_lease(self):
+        from papi_core.execution_queue import ExecutionQueue
+        queue = ExecutionQueue(SupabaseStore())
+        with patch.object(queue.store, "_request", return_value=False):
+            self.assertFalse(queue.complete(job_id="JOB-1", worker_id="worker-01",
+                                            lease_token="lease", result={"ok": True}))
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_failure_result_is_retry_or_terminal(self):
+        from papi_core.execution_queue import ExecutionQueue
+        queue = ExecutionQueue(SupabaseStore())
+        with patch.object(queue.store, "_request", return_value="retry"):
+            self.assertEqual(queue.fail(job_id="JOB-1", worker_id="worker-01",
+                                        lease_token="lease", error_code="temporary_failure"), "retry")
+
+
 if __name__ == "__main__":
     unittest.main()
