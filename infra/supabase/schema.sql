@@ -98,6 +98,7 @@ create table if not exists public.papi_jobs (
     task_id text not null references public.papi_tasks(id) on delete restrict,
     handler text not null check (length(handler) between 1 and 100),
     payload jsonb not null default '{}'::jsonb check (jsonb_typeof(payload) = 'object'),
+    agent_identity jsonb check (agent_identity is null or jsonb_typeof(agent_identity) = 'object'),
     idempotency_key text not null unique,
     status text not null default 'queued'
         check (status in ('queued', 'running', 'retry', 'done', 'failed')),
@@ -113,6 +114,7 @@ create table if not exists public.papi_jobs (
     updated_at timestamptz not null default now(),
     check ((status = 'running') = (lease_owner is not null and lease_token is not null and lease_until is not null))
 );
+alter table public.papi_jobs add column if not exists agent_identity jsonb check (agent_identity is null or jsonb_typeof(agent_identity) = 'object');
 create index if not exists papi_jobs_ready_idx on public.papi_jobs(status, available_at, created_at);
 alter table public.papi_jobs enable row level security;
 revoke all on public.papi_jobs from anon, authenticated;
@@ -156,7 +158,7 @@ begin
      returning * into v_job;
     return jsonb_build_object(
         'id', v_job.id, 'task_id', v_job.task_id, 'handler', v_job.handler,
-        'payload', v_job.payload, 'attempts', v_job.attempts,
+        'payload', v_job.payload, 'agent_identity', v_job.agent_identity, 'attempts', v_job.attempts,
         'lease_token', v_job.lease_token, 'lease_until', v_job.lease_until
     );
 end;
