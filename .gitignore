@@ -1,0 +1,22 @@
+# Secrets et configuration locale
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local runtime data
+*.sqlite3
+*.db
+*.jsonl
+logs/
