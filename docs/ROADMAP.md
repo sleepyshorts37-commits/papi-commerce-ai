@@ -26,9 +26,9 @@
 - [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
 - [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
 - [x] Ajouter un prototype Ed25519, registre public versionné, révocation, rotation et tests unitaires.
-- [ ] Brancher Ed25519 au worker et aux enveloppes de jobs (remplacement contrôlé du HMAC).
-- [ ] Déployer un registre central transactionnel de clés publiques et un anti-rejeu partagé avant toute exécution multi-instance.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
-- [ ] Mettre en place un registre central de clés publiques, révocation/versionnement et anti-rejeu transactionnel partagé.
+- [x] Brancher Ed25519 au contrôle d'accès et au worker ; maintenir HMAC uniquement pour compatibilité transitoire.
+- [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
+- [ ] Implémenter l'adaptateur runtime Supabase pour vérifier les clés publiques et consommer les nonces via RPC.
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
@@ -52,4 +52,4 @@
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 
 ## Statut
-Fondations de code et documentation présentes. Le contrôle d'accès local n'authentifie pas cryptographiquement les processus. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+Fondations de code et documentation présentes. Le worker vérifie les identités cryptographiques Ed25519 (HMAC reste en compatibilité transitoire). Le registre public et l'anti-rejeu sont encore locaux par défaut ; le schéma Supabase partagé est préparé mais non déployé. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
