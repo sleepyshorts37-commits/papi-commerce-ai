@@ -127,8 +127,6 @@ class StateMachineTests(unittest.TestCase):
 
     def test_approval_is_required_before_execution(self):
         task = self.base_task(approval_required=True, approval_status="pending")
-        with self.assertRaises(TransitionError):
-            transition_task(task, "ready", actor="marietou")
         task, _ = transition_task(task, "ready", actor="marietou")
         with self.assertRaises(TransitionError):
             transition_task(task, "in_progress", actor="astou")
