@@ -57,9 +57,17 @@ def authorize_agent(agent_id: str, permission: str, agents_path: Path = AGENTS_F
         raise AccessDenied("Permission absente du profil agent.")
     if isinstance(prohibited, list) and permission in prohibited:
         raise AccessDenied("Action explicitement interdite pour cet agent.")
-    if permission in OWNER_ONLY:
-        raise AccessDenied("Action réservée au propriétaire.")
     active_policy = policy if policy is not None else load_policy()
+    never_allowed = active_policy.get("never_allowed", [])
+    requires_owner_approval = active_policy.get("requires_owner_approval", [])
+    if not isinstance(never_allowed, list) or not all(isinstance(item, str) for item in never_allowed):
+        raise AccessDenied("Liste never_allowed invalide : accès fermé.")
+    if not isinstance(requires_owner_approval, list) or not all(isinstance(item, str) for item in requires_owner_approval):
+        raise AccessDenied("Liste requires_owner_approval invalide : accès fermé.")
+    if permission in never_allowed:
+        raise AccessDenied("Action globalement interdite par la politique.")
+    if permission in OWNER_ONLY or permission in requires_owner_approval:
+        raise AccessDenied("Action réservée au propriétaire.")
     if permission in EXTERNAL and active_policy.get("external_actions_enabled") is not True:
         raise AccessDenied("Actions externes désactivées par la politique.")
     if permission in FINANCIAL:
