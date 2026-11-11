@@ -2,9 +2,11 @@
 import argparse
 import json
 import sys
+
 from .registry import RegistryError, route_department, validate_registries
 from .orchestrator import build_dispatch_plan
-from .doctor import diagnose_environment\nfrom .command_center import build_command_center
+from .doctor import diagnose_environment
+from .command_center import build_command_center
 
 
 def main() -> int:
@@ -14,10 +16,14 @@ def main() -> int:
     route = sub.add_parser("route", help="Lister les agents candidats d'un département")
     route.add_argument("department")
     sub.add_parser("plan", help="Préparer un plan consultatif des tâches en attente")
-    sub.add_parser("doctor", help="Diagnostiquer la configuration locale sans réseau ni secret affiché")\n    sub.add_parser("dashboard", help="Afficher PAPI COMMAND CENTER en lecture seule")
+    sub.add_parser("doctor", help="Diagnostiquer la configuration locale sans réseau ni secret affiché")
+    sub.add_parser("dashboard", help="Afficher PAPI COMMAND CENTER en lecture seule")
     args = parser.parse_args()
     try:
-        if args.command == "dashboard":\n            print(json.dumps(build_command_center(), ensure_ascii=False, indent=2))\n            return 0\n        if args.command == "doctor":
+        if args.command == "dashboard":
+            print(json.dumps(build_command_center(), ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "doctor":
             print(json.dumps(diagnose_environment(), ensure_ascii=False, indent=2))
             return 0
         if args.command == "validate":
