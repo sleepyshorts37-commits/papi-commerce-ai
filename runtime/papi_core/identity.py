@@ -17,6 +17,7 @@ from typing import Any
 
 DEFAULT_KEY_DIR = Path.home() / ".papi" / "identity" / "keys"
 DEFAULT_REPLAY_DB = Path.home() / ".papi" / "identity" / "replay.sqlite3"
+DEFAULT_REVOCATION_FILE = Path.home() / ".papi" / "identity" / "revocations.json"
 MAX_CLOCK_SKEW_SECONDS = 300
 
 
@@ -77,8 +78,77 @@ def sign_request(agent_id: str, payload: dict[str, Any], key_path: Path,
             "payload": payload, "signature": signature}
 
 
+def _read_revocations(path: Path) -> dict[str, int]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise IdentityError("Registre de révocation illisible : accès fermé.") from exc
+    if not isinstance(data, dict) or any(not isinstance(k, str) or not isinstance(v, int) or isinstance(v, bool) for k, v in data.items()):
+        raise IdentityError("Registre de révocation invalide : accès fermé.")
+    return data
+
+
+def _write_revocations(path: Path, data: dict[str, int]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def revoke_agent_key(agent_id: str, key_dir: Path = DEFAULT_KEY_DIR,
+                     revocation_file: Path = DEFAULT_REVOCATION_FILE,
+                     revoked_at: int | None = None) -> None:
+    """Révoque immédiatement une identité locale."""
+    if not agent_id or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for c in agent_id):
+        raise IdentityError("Identifiant d'agent invalide.")
+    if not (key_dir / (agent_id + ".key")).is_file():
+        raise IdentityError("Clé d'agent inconnue.")
+    revocations = _read_revocations(revocation_file)
+    revocations[agent_id] = int(time.time()) if revoked_at is None else int(revoked_at)
+    _write_revocations(revocation_file, revocations)
+
+
+def rotate_agent_key(agent_id: str, key_dir: Path = DEFAULT_KEY_DIR,
+                     revocation_file: Path = DEFAULT_REVOCATION_FILE) -> Path:
+    """Remplace atomiquement une clé locale et lève sa révocation après rotation."""
+    if not agent_id or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for c in agent_id):
+        raise IdentityError("Identifiant d'agent invalide.")
+    key_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    key_path = key_dir / (agent_id + ".key")
+    if not key_path.is_file():
+        raise IdentityError("Clé d'agent inconnue.")
+    temporary = key_dir / ("." + agent_id + "." + secrets.token_hex(8) + ".tmp")
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(secrets.token_bytes(32))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, key_path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    revocations = _read_revocations(revocation_file)
+    revocations.pop(agent_id, None)
+    _write_revocations(revocation_file, revocations)
+    return key_path
+
+
 def verify_request(envelope: dict[str, Any], key_dir: Path = DEFAULT_KEY_DIR,
-                   replay_db: Path = DEFAULT_REPLAY_DB, now: int | None = None) -> dict[str, Any]:
+                   replay_db: Path = DEFAULT_REPLAY_DB, now: int | None = None,
+                   revocation_file: Path = DEFAULT_REVOCATION_FILE) -> dict[str, Any]:
     """Vérifie signature, fenêtre temporelle et nonce unique ; refuse par défaut."""
     required = {"agent_id", "timestamp", "nonce", "payload", "signature"}
     if not isinstance(envelope, dict) or set(envelope) != required:
@@ -98,6 +168,8 @@ def verify_request(envelope: dict[str, Any], key_dir: Path = DEFAULT_KEY_DIR,
         raise IdentityError("Nonce invalide.")
     if not isinstance(signature, str) or len(signature) != 64:
         raise IdentityError("Signature invalide.")
+    if agent_id in _read_revocations(revocation_file):
+        raise IdentityError("Identité révoquée.")
     try:
         key = (key_dir / f"{agent_id}.key").read_bytes()
     except OSError as exc:
