@@ -69,7 +69,7 @@ class ExecutionQueue:
              error_code: str) -> str:
         if not all(isinstance(x, str) and x.strip() for x in (job_id, worker_id, lease_token, error_code)):
             raise QueueError("Identifiants et code d'erreur obligatoires.")
-        if len(error_code) > 80 or any(word in error_code.casefold() for word in ("token", "password", "secret", "otp", "pin")):
+        if not re.fullmatch(r"[a-z0-9_]{1,80}", error_code):
             raise QueueError("Code d'erreur invalide ou potentiellement sensible.")
         response = self.store._request(
             "POST", "rpc/papi_fail_job",
