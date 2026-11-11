@@ -62,3 +62,9 @@ Les tables sont privées aux rôles serveur. Aucune clé privée n'est stockée 
 Les tests unitaires couvrent signatures valides/invalides, liaison au job, expiration, rejeu, rotation et révocation. La CI valide le code ; elle ne remplace pas un test d'intégration Supabase, une revue indépendante ni un test d'intrusion.
 
 Aucun agent n'est activé, aucun worker permanent n'est déployé, aucune action externe ou financière n'est autorisée et aucun modèle IA n'est connecté.
+
+
+## Adaptateur runtime Supabase
+Le module `papi_core.shared_identity.SupabaseIdentityVerifier` permet au worker de vérifier Ed25519 avec le registre public distant et de consommer le nonce via la RPC transactionnelle. Il est injecté explicitement dans `PapiWorker(shared_identity_verifier=...)`. En son absence, le worker conserve le mode local JSON/SQLite ; il ne bascule pas silencieusement vers un backend distant.
+
+L'adaptateur exige un `SupabaseStore` serveur. Il lit uniquement une clé publique active correspondant exactement à l'agent et à la version, vérifie localement la signature Ed25519, puis appelle `papi_consume_agent_nonce`. Un résultat autre que le booléen `true` bloque l'authentification. Les erreurs de transport Supabase ferment l'accès. Le module n'envoie aucune clé privée.
