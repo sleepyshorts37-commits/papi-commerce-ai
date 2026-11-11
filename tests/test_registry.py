@@ -7,6 +7,7 @@ from papi_core.registry import load_agents, validate_task, validate_registries
 from papi_core.audit import AuditError, append_event, new_event, read_events
 from papi_core.orchestrator import build_dispatch_plan
 from papi_core.state_machine import TransitionError, approve_task, transition_task
+from papi_core.storage import StoreError, SupabaseStore
 
 
 class RegistryTests(unittest.TestCase):
@@ -144,6 +145,47 @@ class StateMachineTests(unittest.TestCase):
         task, _ = transition_task(self.base_task(), "cancelled", actor="owner")
         with self.assertRaises(TransitionError):
             transition_task(task, "ready", actor="owner")
+
+
+import unittest
+from unittest.mock import patch
+
+from papi_core.storage import StoreError, SupabaseStore
+
+
+class StorageTests(unittest.TestCase):
+    def test_requires_https_and_key(self):
+        with self.assertRaises(StoreError):
+            SupabaseStore(url="http://example.org", key="x")
+        with self.assertRaises(StoreError):
+            SupabaseStore(url="https://example.org", key="")
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_task_insert_returns_version(self):
+        store = SupabaseStore()
+        with patch.object(store, "_request", return_value=[{"version": 1}]) as request:
+            version = store.save_task({"id": "PAPI-001", "status": "backlog"})
+        self.assertEqual(version, 1)
+        self.assertEqual(request.call_args.args[0], "POST")
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_task_update_uses_optimistic_version(self):
+        store = SupabaseStore()
+        with patch.object(store, "_request", return_value=[{"version": 3}]) as request:
+            version = store.save_task({"id": "PAPI-001", "status": "ready"}, expected_version=2)
+        self.assertEqual(version, 3)
+        self.assertIn("version=eq.2", request.call_args.args[1])
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_concurrent_update_conflict_is_rejected(self):
+        store = SupabaseStore()
+        with patch.object(store, "_request", return_value=[]):
+            with self.assertRaises(StoreError):
+                store.save_task({"id": "PAPI-001"}, expected_version=1)
+
+
+if __name__ == "__main__":
+    unittest.main()
 
 
 if __name__ == "__main__":
