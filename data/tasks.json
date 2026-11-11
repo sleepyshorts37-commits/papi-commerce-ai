@@ -1,0 +1,6 @@
+{
+  "project": "PAPI COMMERCE AI",
+  "schema_version": "1.0",
+  "tasks": [],
+  "instructions": "Ajouter les tâches sous forme d'objets. Ne jamais enregistrer de mot de passe, OTP, token, donnée bancaire ou donnée personnelle sensible."
+}
