@@ -3,23 +3,26 @@
 ## Phase 0 — Fondations documentaires
 - [x] Vision et activités définies.
 - [x] Gouvernance et limites de sécurité documentées.
-- [x] Rôles et responsabilités documentés.
 - [ ] Résoudre les collisions de noms.
 - [ ] Valider l'organigramme final.
 
 ## Phase 1 — Socle technique minimal
-- [ ] Comparer les architectures gratuites réellement exploitables.
-- [ ] Définir le registre des tâches, prospects, partenaires et événements.
-- [ ] Ajouter validation de format et tests de sécurité.
-- [ ] Configurer secrets et permissions GitHub nécessaires.
-- [ ] Tester un workflow non sensible de bout en bout.
+- [x] Registre agents et tâches avec validation.
+- [x] Noyau de coordination, audit, machine à états et stockage.
+- [x] File d'exécution contrôlée, handlers et worker à exécution désactivée.
+- [x] Mémoire partagée locale.
+- [x] Planificateur déterministe sans exécution autonome.
+- [x] Outils commerciaux locaux : prospects, opportunités, offres, pipeline et interactions.
+- [ ] Configurer les secrets et permissions d'hébergement après choix explicite du propriétaire.
+- [ ] Tester un workflow non sensible de bout en bout dans un environnement déployé.
 
 ## Phase 2 — Coordination
-- [ ] Définir les contrats d'entrée/sortie d'Astou.
-- [ ] Définir les procédures opérationnelles de Marietou.
-- [ ] Définir les pouvoirs et limites d'Ibrahima.
-- [ ] Créer journaux, rapports et escalades.
-- [ ] Tester affectation et reprise d'une tâche.
+- [x] Briefing déterministe d'Astou.
+- [x] PAPI COMMAND CENTER local en lecture seule.
+- [x] PAPI CHAT : socle local de communication interne.
+- [ ] Authentifier les agents dans le runtime.
+- [ ] Synchroniser mémoire et messages entre instances.
+- [ ] Déployer et tester orchestration, scheduler et worker.
 
 ## Phase 3 — Première activité commerciale
 - [ ] Comparer les opportunités sans frais initiaux.
@@ -34,10 +37,10 @@
 - [ ] PAPI SERVICES et PAPI FREELANCE.
 - [ ] PAPI AFFILIATION.
 - [ ] PAPI MARKET et PAPI DROPSHIPPING.
-- [ ] PAPI CHAT et PAPI COMMAND CENTER.
+- [ ] Intégrer paiements, recettes et comptabilité.
 
 ## Mise en service
-Un composant est « opérationnel » uniquement si le code/configuration existe, les accès sont autorisés, un test reproductible réussit, les journaux sont consultables et les limites/procédures d'arrêt sont documentées.
+Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 
-## Statut initial
-Dépôt GitHub créé ; documentation en initialisation ; agents autonomes, communication interne, paiements, boutiques et automatisations récurrentes non déployés.
+## Statut
+Fondations de code et documentation présentes. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
