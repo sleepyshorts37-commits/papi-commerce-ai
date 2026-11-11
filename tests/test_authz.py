@@ -85,6 +85,28 @@ class AgentAccessTests(unittest.TestCase):
                 task_id="task-1", handler="report.preview", agents_path=self.path,
                 policy=self.policy, key_dir=self.keys, replay_db=self.db)
 
+    def test_signed_permission_task_and_handler_cannot_be_substituted(self):
+        private_dir = self.root / "claim-private"
+        public_registry = self.root / "claim-public.json"
+        private = provision_ed25519_agent("agent-a", private_dir, public_registry)
+        original = {"permission": "read_reports", "task_id": "task-1",
+                    "handler": "report.preview"}
+        cases = [
+            ("read_reports", "task-2", "report.preview"),
+            ("read_reports", "task-1", "report.export"),
+            ("send_email", "task-1", "report.preview"),
+        ]
+        for index, (permission, task_id, handler) in enumerate(cases):
+            with self.subTest(permission=permission, task_id=task_id, handler=handler):
+                envelope = sign_ed25519_request(
+                    "agent-a", original, private, nonce=(str(index + 1) * 24))
+                with self.assertRaises(AccessDenied):
+                    authorize_authenticated_agent(
+                        "agent-a", permission, envelope, task_id=task_id,
+                        handler=handler, agents_path=self.path, policy=self.policy,
+                        replay_db=self.root / ("claim-replay-" + str(index) + ".sqlite3"),
+                        public_registry=public_registry)
+
     def test_missing_signature_is_denied(self):
         with self.assertRaises(AccessDenied):
             authorize_authenticated_agent("agent-a", "read_reports", None,
