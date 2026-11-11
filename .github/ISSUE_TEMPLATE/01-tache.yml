@@ -1,0 +1,57 @@
+name: "Nouvelle tâche PAPI"
+description: "Proposer une mission structurée à un agent ou département."
+title: "[TACHE] "
+labels: ["type:tache", "statut:a-trier"]
+body:
+  - type: markdown
+    attributes:
+      value: "Ne partagez aucun mot de passe, token, OTP, donnée client privée ou information bancaire."
+  - type: input
+    id: department
+    attributes:
+      label: Département
+      placeholder: "Ex. PAPI MARKET, FREELANCE, PARTENARIATS"
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent responsable souhaité
+      placeholder: "Ex. Seydina"
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priorité
+      options: ["Basse", "Normale", "Haute", "Critique"]
+    validations:
+      required: true
+  - type: dropdown
+    id: approval
+    attributes:
+      label: Une approbation du propriétaire est-elle nécessaire ?
+      options: ["Non, dans les limites déjà autorisées", "Oui", "À déterminer"]
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objectif et contexte
+      description: Décrire le résultat attendu.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critères d'acceptation
+      description: Comment vérifier que la tâche est terminée ?
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Contraintes et preuves attendues
+      description: Budget autorisé (0 par défaut), échéance, sources publiques, liens et preuve de résultat.
+    validations:
+      required: false
