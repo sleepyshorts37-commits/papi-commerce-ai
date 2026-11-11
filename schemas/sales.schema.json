@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PAPI COMMERCE AI sales registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "prospects", "opportunities", "offers", "pipeline", "interactions"],
+  "properties": {
+    "project": {"const": "PAPI COMMERCE AI"},
+    "prospects": {"type": "array", "items": {"type": "object"}},
+    "opportunities": {"type": "array", "items": {"type": "object"}},
+    "offers": {"type": "array", "items": {"type": "object"}},
+    "pipeline": {"type": "array", "items": {"type": "object"}},
+    "interactions": {"type": "array", "items": {"type": "object"}}
+  }
+}
