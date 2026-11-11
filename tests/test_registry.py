@@ -422,3 +422,10 @@ class DoctorTests(unittest.TestCase):
             "SUPABASE_KEY": "dummy",
         })
         self.assertFalse(result["checks"]["supabase_url_configured"])
+    def test_failure_rejects_non_identifier_error_codes(self):
+        from papi_core.execution_queue import ExecutionQueue, QueueError
+        queue = ExecutionQueue(SupabaseStore(url="https://example.supabase.co", key="test-key"))
+        with self.assertRaises(QueueError):
+            queue.fail(job_id="JOB-1", worker_id="worker-01",
+                       lease_token="lease", error_code="Bearer secret-value")
+
