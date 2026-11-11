@@ -24,6 +24,10 @@ jobs:
           for path in [
               Path("data/agents.json"),
               Path("data/tasks.json"),
+              Path("data/sales.json"),
+              Path("data/finance-ledger.json"),
+              Path("schemas/sales.schema.json"),
+              Path("schemas/finance-ledger.schema.json"),
               Path("schemas/task.schema.json"),
               Path("templates/TASK-TEMPLATE.json"),
           ]:
