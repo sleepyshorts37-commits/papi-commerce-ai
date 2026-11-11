@@ -13,7 +13,9 @@ ROOT = Path(__file__).resolve().parents[2]
 AGENTS_FILE = ROOT / "data" / "agents.json"
 POLICY_FILE = ROOT / "config" / "policy.json"
 OWNER_ONLY = {"spend_money", "withdraw_funds", "transfer_funds", "accept_legal_commitments",
-              "grant_sensitive_access", "create_account", "subscribe_service", "buy_api_credits"}
+              "grant_sensitive_access", "create_account", "subscribe_service", "buy_api_credits",
+              "publish_public_content", "send_outbound_messages", "accept_contract",
+              "process_customer_data"}
 EXTERNAL = {"send_email", "send_message", "publish_content", "contact_prospect"}
 FINANCIAL = {"spend_money", "withdraw_funds", "transfer_funds", "issue_refund", "make_payment"}
 LEGAL = {"accept_legal_commitments", "sign_contract", "accept_contract"}
