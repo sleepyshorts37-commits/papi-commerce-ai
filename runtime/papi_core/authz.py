@@ -92,7 +92,10 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
         raise AccessDenied("Identité ou contenu signé non lié à cette tâche.")
     try:
         if "key_version" in envelope:
-            identity = verify_ed25519_request(envelope, public_registry, replay_db or DEFAULT_REPLAY_DB)
+            if shared_identity_verifier is not None:
+                identity = shared_identity_verifier.verify(envelope)
+            else:
+                identity = verify_ed25519_request(envelope, public_registry, replay_db or DEFAULT_REPLAY_DB)
         else:
             identity = verify_request(envelope, key_dir or DEFAULT_KEY_DIR, replay_db or DEFAULT_REPLAY_DB)
     except (IdentityError, Ed25519IdentityError) as exc:
