@@ -28,6 +28,7 @@ jobs:
             docs/ROADMAP.md
             docs/SALES-TOOLS.md
             docs/FINANCE-LEDGER.md
+            docs/SECURITY-RELEASE.md
             agents/ASTOU.md
             agents/MARIETOU.md
             agents/IBRAHIMA.md
