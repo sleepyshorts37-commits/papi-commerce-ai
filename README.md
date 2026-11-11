@@ -31,5 +31,6 @@ Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architect
 - [Noyau de coordination](docs/CORE-ENGINE.md)
 - [Orchestrateur consultatif](docs/ORCHESTRATOR.md)
 - [Journal d'audit et mémoire opérationnelle](docs/AUDIT-MEMORY.md)
+- [Machine à états des missions](docs/STATE-MACHINE.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à construire et tester.
