@@ -1,6 +1,9 @@
+import json
+import tempfile
 import unittest
 from pathlib import Path
 from papi_core.registry import load_agents, validate_task, validate_registries
+from papi_core.orchestrator import build_dispatch_plan
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,6 +40,29 @@ class RegistryTests(unittest.TestCase):
         }
         errors = validate_task(task, load_agents())
         self.assertTrue(any("preuve" in error for error in errors))
+
+    def test_dispatch_plan_is_proposal_only_and_priority_sorted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tasks_path = Path(directory) / "tasks.json"
+            tasks_path.write_text(json.dumps({"tasks": [
+                {"id": "PAPI-LOW-001", "department": "Prospection", "status": "ready", "priority": "low", "created_at": "2026-11-11"},
+                {"id": "PAPI-HIGH-001", "department": "Prospection", "status": "ready", "priority": "high", "created_at": "2026-11-11"}
+            ]}), encoding="utf-8")
+            plan = build_dispatch_plan(tasks_path)
+        self.assertEqual(plan["mode"], "proposal_only")
+        self.assertEqual(plan["proposals"][0]["task_id"], "PAPI-HIGH-001")
+        self.assertFalse(plan["proposals"][0]["dispatch_allowed"])
+        self.assertEqual(plan["proposals"][0]["blocking_reason"], "no_deployed_agent")
+
+    def test_approval_blocks_dispatch_proposal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tasks_path = Path(directory) / "tasks.json"
+            tasks_path.write_text(json.dumps({"tasks": [
+                {"id": "PAPI-APP-001", "department": "Direction", "status": "ready", "priority": "urgent", "approval_required": True, "approval_status": "pending"}
+            ]}), encoding="utf-8")
+            plan = build_dispatch_plan(tasks_path)
+        self.assertEqual(plan["proposals"][0]["blocking_reason"], "approval_required")
+        self.assertFalse(plan["proposals"][0]["dispatch_allowed"])
 
 
 if __name__ == "__main__":
