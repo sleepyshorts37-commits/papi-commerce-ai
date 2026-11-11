@@ -186,5 +186,32 @@ class StorageTests(unittest.TestCase):
                 store.save_task({"id": "PAPI-001"}, expected_version=1)
 
 
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_transition_and_audit_use_atomic_rpc(self):
+        store = SupabaseStore()
+        task = {"id": "PAPI-ATOMIC-001", "status": "backlog", "approval_required": False, "evidence": []}
+        with patch.object(store, "_request", side_effect=[
+            [{"task": task, "version": 4}],
+            5,
+        ]) as request:
+            updated, version = store.transition_and_save(
+                "PAPI-ATOMIC-001", "ready", actor="marietou", expected_version=4
+            )
+        self.assertEqual(updated["status"], "ready")
+        self.assertEqual(version, 5)
+        self.assertEqual(request.call_args_list[1].args[1], "rpc/papi_commit_task_change")
+        payload = request.call_args_list[1].args[2]
+        self.assertEqual(payload["p_expected_version"], 4)
+        self.assertEqual(payload["p_event"]["entity_id"], "PAPI-ATOMIC-001")
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_transition_refuses_stale_version_before_rpc(self):
+        store = SupabaseStore()
+        with patch.object(store, "_request", return_value=[{"task": {"id": "PAPI-001", "status": "backlog"}, "version": 2}]) as request:
+            with self.assertRaises(StoreError):
+                store.transition_and_save("PAPI-001", "ready", actor="astou", expected_version=1)
+        request.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
