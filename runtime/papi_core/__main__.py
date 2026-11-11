@@ -8,6 +8,7 @@ from .orchestrator import build_dispatch_plan
 from .doctor import diagnose_environment
 from .command_center import build_command_center
 from .scheduler import SchedulerError, due_schedules
+from .sales import SalesError, build_sales_report, load_sales
 
 
 def main() -> int:
@@ -20,6 +21,8 @@ def main() -> int:
     sub.add_parser("doctor", help="Diagnostiquer la configuration locale sans réseau ni secret affiché")
     sub.add_parser("dashboard", help="Afficher PAPI COMMAND CENTER en lecture seule")
     sub.add_parser("schedule-preview", help="Afficher les échéances récurrentes à examiner, sans exécution")
+    sub.add_parser("sales-validate", help="Valider le registre commercial local")
+    sub.add_parser("sales-report", help="Afficher le rapport commercial local en lecture seule")
     args = parser.parse_args()
     try:
         if args.command == "dashboard":
@@ -30,6 +33,13 @@ def main() -> int:
             return 0
         if args.command == "schedule-preview":
             print(json.dumps(due_schedules(), ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "sales-validate":
+            load_sales()
+            print("OK — registre commercial valide.")
+            return 0
+        if args.command == "sales-report":
+            print(json.dumps(build_sales_report(), ensure_ascii=False, indent=2))
             return 0
         if args.command == "validate":
             errors = validate_registries()
@@ -43,7 +53,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
