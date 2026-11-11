@@ -7,6 +7,7 @@ from .registry import RegistryError, route_department, validate_registries
 from .orchestrator import build_dispatch_plan
 from .doctor import diagnose_environment
 from .command_center import build_command_center
+from .scheduler import SchedulerError, due_schedules
 
 
 def main() -> int:
@@ -18,6 +19,7 @@ def main() -> int:
     sub.add_parser("plan", help="Préparer un plan consultatif des tâches en attente")
     sub.add_parser("doctor", help="Diagnostiquer la configuration locale sans réseau ni secret affiché")
     sub.add_parser("dashboard", help="Afficher PAPI COMMAND CENTER en lecture seule")
+    sub.add_parser("schedule-preview", help="Afficher les échéances récurrentes à examiner, sans exécution")
     args = parser.parse_args()
     try:
         if args.command == "dashboard":
@@ -26,10 +28,13 @@ def main() -> int:
         if args.command == "doctor":
             print(json.dumps(diagnose_environment(), ensure_ascii=False, indent=2))
             return 0
+        if args.command == "schedule-preview":
+            print(json.dumps(due_schedules(), ensure_ascii=False, indent=2))
+            return 0
         if args.command == "validate":
             errors = validate_registries()
             if errors:
-                print("\n".join(errors), file=sys.stderr)
+                print("\\n".join(errors), file=sys.stderr)
                 return 1
             print("OK — registres PAPI valides.")
             return 0
@@ -38,7 +43,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, ValueError) as exc:
+    except (RegistryError, SchedulerError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
