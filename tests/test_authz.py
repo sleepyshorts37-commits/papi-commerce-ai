@@ -105,7 +105,7 @@ class AgentAccessTests(unittest.TestCase):
         private = provision_ed25519_agent("agent-a", private_dir, public_registry)
         envelope = sign_ed25519_request("agent-a", {
             "permission": "read_reports", "task_id": "task-1", "handler": "report.preview"
-        }, private, timestamp=1000, nonce="z" * 16)
+        }, private, nonce="z" * 16)
         result = authorize_authenticated_agent("agent-a", "read_reports", envelope,
             task_id="task-1", handler="report.preview", agents_path=self.path,
             policy=self.policy, replay_db=self.root / "ed-replay.sqlite3",
