@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .identity import IdentityError, verify_request
+from .identity_ed25519 import Ed25519IdentityError, verify_ed25519_request, DEFAULT_PUBLIC_REGISTRY
 from .registry import RegistryError, load_agents
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -78,7 +79,8 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
                                   agents_path: Path = AGENTS_FILE,
                                   policy: dict[str, Any] | None = None,
                                   key_dir: Path | None = None,
-                                  replay_db: Path | None = None) -> dict[str, Any]:
+                                  replay_db: Path | None = None,
+                                  public_registry: Path = DEFAULT_PUBLIC_REGISTRY) -> dict[str, Any]:
     """Vérifie signature, liaison au job, anti-rejeu et autorisation métier."""
     from .identity import DEFAULT_KEY_DIR, DEFAULT_REPLAY_DB
     if not isinstance(envelope, dict):
@@ -88,8 +90,11 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
     if envelope.get("agent_id") != agent_id or signed_payload != expected_payload:
         raise AccessDenied("Identité ou contenu signé non lié à cette tâche.")
     try:
-        identity = verify_request(envelope, key_dir or DEFAULT_KEY_DIR, replay_db or DEFAULT_REPLAY_DB)
-    except IdentityError as exc:
+        if "key_version" in envelope:
+            identity = verify_ed25519_request(envelope, public_registry, replay_db or DEFAULT_REPLAY_DB)
+        else:
+            identity = verify_request(envelope, key_dir or DEFAULT_KEY_DIR, replay_db or DEFAULT_REPLAY_DB)
+    except (IdentityError, Ed25519IdentityError) as exc:
         raise AccessDenied(str(exc)) from exc
     active_policy = policy if policy is not None else load_policy()
     authorization = authorize_agent(agent_id, permission, agents_path, active_policy)
