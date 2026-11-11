@@ -28,7 +28,7 @@
 - [x] Ajouter un prototype Ed25519, registre public versionné, révocation, rotation et tests unitaires.
 - [x] Brancher Ed25519 au contrôle d'accès et au worker ; maintenir HMAC uniquement pour compatibilité transitoire.
 - [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
-- [ ] Implémenter l'adaptateur runtime Supabase pour vérifier les clés publiques et consommer les nonces via RPC.
+- [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).\n- [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
@@ -52,4 +52,4 @@
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 
 ## Statut
-Fondations de code et documentation présentes. Le worker vérifie les identités cryptographiques Ed25519 (HMAC reste en compatibilité transitoire). Le registre public et l'anti-rejeu sont encore locaux par défaut ; le schéma Supabase partagé est préparé mais non déployé. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
