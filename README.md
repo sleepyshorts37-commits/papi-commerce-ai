@@ -28,6 +28,8 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core doctor` — vérifier la présence des variables Supabase sans afficher leurs valeurs ni effectuer de connexion réseau.
 - `PYTHONPATH=runtime python -m papi_core dashboard` — afficher le tableau de bord en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core schedule-preview` — calculer les échéances récurrentes à examiner, sans exécuter de tâche.
+- `PYTHONPATH=runtime python -m papi_core sales-validate` — valider les registres commerciaux locaux.
+- `PYTHONPATH=runtime python -m papi_core sales-report` — afficher les indicateurs commerciaux locaux, sans action externe.
 
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
@@ -47,6 +49,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Registre de handlers et permissions](docs/HANDLER-PERMISSIONS.md)
 - [Worker contrôlé](docs/WORKER.md)
 - [Planificateur](docs/SCHEDULER.md)
+- [Outils commerciaux](docs/SALES-TOOLS.md)
 - [Préparation de l'environnement Supabase](docs/ENVIRONMENT-SETUP.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à déployer et tester.
