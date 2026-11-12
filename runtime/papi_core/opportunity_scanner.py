@@ -1,127 +1,124 @@
-"""Collecteur et classement de signaux commerciaux fournis explicitement, sans scraping."""
+"""Read-only normalizer and qualification pipeline for supplied public-search results."""
 from __future__ import annotations
-
-import hashlib
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import date
 from typing import Any
+from urllib.parse import urlparse
+from runtime.papi_core.opportunity_scoring import rank_opportunities
 
-from .business_intelligence import BUSINESS_LINES, BusinessIntelligenceError
-
-TEXT_FIELDS = ("source", "source_ref", "observed_at", "business_line",
-               "market", "customer_segment", "offer")
-OPTIONAL_FIELDS = ("problem_observed", "proposed_solution", "contact_channel",
-                   "expected_price_xof", "variable_cost_xof", "acquisition_cost_xof",
-                   "fulfillment_cost_xof", "estimated_monthly_volume",
-                   "time_to_first_revenue_days", "upfront_cost_xof")
-SENSITIVE_MARKERS = ("password", "token", "secret", "phone", "email", "address",
-                     "customer_name", "personal_data")
+MAX_ITEMS = 200
+CHECKS = {"senegal_access", "payment_and_withdrawal", "fees", "terms", "legal_compliance"}
+VERIFICATION_FIELDS = CHECKS | {"reviewer", "reviewed_at", "evidence_urls"}
 
 
-class OpportunityScannerError(ValueError):
-    """Signal commercial invalide ou dangereux."""
+def _text(value: Any, field: str, required: bool = True) -> str:
+    if not isinstance(value, str) or len(value) > 1000 or (required and not value.strip()):
+        raise ValueError(f"{field} invalide.")
+    return value.strip()
 
 
-def _timestamp(value: Any) -> datetime:
-    if not isinstance(value, str):
-        raise OpportunityScannerError("observed_at doit être une date ISO 8601.")
-    try:
-        result = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise OpportunityScannerError("observed_at invalide.") from exc
-    if result.tzinfo is None or result.utcoffset() is None:
-        raise OpportunityScannerError("observed_at doit inclure un fuseau horaire.")
-    return result.astimezone(timezone.utc)
+def _https(value: Any, field: str) -> str:
+    value = _text(value, field)
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+        raise ValueError(f"{field} doit être une URL HTTPS publique.")
+    return value
 
 
-def _safe_text(value: Any, field: str) -> str:
-    if not isinstance(value, str) or not value.strip() or len(value.strip()) > 500:
-        raise OpportunityScannerError(f"{field} doit être un texte non vide de 500 caractères maximum.")
-    normalized = value.strip()
-    lowered = normalized.lower()
-    if any(marker in lowered for marker in SENSITIVE_MARKERS):
-        raise OpportunityScannerError(f"{field} contient un marqueur de donnée sensible interdit.")
-    return normalized
-
-
-def _fingerprint(signal: dict[str, Any]) -> str:
-    identity = {key: signal[key].casefold() for key in
-                ("source", "source_ref", "business_line", "market", "offer")}
-    payload = json.dumps(identity, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-def scan_opportunity_signals(
-    signals: list[dict[str, Any]], *, as_of: str,
-    freshness_days: int = 30,
-) -> dict[str, Any]:
-    """Classe les signaux reçus en entrée ; n'effectue aucune recherche réseau."""
-    if not isinstance(signals, list):
-        raise OpportunityScannerError("signals doit être une liste.")
-    if isinstance(freshness_days, bool) or not isinstance(freshness_days, int) or not 1 <= freshness_days <= 365:
-        raise OpportunityScannerError("freshness_days doit être compris entre 1 et 365.")
-    cutoff = _timestamp(as_of)
-    window = timedelta(days=freshness_days)
-    seen, accepted, rejected, duplicates = set(), [], [], 0
-
-    for index, raw in enumerate(signals):
+def normalize_search_results(records: list[dict[str, Any]], *, collected_at: str) -> dict[str, Any]:
+    """Normalize hits supplied by an authorized search provider or human; never browses."""
+    if not isinstance(records, list) or len(records) > MAX_ITEMS:
+        raise ValueError(f"records doit contenir au maximum {MAX_ITEMS} résultats.")
+    _text(collected_at, "collected_at")
+    items, rejected, seen = [], [], set()
+    for index, raw in enumerate(records):
         try:
-            if not isinstance(raw, dict):
-                raise OpportunityScannerError("Le signal doit être un objet.")
-            required = set(TEXT_FIELDS)
-            if not required.issubset(raw) or set(raw) - set(TEXT_FIELDS) - set(OPTIONAL_FIELDS):
-                raise OpportunityScannerError("Champs manquants ou inconnus dans le signal.")
-            item = {key: _safe_text(raw[key], key) for key in TEXT_FIELDS if key != "observed_at"}
-            moment = _timestamp(raw["observed_at"])
-            if item["business_line"] not in BUSINESS_LINES:
-                raise OpportunityScannerError("business_line non reconnu.")
-            if moment > cutoff:
-                raise OpportunityScannerError("Signal daté dans le futur.")
-            optional = {}
-            for key in OPTIONAL_FIELDS:
-                value = raw.get(key)
-                if value is not None:
-                    if key.endswith("_xof") or key in {"estimated_monthly_volume", "time_to_first_revenue_days"}:
-                        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-                            raise OpportunityScannerError(f"{key} doit être un entier positif ou null.")
-                    else:
-                        value = _safe_text(value, key)
-                    optional[key] = value
-            normalized = {**item, "observed_at": moment.isoformat().replace("+00:00", "Z"), **optional}
-            fingerprint = _fingerprint(normalized)
-            if fingerprint in seen:
-                duplicates += 1
+            if not isinstance(raw, dict) or set(raw) - {
+                "title", "url", "snippet", "published_at", "source_name",
+                "opportunity_id", "verification", "scoring"
+            }:
+                raise ValueError("Objet invalide ou champs inconnus.")
+            title, url = _text(raw.get("title"), "title"), _https(raw.get("url"), "url")
+            key = url.rstrip("/").lower()
+            if key in seen:
                 continue
-            seen.add(fingerprint)
-            age = cutoff - moment
-            missing = [key for key in ("problem_observed", "proposed_solution",
-                       "expected_price_xof", "estimated_monthly_volume") if key not in optional]
-            completeness = 100 - (25 * len(missing))
-            freshness = max(0, 100 - int(age.total_seconds() / window.total_seconds() * 100))
-            score = round(completeness * 0.7 + freshness * 0.3)
-            status = "stale" if age > window else "needs_enrichment" if missing else "ready_for_business_analysis"
-            accepted.append({
-                "signal_id": fingerprint[:20], "fingerprint": fingerprint,
-                **normalized, "age_days": age.days, "freshness_score": freshness,
-                "completeness_score": completeness, "triage_score": score,
-                "missing_fields": missing, "triage_status": status,
-                "evidence_status": "source_reference_provided_not_verified",
+            seen.add(key)
+            items.append({
+                "opportunity_id": _text(raw.get("opportunity_id", f"OPP-SCAN-{index + 1:04d}"), "opportunity_id"),
+                "title": title, "source_url": url,
+                "source_name": _text(raw.get("source_name", urlparse(url).netloc), "source_name"),
+                "snippet": _text(raw.get("snippet", ""), "snippet", False),
+                "published_at": _text(raw.get("published_at", ""), "published_at", False),
+                "collected_at": collected_at, "verification_status": "needs_verification",
+                "verification": raw.get("verification"), "scoring": raw.get("scoring")
             })
-        except (OpportunityScannerError, BusinessIntelligenceError, TypeError, KeyError) as exc:
+        except (TypeError, ValueError) as exc:
             rejected.append({"index": index, "reason": str(exc)})
-
-    accepted.sort(key=lambda x: (x["triage_status"] != "ready_for_business_analysis",
-                                 x["triage_status"] == "stale", -x["triage_score"], x["signal_id"]))
     return {
-        "status": "available" if accepted else "no_valid_signals",
-        "source": "explicitly_supplied_signal_records",
-        "signals_received": len(signals), "signals_accepted": len(accepted),
-        "duplicates_skipped": duplicates, "signals_rejected": len(rejected),
-        "signals": accepted, "rejections": rejected,
-        "controls": {
-            "network_requests": 0, "web_scraping_performed": False,
-            "external_research_performed": False, "messages_sent": 0,
-            "customer_data_collected": False, "spending_xof": 0,
-            "actions_executed": 0, "read_only": True,
-        },
+        "status": "normalized", "items_received": len(records), "items_normalized": len(items),
+        "duplicates_skipped": len(records) - len(items) - len(rejected),
+        "items_rejected": len(rejected), "items": items, "rejections": rejected,
+        "network_accessed": False, "execution_authorized": False
+    }
+
+
+def _attestation(item: dict[str, Any]) -> tuple[bool, str]:
+    v = item.get("verification")
+    if not isinstance(v, dict) or set(v) != VERIFICATION_FIELDS:
+        return False, "Fiche de vérification absente ou incomplète."
+    if any(v.get(key) != "confirmed" for key in CHECKS):
+        return False, "Accès Sénégal, paiement/retrait, frais, conditions ou conformité non confirmés."
+    if not isinstance(v.get("reviewer"), str) or not v["reviewer"].strip():
+        return False, "Vérificateur non identifié."
+    try:
+        date.fromisoformat(_text(v.get("reviewed_at"), "reviewed_at")[:10])
+        urls = v.get("evidence_urls")
+        if not isinstance(urls, list) or not urls:
+            raise ValueError("Aucune preuve publique.")
+        for url in urls:
+            _https(url, "evidence_url")
+    except (TypeError, ValueError) as exc:
+        return False, str(exc)
+    if not isinstance(item.get("scoring"), dict):
+        return False, "Données de notation manquantes."
+    return True, ""
+
+
+def evaluate_opportunities(scan: dict[str, Any]) -> dict[str, Any]:
+    """Only fully attested records reach the scoring engine."""
+    if not isinstance(scan, dict) or not isinstance(scan.get("items"), list):
+        raise ValueError("Résultat de scan invalide.")
+    verified, uncertain, rejected = [], [], list(scan.get("rejections", []))
+    for item in scan["items"]:
+        if not isinstance(item, dict):
+            rejected.append({"reason": "Fiche candidate invalide."})
+            continue
+        ok, reason = _attestation(item)
+        if not ok:
+            item["verification_status"] = "needs_verification"
+            uncertain.append({"opportunity_id": item.get("opportunity_id"),
+                              "title": item.get("title"), "reason": reason})
+            continue
+        score = dict(item["scoring"])
+        score.update({
+            "opportunity_id": item["opportunity_id"], "title": item["title"],
+            "source": item["source_url"], "source_checked_at": item["verification"]["reviewed_at"],
+            "country_access": "confirmed", "payment_access": "confirmed",
+            "legal_status": "compliant", "evidence_level": "verified"
+        })
+        verified.append(score)
+        item["verification_status"] = "verified_attested"
+    ranking = rank_opportunities(verified)
+    rejected.extend(ranking["rejections"])
+    return {
+        "status": "evaluated", "discovered_count": len(scan["items"]),
+        "verified_count": len(verified), "uncertain_count": len(uncertain),
+        "rejected_count": len(rejected), "discovered": scan["items"],
+        "verified": verified, "uncertain": uncertain, "rejected": rejected,
+        "top_three": ranking["top_three"], "read_only": True,
+        "network_accessed": False, "execution_authorized": False,
+        "limitations": [
+            "Les résultats sont fournis par une source externe ou un humain ; ce module ne navigue pas sur Internet.",
+            "verified_attested est une attestation structurée : le code ne visite pas les liens et n'authentifie pas les preuves.",
+            "Aucune inscription, prise de contact, publication, dépense ou transaction n'est exécutée."
+        ]
     }

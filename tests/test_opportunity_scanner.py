@@ -1,72 +1,68 @@
-"""Tests for safe opportunity signal intake and deterministic triage."""
-import pytest
-
-from runtime.papi_core.opportunity_scanner import (
-    OpportunityScannerError, scan_opportunity_signals,
-)
-
-BASE = {
-    "source": "manual interview", "source_ref": "interview-001",
-    "observed_at": "2026-11-12T09:00:00Z", "business_line": "PAPI SERVICES",
-    "market": "Senegal", "customer_segment": "small shops",
-    "offer": "WhatsApp customer support setup",
-    "problem_observed": "Merchants miss incoming order requests",
-    "proposed_solution": "Configure a customer response assistant",
-    "expected_price_xof": 10000, "estimated_monthly_volume": 5,
-}
+import unittest
+from runtime.papi_core.opportunity_scanner import normalize_search_results, evaluate_opportunities
 
 
-def test_complete_signal_is_ranked_for_business_analysis():
-    result = scan_opportunity_signals([BASE], as_of="2026-11-12T10:00:00Z")
-    signal = result["signals"][0]
-    assert signal["triage_status"] == "ready_for_business_analysis"
-    assert signal["missing_fields"] == []
-    assert signal["evidence_status"] == "source_reference_provided_not_verified"
+def candidate():
+    return {
+        "title": "Prestation numérique B2B", "url": "https://example.org/offer",
+        "verification": {
+            "senegal_access": "confirmed", "payment_and_withdrawal": "confirmed",
+            "fees": "confirmed", "terms": "confirmed", "legal_compliance": "confirmed",
+            "reviewer": "human-reviewer", "reviewed_at": "2026-11-12",
+            "evidence_urls": ["https://example.org/terms", "https://example.org/payments"]
+        },
+        "scoring": {
+            "criteria": {"senegal_access": 5, "zero_cost_start": 5, "time_to_first_revenue": 4,
+                         "net_margin": 4, "demand_evidence": 4, "low_risk": 5, "operational_fit": 4},
+            "estimated_startup_cost_xof": 0, "estimated_days_to_first_revenue": 14,
+            "estimated_net_margin_percent": 60
+        }
+    }
 
 
-def test_incomplete_signal_is_not_fabricated():
-    item = {key: value for key, value in BASE.items()
-            if key not in {"problem_observed", "expected_price_xof"}}
-    result = scan_opportunity_signals([item], as_of="2026-11-12T10:00:00Z")
-    assert result["signals"][0]["triage_status"] == "needs_enrichment"
-    assert "problem_observed" in result["signals"][0]["missing_fields"]
+class OpportunityScannerTests(unittest.TestCase):
+    def test_normalizes_without_network(self):
+        result = normalize_search_results([{"title": "Offer", "url": "https://example.org"}],
+                                          collected_at="2026-11-12")
+        self.assertEqual(result["items_normalized"], 1)
+        self.assertFalse(result["network_accessed"])
+        self.assertEqual(result["items"][0]["verification_status"], "needs_verification")
+
+    def test_deduplicates_urls(self):
+        result = normalize_search_results([
+            {"title": "A", "url": "https://example.org/offer"},
+            {"title": "B", "url": "https://example.org/offer/"}
+        ], collected_at="2026-11-12")
+        self.assertEqual(result["items_normalized"], 1)
+        self.assertEqual(result["duplicates_skipped"], 1)
+
+    def test_rejects_http(self):
+        result = normalize_search_results([{"title": "Unsafe", "url": "http://example.org"}],
+                                          collected_at="2026-11-12")
+        self.assertEqual(result["items_rejected"], 1)
+
+    def test_unverified_never_reaches_ranking(self):
+        scan = normalize_search_results([{"title": "Unknown", "url": "https://example.org"}],
+                                        collected_at="2026-11-12")
+        result = evaluate_opportunities(scan)
+        self.assertEqual(result["verified_count"], 0)
+        self.assertEqual(result["uncertain_count"], 1)
+        self.assertEqual(result["top_three"], [])
+
+    def test_attested_candidate_is_scored(self):
+        scan = normalize_search_results([candidate()], collected_at="2026-11-12")
+        result = evaluate_opportunities(scan)
+        self.assertEqual(result["verified_count"], 1)
+        self.assertEqual(result["top_three"][0]["decision"], "test")
+        self.assertFalse(result["execution_authorized"])
+
+    def test_unconfirmed_payment_blocks_verification(self):
+        item = candidate()
+        item["verification"]["payment_and_withdrawal"] = "uncertain"
+        result = evaluate_opportunities(normalize_search_results([item], collected_at="2026-11-12"))
+        self.assertEqual(result["verified_count"], 0)
+        self.assertEqual(result["uncertain_count"], 1)
 
 
-def test_duplicate_signals_are_deduplicated():
-    result = scan_opportunity_signals([BASE, BASE], as_of="2026-11-12T10:00:00Z")
-    assert result["signals_accepted"] == 1
-    assert result["duplicates_skipped"] == 1
-
-
-def test_old_signal_is_marked_stale():
-    result = scan_opportunity_signals([BASE], as_of="2027-01-01T00:00:00Z")
-    assert result["signals"][0]["triage_status"] == "stale"
-
-
-def test_future_signal_is_rejected():
-    result = scan_opportunity_signals([BASE], as_of="2026-11-11T00:00:00Z")
-    assert result["signals_rejected"] == 1
-    assert "future" in result["rejections"][0]["reason"]
-
-
-@pytest.mark.parametrize("field,value", [
-    ("business_line", "UNKNOWN"), ("expected_price_xof", True),
-    ("estimated_monthly_volume", -1), ("source_ref", "private email"),
-])
-def test_invalid_or_sensitive_input_is_rejected(field, value):
-    result = scan_opportunity_signals([{**BASE, field: value}], as_of="2026-11-12T10:00:00Z")
-    assert result["signals_rejected"] == 1
-    assert result["signals_accepted"] == 0
-
-
-def test_unknown_fields_fail_closed():
-    result = scan_opportunity_signals([{**BASE, "raw_customer_data": "x"}],
-                                      as_of="2026-11-12T10:00:00Z")
-    assert result["signals_rejected"] == 1
-
-
-def test_scanner_never_performs_network_or_actions():
-    result = scan_opportunity_signals([BASE], as_of="2026-11-12T10:00:00Z")
-    assert result["controls"]["network_requests"] == 0
-    assert result["controls"]["spending_xof"] == 0
-    assert result["controls"]["actions_executed"] == 0
+if __name__ == "__main__":
+    unittest.main()
