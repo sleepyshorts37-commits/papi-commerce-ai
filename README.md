@@ -59,3 +59,8 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Préparation de l'environnement Supabase](docs/ENVIRONMENT-SETUP.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à déployer et tester.
+
+
+### Routage intelligent des tâches
+
+Le module `papi_core.task_routing` classe les agents actifs et éligibles selon le département, les permissions requises, les compétences, les objectifs et la charge de travail. Il fournit des recommandations explicables sans affecter ni exécuter de tâche. Voir `docs/TASK-ROUTING.md`.

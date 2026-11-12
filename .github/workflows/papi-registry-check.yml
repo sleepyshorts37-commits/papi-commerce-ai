@@ -2,9 +2,9 @@ name: PAPI registry validation
 
 on:
   push:
-    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1]
+    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1, feature/papi-task-routing-0.3]
   pull_request:
-    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1]
+    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1, feature/papi-task-routing-0.3]
   workflow_dispatch:
 
 permissions:
