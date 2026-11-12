@@ -157,7 +157,10 @@ def append_event(event: dict[str, Any], path: Path) -> bool:
         try:
             written = 0
             while written < len(payload):
-                written += os.write(descriptor, payload[written:])
+                count = os.write(descriptor, payload[written:])
+                if count <= 0:
+                    raise OSError("Écriture du journal d'audit interrompue.")
+                written += count
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
