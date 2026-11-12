@@ -75,6 +75,13 @@ class AuditHashChainTests(unittest.TestCase):
             read_events(self.path)
         self.assertEqual(target.read_text(encoding="utf-8"), "")
 
+    @unittest.skipUnless(hasattr(__import__("os"), "mkfifo"), "FIFO unavailable")
+    def test_non_regular_journal_path_is_rejected(self):
+        fifo_path = Path(self.temp_dir.name) / "audit.fifo"
+        __import__("os").mkfifo(fifo_path)
+        with self.assertRaises(AuditError):
+            read_events(fifo_path)
+
     @unittest.skipUnless(hasattr(__import__("os"), "O_NOFOLLOW"), "O_NOFOLLOW unavailable")
     def test_lock_symlink_is_rejected(self):
         lock_target = Path(self.temp_dir.name) / "lock-target"
