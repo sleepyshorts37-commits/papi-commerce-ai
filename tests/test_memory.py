@@ -37,10 +37,6 @@ class SharedMemoryTests(unittest.TestCase):
         with self.assertRaises(MemoryError):
             self.remember(scope="owner")
 
-    def test_only_owner_can_record_official_decision(self):
-        with self.assertRaises(MemoryError):
-            self.remember(category="decision")
-
     def test_agent_cannot_claim_owner_identity_for_decision(self):
         with self.assertRaises(MemoryError):
             self.remember(category="decision")
@@ -64,9 +60,11 @@ class SharedMemoryTests(unittest.TestCase):
 
     def test_raw_actor_string_cannot_authenticate_memory_access(self):
         with self.assertRaises(PermissionError):
-            search_memory(actor="owner", path=self.path)
+            search_memory(principal="owner", path=self.path)
         with self.assertRaises(PermissionError):
-            self.remember(actor="owner")
+            remember_fact(principal="owner", category="fact", title="T",
+                          content="C", source_type="task", source_id="T-1",
+                          path=self.path)
 
     def test_agent_cannot_archive_another_agents_private_memory(self):
         saved = self.remember(principal=self.sokhna, scope="agent")
@@ -76,7 +74,7 @@ class SharedMemoryTests(unittest.TestCase):
 
     def test_invalid_limit_is_rejected(self):
         with self.assertRaises(MemoryError):
-            search_memory(limit=0, path=self.path)
+            search_memory(principal=self.astou, limit=0, path=self.path)
 
 
 if __name__ == "__main__":
