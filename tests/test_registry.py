@@ -409,6 +409,33 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(result["status"], "lease_lost")
 
 
+    def test_worker_audit_uses_authenticated_actor_and_excludes_job_payload(self):
+        from papi_core.audit import read_events
+        worker = self.make_worker()
+        job = {
+            "id": "JOB-AUDIT-IDENTITY", "task_id": "TASK-1", "handler": "internal.echo",
+            "payload": {"customer_email": "private@example.invalid", "note": "PRIVATE-PAYLOAD-MARKER"},
+            "agent_identity": {"agent_id": "forged-agent"},
+            "actor": "forged-actor", "lease_token": "lease-private",
+        }
+        with patch.object(worker.queue, "claim", return_value=job), \\
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \\
+             patch.object(worker.queue, "complete", return_value=True):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "completed")
+        events = read_events(worker.audit_path)
+        started = next(event for event in events if event["action"] == "job.handler_started")
+        self.assertEqual(started["actor"], "agent-test")
+        raw = worker.audit_path.read_text(encoding="utf-8")
+        self.assertNotIn("private@example.invalid", raw)
+        self.assertNotIn("PRIVATE-PAYLOAD-MARKER", raw)
+        self.assertNotIn("lease-private", raw)
+        self.assertNotIn("forged-agent", raw)
+        self.assertNotIn("forged-actor", raw)
+
+
     def test_audit_failure_before_handler_fails_closed(self):
         worker = self.make_worker()
         job = {"id": "JOB-AUDIT-1", "task_id": "TASK-1", "handler": "internal.echo",
