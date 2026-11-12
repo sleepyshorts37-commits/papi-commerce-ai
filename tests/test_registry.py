@@ -362,6 +362,9 @@ class WorkerTests(unittest.TestCase):
         from papi_core.handler_registry import HandlerRegistry
         from papi_core.worker import PapiWorker
         queue = ExecutionQueue(SupabaseStore(url="https://example.supabase.co", key="test-key"))
+        renew_patch = patch.object(queue, "renew", return_value=True)
+        renew_patch.start()
+        self.addCleanup(renew_patch.stop)
         registry = HandlerRegistry()
         registry.register("internal.echo", "read_only", lambda payload, context: {"echo": payload})
         effective_policy = policy or {
@@ -410,6 +413,25 @@ class WorkerTests(unittest.TestCase):
             result = worker.run_once()
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(fail.call_args.kwargs["error_code"], "permission_denied")
+
+    def test_worker_does_not_start_handler_if_lease_renewal_fails(self):
+        from papi_core.audit import read_events
+        worker = self.make_worker()
+        job = {"id": "JOB-LEASE-RENEW-FAIL", "task_id": "TASK-1",
+               "handler": "internal.echo", "payload": {}, "lease_token": "lease-renew"}
+        with patch.object(worker.queue, "claim", return_value=job), \\
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False,
+                          "owner_agent": "agent-test"}
+             }), \\
+             patch.object(worker.queue, "renew", return_value=False), \\
+             patch("papi_core.worker.execute_authorized_job") as execute:
+            result = worker.run_once()
+        self.assertEqual(result["status"], "lease_lost")
+        execute.assert_not_called()
+        events = read_events(worker.audit_path)
+        lost = next(event for event in events if event["action"] == "job.lease_lost")
+        self.assertEqual(lost["actor"], "system:worker:worker-test")
 
     def test_worker_does_not_complete_if_lease_was_lost(self):
         worker = self.make_worker()
