@@ -93,6 +93,12 @@ class AuditHashChainTests(unittest.TestCase):
             read_events(self.path)
         self.assertEqual(lock_target.read_text(encoding="utf-8"), "")
 
+    def test_foreign_owned_journal_is_rejected(self):
+        append_event(self.event("evt-owner"), self.path)
+        with patch("runtime.papi_core.audit.os.geteuid", return_value=os.geteuid() + 1):
+            with self.assertRaises(AuditError):
+                read_events(self.path)
+
     def test_world_readable_journal_is_rejected(self):
         append_event(self.event("evt-private"), self.path)
         os.chmod(self.path, 0o644)
