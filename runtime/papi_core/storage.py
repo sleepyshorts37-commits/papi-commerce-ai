@@ -45,6 +45,39 @@ class SupabaseStore:
         except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
             raise StoreError(f"Échec de communication avec Supabase ({type(exc).__name__}).") from exc
 
+    def check_readiness(self) -> dict[str, Any]:
+        """Teste explicitement l'accès en lecture aux deux tables essentielles."""
+        checks = {}
+        probes = {
+            "papi_tasks": "papi_tasks?select=id&limit=1",
+            "papi_audit_events": "papi_audit_events?select=event_id&limit=1",
+        }
+        for name, query in probes.items():
+            try:
+                rows = self._request("GET", query)
+                if not isinstance(rows, list):
+                    raise StoreError("Réponse inattendue.")
+                checks[name] = {"status": "ok", "readable": True}
+            except StoreError:
+                checks[name] = {
+                    "status": "unavailable",
+                    "readable": False,
+                    "message": "Table inaccessible, absente ou droits de lecture insuffisants.",
+                }
+        ready = all(item["readable"] for item in checks.values())
+        return {
+            "status": "ready" if ready else "incomplete",
+            "network_test_performed": True,
+            "checks": checks,
+            "writes_performed": False,
+            "secrets_displayed": False,
+            "message": (
+                "Les deux tables essentielles répondent aux requêtes de lecture."
+                if ready else
+                "Vérifier le projet, le schéma SQL, la clé serveur et les droits Supabase."
+            ),
+        }
+
     def get_task(self, task_id: str) -> dict[str, Any] | None:
         rows = self._request("GET", f"papi_tasks?id=eq.{quote(task_id, safe='')}&select=task,version")
         if not isinstance(rows, list):
