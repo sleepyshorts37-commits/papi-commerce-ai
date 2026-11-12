@@ -43,10 +43,11 @@ def reconcile_finances(transactions:list[dict], statement_entries:list[dict])->d
     for e in entries: index.setdefault((e["reference"],e["direction"],e["amount_xof"]),[]).append(e)
     matched=[]; unmatched=[]; used=set()
     for t in txs:
-        key=(t["reference"],t["direction"],t["amount_xof"]); candidates=[e for e in index.get(key,[]) if e["statement_id"] not in used]
+        key=(t["reference"],t["direction"],t["amount_xof"]); all_candidates=index.get(key,[]); candidates=[e for e in all_candidates if e["statement_id"] not in used]
         if t["status"]!="declared":
             unmatched.append({"transaction_id":t["transaction_id"],"reason":"transaction_not_active"}); continue
-        if len(candidates)==1:
+        if len(all_candidates)>1: unmatched.append({"transaction_id":t["transaction_id"],"reason":"ambiguous_statement_match"})
+        elif len(candidates)==1:
             e=candidates[0]; used.add(e["statement_id"])
             matched.append({"transaction_id":t["transaction_id"],"statement_id":e["statement_id"],"reference":t["reference"],"amount_xof":t["amount_xof"],"direction":t["direction"],"date_difference_seconds":abs(int((t["occurred_at"]-e["occurred_at"]).total_seconds())),"match_basis":"reference_direction_amount"})
         elif len(candidates)>1: unmatched.append({"transaction_id":t["transaction_id"],"reason":"ambiguous_statement_match"})
