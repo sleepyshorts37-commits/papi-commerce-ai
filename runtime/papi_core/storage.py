@@ -53,6 +53,64 @@ class SupabaseStore:
             return None
         return rows[0]
 
+    def get_audit_events(self, *, limit: int = 500, offset: int = 0) -> list[dict[str, Any]]:
+        """Lit une page bornée d'événements d'audit ; ne modifie jamais le journal."""
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1000:
+            raise StoreError("limit doit être un entier compris entre 1 et 1000.")
+        if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+            raise StoreError("offset doit être un entier positif ou nul.")
+        query = (
+            "papi_audit_events"
+            "?select=event_id,occurred_at,actor,action,entity_type,entity_id,details"
+            f"&order=occurred_at.asc,event_id.asc&limit={limit}&offset={offset}"
+        )
+        rows = self._request("GET", query)
+        if not isinstance(rows, list) or len(rows) > limit:
+            raise StoreError("Réponse inattendue lors de la lecture du journal d'audit.")
+        events = []
+        try:
+            for row in rows:
+                validate_event(row)
+                events.append(row)
+        except (TypeError, ValueError) as exc:
+            raise StoreError(f"Événement Supabase invalide : {exc}") from exc
+        return events
+
+    def get_agent_history(
+        self,
+        agent_id: str,
+        tasks: list[dict[str, Any]],
+        *,
+        page_size: int = 500,
+        max_pages: int = 20,
+        as_of: str | None = None,
+    ) -> dict[str, Any]:
+        """Construit un historique depuis Supabase en lecture seule.
+
+        La lecture est paginée et bornée à 20 000 événements au maximum.
+        Si la limite est atteinte, l'appel échoue plutôt que de présenter un
+        historique partiel comme complet.
+        """
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or not 1 <= max_pages <= 20:
+            raise StoreError("max_pages doit être compris entre 1 et 20.")
+        if isinstance(page_size, bool) or not isinstance(page_size, int) or not 1 <= page_size <= 1000:
+            raise StoreError("page_size doit être compris entre 1 et 1000.")
+        from .agent_history import AgentHistoryError, summarize_agent_history
+
+        events: list[dict[str, Any]] = []
+        for page in range(max_pages):
+            batch = self.get_audit_events(limit=page_size, offset=page * page_size)
+            events.extend(batch)
+            if len(batch) < page_size:
+                break
+        else:
+            # Une page pleine à la limite peut cacher d'autres lignes.
+            raise StoreError("Historique trop volumineux : augmenter le traitement par lots dans une version dédiée.")
+        try:
+            return summarize_agent_history(agent_id, events, tasks, as_of=as_of)
+        except AgentHistoryError as exc:
+            raise StoreError(f"Impossible de calculer l'historique : {exc}") from exc
+
     def save_task(self, task: dict[str, Any], *, expected_version: int | None = None) -> int:
         """Insère une tâche (version 1) ou la met à jour si la version attendue correspond."""
         task_id = task.get("id")
