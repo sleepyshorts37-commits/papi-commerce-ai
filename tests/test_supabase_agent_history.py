@@ -67,5 +67,55 @@ class SupabaseAgentHistoryTests(unittest.TestCase):
                 self.store.get_agent_history("agent-a", [], page_size=2, max_pages=3)
 
 
+
+class SupabaseDashboardSnapshotTests(unittest.TestCase):
+    def setUp(self):
+        self.store = SupabaseStore(url="https://example.supabase.co", key="test-key")
+
+    def test_reads_one_validated_snapshot_through_read_only_rpc(self):
+        task = {"id": "T-1", "status": "ready"}
+        event = audit_event()
+        payload = {
+            "tasks": [{"id": "T-1", "task": task, "version": 2}],
+            "audit_events": [event],
+            "tasks_truncated": False,
+            "audit_events_truncated": False,
+            "snapshot_consistency": "single_statement_snapshot",
+        }
+        with patch.object(self.store, "_request", return_value=payload) as request:
+            result = self.store.get_dashboard_snapshot(task_limit=50, event_limit=60)
+        self.assertEqual(result, {"tasks": [task], "audit_events": [event]})
+        request.assert_called_once_with(
+            "POST", "rpc/papi_get_dashboard_snapshot",
+            {"p_task_limit": 50, "p_event_limit": 60},
+        )
+
+    def test_rejects_truncated_snapshot(self):
+        payload = {
+            "tasks": [], "audit_events": [], "tasks_truncated": True,
+            "audit_events_truncated": False,
+            "snapshot_consistency": "single_statement_snapshot",
+        }
+        with patch.object(self.store, "_request", return_value=payload):
+            with self.assertRaises(StoreError):
+                self.store.get_dashboard_snapshot()
+
+    def test_rejects_invalid_snapshot_events(self):
+        payload = {
+            "tasks": [], "audit_events": [{"event_id": "bad"}],
+            "tasks_truncated": False, "audit_events_truncated": False,
+            "snapshot_consistency": "single_statement_snapshot",
+        }
+        with patch.object(self.store, "_request", return_value=payload):
+            with self.assertRaises(StoreError):
+                self.store.get_dashboard_snapshot()
+
+    def test_rejects_invalid_snapshot_limits_before_network(self):
+        with patch.object(self.store, "_request") as request:
+            with self.assertRaises(StoreError):
+                self.store.get_dashboard_snapshot(task_limit=0)
+        request.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
