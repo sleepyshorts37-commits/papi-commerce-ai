@@ -1,4 +1,4 @@
-# PAPI CHAT — socle local 0.3
+# PAPI CHAT — socle local 0.4
 
 PAPI CHAT est une messagerie interne locale. Elle ne contacte aucun service externe et ne prouve pas qu'un agent IA autonome est en fonctionnement.
 
@@ -27,8 +27,9 @@ Les chemins de clés, du registre public et de la base anti-rejeu peuvent être 
 - À l'envoi, le système vérifie la signature contre le registre public, exige une identité active et la version de clé courante, impose une fenêtre temporelle de cinq minutes et consomme le nonce dans la base anti-rejeu.
 - À chaque lecture, la signature est vérifiée de nouveau sans consommer le nonce et sans imposer une nouvelle fenêtre de cinq minutes. Les lectures répétées ne sont donc pas considérées comme des rejeux.
 - Une modification du contenu, de l'identité déclarée ou de la preuve est rejetée.
-- Une identité inconnue, révoquée ou dont la version de clé ne correspond plus est rejetée.
-- Les messages antérieurs à une rotation de clé ne seront plus vérifiables avec le registre actuel : la conservation d'un historique de clés publiques versionnées est une évolution nécessaire avant rotation en production.
+- Les nouvelles signatures exigent toujours la clé active et la version courante. Une clé historique ne peut jamais authentifier une nouvelle requête.
+- Le registre conserve les clés publiques de chaque version avec leur période d'activation, de rotation ou de révocation. Les messages signés pendant cette période restent vérifiables après rotation/révocation ; les signatures horodatées après la fin de validité sont rejetées.
+- Pour les anciens registres sans historique, une migration rétrocompatible conserve la clé publique courante comme version historique avec une date d'activation inconnue (borne initiale ouverte).
 - Les messages non signés ne sont pas acceptés par cette API.
 
 ## Limites de sécurité
