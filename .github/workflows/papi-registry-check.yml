@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1, feature/papi-task-routing-0.3, feature/papi-agent-registry-1.67, feature/papi-agent-factory-1.66]
   pull_request:
-    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1, feature/papi-task-routing-0.3, feature/papi-agent-factory-1.66]
+    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1, feature/papi-task-routing-0.3, feature/papi-agent-factory-1.66, feature/papi-agent-registry-1.67]
   workflow_dispatch:
 
 permissions:
