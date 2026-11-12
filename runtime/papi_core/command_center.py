@@ -22,6 +22,7 @@ from .agent_workflows import build_workflow_center
 from .agent_memory import build_memory_center
 from .agent_learning import build_agent_learning
 from .quality_control import build_quality_control
+from .business_intelligence import build_business_intelligence
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -108,6 +109,9 @@ def build_command_center(
     memories = build_memory_center(events, identity_registry)
     learning = build_agent_learning(agents, events, valid_tasks)
     quality_control = build_quality_control(valid_tasks, events)
+    effective_policy_path = policy_path or (ROOT / "config" / "policy.json")
+    business_policy = load_json(effective_policy_path)
+    business_intelligence = build_business_intelligence([], business_policy)
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -154,6 +158,7 @@ def build_command_center(
         "agent_memory_center": memories,
         "agent_learning_engine": learning,
         "quality_control_engine": quality_control,
+        "business_intelligence": business_intelligence,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -191,6 +196,9 @@ def build_command_center(
             "agent_behavior_changes": 0,
             "quality_reviews_created": 0,
             "quality_tasks_changed": 0,
+            "business_opportunities_scanned": 0,
+            "business_plans_created": 0,
+            "business_actions_executed": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
         },
