@@ -93,6 +93,8 @@ def _open_regular_file(path: Path, flags: int, mode: int = 0o600) -> int:
             raise AuditError("Le journal et son verrou doivent être des fichiers réguliers.")
         if stat.S_IMODE(file_stat.st_mode) & 0o077:
             raise AuditError("Permissions trop ouvertes: journal et verrou doivent être privés (0600).")
+        if hasattr(os, "geteuid") and file_stat.st_uid != os.geteuid():
+            raise AuditError("Le journal et son verrou doivent appartenir à l'utilisateur du worker.")
         return descriptor
     except BaseException:
         os.close(descriptor)
