@@ -32,6 +32,7 @@ from .revenue_optimization import optimize_revenue
 from .financial_control import build_financial_control
 from .procurement import analyze_procurement
 from .inventory_control import build_inventory_control
+from .order_management import analyze_orders
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -61,6 +62,7 @@ def build_command_center(
     inventory_opening_stock: dict[str, int] | None = None,
     inventory_reorder_points: dict[str, int] | None = None,
     inventory_target_stock: dict[str, int] | None = None,
+    order_records: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -178,6 +180,7 @@ def build_command_center(
     )
     procurement_intelligence = analyze_procurement(procurement_observations or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
     inventory_control = build_inventory_control(inventory_movements or [], opening_stock=inventory_opening_stock, reorder_points=inventory_reorder_points, target_stock=inventory_target_stock)
+    order_management = analyze_orders(order_records or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -233,6 +236,7 @@ def build_command_center(
         "financial_control": financial_control,
         "procurement_intelligence": procurement_intelligence,
         "inventory_control": inventory_control,
+        "order_management": order_management,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -303,6 +307,13 @@ def build_command_center(
             "replenishment_alerts_created": len(inventory_control["replenishment_alerts"]),
             "stock_records_written": 0,
             "inventory_orders_created": 0,
+            "orders_received": order_management["orders_received"],
+            "orders_analyzed": order_management["orders_analyzed"],
+            "orders_rejected": order_management["orders_rejected"],
+            "overdue_orders_detected": len(order_management["overdue_orders"]),
+            "order_status_updates_executed": 0,
+            "deliveries_dispatched": 0,
+            "customer_contacts_sent": 0,
             "ledger_writes_performed": 0,
             "transfers_executed": 0,
             "withdrawals_executed": 0,
