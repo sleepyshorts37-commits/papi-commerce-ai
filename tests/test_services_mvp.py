@@ -63,7 +63,10 @@ class ServicesMvpTests(unittest.TestCase):
         draft_quote = dict(self.quotes[0], status="draft")
         r = self.report(quotes=[draft_quote])
         self.assertEqual(r["counts"]["work_items"], 0)
-        self.assertEqual(r["counts"]["rejected_records"], 1)
+        # The work item is rejected because its quote is not accepted; its payment is
+        # also rejected because it references a work item that was not admitted.
+        self.assertEqual(r["counts"]["rejected_records"], 2)
+        self.assertEqual([item["category"] for item in r["rejected"]], ["prestation", "paiement"])
 
     def test_cumulative_payments_cannot_exceed_quote(self):
         second = dict(self.payments[0], payment_id="P2", amount_xof=1)
