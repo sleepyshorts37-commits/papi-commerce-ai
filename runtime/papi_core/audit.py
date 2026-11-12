@@ -125,12 +125,16 @@ def new_event(*, event_id: str, actor: str, action: str, entity_type: str,
 
 
 def _read_verified(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
+    try:
+        descriptor = _open_regular_file(path, os.O_RDONLY)
+    except FileNotFoundError:
         return []
+    with os.fdopen(descriptor, "r", encoding="utf-8") as journal:
+        lines = journal.read().splitlines()
     events: list[dict[str, Any]] = []
     seen: set[str] = set()
     previous_hash = GENESIS_HASH
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for line_number, line in enumerate(lines, start=1):
         if not line.strip():
             raise AuditError(f"Ligne vide interdite dans le journal (ligne {line_number}).")
         try:
