@@ -7,6 +7,8 @@ from .registry import RegistryError, route_department, validate_registries
 from .orchestrator import build_dispatch_plan
 from .doctor import diagnose_environment
 from .command_center import build_command_center
+from .remote_command_center import build_remote_command_center
+from .storage import SupabaseStore, StoreError
 from .scheduler import SchedulerError, due_schedules
 from .sales import SalesError, build_sales_report, load_sales
 from .finance import FinanceError, finance_report, load_ledger
@@ -25,7 +27,10 @@ def main() -> int:
     agent_check.add_argument("permission")
     sub.add_parser("plan", help="Préparer un plan consultatif des tâches en attente")
     sub.add_parser("doctor", help="Diagnostiquer la configuration locale sans réseau ni secret affiché")
-    sub.add_parser("dashboard", help="Afficher PAPI COMMAND CENTER en lecture seule")
+    sub.add_parser("dashboard", help="Afficher PAPI COMMAND CENTER local en lecture seule")
+    remote_dashboard = sub.add_parser("dashboard-remote", help="Lire PAPI COMMAND CENTER depuis Supabase, sans écriture")
+    remote_dashboard.add_argument("--page-size", type=int, default=500)
+    remote_dashboard.add_argument("--max-pages", type=int, default=20)
     sub.add_parser("schedule-preview", help="Afficher les échéances récurrentes à examiner, sans exécution")
     sub.add_parser("sales-validate", help="Valider le registre commercial local")
     sub.add_parser("sales-report", help="Afficher le rapport commercial local en lecture seule")
@@ -39,6 +44,13 @@ def main() -> int:
             return 0
         if args.command == "dashboard":
             print(json.dumps(build_command_center(), ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "dashboard-remote":
+            store = SupabaseStore()
+            result = build_remote_command_center(
+                store, page_size=args.page_size, max_pages=args.max_pages
+            )
+            print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         if args.command == "doctor":
             print(json.dumps(diagnose_environment(), ensure_ascii=False, indent=2))
@@ -75,7 +87,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, StoreError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
