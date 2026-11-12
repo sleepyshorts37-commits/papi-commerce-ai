@@ -51,6 +51,7 @@ class WorkerAuditLifecycleTests(unittest.TestCase):
                          "owner_agent": "agent-test",
                      }
                  }), \
+                 patch.object(queue, "renew", return_value=True), \
                  patch.object(queue, "complete", return_value=False) as complete, \
                  patch("papi_core.worker.execute_authorized_job",
                        return_value={"status": "completed"}):
