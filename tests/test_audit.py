@@ -1,5 +1,6 @@
 import json
 import math
+import os
 import tempfile
 import threading
 import unittest
@@ -91,6 +92,19 @@ class AuditHashChainTests(unittest.TestCase):
         with self.assertRaises(OSError):
             read_events(self.path)
         self.assertEqual(lock_target.read_text(encoding="utf-8"), "")
+
+    def test_world_readable_journal_is_rejected(self):
+        append_event(self.event("evt-private"), self.path)
+        os.chmod(self.path, 0o644)
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+
+    def test_world_readable_lock_is_rejected(self):
+        read_events(self.path)
+        lock_path = self.path.with_name(self.path.name + ".lock")
+        os.chmod(lock_path, 0o644)
+        with self.assertRaises(AuditError):
+            read_events(self.path)
 
     def test_zero_length_write_fails_instead_of_looping(self):
         with patch("runtime.papi_core.audit.os.write", return_value=0):
