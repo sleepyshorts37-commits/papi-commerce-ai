@@ -2,9 +2,9 @@ name: PAPI documentation checks
 
 on:
   push:
-    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions]
+    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1]
   pull_request:
-    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions]
+    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1]
   workflow_dispatch:
 
 permissions:
