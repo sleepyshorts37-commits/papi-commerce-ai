@@ -38,7 +38,7 @@ Each event contains only bounded metadata: event name, job/task opaque identifie
 - No claim when execution policy is disabled.
 - No agent-attributed event before cryptographic authentication.
 - Forged `owner_agent`, actor, handler context, and job payload values cannot influence the audit actor.
-- Authentication failure records only a system actor.
+- Authentication failure records only a system actor. Post-authentication policy blocks are attributed to the sealed authenticated principal.
 - Successful authentication binds every agent event to the authenticated principal.
 - Audit failure before handler start prevents handler invocation.
 - Terminal audit failure does not rewrite a successfully committed queue outcome.
