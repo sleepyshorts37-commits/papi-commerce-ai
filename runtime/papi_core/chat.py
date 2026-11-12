@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from .chat_authorization import ChatAuthorizationError, authorize_send, require_permission
 from .identity_ed25519 import (
     DEFAULT_PRIVATE_DIR, DEFAULT_PUBLIC_REGISTRY, DEFAULT_REPLAY_DB,
     Ed25519IdentityError, sign_ed25519_request, verify_ed25519_request,
@@ -100,6 +101,10 @@ def send_message(
         "body": body, "message_type": message_type,
     }
     _validate_message_fields(message, agents_path)
+    try:
+        authorize_send(sender, recipient, agents_path)
+    except ChatAuthorizationError as exc:
+        raise ChatError(f"Envoi interdit : {exc}") from exc
     key_path = Path(private_key_path) if private_key_path is not None else DEFAULT_PRIVATE_DIR / (sender + ".ed25519.pem")
     try:
         envelope = sign_ed25519_request(sender, message, key_path, key_version=key_version)
@@ -120,16 +125,26 @@ def send_message(
 
 
 def read_messages(
-    *, recipient: str | None = None, limit: int = 50,
+    *, reader: str, limit: int = 50,
     path: Path = CHAT_FILE, agents_path: Path = AGENTS_FILE,
+    private_key_path: Path | None = None, key_version: int = 1,
     public_registry_path: Path = DEFAULT_PUBLIC_REGISTRY,
+    replay_db_path: Path = DEFAULT_REPLAY_DB,
 ) -> list[dict[str, Any]]:
-    """Relit les messages et revérifie chaque signature sans rejouer le nonce."""
+    """Lit la boîte autorisée après authentification Ed25519 du lecteur."""
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 200:
         raise ChatError("limit doit être compris entre 1 et 200.")
-    allowed = _allowed_ids(agents_path)
-    if recipient is not None and (not isinstance(recipient, str) or recipient not in allowed):
-        raise ChatError("Destinataire inconnu.")
+    key_path = Path(private_key_path) if private_key_path is not None else DEFAULT_PRIVATE_DIR / (reader + ".ed25519.pem")
+    try:
+        require_permission(reader, "chat.read", agents_path)
+        challenge = sign_ed25519_request(
+            reader, {"action": "chat.read", "reader": reader}, key_path,
+            key_version=key_version,
+        )
+        verify_ed25519_request(challenge, public_registry_path, replay_db_path)
+        can_read_all = reader == "owner"
+    except (ChatAuthorizationError, Ed25519IdentityError) as exc:
+        raise ChatError(f"Lecture interdite : {exc}") from exc
     path = Path(path)
     if not path.exists():
         return []
@@ -143,6 +158,6 @@ def read_messages(
         except (json.JSONDecodeError, ChatError) as exc:
             raise ChatError(f"Message invalide à la ligne {number}: {exc}") from exc
         message = record["message"]
-        if recipient is None or message["recipient"] in {recipient, "all"}:
+        if can_read_all or message["recipient"] in {reader, "all"}:
             messages.append(record)
     return messages[-limit:]
