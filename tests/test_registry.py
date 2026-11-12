@@ -108,6 +108,21 @@ class AuditTests(unittest.TestCase):
                 read_events(path)
 
 
+    def test_concurrent_appends_preserve_a_single_valid_chain(self):
+        from concurrent.futures import ThreadPoolExecutor
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            events = [self.make_event(event_id=f"EVT-CONCURRENT-{index:02d}")
+                      for index in range(24)]
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                results = list(executor.map(lambda event: append_event(event, path), events))
+            self.assertTrue(all(results))
+            stored = read_events(path)
+            self.assertEqual(len(stored), len(events))
+            self.assertEqual(len({event["event_id"] for event in stored}), len(events))
+            self.assertEqual(len({event["event_hash"] for event in stored}), len(events))
+
+
 class StateMachineTests(unittest.TestCase):
     def base_task(self, **changes):
         task = {
