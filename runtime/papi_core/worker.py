@@ -124,6 +124,13 @@ class PapiWorker:
                 raise AccessDenied("Principal authentifié invalide.")
             authorize_job(job, task, self.policy, self.registry)
 
+            # Fencing: ne jamais démarrer le handler avec un bail expiré ou perdu.
+            if not self.queue.renew(job_id=job_id, worker_id=self.worker_id,
+                                    lease_token=lease_token, lease_seconds=900):
+                self._audit_best_effort(job_id, "job.lease_lost", system_actor,
+                                        handler=handler, outcome="lease_lost_before_handler")
+                return {"status": "lease_lost", "claimed": True, "job_id": job_id}
+
             try:
                 self._audit(job_id, "job.handler_started", authenticated_actor, handler=handler)
             except Exception:
