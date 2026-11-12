@@ -15,9 +15,11 @@ from .worker_scheduler import build_schedule
 from .worker_supervision import build_worker_supervision
 from .incident_center import build_incident_center
 from .approval_center import build_approval_center
+from .identity_security import validate_identity_registry
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
+IDENTITIES_FILE = ROOT / "data" / "agent-identities.json"
 
 
 def build_command_center(
@@ -26,6 +28,7 @@ def build_command_center(
     policy_path=None,
     environ=None,
     audit_path=AUDIT_FILE,
+    identities_path=IDENTITIES_FILE,
     scheduler_snapshot: dict[str, Any] | None = None,
     supervision_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -91,6 +94,8 @@ def build_command_center(
         }
 
     events = read_events(audit_path) if audit_path is not None else []
+    identity_registry = load_json(identities_path) if identities_path is not None else {"identities": []}
+    identity_validation = validate_identity_registry(identity_registry)
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -131,6 +136,13 @@ def build_command_center(
         "incident_center": incidents,
         "approval_center": approvals,
         "agent_performance": performance,
+        "agent_identity_security": {
+            **identity_validation,
+            "status": "validated_documentary_registry",
+            "runtime_authentication_enabled": False,
+            "actions_authorized": 0,
+            "actions_executed": 0,
+        },
         "environment": {
             "status": doctor["status"],
             "checks": doctor["checks"],
