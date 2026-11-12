@@ -165,5 +165,8 @@ def append_event(event: dict[str, Any], path: Path) -> bool:
 
 
 def read_events(path: Path) -> list[dict[str, Any]]:
-    """Relit le journal et vérifie chaque lien de la chaîne avant de retourner les événements."""
-    return _read_verified(Path(path))
+    """Relit le journal sous verrou pour éviter toute lecture pendant un ajout."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with _journal_lock(path):
+        return _read_verified(path)
