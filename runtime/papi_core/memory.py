@@ -59,6 +59,71 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _validate_event(event: Any, line_number: int) -> None:
+    """Valide strictement la structure d'un événement avant toute utilisation."""
+    if not isinstance(event, dict):
+        raise MemoryError(f"Événement mémoire invalide ligne {line_number}.")
+    event_type = event.get("event_type")
+    if event_type == "remember":
+        required = {
+            "event_id", "event_type", "memory_id", "created_at", "actor",
+            "category", "title", "content", "source", "confidence",
+            "scope", "tags", "sensitivity",
+        }
+        if set(event) != required:
+            raise MemoryError(f"Schéma remember invalide ligne {line_number}.")
+        for field, limit in (("event_id", 36), ("memory_id", 36), ("actor", 120),
+                             ("title", 120), ("content", 2000)):
+            value = event[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > limit:
+                raise MemoryError(f"Champ {field} invalide ligne {line_number}.")
+        try:
+            uuid.UUID(event["event_id"])
+            uuid.UUID(event["memory_id"])
+            datetime.fromisoformat(event["created_at"].replace("Z", "+00:00"))
+        except (ValueError, TypeError, AttributeError):
+            raise MemoryError(f"Identifiant ou date invalide ligne {line_number}.")
+        if (event["category"] not in CATEGORIES or event["scope"] not in SCOPES
+                or event["sensitivity"] != "normal"):
+            raise MemoryError(f"Métadonnées invalides ligne {line_number}.")
+        confidence = event["confidence"]
+        if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not 0 <= confidence <= 1:
+            raise MemoryError(f"Confiance invalide ligne {line_number}.")
+        source = event["source"]
+        if not isinstance(source, dict) or set(source) != {"type", "id"}:
+            raise MemoryError(f"Source invalide ligne {line_number}.")
+        for value in source.values():
+            if not isinstance(value, str) or not value.strip() or len(value) > 120:
+                raise MemoryError(f"Source invalide ligne {line_number}.")
+        tags = event["tags"]
+        if not isinstance(tags, list) or len(tags) > 10 or any(
+            not isinstance(tag, str) or not tag.strip() or len(tag) > 30 for tag in tags
+        ):
+            raise MemoryError(f"Tags invalides ligne {line_number}.")
+        _safe_tree(event["content"])
+        if SECRET_PATTERN.search(event["actor"] + event["title"] + event["content"]):
+            raise MemoryError(f"Contenu sensible ligne {line_number}.")
+    elif event_type == "supersede":
+        required = {"event_id", "event_type", "target_memory_id", "created_at", "actor", "reason"}
+        if set(event) != required:
+            raise MemoryError(f"Schéma supersede invalide ligne {line_number}.")
+        for field, limit in (("event_id", 36), ("target_memory_id", 36),
+                             ("actor", 120), ("reason", 240)):
+            value = event[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > limit:
+                raise MemoryError(f"Champ {field} invalide ligne {line_number}.")
+        try:
+            uuid.UUID(event["event_id"])
+            uuid.UUID(event["target_memory_id"])
+            datetime.fromisoformat(event["created_at"].replace("Z", "+00:00"))
+        except (ValueError, TypeError, AttributeError):
+            raise MemoryError(f"Identifiant ou date invalide ligne {line_number}.")
+        if SECRET_PATTERN.search(event["actor"] + event["reason"]):
+            raise MemoryError(f"Contenu sensible ligne {line_number}.")
+    else:
+        raise MemoryError(f"Type d'événement invalide ligne {line_number}.")
+
+
 def _read_events(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -71,12 +136,28 @@ def _read_events(path: Path) -> list[dict[str, Any]]:
             event = json.loads(line)
         except json.JSONDecodeError as exc:
             raise MemoryError(f"Journal mémoire corrompu ligne {number}.") from exc
-        if not isinstance(event, dict) or event.get("event_id") in seen:
-            raise MemoryError(f"Événement mémoire invalide ou dupliqué ligne {number}.")
-        if event.get("event_type") not in {"remember", "supersede"}:
-            raise MemoryError(f"Type d'événement invalide ligne {number}.")
+        _validate_event(event, number)
+        if event["event_id"] in seen:
+            raise MemoryError(f"Événement mémoire dupliqué ligne {number}.")
         seen.add(event["event_id"])
         events.append(event)
+
+    # Les événements de clôture doivent référencer une mémoire déjà créée.
+    memory_ids = set()
+    superseded_ids = set()
+    for number, event in enumerate(events, 1):
+        if event["event_type"] == "remember":
+            memory_id = event["memory_id"]
+            if memory_id in memory_ids:
+                raise MemoryError(f"Identifiant mémoire dupliqué ligne {number}.")
+            memory_ids.add(memory_id)
+        else:
+            target_id = event["target_memory_id"]
+            if target_id not in memory_ids:
+                raise MemoryError(f"Événement supersede orphelin ligne {number}.")
+            if target_id in superseded_ids:
+                raise MemoryError(f"Événement supersede dupliqué ligne {number}.")
+            superseded_ids.add(target_id)
     return events
 
 
