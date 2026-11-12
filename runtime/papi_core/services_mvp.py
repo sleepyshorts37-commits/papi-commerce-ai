@@ -52,10 +52,10 @@ def _quote(raw: Any, request_ids: set[str], now: datetime) -> dict:
             "valid_until":until.isoformat(),"status":x["status"],
             "is_expired":x["status"] not in {"accepted","rejected"} and until<now}
 
-def _work(raw: Any, quote_ids: set[str]) -> dict:
+def _work(raw: Any, accepted_quote_ids: set[str]) -> dict:
     x=_fields(raw,WORK_FIELDS,{"work_id","quote_id","status","started_at","updated_at"},"prestation")
     wid,qid=_id(x["work_id"],"work_id"),_id(x["quote_id"],"quote_id")
-    if qid not in quote_ids: raise ValueError("La prestation référence un devis inconnu.")
+    if qid not in accepted_quote_ids: raise ValueError("La prestation doit référencer un devis accepté.")
     if x["status"] not in WORK_STATUSES: raise ValueError("Statut de prestation inconnu.")
     start,updated=_date(x["started_at"],"started_at"),_date(x["updated_at"],"updated_at")
     if updated<start: raise ValueError("updated_at ne peut pas précéder started_at.")
@@ -105,16 +105,28 @@ def analyze_services(requests: list[dict], quotes: list[dict], work_items: list[
             clean[1].append(_quote(raw,request_ids,now))
         except (ValueError,TypeError,KeyError) as e: rejected.append({"category":"devis","index":idx,"reason":str(e)})
     quote_ids={x["quote_id"] for x in clean[1]}
+    accepted_quote_ids={x["quote_id"] for x in clean[1] if x["status"]=="accepted" and not x["is_expired"]}
     for idx,raw in enumerate(work_items):
         try:
             if isinstance(raw,dict) and raw.get("work_id") in {v["work_id"] for v in clean[2]}: raise ValueError("work_id dupliqué.")
-            clean[2].append(_work(raw,quote_ids))
+            clean[2].append(_work(raw,accepted_quote_ids))
         except (ValueError,TypeError,KeyError) as e: rejected.append({"category":"prestation","index":idx,"reason":str(e)})
     work_ids={x["work_id"] for x in clean[2]}
+    work_by_id={x["work_id"]:x for x in clean[2]}
+    quote_by_id={x["quote_id"]:x for x in clean[1]}
+    paid_totals={}
     for idx,raw in enumerate(payments):
         try:
             if isinstance(raw,dict) and raw.get("payment_id") in {v["payment_id"] for v in clean[3]}: raise ValueError("payment_id dupliqué.")
-            clean[3].append(_payment(raw,work_ids))
+            payment=_payment(raw,work_ids)
+            wid=payment["work_id"]
+            if payment["status"]!="refunded":
+                quote_id=work_by_id[wid]["quote_id"]
+                quote_amount=quote_by_id[quote_id]["amount_xof"]
+                proposed=paid_totals.get(wid,0)+payment["amount_xof"]
+                if proposed>quote_amount: raise ValueError("Le cumul des paiements dépasse le montant du devis accepté.")
+                paid_totals[wid]=proposed
+            clean[3].append(payment)
         except (ValueError,TypeError,KeyError) as e: rejected.append({"category":"paiement","index":idx,"reason":str(e)})
     revenue=sum(x["recognized_revenue_xof"] for x in clean[3])
     return {"as_of":now.isoformat(),"counts":{"requests":len(clean[0]),"quotes":len(clean[1]),"work_items":len(clean[2]),"payments":len(clean[3]),"rejected_records":len(rejected)},
