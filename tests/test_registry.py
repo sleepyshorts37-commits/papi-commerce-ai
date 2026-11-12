@@ -261,6 +261,19 @@ class ExecutionQueueTests(unittest.TestCase):
             queue.claim(worker_id="worker-01", lease_seconds=5)
 
     @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_renew_requires_current_lease_and_uses_fenced_rpc(self):
+        from papi_core.execution_queue import ExecutionQueue
+        queue = ExecutionQueue(SupabaseStore())
+        with patch.object(queue.store, "_request", return_value=True) as request:
+            self.assertTrue(queue.renew(job_id="JOB-1", worker_id="worker-01",
+                                        lease_token="lease", lease_seconds=900))
+        self.assertEqual(request.call_args.args[1], "rpc/papi_renew_job_lease")
+        self.assertEqual(request.call_args.args[2]["p_lease_token"], "lease")
+        with self.assertRaises(Exception):
+            queue.renew(job_id="JOB-1", worker_id="worker-01",
+                        lease_token="lease", lease_seconds=901)
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
     def test_complete_requires_current_lease(self):
         from papi_core.execution_queue import ExecutionQueue
         queue = ExecutionQueue(SupabaseStore())
