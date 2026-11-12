@@ -4,6 +4,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from runtime.papi_core.audit import AuditError, append_event, new_event, read_events, _journal_lock
 
@@ -43,6 +44,30 @@ class AuditHashChainTests(unittest.TestCase):
         self.path.write_text(json.dumps(record) + "\n", encoding="utf-8")
         with self.assertRaises(AuditError):
             read_events(self.path)
+
+    def test_interrupted_partial_write_fails_closed(self):
+        original_write = __import__("os").write
+        calls = 0
+
+        def interrupted_write(descriptor, payload):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return original_write(descriptor, payload[:12])
+            raise OSError("simulated disk write failure")
+
+        with patch("runtime.papi_core.audit.os.write", side_effect=interrupted_write):
+            with self.assertRaises(OSError):
+                append_event(self.event("evt-partial"), self.path)
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+        with self.assertRaises(AuditError):
+            append_event(self.event("evt-after-partial"), self.path)
+
+    def test_zero_length_write_fails_instead_of_looping(self):
+        with patch("runtime.papi_core.audit.os.write", return_value=0):
+            with self.assertRaises(OSError):
+                append_event(self.event("evt-zero-write"), self.path)
 
     def test_truncated_final_record_fails_closed(self):
         append_event(self.event("evt-1"), self.path)
