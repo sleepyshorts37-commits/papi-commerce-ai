@@ -268,8 +268,13 @@ grant select, insert, delete on public.papi_agent_used_nonces to service_role;
 -- Une révocation concurrente attend la fin de cette transaction. Si elle est
 -- déjà validée, la vérification échoue avant toute consommation du nonce.
 -- Désactiver l'ancienne RPC 3 paramètres pour empêcher le contournement du contrôle.
-revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
-    from public, anon, authenticated, service_role;
+do $migration$
+begin
+    if to_regprocedure('public.papi_consume_agent_nonce(text,text,timestamptz)') is not null then
+        execute 'revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz) from public, anon, authenticated, service_role';
+    end if;
+end;
+$migration$;
 
 create or replace function public.papi_consume_agent_nonce(
     p_agent_id text, p_key_version integer, p_nonce text, p_expires_at timestamptz
