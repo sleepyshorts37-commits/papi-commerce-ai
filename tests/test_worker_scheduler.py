@@ -35,7 +35,7 @@ class WorkerSchedulerTests(unittest.TestCase):
 
     def test_priority_and_aging_order_are_deterministic(self):
         result = self.schedule([
-            self.job("low-old", "low", "2026-11-12T06:00:00Z"),
+            self.job("low-old", "low", "2026-11-12T08:00:00Z"),
             self.job("urgent-new", "urgent", "2026-11-12T09:59:00Z"),
             self.job("high-new", "high", "2026-11-12T09:59:00Z"),
         ])
