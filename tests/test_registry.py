@@ -617,3 +617,34 @@ class DoctorTests(unittest.TestCase):
             queue.fail(job_id="JOB-1", worker_id="worker-01",
                        lease_token="lease", error_code="Bearer secret-value")
 
+
+
+
+class LeaseRenewalInputTests(unittest.TestCase):
+    def test_renew_rejects_boolean_non_integer_and_out_of_range_duration(self):
+        from papi_core.execution_queue import ExecutionQueue, QueueError
+        queue = ExecutionQueue(SupabaseStore(url="https://example.supabase.co", key="test-key"))
+        with patch.object(queue.store, "_request") as request:
+            for value in (True, False, 14, 901, None, 15.0, "900"):
+                with self.subTest(lease_seconds=value):
+                    with self.assertRaises(QueueError):
+                        queue.renew(job_id="JOB-1", worker_id="worker-01",
+                                    lease_token="00000000-0000-0000-0000-000000000001",
+                                    lease_seconds=value)
+            request.assert_not_called()
+
+    def test_renew_rejects_blank_identifiers_and_oversized_worker_id(self):
+        from papi_core.execution_queue import ExecutionQueue, QueueError
+        queue = ExecutionQueue(SupabaseStore(url="https://example.supabase.co", key="test-key"))
+        with patch.object(queue.store, "_request") as request:
+            invalid = (
+                {"job_id": " ", "worker_id": "worker-01", "lease_token": "token"},
+                {"job_id": "JOB-1", "worker_id": " ", "lease_token": "token"},
+                {"job_id": "JOB-1", "worker_id": "worker-01", "lease_token": ""},
+                {"job_id": "JOB-1", "worker_id": "w" * 121, "lease_token": "token"},
+            )
+            for values in invalid:
+                with self.subTest(values=values):
+                    with self.assertRaises(QueueError):
+                        queue.renew(**values)
+            request.assert_not_called()
