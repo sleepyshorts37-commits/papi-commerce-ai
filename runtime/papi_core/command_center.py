@@ -28,6 +28,7 @@ from .opportunity_scanner import scan_opportunity_signals
 from .competitor_intelligence import analyze_competitor_observations
 from .product_intelligence import analyze_product_options
 from .sales_intelligence import analyze_sales_channels
+from .revenue_optimization import optimize_revenue
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -48,6 +49,7 @@ def build_command_center(
     product_observations: list[dict[str, Any]] | None = None,
     target_product_selling_price_xof: int | None = None,
     sales_observations: list[dict[str, Any]] | None = None,
+    revenue_observations: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -158,6 +160,7 @@ def build_command_center(
         sales_observations or [],
         as_of=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     )
+    revenue_optimization = optimize_revenue(revenue_observations or [])
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -209,6 +212,7 @@ def build_command_center(
         "competitor_intelligence": competitor_intelligence,
         "product_intelligence": product_intelligence,
         "sales_intelligence": sales_intelligence,
+        "revenue_optimization": revenue_optimization,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -256,6 +260,12 @@ def build_command_center(
             "product_observations_rejected": product_intelligence["observations_rejected"],
             "sales_observations_received": sales_intelligence["observations_received"],
             "sales_observations_rejected": sales_intelligence["observations_rejected"],
+            "revenue_observations_received": revenue_optimization["observations_received"],
+            "revenue_offers_analyzed": revenue_optimization["offers_analyzed"],
+            "revenue_offers_rejected": revenue_optimization["offers_rejected"],
+            "prices_changed": 0,
+            "commissions_paid": 0,
+            "payments_processed": 0,
             "sales_prospects_contacted": 0,
             "sales_campaigns_launched": 0,
             "business_actions_executed": 0,
