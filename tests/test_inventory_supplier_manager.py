@@ -18,10 +18,14 @@ class InventorySupplierTests(unittest.TestCase):
         self.assertEqual(self.report(movements=[])["stock"]["low_stock_product_ids"],["P1"])
     def test_unknown_supplier_rejected(self):
         p=dict(self.products[0],supplier_id="MISSING")
-        self.assertEqual(self.report(products=[p])["counts"]["rejected_records"],1)
+        report=self.report(products=[p])
+        self.assertEqual(report["counts"]["rejected_records"],2)
+        self.assertEqual([x["category"] for x in report["rejected"]],["product","movement"])
     def test_personal_field_rejected(self):
         s=dict(self.suppliers[0],phone="+221700000000")
-        self.assertEqual(self.report(suppliers=[s])["counts"]["rejected_records"],1)
+        report=self.report(suppliers=[s])
+        self.assertEqual(report["counts"]["rejected_records"],3)
+        self.assertEqual([x["category"] for x in report["rejected"]],["supplier","product","movement"])
     def test_duplicate_movement_rejected(self):
         self.assertEqual(self.report(movements=self.movements*2)["counts"]["rejected_records"],1)
     def test_future_movement_rejected(self):
