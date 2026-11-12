@@ -1,4 +1,4 @@
-# PAPI CHAT — socle local 0.1
+# PAPI CHAT — socle local 0.2
 
 PAPI CHAT fournit une boîte de messages interne locale entre les identifiants du registre des agents, le propriétaire (`owner`) et le système (`system`).
 
@@ -22,10 +22,10 @@ Types autorisés : `info`, `task`, `alert`, `report`. Le destinataire `all` perm
 ## Sécurité
 
 - Stockage append-only local dans `data/chat/messages.jsonl`, permissions de fichier restrictives.
-- Identifiants expéditeur/destinataire vérifiés contre le registre.
+- Types de champs contrôlés avant toute opération de chaîne ou de routage ; les entrées JSON malformées sont rejetées proprement.\n- Horodatages ISO 8601 obligatoirement munis d'un fuseau horaire ; limite de lecture strictement bornée.
 - Taille du message limitée et détection de chaînes ressemblant à des secrets.
 - Aucun appel réseau, email, WhatsApp, réseau social ou notification externe.
 - Aucun modèle IA n'est connecté : un message écrit par un agent reste une donnée enregistrée, pas la preuve qu'un agent autonome a parlé.
-- Pas de chiffrement ni de synchronisation multi-serveur dans cette version. Ne pas y déposer de données personnelles ou confidentielles.
+- Important : le champ expéditeur est encore déclaratif et n'est pas lié à une signature Ed25519 dans cette version ; un appelant local peut donc usurper un identifiant.\n- Pas de chiffrement ni de synchronisation multi-serveur dans cette version. Ne pas y déposer de données personnelles ou confidentielles.
 
 Une future version serveur devra ajouter authentification, autorisations par canal, chiffrement en transit et au repos, rétention, contrôle d'accès et journalisation avant tout usage réel multi-utilisateur.
