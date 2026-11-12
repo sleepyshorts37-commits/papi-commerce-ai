@@ -18,27 +18,40 @@ SENSITIVE_KEY = re.compile(r"(password|passwd|secret|token|otp|pin|cvv|card|cred
 REQUIRED = {"event_id", "occurred_at", "actor", "action", "entity_type", "entity_id", "details"}
 CHAIN_FIELDS = {"previous_hash", "event_hash"}
 GENESIS_HASH = "0" * 64
+MAX_DETAIL_DEPTH = 8
+MAX_CONTAINER_ITEMS = 100
+MAX_EVENT_BYTES = 64 * 1024
+MAX_INTEGER_BITS = 63
 
 
 class AuditError(ValueError):
     """Événement d'audit invalide ou dangereux."""
 
 
-def _check_safe(value: Any, path: str = "details") -> None:
+def _check_safe(value: Any, path: str = "details", depth: int = 0) -> None:
+    if depth > MAX_DETAIL_DEPTH:
+        raise AuditError(f"Nesting trop profond: {path}")
     if isinstance(value, dict):
+        if len(value) > MAX_CONTAINER_ITEMS:
+            raise AuditError(f"Trop de champs: {path}")
         for key, child in value.items():
             if not isinstance(key, str) or SENSITIVE_KEY.search(key):
                 raise AuditError(f"Champ potentiellement sensible interdit: {path}.{key}")
-            _check_safe(child, f"{path}.{key}")
+            _check_safe(child, f"{path}.{key}", depth + 1)
     elif isinstance(value, list):
+        if len(value) > MAX_CONTAINER_ITEMS:
+            raise AuditError(f"Trop d’éléments: {path}")
         for index, child in enumerate(value):
-            _check_safe(child, f"{path}[{index}]")
+            _check_safe(child, f"{path}[{index}]", depth + 1)
     elif isinstance(value, float):
         if not math.isfinite(value):
             raise AuditError(f"Valeur numérique non finie interdite: {path}")
     elif isinstance(value, str):
         if len(value) > 500:
             raise AuditError(f"Texte trop long: {path}")
+    elif isinstance(value, int) and not isinstance(value, bool):
+        if value.bit_length() > MAX_INTEGER_BITS:
+            raise AuditError(f"Entier trop grand: {path}")
     elif value is not None and not isinstance(value, (bool, int, float)):
         raise AuditError(f"Type non autorisé: {path}")
 
@@ -69,6 +82,9 @@ def validate_event(event: dict[str, Any]) -> None:
     if not isinstance(event["details"], dict):
         raise AuditError("details doit être un objet.")
     _check_safe(event["details"])
+    encoded_size = len(json.dumps(event, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8"))
+    if encoded_size > MAX_EVENT_BYTES:
+        raise AuditError(f"Événement trop volumineux: maximum {MAX_EVENT_BYTES} octets.")
     if CHAIN_FIELDS <= event.keys():
         for field in CHAIN_FIELDS:
             value = event[field]
