@@ -8,6 +8,7 @@ import json
 import math
 import os
 import re
+import stat
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -80,11 +81,26 @@ def _event_digest(event: dict[str, Any], previous_hash: str) -> str:
     return hashlib.sha256((previous_hash + canonical).encode("utf-8")).hexdigest()
 
 
+def _open_regular_file(path: Path, flags: int, mode: int = 0o600) -> int:
+    """Ouvre un fichier régulier sans suivre de lien symbolique."""
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    if nofollow is None:
+        raise AuditError("La plateforme ne permet pas de refuser les liens symboliques.")
+    descriptor = os.open(path, flags | nofollow, mode)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise AuditError("Le journal et son verrou doivent être des fichiers réguliers.")
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 @contextmanager
 def _journal_lock(path: Path) -> Iterator[None]:
     """Verrou inter-processus POSIX couvrant lecture, déduplication et ajout."""
     lock_path = path.with_name(path.name + ".lock")
-    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    descriptor = _open_regular_file(lock_path, os.O_CREAT | os.O_RDWR)
     try:
         fcntl.flock(descriptor, fcntl.LOCK_EX)
         yield
@@ -153,7 +169,7 @@ def append_event(event: dict[str, Any], path: Path) -> bool:
         record = {**event, "previous_hash": previous_hash}
         record["event_hash"] = _event_digest(event, previous_hash)
         payload = (json.dumps(record, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        descriptor = _open_regular_file(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
         try:
             written = 0
             while written < len(payload):
