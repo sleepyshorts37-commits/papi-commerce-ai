@@ -20,6 +20,7 @@ from .agent_messaging import build_message_center
 from .task_delegation import build_delegation_center
 from .agent_workflows import build_workflow_center
 from .agent_memory import build_memory_center
+from .agent_learning import build_agent_learning
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -104,6 +105,7 @@ def build_command_center(
     delegations = build_delegation_center(events, identity_registry)
     workflows = build_workflow_center(events, identity_registry, agents)
     memories = build_memory_center(events, identity_registry)
+    learning = build_agent_learning(agents, events, valid_tasks)
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -148,6 +150,7 @@ def build_command_center(
         "task_delegation_center": delegations,
         "agent_workflow_center": workflows,
         "agent_memory_center": memories,
+        "agent_learning_engine": learning,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -180,6 +183,9 @@ def build_command_center(
             "workflow_steps_assigned": 0,
             "memory_writes_performed": 0,
             "memory_shares_performed": 0,
+            "learning_records_written": 0,
+            "automatic_training_runs": 0,
+            "agent_behavior_changes": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
         },
