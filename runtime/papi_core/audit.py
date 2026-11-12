@@ -86,7 +86,7 @@ def _open_regular_file(path: Path, flags: int, mode: int = 0o600) -> int:
     nofollow = getattr(os, "O_NOFOLLOW", None)
     if nofollow is None:
         raise AuditError("La plateforme ne permet pas de refuser les liens symboliques.")
-    descriptor = os.open(path, flags | nofollow, mode)
+    descriptor = os.open(path, flags | nofollow | getattr(os, "O_NONBLOCK", 0), mode)
     try:
         if not stat.S_ISREG(os.fstat(descriptor).st_mode):
             raise AuditError("Le journal et son verrou doivent être des fichiers réguliers.")
