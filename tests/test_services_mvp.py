@@ -14,8 +14,12 @@ class ServicesMvpTests(unittest.TestCase):
         args.update(changes)
         return analyze_services(**args)
 
-    def test_verified_revenue_counted(self):
-        self.assertEqual(self.report()["revenue"]["recognized_xof"], 15000)
+    def test_provider_claim_is_not_authenticated_revenue(self):
+        revenue = self.report()["revenue"]
+        self.assertEqual(revenue["recognized_xof"], 0)
+        self.assertEqual(revenue["verified_payment_count"], 0)
+        self.assertEqual(revenue["provider_attested_xof"], 15000)
+        self.assertEqual(revenue["unverified_declared_xof"], 15000)
 
     def test_declared_payment_not_revenue(self):
         p = dict(self.payments[0], status="declared_paid")
