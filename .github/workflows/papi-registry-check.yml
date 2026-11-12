@@ -2,7 +2,7 @@ name: PAPI registry validation
 
 on:
   push:
-    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1, feature/papi-task-routing-0.3]
+    branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1, feature/papi-task-routing-0.3, feature/papi-agent-registry-1.67]
   pull_request:
     branches: [main, feature/papi-chat-validation-hardening, feature/papi-chat-permissions, feature/papi-agent-identity-cards, feature/papi-task-assignment-0.1, feature/papi-task-routing-0.3]
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
           PY
       - name: Validate all agent identity cards
         run: PYTHONPATH=runtime python scripts/validate_agent_identities.py
-      - name: Check task registry structure
+      - name: Validate global agent name uniqueness\n        run: PYTHONPATH=runtime python scripts/validate_agent_name_registry.py\n      - name: Test agent name collision guard\n        run: PYTHONPATH=runtime python -m unittest tests.test_agent_name_registry\n      - name: Check task registry structure
         run: |
           python - <<'PY'
           import json
