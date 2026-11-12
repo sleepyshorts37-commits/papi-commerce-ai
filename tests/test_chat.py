@@ -136,6 +136,22 @@ class PapiChatTests(unittest.TestCase):
                             public_registry_path=self.public_registry, replay_db_path=self.replay_db)
         self.assertEqual(own, [])
 
+    def test_recipient_without_receive_permission_is_rejected(self):
+        data = json.loads(self.agents.read_text(encoding="utf-8"))
+        data["agents"][1]["permissions"].remove("chat.receive")
+        self.agents.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(ChatError):
+            self.send(sender="astou", recipient="marietou", subject="Test", body="Refus attendu")
+
+    def test_reader_without_read_permission_is_rejected(self):
+        data = json.loads(self.agents.read_text(encoding="utf-8"))
+        data["agents"][0]["permissions"].remove("chat.read")
+        self.agents.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(ChatError):
+            read_messages(reader="astou", private_key_path=self.astou_key,
+                          path=self.messages, agents_path=self.agents,
+                          public_registry_path=self.public_registry, replay_db_path=self.replay_db)
+
     def test_inactive_agent_cannot_send(self):
         data = json.loads(self.agents.read_text(encoding="utf-8"))
         data["agents"][0]["status"] = "planned"
