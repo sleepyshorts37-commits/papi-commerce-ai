@@ -21,6 +21,7 @@ from .task_delegation import build_delegation_center
 from .agent_workflows import build_workflow_center
 from .agent_memory import build_memory_center
 from .agent_learning import build_agent_learning
+from .quality_control import build_quality_control
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -106,6 +107,7 @@ def build_command_center(
     workflows = build_workflow_center(events, identity_registry, agents)
     memories = build_memory_center(events, identity_registry)
     learning = build_agent_learning(agents, events, valid_tasks)
+    quality_control = build_quality_control(valid_tasks, events)
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -151,6 +153,7 @@ def build_command_center(
         "agent_workflow_center": workflows,
         "agent_memory_center": memories,
         "agent_learning_engine": learning,
+        "quality_control_engine": quality_control,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -186,6 +189,8 @@ def build_command_center(
             "learning_records_written": 0,
             "automatic_training_runs": 0,
             "agent_behavior_changes": 0,
+            "quality_reviews_created": 0,
+            "quality_tasks_changed": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
         },
