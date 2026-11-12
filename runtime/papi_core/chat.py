@@ -14,8 +14,8 @@ from .registry import AGENTS_FILE, load_agents
 CHAT_FILE = Path(__file__).resolve().parents[2] / "data" / "chat" / "messages.jsonl"
 SECRET_PATTERN = re.compile(
     r"(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
-    r"otp|pin|cvv|authorization)\s*[:=]\s*\S+|"
-    r"\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\b"
+    r"otp|pin|cvv|authorization)\\s*[:=]\\s*\\S+|"
+    r"\\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\\b"
 )
 
 
@@ -33,28 +33,35 @@ def validate_message(message: dict[str, Any], agents_path: Path = AGENTS_FILE) -
     required = {"message_id", "sent_at", "sender", "recipient", "subject", "body", "message_type"}
     if set(message) != required:
         raise ChatError("Structure du message invalide.")
+
+    # Check types before set membership or string operations: untrusted JSON must
+    # produce a controlled ChatError, never leak TypeError/AttributeError.
+    for field in ("message_id", "sent_at", "sender", "recipient", "subject", "body", "message_type"):
+        if not isinstance(message[field], str):
+            raise ChatError(f"Le champ {field} doit être une chaîne de caractères.")
+
     allowed = _allowed_ids(agents_path)
     if message["sender"] not in allowed:
         raise ChatError("Expéditeur inconnu.")
     recipient = message["recipient"]
     if recipient != "all" and recipient not in allowed:
         raise ChatError("Destinataire inconnu.")
-    if not isinstance(message["subject"], str) or not 1 <= len(message["subject"].strip()) <= 120:
+    if not 1 <= len(message["subject"].strip()) <= 120:
         raise ChatError("Le sujet doit contenir entre 1 et 120 caractères.")
-    if not isinstance(message["body"], str) or not 1 <= len(message["body"].strip()) <= 2000:
+    if not 1 <= len(message["body"].strip()) <= 2000:
         raise ChatError("Le corps doit contenir entre 1 et 2000 caractères.")
-    if SECRET_PATTERN.search(message["subject"] + "\n" + message["body"]):
+    if SECRET_PATTERN.search(message["subject"] + "\\n" + message["body"]):
         raise ChatError("Contenu ressemblant à un secret d'authentification interdit.")
     if message["message_type"] not in {"info", "task", "alert", "report"}:
         raise ChatError("Type de message invalide.")
-    if not isinstance(message["sent_at"], str):
-        raise ChatError("sent_at doit être une date ISO 8601.")
-    try:
-        datetime.fromisoformat(message["sent_at"].replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise ChatError("sent_at invalide.") from exc
-    if not isinstance(message["message_id"], str) or not message["message_id"].startswith("MSG-"):
+    if not message["message_id"].startswith("MSG-") or len(message["message_id"]) != 36:
         raise ChatError("Identifiant de message invalide.")
+    try:
+        parsed = datetime.fromisoformat(message["sent_at"].replace("Z", "+00:00"))
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError("timezone absente")
+    except ValueError as exc:
+        raise ChatError("sent_at doit être une date ISO 8601 avec fuseau horaire.") from exc
 
 
 def send_message(
@@ -75,7 +82,7 @@ def send_message(
     validate_message(message, agents_path)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = (json.dumps(message, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
+    payload = (json.dumps(message, ensure_ascii=False, sort_keys=True) + "\\n").encode("utf-8")
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     try:
         os.write(descriptor, payload)
@@ -89,10 +96,10 @@ def read_messages(
     path: Path = CHAT_FILE, agents_path: Path = AGENTS_FILE,
 ) -> list[dict[str, Any]]:
     """Lit les messages locaux destinés à un agent ou diffusés à tous."""
-    if not isinstance(limit, int) or not 1 <= limit <= 200:
+    if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 200:
         raise ChatError("limit doit être compris entre 1 et 200.")
     allowed = _allowed_ids(agents_path)
-    if recipient is not None and recipient not in allowed:
+    if recipient is not None and (not isinstance(recipient, str) or recipient not in allowed):
         raise ChatError("Destinataire inconnu.")
     path = Path(path)
     if not path.exists():
