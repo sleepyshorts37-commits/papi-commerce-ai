@@ -46,15 +46,15 @@ class SupabaseStore:
             raise StoreError(f"Échec de communication avec Supabase ({type(exc).__name__}).") from exc
 
     def check_readiness(self) -> dict[str, Any]:
-        """Teste explicitement l'accès en lecture aux deux tables essentielles."""
-        checks = {}
+        """Vérifie les tables et la RPC de snapshot, sans modifier les données."""
+        checks: dict[str, Any] = {}
         probes = {
-            "papi_tasks": "papi_tasks?select=id&limit=1",
-            "papi_audit_events": "papi_audit_events?select=event_id&limit=1",
+            "papi_tasks": ("GET", "papi_tasks?select=id&limit=1", None),
+            "papi_audit_events": ("GET", "papi_audit_events?select=event_id&limit=1", None),
         }
-        for name, query in probes.items():
+        for name, (method, path, payload) in probes.items():
             try:
-                rows = self._request("GET", query)
+                rows = self._request(method, path, payload)
                 if not isinstance(rows, list):
                     raise StoreError("Réponse inattendue.")
                 checks[name] = {"status": "ok", "readable": True}
@@ -64,7 +64,40 @@ class SupabaseStore:
                     "readable": False,
                     "message": "Table inaccessible, absente ou droits de lecture insuffisants.",
                 }
-        ready = all(item["readable"] for item in checks.values())
+
+        try:
+            snapshot = self._request(
+                "POST",
+                "rpc/papi_get_dashboard_snapshot",
+                {"p_task_limit": 1, "p_event_limit": 1},
+            )
+            rpc_ok = (
+                isinstance(snapshot, dict)
+                and isinstance(snapshot.get("tasks"), list)
+                and isinstance(snapshot.get("audit_events"), list)
+                and isinstance(snapshot.get("tasks_truncated"), bool)
+                and isinstance(snapshot.get("audit_events_truncated"), bool)
+                and snapshot.get("snapshot_consistency") == "single_statement_snapshot"
+            )
+            if not rpc_ok:
+                raise StoreError("RPC absente ou réponse invalide.")
+            checks["papi_get_dashboard_snapshot"] = {
+                "status": "ok",
+                "callable": True,
+                "snapshot_consistency": "single_statement_snapshot",
+            }
+        except StoreError:
+            checks["papi_get_dashboard_snapshot"] = {
+                "status": "unavailable",
+                "callable": False,
+                "message": "Fonction de snapshot absente, inaccessible ou réponse invalide.",
+            }
+
+        ready = (
+            checks["papi_tasks"]["readable"]
+            and checks["papi_audit_events"]["readable"]
+            and checks["papi_get_dashboard_snapshot"]["callable"]
+        )
         return {
             "status": "ready" if ready else "incomplete",
             "network_test_performed": True,
@@ -72,9 +105,9 @@ class SupabaseStore:
             "writes_performed": False,
             "secrets_displayed": False,
             "message": (
-                "Les deux tables essentielles répondent aux requêtes de lecture."
+                "Les tables et la fonction de snapshot répondent aux contrôles en lecture seule."
                 if ready else
-                "Vérifier le projet, le schéma SQL, la clé serveur et les droits Supabase."
+                "Vérifier le schéma SQL, la migration du snapshot, la clé serveur et les droits Supabase."
             ),
         }
 
