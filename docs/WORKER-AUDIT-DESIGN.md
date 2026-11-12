@@ -34,6 +34,8 @@ The helper in `runtime/papi_core/audit_checkpoint.py` exports a versioned checkp
 
 Before production use for high-assurance evidence, connect this helper to an independently controlled checkpoint mechanism (for example, periodically publish the latest sequence number and event hash to a separately permissioned append-only service). Protect checkpoint credentials outside the worker process, authenticate retrieved checkpoints, enforce monotonic checkpoint sequence numbers at the external service, define recovery and verification procedures, and alert on missing or rolled-back checkpoints. This is a release blocker for any requirement that assumes resistance to a privileged local file attacker.
 
+Audit input is bounded before persistence: nested details are limited to depth 8, each list/object to 100 entries, individual strings to 500 characters, integers to 63 bits, and each serialized event to 64 KiB. These limits reduce memory/CPU abuse and prevent a single event from consuming unbounded journal space.
+
 A truncated or malformed record is fail-closed: readers and subsequent appends must reject the journal rather than silently discard or repair the tail.
 
 ## Audit failure policy
