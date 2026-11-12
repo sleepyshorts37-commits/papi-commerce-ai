@@ -19,8 +19,8 @@ from .registry import AGENTS_FILE, load_agents
 CHAT_FILE = Path(__file__).resolve().parents[2] / "data" / "chat" / "messages.jsonl"
 SECRET_PATTERN = re.compile(
     r"(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
-    r"otp|pin|cvv|authorization)\\s*[:=]\\s*\\S+|"
-    r"\\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\\b"
+    r"otp|pin|cvv|authorization)\s*[:=]\s*\S+|"
+    r"\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\b"
 )
 MESSAGE_ID_PATTERN = re.compile(r"^MSG-[A-F0-9]{32}$")
 
@@ -52,7 +52,7 @@ def _validate_message_fields(message: dict[str, Any], agents_path: Path) -> None
         raise ChatError("Le sujet doit contenir entre 1 et 120 caractères.")
     if not 1 <= len(message["body"].strip()) <= 2000:
         raise ChatError("Le corps doit contenir entre 1 et 2000 caractères.")
-    if SECRET_PATTERN.search(message["subject"] + "\\n" + message["body"]):
+    if SECRET_PATTERN.search(message["subject"] + "\n" + message["body"]):
         raise ChatError("Contenu ressemblant à un secret d'authentification interdit.")
     if message["message_type"] not in {"info", "task", "alert", "report"}:
         raise ChatError("Type de message invalide.")
@@ -110,7 +110,7 @@ def send_message(
     record = {"message": message, "auth": envelope}
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = (json.dumps(record, ensure_ascii=False, sort_keys=True) + "\\n").encode("utf-8")
+    payload = (json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     try:
         os.write(descriptor, payload)
