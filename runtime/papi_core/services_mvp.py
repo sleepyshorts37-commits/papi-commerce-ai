@@ -80,7 +80,7 @@ def _payment(raw: Any, work_ids: set[str]) -> dict:
     elif verified_at: verified=_date(verified_at,"verified_at")
     return {"payment_id":pid,"work_id":wid,"amount_xof":amount,"currency":"XOF","status":x["status"],
             "evidence_ref":evidence,"verified_by":verifier,"verified_at":verified.isoformat() if verified else None,
-            "recognized_revenue_xof":amount if x["status"]=="provider_verified" else 0}
+            "recognized_revenue_xof":0, "provider_attested_xof":amount if x["status"]=="provider_verified" else 0}
 
 def analyze_services(requests: list[dict], quotes: list[dict], work_items: list[dict],
                      payments: list[dict], *, as_of: str|None=None) -> dict:
@@ -122,7 +122,8 @@ def analyze_services(requests: list[dict], quotes: list[dict], work_items: list[
         "quotes_accepted":sum(x["status"]=="accepted" for x in clean[1]),
         "work_in_progress":sum(x["status"] in {"not_started","in_progress","waiting_client"} for x in clean[2]),
         "work_delivered":sum(x["status"]=="delivered" for x in clean[2])},
-      "revenue":{"recognized_xof":revenue,"verified_payment_count":sum(x["status"]=="provider_verified" for x in clean[3]),
-        "unverified_declared_xof":sum(x["amount_xof"] for x in clean[3] if x["status"]=="declared_paid"),
-        "note":"Les attestations provider_verified doivent être contrôlées sur la source du prestataire."},
+      "revenue":{"recognized_xof":0,"verified_payment_count":0,
+        "provider_attested_xof":sum(x["provider_attested_xof"] for x in clean[3]),
+        "unverified_declared_xof":sum(x["amount_xof"] for x in clean[3] if x["status"] in {"declared_paid","provider_verified"}),
+        "note":"Aucun paiement n’est reconnu comme chiffre d’affaires sans événement authentifié directement par le prestataire. provider_verified est une attestation déclarative non authentifiée."},
       "rejected":rejected,"safety":{"read_only":True,"external_actions":False,"financial_actions":False,"budget_xof":0,"human_approval_required":True}}
