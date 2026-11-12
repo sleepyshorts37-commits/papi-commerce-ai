@@ -1,0 +1,918 @@
+{
+  "schema_version": "1.0.0",
+  "registry_name": "PAPI COMMERCE AI — Central Agent Registry",
+  "registry_status": "planned",
+  "naming_policy": {
+    "global_unique_given_name": true,
+    "global_unique_full_name": true,
+    "applies_across_departments": true,
+    "applies_to_international_names": true,
+    "normalize_case_accents_spaces_hyphens_punctuation": true,
+    "check_aliases_nicknames_transliterations": true,
+    "block_on_collision": true,
+    "human_review_required_for_legacy_renames": true
+  },
+  "budget_xof": 0,
+  "agents": [
+    {
+      "agent_id": "PAPI-001",
+      "department": "Direction générale et gouvernance",
+      "role": "Président / propriétaire — arbitrages réservés",
+      "reports_to": "human governance",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-002",
+      "department": "Direction générale et gouvernance",
+      "role": "Direction générale — coordination opérationnelle",
+      "reports_to": "PAPI-001",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-003",
+      "department": "Direction générale et gouvernance",
+      "role": "Intelligence centrale et synthèse stratégique",
+      "reports_to": "PAPI-001",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-004",
+      "department": "Direction générale et gouvernance",
+      "role": "Architecture et expansion des agents (Agent Factory)",
+      "reports_to": "PAPI-002",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-005",
+      "department": "Direction générale et gouvernance",
+      "role": "Audit indépendant et contrôle qualité",
+      "reports_to": "PAPI-001",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-006",
+      "department": "PAPI OPPORTUNITY",
+      "role": "Scout des opportunités commerciales",
+      "reports_to": "PAPI-004",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-007",
+      "department": "PAPI OPPORTUNITY",
+      "role": "Scout des métiers et compétences",
+      "reports_to": "PAPI-004",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-008",
+      "department": "PAPI OPPORTUNITY",
+      "role": "Analyste de marché et demande client",
+      "reports_to": "PAPI-006",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-009",
+      "department": "PAPI OPPORTUNITY",
+      "role": "Veille concurrentielle et benchmarking",
+      "reports_to": "PAPI-006",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-010",
+      "department": "PAPI OPPORTUNITY",
+      "role": "Qualification des opportunités et scoring",
+      "reports_to": "PAPI-006",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-011",
+      "department": "PAPI OPPORTUNITY",
+      "role": "Études de faisabilité et modèles économiques",
+      "reports_to": "PAPI-006",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-012",
+      "department": "PAPI SERVICES",
+      "role": "Responsable des prestations numériques",
+      "reports_to": "PAPI-002",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-013",
+      "department": "PAPI SERVICES",
+      "role": "Rédaction et édition professionnelle",
+      "reports_to": "PAPI-012",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-014",
+      "department": "PAPI SERVICES",
+      "role": "Traduction et localisation",
+      "reports_to": "PAPI-012",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-015",
+      "department": "PAPI SERVICES",
+      "role": "Création de visuels et supports",
+      "reports_to": "PAPI-012",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-016",
+      "department": "PAPI SERVICES",
+      "role": "Présentations et documents professionnels",
+      "reports_to": "PAPI-012",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-017",
+      "department": "PAPI SERVICES",
+      "role": "Recherche documentaire et synthèse",
+      "reports_to": "PAPI-012",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-018",
+      "department": "PAPI SERVICES",
+      "role": "Analyse approfondie de documents",
+      "reports_to": "PAPI-012",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-019",
+      "department": "PAPI SERVICES",
+      "role": "Contrôle qualité des livrables clients",
+      "reports_to": "PAPI-005",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-020",
+      "department": "PAPI MARKET",
+      "role": "Responsable catalogue et offre produits",
+      "reports_to": "PAPI-002",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-021",
+      "department": "PAPI MARKET",
+      "role": "Sourcing et vérification fournisseurs",
+      "reports_to": "PAPI-020",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-022",
+      "department": "PAPI MARKET",
+      "role": "Analyse prix, coûts et marges",
+      "reports_to": "PAPI-020",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-023",
+      "department": "PAPI MARKET",
+      "role": "Gestion catalogue et fiches produits",
+      "reports_to": "PAPI-020",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-024",
+      "department": "PAPI MARKET",
+      "role": "Gestion commandes et suivi de statut",
+      "reports_to": "PAPI-020",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-025",
+      "department": "PAPI MARKET",
+      "role": "Service client et demandes produits",
+      "reports_to": "PAPI-020",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-026",
+      "department": "PAPI MARKET",
+      "role": "Retours, réclamations et satisfaction",
+      "reports_to": "PAPI-020",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-027",
+      "department": "PAPI DROPSHIPPING",
+      "role": "Responsable opérations dropshipping",
+      "reports_to": "PAPI-002",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-028",
+      "department": "PAPI DROPSHIPPING",
+      "role": "Validation fournisseur et fiabilité",
+      "reports_to": "PAPI-027",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-029",
+      "department": "PAPI DROPSHIPPING",
+      "role": "Calculateur coûts, marge et trésorerie",
+      "reports_to": "PAPI-027",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-030",
+      "department": "PAPI DROPSHIPPING",
+      "role": "Suivi commandes et délais logistiques",
+      "reports_to": "PAPI-027",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-031",
+      "department": "PAPI DROPSHIPPING",
+      "role": "Support client et gestion des incidents",
+      "reports_to": "PAPI-027",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-032",
+      "department": "PAPI AFFILIATION",
+      "role": "Responsable programmes et conformité affiliation",
+      "reports_to": "PAPI-002",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-033",
+      "department": "PAPI AFFILIATION",
+      "role": "Recherche et vérification des programmes",
+      "reports_to": "PAPI-032",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-034",
+      "department": "PAPI AFFILIATION",
+      "role": "Stratégie contenus et campagnes affiliées",
+      "reports_to": "PAPI-032",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-035",
+      "department": "PAPI AFFILIATION",
+      "role": "Suivi conversions et rapprochement commissions",
+      "reports_to": "PAPI-032",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-036",
+      "department": "PAPI BUSINESS PARTNERS",
+      "role": "Responsable partenariats et apport d'affaires",
+      "reports_to": "PAPI-002",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-037",
+      "department": "PAPI BUSINESS PARTNERS",
+      "role": "Prospection entreprises et qualification B2B",
+      "reports_to": "PAPI-036",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-038",
+      "department": "PAPI BUSINESS PARTNERS",
+      "role": "Gestion des partenaires et suivi des leads",
+      "reports_to": "PAPI-036",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-039",
+      "department": "PAPI BUSINESS PARTNERS",
+      "role": "Analyse des offres, commissions et accords",
+      "reports_to": "PAPI-036",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-040",
+      "department": "PAPI COMMUNITY & MARKETING",
+      "role": "Responsable communication et communauté",
+      "reports_to": "PAPI-002",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-041",
+      "department": "PAPI COMMUNITY & MARKETING",
+      "role": "Gestion communauté et modération",
+      "reports_to": "PAPI-040",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-042",
+      "department": "PAPI COMMUNITY & MARKETING",
+      "role": "Réseaux sociaux et calendrier éditorial",
+      "reports_to": "PAPI-040",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-043",
+      "department": "PAPI COMMUNITY & MARKETING",
+      "role": "Direction créative et identité visuelle",
+      "reports_to": "PAPI-040",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-044",
+      "department": "PAPI COMMUNITY & MARKETING",
+      "role": "Prospection e-mail et suivi CRM",
+      "reports_to": "PAPI-036",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-045",
+      "department": "PAPI FINANCE, RISQUES & ADMINISTRATION",
+      "role": "Responsable finance et administration",
+      "reports_to": "PAPI-002",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-046",
+      "department": "PAPI FINANCE, RISQUES & ADMINISTRATION",
+      "role": "Comptabilité, rapprochement et preuves",
+      "reports_to": "PAPI-045",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-047",
+      "department": "PAPI FINANCE, RISQUES & ADMINISTRATION",
+      "role": "Risques, conformité et contrôle des permissions",
+      "reports_to": "PAPI-005",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-048",
+      "department": "PAPI TECH & AUTOMATISATION",
+      "role": "Responsable architecture technique",
+      "reports_to": "PAPI-004",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-049",
+      "department": "PAPI TECH & AUTOMATISATION",
+      "role": "Fiabilité, surveillance et gestion incidents",
+      "reports_to": "PAPI-048",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    },
+    {
+      "agent_id": "PAPI-050",
+      "department": "PAPI TECH & AUTOMATISATION",
+      "role": "Automatisation, intégrations et outillage",
+      "reports_to": "PAPI-048",
+      "display_name": null,
+      "full_name": null,
+      "identity_status": "pending_global_uniqueness_audit",
+      "lifecycle_status": "planned",
+      "permissions": [],
+      "prohibited_actions": [
+        "external_contact_without_explicit_authorization",
+        "publishing_without_explicit_authorization",
+        "financial_transactions",
+        "purchases_or_paid_subscriptions_without_explicit_authorization"
+      ],
+      "budget_xof": 0
+    }
+  ]
+}
