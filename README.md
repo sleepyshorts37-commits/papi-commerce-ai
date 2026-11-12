@@ -40,6 +40,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Organisation](docs/ORGANISATION.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
+- [Plan d'intégration de la plateforme IA](docs/AI-PLATFORM-INTEGRATION.md)
 - [Plan de réalisation](docs/ROADMAP.md)
 - [Exploitation et gestion des tâches](docs/OPERATIONS.md)
 - [Noyau de coordination](docs/CORE-ENGINE.md)
