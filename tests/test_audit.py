@@ -44,6 +44,16 @@ class AuditHashChainTests(unittest.TestCase):
         with self.assertRaises(AuditError):
             read_events(self.path)
 
+    def test_truncated_final_record_fails_closed(self):
+        append_event(self.event("evt-1"), self.path)
+        with self.path.open("ab") as journal:
+            journal.write(b'{"event_id":"partial')
+            journal.flush()
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+        with self.assertRaises(AuditError):
+            append_event(self.event("evt-2"), self.path)
+
     def test_removed_middle_event_is_detected(self):
         append_event(self.event("evt-1"), self.path)
         append_event(self.event("evt-2"), self.path)
