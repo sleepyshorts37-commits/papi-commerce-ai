@@ -432,12 +432,12 @@ class WorkerTests(unittest.TestCase):
         worker = self.make_worker()
         job = {"id": "JOB-LEASE-RENEW-FAIL", "task_id": "TASK-1",
                "handler": "internal.echo", "payload": {}, "lease_token": "lease-renew"}
-        with patch.object(worker.queue, "claim", return_value=job), \\
+        with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False,
                           "owner_agent": "agent-test"}
-             }), \\
-             patch.object(worker.queue, "renew", return_value=False), \\
+             }), \
+             patch.object(worker.queue, "renew", return_value=False), \
              patch("papi_core.worker.execute_authorized_job") as execute:
             result = worker.run_once()
         self.assertEqual(result["status"], "lease_lost")
