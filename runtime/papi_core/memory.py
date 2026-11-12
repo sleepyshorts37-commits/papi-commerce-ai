@@ -116,6 +116,8 @@ def _validate_event(event: Any, line_number: int) -> None:
             datetime.fromisoformat(event["created_at"].replace("Z", "+00:00"))
         except (ValueError, TypeError, AttributeError):
             raise MemoryError(f"Identifiant ou date invalide ligne {line_number}.")
+        if SECRET_PATTERN.search(event["actor"] + event["reason"]):
+            raise MemoryError(f"Contenu sensible ligne {line_number}.")
     else:
         raise MemoryError(f"Type d'événement invalide ligne {line_number}.")
 
@@ -137,6 +139,23 @@ def _read_events(path: Path) -> list[dict[str, Any]]:
             raise MemoryError(f"Événement mémoire dupliqué ligne {number}.")
         seen.add(event["event_id"])
         events.append(event)
+
+    # Les événements de clôture doivent référencer une mémoire déjà créée.
+    memory_ids = set()
+    superseded_ids = set()
+    for number, event in enumerate(events, 1):
+        if event["event_type"] == "remember":
+            memory_id = event["memory_id"]
+            if memory_id in memory_ids:
+                raise MemoryError(f"Identifiant mémoire dupliqué ligne {number}.")
+            memory_ids.add(memory_id)
+        else:
+            target_id = event["target_memory_id"]
+            if target_id not in memory_ids:
+                raise MemoryError(f"Événement supersede orphelin ligne {number}.")
+            if target_id in superseded_ids:
+                raise MemoryError(f"Événement supersede dupliqué ligne {number}.")
+            superseded_ids.add(target_id)
     return events
 
 
