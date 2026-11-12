@@ -1,4 +1,4 @@
-"""Valide les 40 cartes d'identité documentaires PAPI."""
+"""Valide toutes les cartes d'identité documentaires PAPI."""
 import json
 from pathlib import Path
 
