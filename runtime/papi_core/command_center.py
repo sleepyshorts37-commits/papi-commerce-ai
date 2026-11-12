@@ -17,6 +17,7 @@ from .incident_center import build_incident_center
 from .approval_center import build_approval_center
 from .identity_security import validate_identity_registry
 from .agent_messaging import build_message_center
+from .task_delegation import build_delegation_center
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -98,6 +99,7 @@ def build_command_center(
     identity_registry = load_json(identities_path) if identities_path is not None else {"identities": []}
     identity_validation = validate_identity_registry(identity_registry)
     messages = build_message_center(events, identity_registry)
+    delegations = build_delegation_center(events, identity_registry)
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -139,6 +141,7 @@ def build_command_center(
         "approval_center": approvals,
         "agent_performance": performance,
         "agent_message_center": messages,
+        "task_delegation_center": delegations,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -165,6 +168,8 @@ def build_command_center(
             "approval_actions_executed": 0,
             "message_writes_performed": 0,
             "messages_delivered": 0,
+            "task_delegation_writes_performed": 0,
+            "task_assignments_executed": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
         },
