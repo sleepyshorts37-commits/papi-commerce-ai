@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from papi_core.identity_ed25519 import (
-    Ed25519IdentityError, provision_ed25519_agent, revoke_ed25519_agent,
+    Ed25519IdentityError, _registry_locked, provision_ed25519_agent, revoke_ed25519_agent,
     rotate_ed25519_agent, sign_ed25519_request, verify_ed25519_request,
 )
 
@@ -129,6 +129,15 @@ class Ed25519IdentityTests(unittest.TestCase):
             results = list(pool.map(lambda _: attempt(), range(2)))
         self.assertEqual(results.count("accepted"), 1)
         self.assertEqual(results.count("rejected"), 1)
+
+
+    def test_registry_lock_uses_declared_default_path(self):
+        def operation(registry_path=self.registry):
+            return registry_path
+
+        locked_operation = _registry_locked("registry_path")(operation)
+        self.assertEqual(locked_operation(), self.registry)
+        self.assertTrue(self.registry.with_name(self.registry.name + ".lock").is_file())
 
 
 if __name__ == "__main__":
