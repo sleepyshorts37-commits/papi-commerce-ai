@@ -80,3 +80,5 @@ def _validate_checkpoint_shape(checkpoint: dict[str, Any]) -> None:
         raise AuditError("Séquence de checkpoint invalide.")
     if not isinstance(checkpoint["head_hash"], str) or not re.fullmatch(r"[0-9a-f]{64}", checkpoint["head_hash"]):
         raise AuditError("Hash de checkpoint invalide.")
+    if checkpoint["sequence"] == 0 and checkpoint["head_hash"] != GENESIS_HASH:
+        raise AuditError("Un checkpoint vide doit utiliser le hash genesis.")
