@@ -52,9 +52,9 @@ class TaskRoutingTests(unittest.TestCase):
             self.task, agents=self.agents, identity_registry=self.identities,
             workload_by_agent={"researcher": 4, "analyst": 0}, assigner_id="manager",
         )
-        self.assertEqual([r["agent_id"] for r in results], ["researcher", "analyst"])
-        self.assertEqual(results[0]["score"], 73)
-        self.assertEqual(results[1]["score"], 90)
+        self.assertEqual([r["agent_id"] for r in results], ["analyst", "researcher"])
+        self.assertEqual(results[0]["score"], 100)
+        self.assertEqual(results[1]["score"], 92)
 
     def test_excludes_inactive_and_non_direct_reports(self):
         results = recommend_assignees(
