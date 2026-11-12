@@ -108,6 +108,38 @@ class SupabaseStore:
             raise StoreError("La transaction n'a pas retourné une nouvelle version valide.")
         return result
 
+    def assign_task_and_save(
+        self, task_id: str, *, assigner_id: str, assignee_id: str,
+        agents: dict[str, dict[str, Any]], identity_registry: dict[str, Any],
+        expected_version: int,
+    ) -> tuple[dict[str, Any], int]:
+        """Affecte une tâche et son audit dans une transaction PostgreSQL atomique.
+
+        L'appelant doit authentifier cryptographiquement l'acteur avant cet appel.
+        Aucun worker n'est lancé et aucune action externe n'est exécutée.
+        """
+        from .task_assignment import TaskAssignmentError, assign_task
+
+        if not isinstance(expected_version, int) or isinstance(expected_version, bool) or expected_version < 1:
+            raise StoreError("Version attendue invalide.")
+        current = self.get_task(task_id)
+        if not current or current.get("version") != expected_version:
+            raise StoreError("Conflit de version ou tâche introuvable ; relire avant de réessayer.")
+        if not isinstance(current.get("task"), dict) or current["task"].get("id") != task_id:
+            raise StoreError("Enregistrement de tâche incohérent.")
+        try:
+            updated, event = assign_task(
+                current["task"],
+                assigner_id=assigner_id,
+                assignee_id=assignee_id,
+                agents=agents,
+                identity_registry=identity_registry,
+            )
+        except TaskAssignmentError as exc:
+            raise StoreError(f"Affectation refusée : {exc}") from exc
+        version = self.commit_task_change(updated, event, expected_version=expected_version)
+        return updated, version
+
     def transition_and_save(
         self, task_id: str, new_status: str, *, actor: str,
         expected_version: int, reason: str = "", evidence: list[str] | None = None,

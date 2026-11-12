@@ -42,6 +42,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Plan de réalisation](docs/ROADMAP.md)
 - [Exploitation et gestion des tâches](docs/OPERATIONS.md)
+- [Affectation contrôlée des tâches](docs/TASK-ASSIGNMENT.md)
 - [Noyau de coordination](docs/CORE-ENGINE.md)
 - [Orchestrateur consultatif](docs/ORCHESTRATOR.md)
 - [Journal d'audit](docs/AUDIT-MEMORY.md)
