@@ -183,6 +183,7 @@ class AgentAccessTests(unittest.TestCase):
             public_registry=public_registry)
         self.assertTrue(result["identity_authenticated"])
         self.assertEqual(result["identity_algorithm"], "Ed25519")
+        self.assertEqual(result["principal"].agent_id, "agent-a")
 
     def test_shared_ed25519_verifier_is_used_when_injected(self):
         private = provision_ed25519_agent("agent-a", self.root / "shared-private",
@@ -209,6 +210,7 @@ class AgentAccessTests(unittest.TestCase):
         self.assertTrue(result["identity_authenticated"])
         self.assertEqual(result["identity_algorithm"], "Ed25519")
         self.assertEqual(verifier.calls, 1)
+        self.assertEqual(result["principal"].agent_id, "agent-a")
 
     def test_shared_ed25519_verifier_failure_denies_authorization(self):
         private = provision_ed25519_agent("agent-a", self.root / "shared-private-fail",
