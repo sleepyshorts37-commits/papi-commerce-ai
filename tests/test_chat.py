@@ -51,5 +51,41 @@ class PapiChatTests(unittest.TestCase):
             read_messages(limit=201, path=self.messages, agents_path=self.agents)
 
 
+    def test_malformed_types_raise_chat_error_not_type_error(self):
+        from papi_core.chat import validate_message
+        valid = {
+            "message_id": "MSG-" + "A" * 32,
+            "sent_at": "2026-11-12T10:00:00Z",
+            "sender": "astou",
+            "recipient": "marietou",
+            "subject": "Sujet",
+            "body": "Message",
+            "message_type": "info",
+        }
+        for field, value in (("sender", []), ("recipient", {}), ("subject", 4),
+                             ("body", None), ("message_type", []), ("sent_at", 12)):
+            candidate = dict(valid)
+            candidate[field] = value
+            with self.subTest(field=field):
+                with self.assertRaises(ChatError):
+                    validate_message(candidate, self.agents)
+
+    def test_naive_timestamp_and_boolean_limit_are_rejected(self):
+        from papi_core.chat import validate_message
+        message = {
+            "message_id": "MSG-" + "B" * 32,
+            "sent_at": "2026-11-12T10:00:00",
+            "sender": "astou",
+            "recipient": "marietou",
+            "subject": "Sujet",
+            "body": "Message",
+            "message_type": "info",
+        }
+        with self.assertRaises(ChatError):
+            validate_message(message, self.agents)
+        with self.assertRaises(ChatError):
+            read_messages(limit=True, path=self.messages, agents_path=self.agents)
+
+
 if __name__ == "__main__":
     unittest.main()
