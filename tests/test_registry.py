@@ -405,11 +405,16 @@ class WorkerTests(unittest.TestCase):
         worker = self.make_worker()
         job = {"id": "JOB-1", "task_id": "TASK-1", "handler": "internal.echo",
                "payload": {"a": 1}, "lease_token": "lease-1"}
-        with patch.object(worker.queue, "claim", return_value=job), \
-             patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
-             }), \
-             patch.object(worker.queue, "complete", return_value=True) as complete:
+        with (
+            patch.object(worker.queue, "claim", return_value=job),
+            patch.object(worker.queue.store, "get_task", return_value={
+                "task": {"status": "in_progress", "approval_required": False,
+                         "owner_agent": "agent-test"}
+            }),
+            patch.object(worker.queue, "renew", side_effect=[True, False]) as renew,
+            patch.object(worker.queue, "complete") as complete,
+            patch.object(worker.queue, "fail") as fail,
+        ):
             result = worker.run_once()
         self.assertEqual(result["status"], "completed")
         complete.assert_called_once()
