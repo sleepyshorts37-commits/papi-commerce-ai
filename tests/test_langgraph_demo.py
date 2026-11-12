@@ -33,7 +33,7 @@ class LangGraphDemoTests(unittest.TestCase):
         self.assertEqual(calls, [])
 
     def test_checkpoint_preserves_bounded_history_and_allows_retry(self):
-        from langgraph.checkpoint.memory import MemorySaver
+        from langgraph.checkpoint.memory import InMemorySaver
 
         attempts = {"count": 0}
 
@@ -43,7 +43,7 @@ class LangGraphDemoTests(unittest.TestCase):
                 raise RuntimeError("synthetic failure")
             return {"request": request}
 
-        graph = build_readonly_demo_graph(flaky_preview, checkpointer=MemorySaver())
+        graph = build_readonly_demo_graph(flaky_preview, checkpointer=InMemorySaver())
         config = {"configurable": {"thread_id": "synthetic-thread"}}
 
         first = graph.invoke({"request": "premier essai"}, config=config)
