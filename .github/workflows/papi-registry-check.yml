@@ -35,6 +35,8 @@ jobs:
               json.loads(path.read_text(encoding="utf-8"))
               print(f"OK JSON: {path}")
           PY
+      - name: Validate all agent identity cards
+        run: PYTHONPATH=runtime python scripts/validate_agent_identities.py
       - name: Check task registry structure
         run: |
           python - <<'PY'
