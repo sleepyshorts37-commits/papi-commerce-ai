@@ -34,6 +34,7 @@ from .procurement import analyze_procurement
 from .inventory_control import build_inventory_control
 from .order_management import analyze_orders
 from .customer_service import analyze_customer_service
+from .marketing_growth import analyze_marketing_campaigns
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -65,6 +66,8 @@ def build_command_center(
     inventory_target_stock: dict[str, int] | None = None,
     order_records: list[dict[str, Any]] | None = None,
     customer_service_tickets: list[dict[str, Any]] | None = None,
+    marketing_observations: list[dict[str, Any]] | None = None,
+    marketing_monthly_budget_xof: int = 0,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -184,6 +187,7 @@ def build_command_center(
     inventory_control = build_inventory_control(inventory_movements or [], opening_stock=inventory_opening_stock, reorder_points=inventory_reorder_points, target_stock=inventory_target_stock)
     order_management = analyze_orders(order_records or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
     customer_service = analyze_customer_service(customer_service_tickets or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
+    marketing_growth = analyze_marketing_campaigns(marketing_observations or [], monthly_budget_xof=marketing_monthly_budget_xof)
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -241,6 +245,7 @@ def build_command_center(
         "inventory_control": inventory_control,
         "order_management": order_management,
         "customer_service": customer_service,
+        "marketing_growth": marketing_growth,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -323,6 +328,13 @@ def build_command_center(
             "customer_service_tickets_rejected": customer_service["tickets_rejected"],
             "customer_service_drafts_prepared": sum(1 for item in customer_service["tickets"] if item["response_draft"]),
             "customer_service_messages_sent": 0,
+            "marketing_campaigns_received": marketing_growth["campaigns_received"],
+            "marketing_campaigns_analyzed": marketing_growth["campaigns_analyzed"],
+            "marketing_campaigns_rejected": marketing_growth["campaigns_rejected"],
+            "marketing_campaigns_launched": 0,
+            "marketing_posts_published": 0,
+            "marketing_ads_spend_xof": 0,
+            "marketing_external_messages_sent": 0,
             "ledger_writes_performed": 0,
             "transfers_executed": 0,
             "withdrawals_executed": 0,
