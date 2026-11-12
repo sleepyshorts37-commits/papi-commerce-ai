@@ -1,5 +1,7 @@
+import json
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 
 from papi_core.memory import MemoryError, remember_fact, search_memory, supersede_memory
@@ -80,6 +82,36 @@ class SharedMemoryTests(unittest.TestCase):
         event["scope"] = "public"
         self.path.write_text(json.dumps(event) + "\n", encoding="utf-8")
         with self.assertRaises(MemoryError):
+            search_memory(actor="owner", path=self.path)
+
+    def test_orphaned_supersede_event_fails_closed(self):
+        event = {
+            "event_id": str(uuid.uuid4()), "event_type": "supersede",
+            "target_memory_id": str(uuid.uuid4()), "created_at": "2026-01-01T00:00:00Z",
+            "actor": "astou", "reason": "Référence absente.",
+        }
+        self.path.write_text(json.dumps(event) + "\\n", encoding="utf-8")
+        with self.assertRaisesRegex(MemoryError, "orphelin"):
+            search_memory(actor="owner", path=self.path)
+
+    def test_duplicate_supersede_event_fails_closed(self):
+        saved = self.remember()
+        self.assertTrue(supersede_memory(memory_id=saved["memory_id"], actor="astou",
+                                         reason="Première clôture.", path=self.path))
+        events = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
+        duplicate = dict(events[1], event_id=str(uuid.uuid4()))
+        with self.path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(duplicate) + "\\n")
+        with self.assertRaisesRegex(MemoryError, "dupliqué"):
+            search_memory(actor="owner", path=self.path)
+
+    def test_duplicate_memory_id_fails_closed(self):
+        self.remember()
+        self.remember()
+        events = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
+        events[1]["memory_id"] = events[0]["memory_id"]
+        self.path.write_text("\\n".join(json.dumps(event) for event in events) + "\\n", encoding="utf-8")
+        with self.assertRaisesRegex(MemoryError, "Identifiant mémoire dupliqué"):
             search_memory(actor="owner", path=self.path)
 
     def test_invalid_limit_is_rejected(self):
