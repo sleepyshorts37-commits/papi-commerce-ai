@@ -49,7 +49,10 @@ class AuditAnchorContractTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.path = Path(self.temp_dir.name) / "audit.jsonl"
         self.store = FakeCheckpointStore()
-        self.key = b"test-only-signing-key"
+        self.keys = {
+            "test-key-1": b"test-only-signing-key",
+            "test-key-2": b"rotated-test-only-signing-key",
+        }
         self.journal_id = "test-journal-01"
 
     def tearDown(self):
@@ -63,25 +66,26 @@ class AuditAnchorContractTests(unittest.TestCase):
         append_event(event, self.path)
 
     def sign(self, key_id, payload):
-        self.assertEqual(key_id, "test-key-1")
-        return hmac.new(self.key, payload, hashlib.sha256).hexdigest()
+        key = self.keys[key_id]
+        return hmac.new(key, payload, hashlib.sha256).hexdigest()
 
     def verify(self, key_id, payload, signature):
-        if key_id != "test-key-1":
+        key = self.keys.get(key_id)
+        if key is None:
             return False
-        expected = hmac.new(self.key, payload, hashlib.sha256).hexdigest()
+        expected = hmac.new(key, payload, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
 
-    def record(self, previous_digest):
+    def record(self, previous_digest, key_id="test-key-1"):
         unsigned = {
             "schema_version": 1,
             "journal_id": self.journal_id,
             "checkpoint": build_checkpoint(self.path),
             "previous_record_digest": previous_digest,
-            "key_id": "test-key-1",
+            "key_id": key_id,
         }
         from runtime.papi_core.audit_anchor import _unsigned_payload
-        signature = self.sign("test-key-1", _unsigned_payload(unsigned))
+        signature = self.sign(key_id, _unsigned_payload(unsigned))
         return {**unsigned, "signature": signature}
 
     def publish(self, record):
@@ -98,6 +102,39 @@ class AuditAnchorContractTests(unittest.TestCase):
         digest = self.publish(self.record(None))
         self.assertEqual(self.store.get_latest(self.journal_id), digest)
         self.assertIn(digest, self.store.records)
+
+    def test_key_rotation_preserves_old_signatures_and_accepts_new_key(self):
+        self.add_event("evt-1")
+        first_digest = self.publish(self.record(None, key_id="test-key-1"))
+        self.add_event("evt-2")
+        second_digest = self.publish(
+            self.record(first_digest, key_id="test-key-2")
+        )
+        self.assertNotEqual(first_digest, second_digest)
+        self.assertEqual(self.store.get_latest(self.journal_id), second_digest)
+        # Publishing the successor verifies the predecessor with its historical key.
+        self.assertTrue(self.verify("test-key-1", b"probe", self.sign("test-key-1", b"probe")))
+        self.assertTrue(self.verify("test-key-2", b"probe", self.sign("test-key-2", b"probe")))
+
+    def test_unknown_key_id_is_rejected_before_storage(self):
+        self.add_event("evt-1")
+        unsigned = {
+            "schema_version": 1,
+            "journal_id": self.journal_id,
+            "checkpoint": build_checkpoint(self.path),
+            "previous_record_digest": None,
+            "key_id": "retired-or-unknown-key",
+        }
+        from runtime.papi_core.audit_anchor import _unsigned_payload
+        record = {
+            **unsigned,
+            "signature": hmac.new(
+                b"unknown-key", _unsigned_payload(unsigned), hashlib.sha256
+            ).hexdigest(),
+        }
+        with self.assertRaises(CheckpointAnchorError):
+            self.publish(record)
+        self.assertEqual(self.store.records, {})
 
     def test_forward_publication_requires_anchored_prefix(self):
         self.add_event("evt-1")
