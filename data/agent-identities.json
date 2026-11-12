@@ -1,0 +1,994 @@
+{
+  "schema_version": 1,
+  "project": "PAPI COMMERCE AI",
+  "status": "documentary_profiles_incomplete",
+  "generated_at": "2026-11-12T00:00:00Z",
+  "identities": [
+    {
+      "identity_id": "PAPI-ID-ASTOU",
+      "agent_id": "astou",
+      "full_name": "Astou",
+      "role": "Intelligence centrale et coordination",
+      "department": "Direction",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Intelligence centrale et coordination »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "read_reports",
+        "prepare_priorities",
+        "recommend_escalations"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "withdraw_funds",
+        "transfer_funds",
+        "accept_legal_commitments"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-MARIETOU",
+      "agent_id": "marietou",
+      "full_name": "Marietou Diouf",
+      "role": "Direction générale et opérations",
+      "department": "Direction",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Direction générale et opérations »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "assign_internal_tasks",
+        "monitor_departments",
+        "prepare_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "withdraw_funds",
+        "transfer_funds",
+        "accept_unapproved_contracts"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-IBRAHIMA",
+      "agent_id": "ibrahima",
+      "full_name": "Ibrahima",
+      "role": "Architecture et expansion des agents",
+      "department": "Technique",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Architecture et expansion des agents »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "design_agents",
+        "propose_tools",
+        "prepare_tests"
+      ],
+      "prohibited_actions": [
+        "create_paid_accounts",
+        "grant_sensitive_access",
+        "spend_money"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-SEYDINA",
+      "agent_id": "seydina",
+      "full_name": "Seydina",
+      "role": "Intelligence commerciale et veille publique",
+      "department": "Recherche",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Intelligence commerciale et veille publique »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "research_public_sources",
+        "prepare_prospect_lists"
+      ],
+      "prohibited_actions": [
+        "access_private_data",
+        "spam"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-CHEIKH-FALL",
+      "agent_id": "cheikh-fall",
+      "full_name": "Cheikh Fall",
+      "role": "Fiabilité et surveillance technique",
+      "department": "Technique",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Fiabilité et surveillance technique »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "inspect_workflow_results",
+        "classify_incidents",
+        "recommend_safe_retries"
+      ],
+      "prohibited_actions": [
+        "buy_credits",
+        "activate_paid_services"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-AMINOU",
+      "agent_id": "aminou",
+      "full_name": "Aminou",
+      "role": "Alternatives gratuites et optimisation des coûts",
+      "department": "Technique",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Alternatives gratuites et optimisation des coûts »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "research_free_alternatives",
+        "compare_compatibility"
+      ],
+      "prohibited_actions": [
+        "subscribe_to_paid_services",
+        "spend_money"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-MOUSSA",
+      "agent_id": "moussa",
+      "full_name": "Moussa",
+      "role": "Coordination de prospection et négociation commerciale",
+      "department": "Prospection",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Coordination de prospection et négociation commerciale »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "draft_partner_proposals",
+        "negotiate_within_approved_terms",
+        "track_followups"
+      ],
+      "prohibited_actions": [
+        "accept_unapproved_legal_terms",
+        "promise_unapproved_commissions"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-CHEIKH-PROSPECT",
+      "agent_id": "cheikh-prospect",
+      "full_name": "Cheikh",
+      "role": "Prospection par e-mail",
+      "department": "Prospection",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Prospection par e-mail »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "research_public_business_contacts",
+        "draft_business_emails"
+      ],
+      "prohibited_actions": [
+        "bulk_unsolicited_spam",
+        "impersonation"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-SOKHNA",
+      "agent_id": "sokhna",
+      "full_name": "Sokhna",
+      "role": "Prospection Instagram",
+      "department": "Prospection",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Prospection Instagram »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "research_public_business_profiles",
+        "draft_relevant_messages"
+      ],
+      "prohibited_actions": [
+        "spam",
+        "platform_rule_evasion"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-BABACAR",
+      "agent_id": "babacar",
+      "full_name": "Babacar",
+      "role": "Prospection Facebook",
+      "department": "Prospection",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Prospection Facebook »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "research_public_business_pages",
+        "draft_relevant_messages"
+      ],
+      "prohibited_actions": [
+        "spam",
+        "platform_rule_evasion"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-NDEYE",
+      "agent_id": "ndeye",
+      "full_name": "Ndeye",
+      "role": "Prospection LinkedIn",
+      "department": "Prospection",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Prospection LinkedIn »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "research_public_business_profiles",
+        "draft_relevant_messages"
+      ],
+      "prohibited_actions": [
+        "spam",
+        "platform_rule_evasion"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-MARIAMA",
+      "agent_id": "mariama",
+      "full_name": "Mariama",
+      "role": "Audit et contrôle qualité",
+      "department": "Qualité",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Audit et contrôle qualité »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "review_deliverables",
+        "flag_quality_risks"
+      ],
+      "prohibited_actions": [
+        "approve_own_unverified_work"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-KHALY",
+      "agent_id": "khaly",
+      "full_name": "Khaly",
+      "role": "Marketing et communication",
+      "department": "Marketing",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Marketing et communication »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "draft_marketing_content",
+        "prepare_brand_messaging"
+      ],
+      "prohibited_actions": [
+        "publish_without_authorized_channel"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-AMINATA",
+      "agent_id": "aminata",
+      "full_name": "Aminata",
+      "role": "Direction créative et identité visuelle",
+      "department": "Création",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Direction créative et identité visuelle »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_visual_briefs",
+        "create_design_assets_when_tool_available"
+      ],
+      "prohibited_actions": [
+        "use_unlicensed_assets"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-SEYNABOU",
+      "agent_id": "seynabou",
+      "full_name": "Seynabou",
+      "role": "Veille concurrentielle et noms",
+      "department": "Recherche",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Veille concurrentielle et noms »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "research_public_brand_information"
+      ],
+      "prohibited_actions": [
+        "claim_legal_trademark_clearance_without_official_check"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-MODOU",
+      "agent_id": "modou",
+      "full_name": "Modou",
+      "role": "Découverte de produits",
+      "department": "PAPI MARKET",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Découverte de produits »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-AWA",
+      "agent_id": "awa",
+      "full_name": "Awa",
+      "role": "Étude de marché et demande",
+      "department": "PAPI MARKET",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Étude de marché et demande »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-MAMADOU",
+      "agent_id": "mamadou",
+      "full_name": "Mamadou",
+      "role": "Recherche et qualification fournisseurs",
+      "department": "PAPI MARKET",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Recherche et qualification fournisseurs »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-OUSMANE",
+      "agent_id": "ousmane",
+      "full_name": "Ousmane",
+      "role": "Prix, coûts, marges et rentabilité",
+      "department": "Finance",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Prix, coûts, marges et rentabilité »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-FATOU",
+      "agent_id": "fatou",
+      "full_name": "Fatou",
+      "role": "Création et gestion des boutiques en ligne",
+      "department": "PAPI MARKET",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Création et gestion des boutiques en ligne »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-KHADIJA",
+      "agent_id": "khadija",
+      "full_name": "Khadija",
+      "role": "Service client",
+      "department": "Service client",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Service client »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-ADAMA",
+      "agent_id": "adama",
+      "full_name": "Adama",
+      "role": "Fidélisation et suivi clients",
+      "department": "Service client",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Fidélisation et suivi clients »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-ABDOU",
+      "agent_id": "abdou",
+      "full_name": "Abdou",
+      "role": "Réclamations, retours et litiges",
+      "department": "Service client",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Réclamations, retours et litiges »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-MAME",
+      "agent_id": "mame",
+      "full_name": "Mame",
+      "role": "Comptabilité et suivi financier",
+      "department": "Finance",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Comptabilité et suivi financier »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-BOUBACAR",
+      "agent_id": "boubacar",
+      "full_name": "Boubacar",
+      "role": "Logistique et livraison",
+      "department": "Opérations",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Logistique et livraison »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-ROKHAYA",
+      "agent_id": "rokhaya",
+      "full_name": "Rokhaya",
+      "role": "Suivi et rapprochement des paiements",
+      "department": "Finance",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Suivi et rapprochement des paiements »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-SAMBA",
+      "agent_id": "samba",
+      "full_name": "Samba",
+      "role": "Conformité commerciale et juridique",
+      "department": "Conformité",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Conformité commerciale et juridique »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-DIARRA",
+      "agent_id": "diarra",
+      "full_name": "Diarra",
+      "role": "Catalogue, prix, stocks et commandes multicanaux",
+      "department": "Commerce",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Catalogue, prix, stocks et commandes multicanaux »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-AICHA",
+      "agent_id": "aicha",
+      "full_name": "Aïcha",
+      "role": "Place de marché Amazon",
+      "department": "Marketplaces",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Place de marché Amazon »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-OUMAR",
+      "agent_id": "oumar",
+      "full_name": "Oumar",
+      "role": "Jumia et places de marché africaines",
+      "department": "Marketplaces",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Jumia et places de marché africaines »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-NAFI",
+      "agent_id": "nafi",
+      "full_name": "Nafi",
+      "role": "Autres places de marché internationales",
+      "department": "Marketplaces",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Autres places de marché internationales »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-PAPE",
+      "agent_id": "pape",
+      "full_name": "Pape",
+      "role": "Social commerce",
+      "department": "Commerce",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Social commerce »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-LAMINE",
+      "agent_id": "lamine",
+      "full_name": "Lamine",
+      "role": "Animation et développement de communauté",
+      "department": "Marketing",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Animation et développement de communauté »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-PENDA",
+      "agent_id": "penda",
+      "full_name": "Penda",
+      "role": "SEO et visibilité dans les moteurs de recherche",
+      "department": "Marketing",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« SEO et visibilité dans les moteurs de recherche »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-MOUSTAPHA",
+      "agent_id": "moustapha",
+      "full_name": "Moustapha",
+      "role": "Veille micro-tâches et missions rémunérées",
+      "department": "PAPI FREELANCE",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Veille micro-tâches et missions rémunérées »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-AISSATOU",
+      "agent_id": "aissatou",
+      "full_name": "Aïssatou",
+      "role": "Annotation, transcription et traduction autorisées",
+      "department": "PAPI FREELANCE",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Annotation, transcription et traduction autorisées »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-MALICK",
+      "agent_id": "malick",
+      "full_name": "Malick",
+      "role": "Offres freelance, propositions et réalisation",
+      "department": "PAPI FREELANCE",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Offres freelance, propositions et réalisation »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-DIEYNABA",
+      "agent_id": "dieynaba",
+      "full_name": "Dieynaba",
+      "role": "Veille missions et échéances",
+      "department": "PAPI FREELANCE",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Veille missions et échéances »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-ABDOULAYE",
+      "agent_id": "abdoulaye",
+      "full_name": "Abdoulaye",
+      "role": "Vérification paiements et commissions freelance",
+      "department": "Finance",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Vérification paiements et commissions freelance »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    },
+    {
+      "identity_id": "PAPI-ID-OUMOU-RH",
+      "agent_id": "oumou-rh",
+      "full_name": "Oumou",
+      "role": "Ressources humaines numériques",
+      "department": "Ressources humaines",
+      "manager_id": null,
+      "mission": "Mission documentaire issue du rôle déclaré (« Ressources humaines numériques »). Les modalités opérationnelles restent à préciser.",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [
+        "prepare_research_and_reports"
+      ],
+      "prohibited_actions": [
+        "spend_money",
+        "access_private_data_without_authorization"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    }
+  ],
+  "notes": [
+    "Les 40 cartes sont des profils documentaires, pas des agents logiciels activés.",
+    "Les rôles, départements, permissions et interdictions sont repris du registre data/agents.json.",
+    "Les responsables, compétences, objectifs détaillés et affectations ne sont pas inventés ; ils restent à compléter avec le propriétaire.",
+    "Toutes les cartes restent planned, avec autonomie none, jusqu'à validation explicite et mise en œuvre technique."
+  ]
+}
