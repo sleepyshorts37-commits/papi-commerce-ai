@@ -217,3 +217,78 @@ def publish_checkpoint_record(
     if store.compare_and_swap_latest(journal_id, expected_previous, digest) is not True:
         raise CheckpointConflict("Conflit CAS: recharger le dernier checkpoint avant toute reprise.")
     return digest
+
+
+def verify_checkpoint_anchor(
+    *,
+    journal_path: Any,
+    journal_id: str,
+    store: CheckpointStore,
+    verify_signature: SignatureVerifier,
+) -> dict[str, Any]:
+    """Independently verify the stored anchor chain against the local journal.
+
+    This is read-only: it never publishes records or advances the latest pointer.
+    The verifier must retain historical public keys (or equivalent verification
+    material) for every key_id represented in the chain.
+    """
+    if not isinstance(journal_id, str) or not journal_id.strip():
+        raise CheckpointAnchorError("Identifiant de journal obligatoire.")
+    latest_digest = store.get_latest(journal_id)
+    if latest_digest is None:
+        local_checkpoint = build_checkpoint(journal_path)
+        return {
+            "anchored": False,
+            "latest_digest": None,
+            "checkpoint": None,
+            "unanchored_suffix": local_checkpoint["sequence"],
+        }
+    if not isinstance(latest_digest, str) or not DIGEST_RE.fullmatch(latest_digest):
+        raise CheckpointAnchorError("Pointeur externe latest invalide.")
+
+    cursor = latest_digest
+    seen_digests: set[str] = set()
+    newer_sequence: int | None = None
+    latest_record: dict[str, Any] | None = None
+    while cursor is not None:
+        if cursor in seen_digests:
+            raise CheckpointAnchorError("Cycle dans la chaîne des checkpoints externes.")
+        seen_digests.add(cursor)
+        raw_record = store.get_record(cursor)
+        if not isinstance(raw_record, bytes):
+            raise CheckpointAnchorError("Enregistrement externe de la chaîne introuvable.")
+        try:
+            chain_record = json.loads(raw_record.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise CheckpointAnchorError("Enregistrement externe de la chaîne illisible.") from exc
+        _validate_record(
+            chain_record, journal_id=journal_id,
+            expected_digest=None, verifier=verify_signature,
+        )
+        if raw_record != canonical_record_bytes(chain_record):
+            raise CheckpointAnchorError("Enregistrement externe non canonique.")
+        if _record_digest(raw_record) != cursor:
+            raise CheckpointAnchorError("Empreinte d'un checkpoint externe incorrecte.")
+        sequence = chain_record["checkpoint"]["sequence"]
+        if newer_sequence is not None and sequence >= newer_sequence:
+            raise CheckpointAnchorError("Les séquences de la chaîne externe ne progressent pas.")
+        newer_sequence = sequence
+        if latest_record is None:
+            latest_record = chain_record
+        cursor = chain_record["previous_record_digest"]
+
+    assert latest_record is not None
+    try:
+        unanchored_suffix = verify_checkpoint(
+            journal_path, latest_record["checkpoint"]
+        )
+    except AuditError as exc:
+        raise CheckpointAnchorError(
+            "Le journal local ne contient pas le préfixe déjà ancré."
+        ) from exc
+    return {
+        "anchored": True,
+        "latest_digest": latest_digest,
+        "checkpoint": latest_record["checkpoint"],
+        "unanchored_suffix": unanchored_suffix,
+    }
