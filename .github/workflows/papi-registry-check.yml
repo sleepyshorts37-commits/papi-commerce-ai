@@ -2,9 +2,9 @@ name: PAPI registry validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/papi-chat-validation-hardening]
   pull_request:
-    branches: [main]
+    branches: [main, feature/papi-chat-validation-hardening]
   workflow_dispatch:
 
 permissions:
