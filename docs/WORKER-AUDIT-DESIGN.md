@@ -26,6 +26,14 @@ Use a deterministic, bounded event ID derived from the job ID and event name (ha
 
 Each event contains only bounded metadata: event name, job/task opaque identifier or digest, handler name from the registered handler, outcome code, and worker identifier. No arbitrary handler result or exception text.
 
+## Integrity limits and external anchoring
+
+The SHA-256 chain detects accidental corruption and partial or local edits that leave an inconsistent chain. It is **not tamper-proof against an attacker who can rewrite the entire journal**, because that attacker can recompute every subsequent hash. The current implementation has no external trusted checkpoint, remote append-only store, or independently protected HMAC key. Do not describe this local journal as immutable or independently non-repudiable.
+
+Before production use for high-assurance evidence, add an independently controlled checkpoint mechanism (for example, periodically publish the latest sequence number and event hash to a separately permissioned append-only service). Protect checkpoint credentials outside the worker process, define recovery and verification procedures, and alert on missing or rolled-back checkpoints. This is a release blocker for any requirement that assumes resistance to a privileged local file attacker.
+
+A truncated or malformed record is fail-closed: readers and subsequent appends must reject the journal rather than silently discard or repair the tail.
+
 ## Audit failure policy
 
 - Before handler execution, failure to append `job.handler_started` is **fail-closed**: do not invoke the handler; fail or release the job using its valid lease and return a controlled audit error.
