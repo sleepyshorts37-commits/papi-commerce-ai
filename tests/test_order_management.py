@@ -21,7 +21,7 @@ def test_detects_overdue_and_stale_orders():
 
 
 def test_delivered_order_is_not_overdue():
-    result = analyze_orders([order(status="delivered", delivered_at="2026-11-10T12:00:00Z")],
+    result = analyze_orders([order(status="delivered", updated_at="2026-11-10T13:00:00Z", delivered_at="2026-11-10T12:00:00Z")],
                             as_of="2026-11-12T12:00:00Z")
     assert result["overdue_orders"] == []
 
