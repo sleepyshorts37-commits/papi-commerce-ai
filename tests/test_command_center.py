@@ -38,6 +38,8 @@ class CommandCenterTests(unittest.TestCase):
         self.assertEqual(dashboard["unassigned_open_tasks"], 1)
         self.assertEqual(result["mode"], "read_only_local")
         self.assertEqual(result["agent_history"]["status"], "no_events")
+        self.assertEqual(result["incident_center"]["summary"]["total"], 0)
+        self.assertEqual(result["controls"]["incident_writes_performed"], 0)
         self.assertFalse(result["controls"]["worker_started"])
         self.assertFalse(result["controls"]["external_actions_enabled"])
         self.assertFalse(result["environment"]["secrets_displayed"])
