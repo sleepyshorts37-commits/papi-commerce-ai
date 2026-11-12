@@ -29,7 +29,7 @@ class SupabaseSchemaTests(unittest.TestCase):
 
     def test_lease_renewal_rejects_null_and_blank_inputs(self):
         match = re.search(
-            r"create or replace function public\\.papi_renew_job_lease\\(.*?\\n\\$lease\\$;",
+            r"create or replace function public\.papi_renew_job_lease\(.*?\n\$lease\$;",
             self.sql,
             flags=re.IGNORECASE | re.DOTALL,
         )
