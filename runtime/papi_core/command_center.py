@@ -10,6 +10,7 @@ from .audit import read_events
 from .agent_history import summarize_agent_history
 from .registry import AGENTS_FILE, TASKS_FILE, load_agents, load_json
 from .doctor import diagnose_environment
+from .worker_scheduler import build_schedule
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -21,6 +22,7 @@ def build_command_center(
     policy_path=None,
     environ=None,
     audit_path=AUDIT_FILE,
+    scheduler_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -33,6 +35,30 @@ def build_command_center(
     task_statuses = Counter(str(task.get("status", "unknown")) for task in valid_tasks)
     brief = build_director_brief(tasks_path, agents_path, policy_path) if policy_path else build_director_brief(tasks_path, agents_path)
     doctor = diagnose_environment(environ)
+
+    scheduler = {
+        "status": "not_configured",
+        "read_only": True,
+        "message": "Aucun instantané de file/worker fourni ; aucune planification calculée.",
+        "plan": None,
+    }
+    if scheduler_snapshot is not None:
+        required = {"jobs", "workers", "as_of", "handlers", "policy"}
+        if not isinstance(scheduler_snapshot, dict) or set(scheduler_snapshot) != required:
+            raise ValueError("scheduler_snapshot doit contenir exactement jobs, workers, as_of, handlers et policy.")
+        plan = build_schedule(
+            scheduler_snapshot["jobs"],
+            scheduler_snapshot["workers"],
+            as_of=scheduler_snapshot["as_of"],
+            handlers=scheduler_snapshot["handlers"],
+            policy=scheduler_snapshot["policy"],
+        )
+        scheduler = {
+            "status": "preview_available",
+            "read_only": True,
+            "message": "Aperçu calculé à partir de données fournies ; aucune réservation ni exécution.",
+            "plan": plan,
+        }
 
     events = read_events(audit_path) if audit_path is not None else []
     per_agent = {}
@@ -67,6 +93,7 @@ def build_command_center(
             "by_agent": per_agent,
         },
         "astou_brief": brief,
+        "worker_scheduler": scheduler,
         "environment": {
             "status": doctor["status"],
             "checks": doctor["checks"],
@@ -76,6 +103,8 @@ def build_command_center(
         "controls": {
             "writes_performed": False,
             "worker_started": False,
+            "scheduler_claims_performed": 0,
+            "scheduler_handlers_executed": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
         },
