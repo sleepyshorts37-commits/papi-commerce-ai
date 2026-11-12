@@ -174,9 +174,11 @@ set search_path = public, pg_temp
 as $lease$
 declare v_count integer;
 begin
-    if p_job_id is null or p_worker_id is null or length(trim(p_worker_id)) = 0
+    if p_job_id is null or length(trim(p_job_id)) = 0
+       or p_worker_id is null or length(trim(p_worker_id)) = 0
        or length(p_worker_id) > 120 or p_lease_token is null
-       or p_lease_seconds < 15 or p_lease_seconds > 900 then
+       or p_lease_seconds is null or p_lease_seconds < 15
+       or p_lease_seconds > 900 then
         raise exception 'Invalid lease renewal request' using errcode = '22023';
     end if;
     update public.papi_jobs
