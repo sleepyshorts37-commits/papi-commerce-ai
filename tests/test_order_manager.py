@@ -14,7 +14,7 @@ def order(order_id="O-1", status="draft", history=None, updated=None, **extra):
         "business_unit": "PAPI_MARKET",
         "order_summary": "Commande de fournitures",
         "status": status,
-        "created_at": NOW,
+        "created_at": history[0]["at"],
         "updated_at": updated or history[-1]["at"],
         "status_history": history,
         **extra,
