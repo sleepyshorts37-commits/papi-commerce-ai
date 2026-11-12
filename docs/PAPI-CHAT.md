@@ -37,6 +37,7 @@ Les chemins de clés, du registre public et de la base anti-rejeu peuvent être 
 - Stockage append-only local dans `data/chat/messages.jsonl`, avec permissions de fichier restrictives. Ce n'est pas un stockage inviolable : un administrateur du système de fichiers peut modifier ou supprimer le journal.
 - Les clés privées restent locales ; elles ne doivent jamais être ajoutées au dépôt Git, au journal de messages ou à un ticket.
 - Le registre public doit être protégé contre les modifications non autorisées. La confiance dans une clé publique dépend de l'intégrité de ce registre.
+- Les dates d'activation/fin de validité sont comparées à l'horodatage signé, qui reste une déclaration du signataire et non un horodatage tiers certifié. Une clé compromise pourrait tenter de produire une signature antidatée ; la fenêtre de cinq minutes à l'ingestion réduit ce risque, mais un journal local modifiable ne constitue pas une preuve d'horodatage inviolable.
 - Pas de chiffrement du corps des messages, pas de synchronisation multi-serveur, pas de transport réseau et pas de notification externe.
 - Les agents doivent disposer d'un environnement d'exécution sécurisé et de clés propres. La présence d'une clé ne signifie pas qu'un agent autonome est déployé.
 - Ne pas y déposer de données personnelles sensibles, de mots de passe, de jetons ou d'informations financières confidentielles.
