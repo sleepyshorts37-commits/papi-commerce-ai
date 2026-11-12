@@ -1,4 +1,4 @@
-# PAPI CHAT — socle local 0.4
+# PAPI CHAT — socle local 0.5
 
 PAPI CHAT est une messagerie interne locale. Elle ne contacte aucun service externe et ne prouve pas qu'un agent IA autonome est en fonctionnement.
 
@@ -16,10 +16,27 @@ send_message(
     body="Merci de vérifier les missions en attente.",
     # Par défaut : ~/.papi/identity/ed25519/astou.ed25519.pem
 )
-messages = read_messages(recipient="marietou", limit=50)
+messages = read_messages(reader="marietou", limit=50)
 ```
 
-Les chemins de clés, du registre public et de la base anti-rejeu peuvent être injectés explicitement pour les tests et les environnements isolés. Les types de messages autorisés sont `info`, `task`, `alert`, `report`. Le destinataire `all` permet une diffusion interne.
+Les chemins de clés, du registre public et de la base anti-rejeu peuvent être injectés explicitement pour les tests et les environnements isolés. Les types de messages autorisés sont `info`, `task`, `alert`, `report`. Le destinataire `all` permet une diffusion interne uniquement aux expéditeurs autorisés.
+
+## Autorisations de messagerie (0.5)
+
+- L'envoi exige `chat.send` pour l'expéditeur et `chat.receive` pour le destinataire.
+- La diffusion à `all` exige en plus `chat.broadcast`. Aucun agent ne reçoit cette permission par défaut.
+- Les agents doivent avoir le statut `active` et une liste de permissions valide ; les statuts `defined` et `planned` sont refusés. Les permissions absentes ou mal formées entraînent un refus (fail-closed).
+- La lecture exige `chat.read`, une clé privée correspondant au lecteur et une authentification Ed25519 fraîche. Un agent ne voit que les messages qui lui sont adressés et les diffusions.
+- Le compte `owner` est un principal spécial authentifié par sa propre clé ; il peut lire l'ensemble des messages et diffuser. Aucun privilège équivalent n'est accordé à `system`.
+- Les permissions sont vérifiées dans le module runtime, pas seulement dans l'interface.
+
+Exemple de permissions minimales à attribuer explicitement à un agent actif :
+
+```json
+["chat.send", "chat.receive", "chat.read"]
+```
+
+N'ajouter `chat.broadcast` qu'aux agents qui en ont réellement besoin.
 
 ## Authentification et intégrité
 
@@ -38,6 +55,7 @@ Les chemins de clés, du registre public et de la base anti-rejeu peuvent être 
 - Les clés privées restent locales ; elles ne doivent jamais être ajoutées au dépôt Git, au journal de messages ou à un ticket.
 - Le registre public doit être protégé contre les modifications non autorisées. La confiance dans une clé publique dépend de l'intégrité de ce registre.
 - Les dates d'activation/fin de validité sont comparées à l'horodatage signé, qui reste une déclaration du signataire et non un horodatage tiers certifié. Une clé compromise pourrait tenter de produire une signature antidatée ; la fenêtre de cinq minutes à l'ingestion réduit ce risque, mais un journal local modifiable ne constitue pas une preuve d'horodatage inviolable.
+- Le contrôle de lecture suppose que l’environnement d’exécution protège les clés privées et n’autorise pas un processus à lire directement le journal JSONL. Ce module local ne constitue pas une isolation de processus.
 - Pas de chiffrement du corps des messages, pas de synchronisation multi-serveur, pas de transport réseau et pas de notification externe.
 - Les agents doivent disposer d'un environnement d'exécution sécurisé et de clés propres. La présence d'une clé ne signifie pas qu'un agent autonome est déployé.
 - Ne pas y déposer de données personnelles sensibles, de mots de passe, de jetons ou d'informations financières confidentielles.
