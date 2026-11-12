@@ -338,7 +338,9 @@ class HandlerPermissionTests(unittest.TestCase):
 
 class WorkerTests(unittest.TestCase):
     def make_worker(self, policy=None, job=None, task=None):
-        identity_patch = patch('papi_core.worker.authorize_authenticated_agent')
+        from types import SimpleNamespace
+        identity_patch = patch('papi_core.worker.authorize_authenticated_agent',
+                               return_value={"principal": SimpleNamespace(agent_id="agent-test")})
         identity_patch.start()
         self.addCleanup(identity_patch.stop)
         from papi_core.execution_queue import ExecutionQueue
@@ -352,7 +354,10 @@ class WorkerTests(unittest.TestCase):
             "allowed_handlers": ["internal.echo"],
             "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
         }
-        return PapiWorker(queue=queue, registry=registry, policy=effective_policy, worker_id="worker-test")
+        audit_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(audit_dir.cleanup)
+        return PapiWorker(queue=queue, registry=registry, policy=effective_policy,
+                          worker_id="worker-test", audit_path=Path(audit_dir.name) / "audit.jsonl")
 
     def test_disabled_worker_does_not_claim(self):
         worker = self.make_worker(policy={"execution_enabled": False})
@@ -371,7 +376,7 @@ class WorkerTests(unittest.TestCase):
                "payload": {"a": 1}, "lease_token": "lease-1"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
              }), \
              patch.object(worker.queue, "complete", return_value=True) as complete:
             result = worker.run_once()
@@ -384,7 +389,7 @@ class WorkerTests(unittest.TestCase):
                "payload": {}, "lease_token": "lease-2"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
              }), \
              patch.object(worker.queue, "fail", return_value="retry") as fail:
             result = worker.run_once()
@@ -397,7 +402,7 @@ class WorkerTests(unittest.TestCase):
                "payload": {}, "lease_token": "lease-3"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
              }), \
              patch.object(worker.queue, "complete", return_value=False):
             result = worker.run_once()
