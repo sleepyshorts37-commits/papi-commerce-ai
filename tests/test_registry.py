@@ -582,6 +582,40 @@ class WorkerTests(unittest.TestCase):
 
 
 
+    def test_handler_lease_guard_stops_work_when_lease_is_lost(self):
+        from papi_core.audit import read_events
+        worker = self.make_worker()
+        observed = []
+
+        def guarded_handler(payload, context):
+            observed.append("started")
+            context["ensure_lease"]()
+            observed.append("after_guard")
+            return {"ok": True}
+
+        worker.registry.register("internal.guarded", "read_only", guarded_handler)
+        job = {"id": "JOB-GUARDED-LEASE", "task_id": "TASK-1",
+               "handler": "internal.guarded", "payload": {}, "lease_token": "lease-guarded"}
+        with patch.object(worker.queue, "claim", return_value=job), \\
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False,
+                          "owner_agent": "agent-test"}
+             }), \\
+             patch.object(worker.queue, "renew", side_effect=[True, False]) as renew, \\
+             patch.object(worker.queue, "complete") as complete, \\
+             patch.object(worker.queue, "fail") as fail:
+            result = worker.run_once()
+
+        self.assertEqual(result["status"], "lease_lost")
+        self.assertEqual(observed, ["started"])
+        self.assertEqual(renew.call_count, 2)
+        complete.assert_not_called()
+        fail.assert_not_called()
+        events = read_events(worker.audit_path)
+        lost = next(event for event in events if event["action"] == "job.lease_lost")
+        self.assertEqual(lost["actor"], "system:worker:worker-test")
+
+
 class DoctorTests(unittest.TestCase):
     def test_missing_environment_is_reported_without_secrets(self):
         from papi_core.doctor import diagnose_environment
