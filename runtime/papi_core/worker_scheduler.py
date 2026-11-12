@@ -159,7 +159,9 @@ def build_schedule(
             continue
         selected = min(available, key=lambda wid: (loads[wid] / capacities[wid], loads[wid], wid))
         loads[selected] += 1
-        schedule.append({**common, "decision": "dispatch_candidate", "worker_id": selected})
+        candidate = {**common, "decision": "dispatch_candidate", "worker_id": selected}
+        schedule.append(candidate)
+        decisions.append(candidate.copy())
 
     return {
         "as_of": now.isoformat(),
