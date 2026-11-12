@@ -31,9 +31,9 @@ Le module `runtime/papi_core/agent_identity_auth.py` fournit un contrôle fail-c
 - la signature Ed25519 est ensuite vérifiée avec les contrôles de fraîcheur et de rejeu existants ;
 - les clés privées ne sont ni chargées ni manipulées par ce module.
 
-Ce module est actuellement un composant d'authentification disponible et testé. Il n'est pas encore branché à tous les chemins d'envoi et de lecture de PAPI CHAT ; il ne faut donc pas considérer que toutes les opérations du chat sont déjà conditionnées par cette liaison.
+Ce contrôle est maintenant branché aux chemins d'envoi et de lecture des agents dans `runtime/papi_core/chat.py`. Il s'applique aux identifiants présents dans le registre runtime ; les principaux `owner` et `system` conservent leur voie d'authentification distincte. Le chemin du registre d'identités peut être injecté explicitement pour les tests isolés. Les cartes `planned` ou incomplètes restent refusées.
 
 ## État de l'implémentation
-La version 0.6 introduit le validateur, le modèle JSON, les 40 cartes provisoires et le composant de liaison d'identité à Ed25519. Les contrôles CI de validation du registre, de documentation et de tests sont réussis sur le commit vérifié.
+La version 0.7 branche la vérification des cartes sur les opérations PAPI CHAT. La suite de 173 tests, y compris les tests d'intégration PostgreSQL, ainsi que les validations du registre et de la documentation, sont réussies sur le commit vérifié.
 
 Ce travail n'active pas les 40 agents. Les informations non encore décidées (notamment responsables, objectifs et niveaux d'autonomie individuels) doivent rester explicitement incomplètes plutôt que d'être inventées. Les cartes complètes des agents seront remplies et revues avant toute activation.
