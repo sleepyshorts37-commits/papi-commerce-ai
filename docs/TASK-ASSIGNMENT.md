@@ -31,3 +31,22 @@ L'appelant doit authentifier cryptographiquement l'acteur avant d'appeler ce mod
 `PYTHONPATH=runtime python -m unittest discover -s tests -p 'test_task_assignment.py' -v`
 
 Les identités actuelles du dépôt sont encore planifiées/incomplètes : aucune affectation réelle à un agent n'est donc autorisée à ce stade.
+
+## Intégration Supabase — version 0.2
+
+`SupabaseStore.assign_task_and_save(...)` relit la tâche et vérifie sa version attendue, prépare l'affectation, puis appelle `papi_commit_task_change`. Cette fonction PostgreSQL met à jour la tâche et insère l'événement d'audit dans une seule transaction. Un conflit de version ou une affectation refusée ne produit aucune écriture.
+
+Exemple :
+
+```python
+updated_task, new_version = store.assign_task_and_save(
+    task_id,
+    assigner_id=authenticated_agent_id,
+    assignee_id=target_agent_id,
+    agents=agents,
+    identity_registry=identity_registry,
+    expected_version=current_version,
+)
+```
+
+**Frontière de sécurité :** le service de stockage ne remplace pas l'authentification Ed25519 de l'acteur. Le backend doit vérifier la signature et les droits de l'acteur avant d'appeler cette méthode. Le secret Supabase reste côté serveur. Aucun worker n'est démarré.
