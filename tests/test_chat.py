@@ -81,8 +81,9 @@ class PapiChatTests(unittest.TestCase):
         record["message"]["body"] = "Altéré"
         self.messages.write_text(json.dumps(record) + "\n", encoding="utf-8")
         with self.assertRaises(ChatError):
-            read_messages(path=self.messages, agents_path=self.agents,
-                          public_registry_path=self.public_registry)
+            read_messages(reader="owner", private_key_path=self.owner_key, path=self.messages,
+                          agents_path=self.agents, public_registry_path=self.public_registry,
+                          replay_db_path=self.replay_db)
 
     def test_repeated_reads_do_not_trigger_replay_error(self):
         self.send(sender="astou", recipient="marietou", subject="Sujet", body="Relisible")
