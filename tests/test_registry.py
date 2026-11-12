@@ -413,12 +413,12 @@ class WorkerTests(unittest.TestCase):
         worker = self.make_worker()
         job = {"id": "JOB-AUDIT-1", "task_id": "TASK-1", "handler": "internal.echo",
                "payload": {}, "lease_token": "lease-audit"}
-        with patch.object(worker.queue, "claim", return_value=job), \\
+        with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
-             }), \\
-             patch.object(worker.queue, "fail", return_value="retry") as fail, \\
-             patch("papi_core.worker.execute_authorized_job") as execute, \\
+             }), \
+             patch.object(worker.queue, "fail", return_value="retry") as fail, \
+             patch("papi_core.worker.execute_authorized_job") as execute, \
              patch.object(worker, "_audit", side_effect=OSError("disk unavailable")):
             result = worker.run_once()
         self.assertEqual(result["status"], "audit_blocked")
@@ -434,11 +434,11 @@ class WorkerTests(unittest.TestCase):
             if action == "job.completed":
                 raise OSError("disk unavailable")
             return original_audit(job_id, action, actor, **kwargs)
-        with patch.object(worker.queue, "claim", return_value=job), \\
+        with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
-             }), \\
-             patch.object(worker.queue, "complete", return_value=True) as complete, \\
+             }), \
+             patch.object(worker.queue, "complete", return_value=True) as complete, \
              patch.object(worker, "_audit", side_effect=fail_terminal):
             result = worker.run_once()
         self.assertEqual(result["status"], "completed")
