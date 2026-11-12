@@ -90,7 +90,7 @@ class SharedMemoryTests(unittest.TestCase):
             "target_memory_id": str(uuid.uuid4()), "created_at": "2026-01-01T00:00:00Z",
             "actor": "astou", "reason": "Référence absente.",
         }
-        self.path.write_text(json.dumps(event) + "\\n", encoding="utf-8")
+        self.path.write_text(json.dumps(event) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(MemoryError, "orphelin"):
             search_memory(actor="owner", path=self.path)
 
@@ -101,7 +101,7 @@ class SharedMemoryTests(unittest.TestCase):
         events = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
         duplicate = dict(events[1], event_id=str(uuid.uuid4()))
         with self.path.open("a", encoding="utf-8") as stream:
-            stream.write(json.dumps(duplicate) + "\\n")
+            stream.write(json.dumps(duplicate) + "\n")
         with self.assertRaisesRegex(MemoryError, "dupliqué"):
             search_memory(actor="owner", path=self.path)
 
@@ -110,7 +110,7 @@ class SharedMemoryTests(unittest.TestCase):
         self.remember()
         events = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
         events[1]["memory_id"] = events[0]["memory_id"]
-        self.path.write_text("\\n".join(json.dumps(event) for event in events) + "\\n", encoding="utf-8")
+        self.path.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(MemoryError, "Identifiant mémoire dupliqué"):
             search_memory(actor="owner", path=self.path)
 
