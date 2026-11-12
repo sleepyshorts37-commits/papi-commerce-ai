@@ -13,6 +13,7 @@ from .doctor import diagnose_environment
 from .worker_scheduler import build_schedule
 from .worker_supervision import build_worker_supervision
 from .incident_center import build_incident_center
+from .approval_center import build_approval_center
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -90,6 +91,7 @@ def build_command_center(
 
     events = read_events(audit_path) if audit_path is not None else []
     incidents = build_incident_center(events)
+    approvals = build_approval_center(events)
     per_agent = {}
     for agent_id in sorted(agents):
         summary = summarize_agent_history(agent_id, events, valid_tasks)
@@ -125,6 +127,7 @@ def build_command_center(
         "worker_scheduler": scheduler,
         "worker_supervision": supervision,
         "incident_center": incidents,
+        "approval_center": approvals,
         "environment": {
             "status": doctor["status"],
             "checks": doctor["checks"],
@@ -140,6 +143,8 @@ def build_command_center(
             "supervision_retries_triggered": 0,
             "incident_writes_performed": 0,
             "incident_notifications_sent": 0,
+            "approval_writes_performed": 0,
+            "approval_actions_executed": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
         },
