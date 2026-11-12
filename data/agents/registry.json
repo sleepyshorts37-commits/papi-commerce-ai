@@ -30,7 +30,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-002",
@@ -48,7 +50,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-003",
@@ -66,7 +70,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-004",
@@ -84,7 +90,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-005",
@@ -102,7 +110,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-006",
@@ -120,7 +130,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-007",
@@ -138,7 +150,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-008",
@@ -156,7 +170,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-009",
@@ -174,7 +190,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-010",
@@ -192,7 +210,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-011",
@@ -210,7 +230,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-012",
@@ -228,7 +250,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-013",
@@ -246,7 +270,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-014",
@@ -264,7 +290,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-015",
@@ -282,7 +310,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-016",
@@ -300,7 +330,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-017",
@@ -318,7 +350,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-018",
@@ -336,7 +370,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-019",
@@ -354,7 +390,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-020",
@@ -372,7 +410,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-021",
@@ -390,7 +430,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-022",
@@ -408,7 +450,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-023",
@@ -426,7 +470,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-024",
@@ -444,7 +490,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-025",
@@ -462,7 +510,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-026",
@@ -480,7 +530,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-027",
@@ -498,7 +550,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-028",
@@ -516,7 +570,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-029",
@@ -534,7 +590,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-030",
@@ -552,7 +610,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-031",
@@ -570,7 +630,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-032",
@@ -588,7 +650,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-033",
@@ -606,7 +670,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-034",
@@ -624,7 +690,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-035",
@@ -642,7 +710,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-036",
@@ -660,7 +730,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-037",
@@ -678,7 +750,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-038",
@@ -696,7 +770,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-039",
@@ -714,7 +790,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-040",
@@ -732,7 +810,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-041",
@@ -750,7 +830,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-042",
@@ -768,7 +850,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-043",
@@ -786,7 +870,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-044",
@@ -804,7 +890,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-045",
@@ -822,7 +910,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-046",
@@ -840,7 +930,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-047",
@@ -858,7 +950,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-048",
@@ -876,7 +970,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-049",
@@ -894,7 +990,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     },
     {
       "agent_id": "PAPI-050",
@@ -912,7 +1010,9 @@
         "financial_transactions",
         "purchases_or_paid_subscriptions_without_explicit_authorization"
       ],
-      "budget_xof": 0
+      "budget_xof": 0,
+      "given_name": null,
+      "aliases": []
     }
   ]
 }
