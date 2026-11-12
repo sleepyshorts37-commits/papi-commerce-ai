@@ -193,6 +193,7 @@ def append_event(event: dict[str, Any], path: Path) -> bool:
         previous_hash = existing[-1]["event_hash"] if existing else GENESIS_HASH
         record = {**event, "previous_hash": previous_hash}
         record["event_hash"] = _event_digest(event, previous_hash)
+        validate_event(record)
         payload = (json.dumps(record, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
         descriptor = _open_regular_file(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND)
         try:
