@@ -8,7 +8,7 @@ from typing import Any
 from .audit import append_event, new_event
 from .authz import AccessDenied, authorize_authenticated_agent
 from .execution_queue import ExecutionQueue, QueueError
-from .handler_registry import HandlerRegistry, PermissionError as HandlerPermissionError, execute_authorized_job
+from .handler_registry import HandlerRegistry, PermissionError as HandlerPermissionError, authorize_job, execute_authorized_job
 from .identity import DEFAULT_KEY_DIR, DEFAULT_REPLAY_DB
 from .identity_ed25519 import DEFAULT_PUBLIC_REGISTRY
 from .storage import StoreError
@@ -108,6 +108,7 @@ class PapiWorker:
             authenticated_actor = getattr(principal, "agent_id", None)
             if not isinstance(authenticated_actor, str) or authenticated_actor != agent_id:
                 raise AccessDenied("Principal authentifié invalide.")
+            authorize_job(job, task, self.policy, self.registry)
 
             try:
                 self._audit(job_id, "job.handler_started", authenticated_actor, handler=handler)
