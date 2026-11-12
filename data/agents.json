@@ -120,7 +120,7 @@
     },
     {
       "id": "cheikh-prospect",
-      "name": "Cheikh",
+      "name": "Ethan Cole",
       "role": "Prospection par e-mail",
       "department": "Prospection",
       "status": "planned",
@@ -131,6 +131,9 @@
       "prohibited": [
         "bulk_unsolicited_spam",
         "impersonation"
+      ],
+      "previous_names": [
+        "Cheikh"
       ]
     },
     {
