@@ -58,7 +58,11 @@ def assign_task(
     if task.get("status") not in {"backlog", "ready", "blocked"}:
         raise TaskAssignmentError("Seules les tâches en backlog, prêtes ou bloquées peuvent être affectées.")
     try:
-        validate_identity_registry(identity_registry, agents)
+        identity_errors = validate_identity_registry(identity_registry, agents)
+        if identity_errors:
+            raise TaskAssignmentError(
+                "Registre d'identités invalide : " + "; ".join(identity_errors[:5])
+            )
     except (AgentIdentityError, TypeError) as exc:
         raise TaskAssignmentError("Registre d'identités invalide : affectation refusée.") from exc
 
