@@ -143,6 +143,26 @@ class AuditAnchorContractTests(unittest.TestCase):
         # Immutable candidate may exist after an uncertain CAS; retry is safe.
         self.assertEqual(len(self.store.records), 1)
 
+    def test_retry_after_timeout_after_commit_returns_existing_digest(self):
+        self.add_event("evt-1")
+        record = self.record(None)
+        original_cas = self.store.compare_and_swap_latest
+        calls = {"count": 0}
+        def commit_then_timeout(journal_id, expected_digest, new_digest):
+            result = original_cas(journal_id, expected_digest, new_digest)
+            calls["count"] += 1
+            if calls["count"] == 1 and result:
+                raise TimeoutError("response lost after commit")
+            return result
+        self.store.compare_and_swap_latest = commit_then_timeout
+        with self.assertRaises(TimeoutError):
+            self.publish(record)
+        committed_digest = self.store.get_latest(self.journal_id)
+        self.assertIsNotNone(committed_digest)
+        recovered_digest = self.publish(record)
+        self.assertEqual(recovered_digest, committed_digest)
+        self.assertEqual(self.store.get_latest(self.journal_id), committed_digest)
+        self.assertEqual(len(self.store.records), 1)
     def test_same_sequence_publication_is_rejected(self):
         self.add_event("evt-1")
         first_digest = self.publish(self.record(None))
