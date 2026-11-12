@@ -16,6 +16,22 @@ class PapiChatTests(unittest.TestCase):
             {"id": "astou", "name": "Astou", "status": "active", "permissions": ["chat.send", "chat.receive", "chat.read"]},
             {"id": "marietou", "name": "Marietou", "status": "active", "permissions": ["chat.send", "chat.receive", "chat.read"]}
         ]}), encoding="utf-8")
+        self.identities = self.root / "identities.json"
+        identity_cards = []
+        for agent_id, full_name in (("astou", "Astou"), ("marietou", "Marietou")):
+            identity_cards.append({
+                "identity_id": f"PAPI-ID-{agent_id.upper()}", "agent_id": agent_id,
+                "full_name": full_name, "role": "Test", "department": "Tests",
+                "manager_id": "owner", "mission": "Exécuter les tests isolés.",
+                "competencies": ["testing"], "objectives": ["tests fiables"],
+                "autonomy_level": "bounded",
+                "permissions": ["chat.send", "chat.receive", "chat.read"],
+                "prohibited_actions": [], "status": "active",
+                "created_at": "2026-11-12T00:00:00Z",
+                "assignment_history": [], "evaluation_history": [],
+                "profile_state": "complete",
+            })
+        self.identities.write_text(json.dumps({"schema_version": 1, "identities": identity_cards}), encoding="utf-8")
         self.messages = self.root / "messages.jsonl"
         self.private_dir = self.root / "private"
         self.public_registry = self.root / "public-keys.json"
@@ -31,6 +47,7 @@ class PapiChatTests(unittest.TestCase):
         kwargs.setdefault("private_key_path", self.astou_key if kwargs.get("sender", "astou") == "astou" else self.owner_key)
         kwargs.setdefault("path", self.messages)
         kwargs.setdefault("agents_path", self.agents)
+        kwargs.setdefault("identities_path", self.identities)
         kwargs.setdefault("public_registry_path", self.public_registry)
         kwargs.setdefault("replay_db_path", self.replay_db)
         return send_message(**kwargs)
@@ -39,7 +56,7 @@ class PapiChatTests(unittest.TestCase):
         record = self.send(sender="astou", recipient="marietou", subject="Priorités",
                            body="Merci de vérifier les tâches ouvertes.")
         received = read_messages(reader="marietou", private_key_path=self.marietou_key, path=self.messages,
-                                 agents_path=self.agents, public_registry_path=self.public_registry,
+                                 agents_path=self.agents, identities_path=self.identities, public_registry_path=self.public_registry,
                                  replay_db_path=self.replay_db)
         self.assertEqual(len(received), 1)
         self.assertEqual(received[0]["message"]["message_id"], record["message"]["message_id"])
@@ -50,7 +67,7 @@ class PapiChatTests(unittest.TestCase):
                   body="Aucune dépense sans autorisation.",
                   private_key_path=self.owner_key)
         received = read_messages(reader="astou", private_key_path=self.astou_key, path=self.messages,
-                                 agents_path=self.agents, public_registry_path=self.public_registry,
+                                 agents_path=self.agents, identities_path=self.identities, public_registry_path=self.public_registry,
                                  replay_db_path=self.replay_db)
         self.assertEqual(len(received), 1)
 
@@ -64,7 +81,7 @@ class PapiChatTests(unittest.TestCase):
     def test_unsigned_or_spoofed_message_is_rejected(self):
         with self.assertRaises(ChatError):
             send_message(sender="astou", recipient="marietou", subject="Usurpation",
-                         body="Message sans clé", path=self.messages, agents_path=self.agents,
+                         body="Message sans clé", path=self.messages, agents_path=self.agents, identities_path=self.identities,
                          public_registry_path=self.public_registry, replay_db_path=self.replay_db)
         self.send(sender="astou", recipient="marietou", subject="Authentique", body="Bonjour")
         records = [json.loads(line) for line in self.messages.read_text(encoding="utf-8").splitlines()]
@@ -72,7 +89,7 @@ class PapiChatTests(unittest.TestCase):
         self.messages.write_text(json.dumps(records[0]) + "\n", encoding="utf-8")
         with self.assertRaises(ChatError):
             read_messages(reader="owner", private_key_path=self.owner_key, path=self.messages,
-                          agents_path=self.agents, public_registry_path=self.public_registry,
+                          agents_path=self.agents, identities_path=self.identities, public_registry_path=self.public_registry,
                           replay_db_path=self.replay_db)
 
     def test_tampered_body_is_rejected_on_read(self):
@@ -82,19 +99,19 @@ class PapiChatTests(unittest.TestCase):
         self.messages.write_text(json.dumps(record) + "\n", encoding="utf-8")
         with self.assertRaises(ChatError):
             read_messages(reader="owner", private_key_path=self.owner_key, path=self.messages,
-                          agents_path=self.agents, public_registry_path=self.public_registry,
+                          agents_path=self.agents, identities_path=self.identities, public_registry_path=self.public_registry,
                           replay_db_path=self.replay_db)
 
     def test_repeated_reads_do_not_trigger_replay_error(self):
         self.send(sender="astou", recipient="marietou", subject="Sujet", body="Relisible")
         for _ in range(3):
             self.assertEqual(len(read_messages(
-                reader="owner", private_key_path=self.owner_key, path=self.messages, agents_path=self.agents,
+                reader="owner", private_key_path=self.owner_key, path=self.messages, agents_path=self.agents, identities_path=self.identities,
                 public_registry_path=self.public_registry, replay_db_path=self.replay_db)), 1)
 
     def test_limit_is_bounded(self):
         with self.assertRaises(ChatError):
-            read_messages(reader="owner", limit=201, private_key_path=self.owner_key, path=self.messages, agents_path=self.agents)
+            read_messages(reader="owner", limit=201, private_key_path=self.owner_key, path=self.messages, agents_path=self.agents, identities_path=self.identities)
 
     def test_malformed_types_raise_chat_error_not_type_error(self):
         from papi_core.chat import _validate_message_fields
@@ -132,7 +149,7 @@ class PapiChatTests(unittest.TestCase):
     def test_agent_can_only_read_its_own_inbox(self):
         self.send(sender="owner", recipient="marietou", subject="Privé", body="Pour Marietou")
         own = read_messages(reader="astou", private_key_path=self.astou_key,
-                            path=self.messages, agents_path=self.agents,
+                            path=self.messages, agents_path=self.agents, identities_path=self.identities,
                             public_registry_path=self.public_registry, replay_db_path=self.replay_db)
         self.assertEqual(own, [])
 
@@ -149,7 +166,7 @@ class PapiChatTests(unittest.TestCase):
         self.agents.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(ChatError):
             read_messages(reader="astou", private_key_path=self.astou_key,
-                          path=self.messages, agents_path=self.agents,
+                          path=self.messages, agents_path=self.agents, identities_path=self.identities,
                           public_registry_path=self.public_registry, replay_db_path=self.replay_db)
 
     def test_inactive_agent_cannot_send(self):

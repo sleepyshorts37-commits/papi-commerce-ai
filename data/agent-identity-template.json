@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "identities": [
+    {
+      "identity_id": "PAPI-AGENT-UNIQUE-ID",
+      "agent_id": "agent-id-existant-dans-agents.json",
+      "full_name": "",
+      "role": "",
+      "department": "",
+      "manager_id": null,
+      "mission": "",
+      "competencies": [],
+      "objectives": [],
+      "autonomy_level": "none",
+      "permissions": [],
+      "prohibited_actions": [],
+      "status": "planned",
+      "created_at": "2026-11-12T00:00:00Z",
+      "assignment_history": [],
+      "evaluation_history": [],
+      "profile_state": "incomplete"
+    }
+  ],
+  "instructions": "Modèle uniquement. Ne pas activer une carte incomplète. Ne jamais attribuer de compétences, permissions, hiérarchie ou objectifs sans décision validée. Les permissions de cette carte doivent rester cohérentes avec les politiques d'autorisation runtime."
+}
