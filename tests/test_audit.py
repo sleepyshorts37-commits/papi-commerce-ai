@@ -172,6 +172,12 @@ class AuditHashChainTests(unittest.TestCase):
         with self.assertRaises(AuditError):
             verify_checkpoint_transition({}, {})
 
+    def test_checkpoint_transition_rejects_non_genesis_empty_checkpoint(self):
+        empty = build_checkpoint(self.path)
+        forged = {**empty, "head_hash": "f" * 64}
+        with self.assertRaises(AuditError):
+            verify_checkpoint_transition(empty, forged)
+
     def test_zero_length_write_fails_instead_of_looping(self):
         with patch("runtime.papi_core.audit.os.write", return_value=0):
             with self.assertRaises(OSError):
