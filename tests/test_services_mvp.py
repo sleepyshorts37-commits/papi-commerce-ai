@@ -59,6 +59,18 @@ class ServicesMvpTests(unittest.TestCase):
         r = self.report(work_items=[dict(self.work[0], delivered_at=None)])
         self.assertEqual(r["counts"]["work_items"], 0)
 
+    def test_work_requires_accepted_quote(self):
+        draft_quote = dict(self.quotes[0], status="draft")
+        r = self.report(quotes=[draft_quote])
+        self.assertEqual(r["counts"]["work_items"], 0)
+        self.assertEqual(r["counts"]["rejected_records"], 1)
+
+    def test_cumulative_payments_cannot_exceed_quote(self):
+        second = dict(self.payments[0], payment_id="P2", amount_xof=1)
+        r = self.report(payments=self.payments + [second])
+        self.assertEqual(r["counts"]["payments"], 1)
+        self.assertEqual(r["counts"]["rejected_records"], 1)
+
     def test_read_only_zero_budget(self):
         s = self.report()["safety"]
         self.assertEqual(s["budget_xof"], 0)
