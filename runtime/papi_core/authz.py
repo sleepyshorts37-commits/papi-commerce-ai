@@ -8,6 +8,7 @@ from typing import Any
 from .identity import IdentityError, verify_request
 from .identity_ed25519 import Ed25519IdentityError, verify_ed25519_request, DEFAULT_PUBLIC_REGISTRY
 from .registry import RegistryError, load_agents
+from .principal import _issue_authenticated_agent_principal
 
 ROOT = Path(__file__).resolve().parents[2]
 AGENTS_FILE = ROOT / "data" / "agents.json"
@@ -115,4 +116,5 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
     active_policy = policy if policy is not None else load_policy()
     authorization = authorize_agent(agent_id, permission, agents_path, active_policy)
     return {**authorization, "identity_authenticated": True,
-            "identity_algorithm": identity["algorithm"], "replay_protected": True}
+            "identity_algorithm": identity["algorithm"], "replay_protected": True,
+            "principal": _issue_authenticated_agent_principal(agent_id)}

@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .principal import require_authenticated_agent_principal
+
 DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "memory" / "events.jsonl"
 CATEGORIES = {"fact", "decision", "project", "result", "procedure", "lesson"}
 SCOPES = {"shared", "agent", "owner"}
@@ -89,23 +91,24 @@ def _append(event: dict[str, Any], path: Path) -> None:
 
 
 def remember_fact(
-    *, actor: str, category: str, title: str, content: str,
+    *, principal: object, category: str, title: str, content: str,
     source_type: str, source_id: str, confidence: float = 0.8,
     scope: str = "shared", tags: list[str] | None = None,
     sensitivity: str = "normal", path: Path = DEFAULT_PATH,
 ) -> dict[str, Any]:
     """Ajoute un fait traçable ; ne modifie jamais une entrée existante."""
-    actor = _safe_text(actor, "actor", 120)
+    authenticated = require_authenticated_agent_principal(principal)
+    actor = authenticated.agent_id
     title = _safe_text(title, "title", 120)
     content = _safe_text(content, "content", 2000)
     source_type = _safe_text(source_type, "source_type", 40)
     source_id = _safe_text(source_id, "source_id", 120)
     if category not in CATEGORIES or scope not in SCOPES or sensitivity not in SENSITIVITIES:
         raise MemoryError("Catégorie, portée ou sensibilité invalide.")
-    if category == "decision" and actor != "owner":
-        raise MemoryError("Seul le propriétaire peut enregistrer une décision officielle.")
-    if scope == "owner" and actor != "owner":
-        raise MemoryError("La mémoire owner est réservée au propriétaire.")
+    if category == "decision":
+        raise MemoryError("Un agent authentifié ne peut pas enregistrer une décision officielle.")
+    if scope == "owner":
+        raise MemoryError("La mémoire owner exige une authentification propriétaire distincte.")
     if sensitivity != "normal":
         raise MemoryError("Les données restreintes ne sont pas admises dans cette mémoire.")
     if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not 0 <= confidence <= 1:
@@ -126,10 +129,12 @@ def remember_fact(
 
 
 def search_memory(
-    *, query: str = "", actor: str = "owner", category: str | None = None,
+    *, principal: object, query: str = "", category: str | None = None,
     scope: str | None = None, limit: int = 20, path: Path = DEFAULT_PATH,
 ) -> list[dict[str, Any]]:
     """Recherche locale ; les entrées privées ne sont visibles que dans leur portée."""
+    authenticated = require_authenticated_agent_principal(principal)
+    actor = authenticated.agent_id
     if not isinstance(query, str) or len(query) > 120:
         raise MemoryError("Requête invalide.")
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
@@ -145,9 +150,9 @@ def search_memory(
     for event in events:
         if event["event_type"] != "remember" or event["memory_id"] in superseded:
             continue
-        if event["scope"] == "owner" and actor != "owner":
+        if event["scope"] == "owner":
             continue
-        if event["scope"] == "agent" and actor not in {"owner", event["actor"]}:
+        if event["scope"] == "agent" and actor != event["actor"]:
             continue
         if category and event["category"] != category:
             continue
@@ -161,20 +166,21 @@ def search_memory(
 
 
 def supersede_memory(
-    *, memory_id: str, actor: str, reason: str, path: Path = DEFAULT_PATH,
+    *, memory_id: str, principal: object, reason: str, path: Path = DEFAULT_PATH,
 ) -> bool:
     """Archive logiquement une entrée par événement ; l'historique reste intact."""
     memory_id = _safe_text(memory_id, "memory_id", 120)
-    actor = _safe_text(actor, "actor", 120)
+    authenticated = require_authenticated_agent_principal(principal)
+    actor = authenticated.agent_id
     reason = _safe_text(reason, "reason", 240)
     events = _read_events(Path(path))
     target = next((e for e in events if e["event_type"] == "remember" and e["memory_id"] == memory_id), None)
     if target is None:
         raise MemoryError("Entrée mémoire introuvable.")
-    if target["category"] == "decision" and actor != "owner":
-        raise MemoryError("Seul le propriétaire peut archiver une décision officielle.")
-    if target["scope"] == "owner" and actor != "owner":
-        raise MemoryError("Seul le propriétaire peut archiver cette entrée.")
+    if target["category"] == "decision" or target["scope"] == "owner":
+        raise MemoryError("Un agent ne peut pas archiver une mémoire réservée au propriétaire.")
+    if target["scope"] == "agent" and actor != target["actor"]:
+        raise MemoryError("Un agent ne peut pas archiver la mémoire privée d’un autre agent.")
     if any(e.get("target_memory_id") == memory_id for e in events if e["event_type"] == "supersede"):
         return False
     _append({
