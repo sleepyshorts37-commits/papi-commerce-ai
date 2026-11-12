@@ -11,7 +11,7 @@ class FinancialReconciliationTests(unittest.TestCase):
  def test_unmatched_statement_reported(self):
   r=reconcile_finances(self.tx,[]); self.assertEqual(r["counts"]["unmatched_transactions"],1)
  def test_ambiguous_statement_not_auto_matched(self):
-  r=reconcile_finances(self.tx,self.st*2); self.assertEqual(r["counts"]["matched"],0); self.assertEqual(r["unmatched_transactions"][0]["reason"],"ambiguous_statement_match")
+  r=reconcile_finances(self.tx,[self.st[0],dict(self.st[0],statement_id="S2")]); self.assertEqual(r["counts"]["matched"],0); self.assertEqual(r["unmatched_transactions"][0]["reason"],"ambiguous_statement_match")
  def test_cancelled_transaction_not_matched(self):
   t=dict(self.tx[0],status="cancelled"); self.assertEqual(reconcile_finances([t],self.st)["counts"]["matched"],0)
  def test_personal_fields_rejected(self):
