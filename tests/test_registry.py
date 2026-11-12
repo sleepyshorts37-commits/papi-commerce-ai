@@ -512,6 +512,25 @@ class WorkerTests(unittest.TestCase):
         complete.assert_called_once()
 
 
+    def test_queue_failure_transition_error_returns_controlled_result(self):
+        from papi_core.audit import read_events
+        worker = self.make_worker()
+        job = {"id": "JOB-FAIL-TRANSITION", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-fail-transition"}
+        with patch.object(worker.queue, "claim", return_value=job), \\
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \\
+             patch("papi_core.worker.execute_authorized_job", side_effect=RuntimeError("handler failed")), \\
+             patch.object(worker.queue, "fail", side_effect=OSError("queue unavailable")):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "failure_transition_error")
+        events = read_events(worker.audit_path)
+        failure = next(event for event in events if event["action"] == "job.failure_transition_error")
+        self.assertEqual(failure["actor"], "agent-test")
+        self.assertEqual(failure["details"]["outcome"], "queue_fail_error")
+
+
 
 class DoctorTests(unittest.TestCase):
     def test_missing_environment_is_reported_without_secrets(self):
