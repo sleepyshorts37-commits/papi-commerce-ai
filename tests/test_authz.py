@@ -125,6 +125,7 @@ class AgentAccessTests(unittest.TestCase):
             policy=self.policy, key_dir=self.keys, replay_db=self.db)
         self.assertTrue(result["identity_authenticated"])
         self.assertTrue(result["replay_protected"])
+        self.assertEqual(result["principal"].agent_id, "agent-a")
 
     def test_identity_must_be_bound_to_job_and_permission(self):
         envelope = self.signed({"permission": "read_reports", "task_id": "other", "handler": "report.preview"})
