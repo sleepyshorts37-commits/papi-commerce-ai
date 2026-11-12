@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import json
+import fcntl
+import functools
+import inspect
 import os
 import secrets
 import sqlite3
@@ -67,6 +70,32 @@ def _write_registry(path: Path, data: dict[str, Any]) -> None:
         temp.unlink(missing_ok=True)
 
 
+
+def _registry_locked(path_parameter: str):
+    """Serialize local registry mutations across threads and processes (POSIX)."""
+    def decorate(function):
+        signature = inspect.signature(function)
+
+        @functools.wraps(function)
+        def wrapped(*args, **kwargs):
+            bound = signature.bind_partial(*args, **kwargs)
+            registry_path = Path(bound.arguments[path_parameter])
+            registry_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            lock_path = registry_path.with_name(registry_path.name + ".lock")
+            fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+            try:
+                with os.fdopen(fd, "r+b") as lock_file:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                    try:
+                        return function(*args, **kwargs)
+                    finally:
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                raise
+        return wrapped
+    return decorate
+
+@_registry_locked("registry_path")
 def provision_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
                             registry_path: Path = DEFAULT_PUBLIC_REGISTRY) -> Path:
     """Crée une clé privée locale et publie uniquement sa clé publique."""
@@ -103,6 +132,7 @@ def provision_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_D
     return private_path
 
 
+@_registry_locked("registry_path")
 def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
                          registry_path: Path = DEFAULT_PUBLIC_REGISTRY) -> Path:
     """Incrémente la version de clé et invalide immédiatement l'ancienne clé."""
@@ -135,6 +165,7 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
     return private_path
 
 
+@_registry_locked("registry_path")
 def revoke_ed25519_agent(agent_id: str, registry_path: Path = DEFAULT_PUBLIC_REGISTRY) -> None:
     _validate_agent(agent_id)
     registry = _read_registry(registry_path)
