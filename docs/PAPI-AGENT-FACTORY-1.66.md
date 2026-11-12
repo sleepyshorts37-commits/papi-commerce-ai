@@ -83,15 +83,25 @@ Après les validations requises, le profil peut être proposé à l'intégration
 ### 8. Améliorer ou retirer
 Ibrahima peut proposer de former, spécialiser, fusionner, remplacer ou retirer un profil. Mariama vérifie les preuves. Les changements de permissions sensibles, les coûts et les engagements externes restent soumis aux autorisations humaines prévues.
 
+## Règle obligatoire d'unicité des noms
+Aucun nom d'agent ne peut être attribué à deux personnes/agents dans PAPI COMMERCE AI, quel que soit le département, le niveau hiérarchique, la nationalité ou la langue d'origine.
+- Chaque agent doit avoir un **nom d'affichage complet unique** et un **prénom d'usage unique** dans le registre global. Si un prénom est déjà attribué, choisir un autre prénom, même si les agents ont des fonctions ou départements différents.
+- La règle s'applique sans exception aux prénoms sénégalais, africains et internationaux, ainsi qu'aux noms composés, surnoms et pseudonymes utilisés professionnellement.
+- Vérifier les collisions en ignorant la casse, les accents, les espaces, les traits d'union et les variantes typographiques ; vérifier aussi les alias et translittérations connus afin d'éviter les doublons évidents.
+- Si une collision est détectée, le nouvel agent reçoit un autre nom distinct avant que sa fiche soit validée. Si deux fiches historiques sont déjà en conflit, proposer un renommage explicite et conserver l'ancien nom uniquement dans l'historique d'audit, jamais comme nom d'usage actif.
+- L'identifiant technique unique ne remplace jamais l'obligation d'avoir un nom humain distinct.
+- Tenir un registre central des noms attribués et effectuer un contrôle automatique de collision à chaque création, renommage ou réactivation d'agent. En cas de doute, bloquer la validation et demander un arbitrage humain.
+
 ## Cycle de travail
 1. Malik découvre un métier ou une compétence.
 2. Il documente la demande et les preuves.
 3. Ibrahima évalue le besoin organisationnel.
 4. Ibrahima conçoit le profil et son rattachement.
-5. Mariama contrôle la qualité et les risques.
-6. Cheikh Fall vérifie les dépendances et la fiabilité.
-7. Marietou/Astou coordonnent l'intégration selon la gouvernance.
-8. Les performances sont mesurées et le profil est amélioré.
+5. Le registre central vérifie l'unicité du nom et de l'identité.
+6. Mariama contrôle la qualité et les risques.
+7. Cheikh Fall vérifie les dépendances et la fiabilité.
+8. Marietou/Astou coordonnent l'intégration selon la gouvernance.
+9. Les performances sont mesurées et le profil est amélioré.
 
 ## Cadence proposée
 - Quotidien : collecte de signaux et veille légère.
@@ -114,5 +124,5 @@ Cette cadence décrit une cible de fonctionnement ; elle n'est pas active tant q
 Ce document définit le processus cible. Il ne prouve pas que Malik, Awa ou la fabrique d'agents sont déployés, qu'une veille automatique tourne, ni que des agents runtime peuvent se créer eux-mêmes. Les profils restent planifiés tant que les implémentations, tests, accès et déploiements nécessaires ne sont pas achevés.
 
 ## Décisions de nommage à traiter
-- **Awa** existe déjà dans la liste historique PAPI MARKET comme analyste d'étude de marché. Le rôle de Scout PAPI OPPORTUNITY doit recevoir une identité complète distincte et la collision doit être résolue avant activation.
-- **Malik** est proche de **Malick**, déjà affecté aux missions freelance. Utiliser des identifiants techniques distincts et valider des noms complets distincts avant activation.
+- **Awa** existe déjà dans la liste historique PAPI MARKET comme analyste d'étude de marché. Le rôle de Scout PAPI OPPORTUNITY doit recevoir un autre prénom et un nom complet distincts avant activation.
+- **Malik** est proche de **Malick**, déjà affecté aux missions freelance. Pour respecter la règle stricte d'unicité, le nouvel agent Scout des métiers doit recevoir un autre prénom d'usage et un nom complet distincts avant activation.
