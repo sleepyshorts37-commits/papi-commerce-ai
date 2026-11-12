@@ -33,6 +33,7 @@ from .financial_control import build_financial_control
 from .procurement import analyze_procurement
 from .inventory_control import build_inventory_control
 from .order_management import analyze_orders
+from .customer_service import analyze_customer_service
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -63,6 +64,7 @@ def build_command_center(
     inventory_reorder_points: dict[str, int] | None = None,
     inventory_target_stock: dict[str, int] | None = None,
     order_records: list[dict[str, Any]] | None = None,
+    customer_service_tickets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -181,6 +183,7 @@ def build_command_center(
     procurement_intelligence = analyze_procurement(procurement_observations or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
     inventory_control = build_inventory_control(inventory_movements or [], opening_stock=inventory_opening_stock, reorder_points=inventory_reorder_points, target_stock=inventory_target_stock)
     order_management = analyze_orders(order_records or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
+    customer_service = analyze_customer_service(customer_service_tickets or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -237,6 +240,7 @@ def build_command_center(
         "procurement_intelligence": procurement_intelligence,
         "inventory_control": inventory_control,
         "order_management": order_management,
+        "customer_service": customer_service,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -314,6 +318,11 @@ def build_command_center(
             "order_status_updates_executed": 0,
             "deliveries_dispatched": 0,
             "customer_contacts_sent": 0,
+            "customer_service_tickets_received": customer_service["tickets_received"],
+            "customer_service_tickets_analyzed": customer_service["tickets_analyzed"],
+            "customer_service_tickets_rejected": customer_service["tickets_rejected"],
+            "customer_service_drafts_prepared": sum(1 for item in customer_service["tickets"] if item["response_draft"]),
+            "customer_service_messages_sent": 0,
             "ledger_writes_performed": 0,
             "transfers_executed": 0,
             "withdrawals_executed": 0,
