@@ -47,7 +47,7 @@ utilise uniquement des données synthétiques et une panne simulée.
 ## Tests
 
 ```bash
-PYTHONPATH=runtime python -m unittest tests.test_langgraph_demo -v
+PYTHONPATH=runtime python -m unittest discover -s tests -p 'test_langgraph_demo.py' -v
 ```
 
 Les tests sont ignorés si LangGraph n'est pas installé. Ils ne valident pas
