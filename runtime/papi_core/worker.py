@@ -60,7 +60,7 @@ class PapiWorker:
             if permission is None:
                 raise AccessDenied("Classe de permission non prise en charge.")
             agent_id = task.get("owner_agent")
-            authorize_authenticated_agent(
+            authorization = authorize_authenticated_agent(
                 agent_id, permission, job.get("agent_identity"),
                 task_id=task_id, handler=handler, policy=self.policy,
                 key_dir=self.key_dir, replay_db=self.replay_db,
@@ -68,7 +68,9 @@ class PapiWorker:
                 shared_identity_verifier=self.shared_identity_verifier,
             )
             result = execute_authorized_job(job, task, self.policy, self.registry,
-                context={"worker_id": self.worker_id, "task_id": task_id, "authenticated_agent_id": agent_id})
+                context={"worker_id": self.worker_id, "task_id": task_id,
+                         "authenticated_agent_id": agent_id,
+                         "authenticated_principal": authorization["principal"]})
             if not self.queue.complete(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, result=result):
                 return {"status": "lease_lost", "claimed": True, "job_id": job_id}
             return {"status": "completed", "claimed": True, "job_id": job_id}
