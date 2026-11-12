@@ -2,13 +2,13 @@
 
 ## Status
 
-Design only. The worker is **not yet audited**. This document does not enable execution, deploy a worker, activate agents, or authorize external actions. The current policy remains the authority and execution stays disabled.
+Implementation present in this PR; release validation is still pending. The worker remains disabled by policy in production. This document does not deploy a worker, activate agents, or authorize external actions.
 
 ## Trust boundary
 
 - Never accept an actor name from the job payload, task payload, handler context supplied by a caller, or a caller-provided string.
 - A pre-authentication event such as `job.claimed` uses a fixed system actor derived from the configured worker identity (for example `system:worker:<worker_id>`). It must not name the claimed agent as authenticated.
-- Agent-attributed events may be emitted only after `authorize_authenticated_agent(...)` succeeds. The actor must come from the returned authenticated identity (and, once PR #84 is integrated, from its authenticated principal), never from `task.owner_agent` alone.
+- Agent-attributed events are emitted only after `authorize_authenticated_agent(...)` succeeds and the returned sealed principal is checked against the expected agent. The actor comes from that principal, never from `task.owner_agent` alone.
 - Do not put signed envelopes, signatures, nonce values, lease tokens, payloads, customer data, email addresses, phone numbers, credentials, or message bodies in audit details.
 
 ## Event lifecycle
@@ -49,6 +49,6 @@ Each event contains only bounded metadata: event name, job/task opaque identifie
 
 ## Dependency and rollout order
 
-PR #84 introduces authenticated principals for memory access but is separate and currently not part of this branch. Before worker auditing is implemented, reconcile the authentication/principal interface so the worker receives a trustworthy principal from the authorization boundary. Do not recreate a second, weaker principal mechanism in the worker.
+PR #84 is integrated into this branch. The worker passes the exact principal returned by the cryptographic authorization boundary to handlers; it does not construct an alternate principal.
 
-Implementation should be a separate reviewed change after this interface is settled. Keep `execution_enabled=false`, `external_actions_enabled=false`, and financial/legal permissions disabled throughout tests and review. Do not merge or deploy as part of this design task.
+The current tests cover disabled execution, handler execution, unknown handlers, lease loss, pre-handler audit failure, and best-effort terminal audit failure. Additional release tests are still required for forged actor fields, authentication failure attribution, retry/concurrency behavior, expired leases, and sensitive-data exclusion across the complete worker lifecycle. Keep `execution_enabled=false`, `external_actions_enabled=false`, and financial/legal permissions disabled throughout review. Do not merge or deploy until CI and independent review are complete.
