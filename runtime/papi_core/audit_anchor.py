@@ -99,12 +99,7 @@ def _validate_record(
     if previous is not None and (not isinstance(previous, str) or not DIGEST_RE.fullmatch(previous)):
         raise CheckpointAnchorError("Lien vers l'enregistrement précédent invalide.")
     try:
-        verify_checkpoint_transition(
-            {"schema_version": 1, "sequence": 0, "head_hash": "0" * 64}
-            if record["checkpoint"].get("sequence") == 0
-            else record["checkpoint"],
-            record["checkpoint"],
-        )
+        verify_checkpoint_transition(record["checkpoint"], record["checkpoint"])
     except (AttributeError, TypeError, AuditError) as exc:
         raise CheckpointAnchorError("Checkpoint contenu dans l'enregistrement invalide.") from exc
     if expected_digest is not None and previous != expected_digest:
@@ -137,6 +132,8 @@ def publish_checkpoint_record(
     """
     if not isinstance(journal_id, str) or not journal_id.strip():
         raise CheckpointAnchorError("Identifiant de journal obligatoire.")
+    if not isinstance(record, dict):
+        raise CheckpointAnchorError("Enregistrement de checkpoint invalide.")
     latest_digest = store.get_latest(journal_id)
     previous_record = None
     if latest_digest is not None:
@@ -149,16 +146,32 @@ def publish_checkpoint_record(
             previous_record = json.loads(previous_bytes.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise CheckpointAnchorError("Enregistrement externe précédent illisible.") from exc
-        _validate_record(
-            previous_record, journal_id=journal_id,
-            expected_digest=None, verifier=verify_signature,
-        )
-        if _record_digest(canonical_record_bytes(previous_record)) != latest_digest:
-            raise CheckpointAnchorError("Empreinte du précédent checkpoint incorrecte.")
-        if previous_record["previous_record_digest"] is not None and not DIGEST_RE.fullmatch(
-            previous_record["previous_record_digest"]
-        ):
-            raise CheckpointAnchorError("Chaînage externe précédent invalide.")
+        cursor = latest_digest
+        seen_digests: set[str] = set()
+        while cursor is not None:
+            if cursor in seen_digests:
+                raise CheckpointAnchorError("Cycle dans la chaîne des checkpoints externes.")
+            seen_digests.add(cursor)
+            raw_record = store.get_record(cursor)
+            if not isinstance(raw_record, bytes):
+                raise CheckpointAnchorError("Enregistrement externe de la chaîne introuvable.")
+            try:
+                chain_record = json.loads(raw_record.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise CheckpointAnchorError("Enregistrement externe de la chaîne illisible.") from exc
+            _validate_record(
+                chain_record, journal_id=journal_id,
+                expected_digest=None, verifier=verify_signature,
+            )
+            if _record_digest(canonical_record_bytes(chain_record)) != cursor:
+                raise CheckpointAnchorError("Empreinte d'un checkpoint externe incorrecte.")
+            cursor = chain_record["previous_record_digest"]
+            if cursor is None:
+                previous_record = chain_record
+            elif cursor not in seen_digests:
+                # The next iteration verifies the referenced immutable predecessor.
+                pass
+        previous_record = json.loads(store.get_record(latest_digest).decode("utf-8"))
         verify_checkpoint(journal_path, previous_record["checkpoint"])
 
     candidate = build_checkpoint(journal_path)
