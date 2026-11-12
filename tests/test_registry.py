@@ -409,6 +409,43 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(result["status"], "lease_lost")
 
 
+    def test_audit_failure_before_handler_fails_closed(self):
+        worker = self.make_worker()
+        job = {"id": "JOB-AUDIT-1", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-audit"}
+        with patch.object(worker.queue, "claim", return_value=job), \\
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \\
+             patch.object(worker.queue, "fail", return_value="retry") as fail, \\
+             patch("papi_core.worker.execute_authorized_job") as execute, \\
+             patch.object(worker, "_audit", side_effect=OSError("disk unavailable")):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "audit_blocked")
+        self.assertEqual(fail.call_args.kwargs["error_code"], "audit_unavailable")
+        execute.assert_not_called()
+
+    def test_terminal_audit_failure_does_not_undo_completion(self):
+        worker = self.make_worker()
+        job = {"id": "JOB-AUDIT-2", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-audit-2"}
+        original_audit = worker._audit
+        def fail_terminal(job_id, action, actor, **kwargs):
+            if action == "job.completed":
+                raise OSError("disk unavailable")
+            return original_audit(job_id, action, actor, **kwargs)
+        with patch.object(worker.queue, "claim", return_value=job), \\
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \\
+             patch.object(worker.queue, "complete", return_value=True) as complete, \\
+             patch.object(worker, "_audit", side_effect=fail_terminal):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "completed")
+        complete.assert_called_once()
+
+
+
 class DoctorTests(unittest.TestCase):
     def test_missing_environment_is_reported_without_secrets(self):
         from papi_core.doctor import diagnose_environment
