@@ -76,6 +76,7 @@ class CommandCenterTests(unittest.TestCase):
             agents, tasks, policy = self._fixtures(root)
             result = build_command_center(tasks, agents, policy, {})
         self.assertEqual(result["worker_scheduler"]["status"], "not_configured")
+        self.assertEqual(result["worker_supervision"]["status"], "not_configured")
         self.assertTrue(result["worker_scheduler"]["read_only"])
         self.assertEqual(result["controls"]["scheduler_claims_performed"], 0)
         self.assertFalse(result["controls"]["worker_started"])
