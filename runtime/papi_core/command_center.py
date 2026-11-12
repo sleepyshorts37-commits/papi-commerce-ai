@@ -26,6 +26,7 @@ from .quality_control import build_quality_control
 from .business_intelligence import build_business_intelligence
 from .opportunity_scanner import scan_opportunity_signals
 from .competitor_intelligence import analyze_competitor_observations
+from .product_intelligence import analyze_product_options
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -43,6 +44,8 @@ def build_command_center(
     supervision_snapshot: dict[str, Any] | None = None,
     opportunity_signals: list[dict[str, Any]] | None = None,
     competitor_observations: list[dict[str, Any]] | None = None,
+    product_observations: list[dict[str, Any]] | None = None,
+    target_product_selling_price_xof: int | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -144,6 +147,11 @@ def build_command_center(
         competitor_observations or [],
         as_of=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     )
+    product_intelligence = analyze_product_options(
+        product_observations or [],
+        as_of=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        target_selling_price_xof=target_product_selling_price_xof,
+    )
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -193,6 +201,7 @@ def build_command_center(
         "opportunity_scanner": scanner,
         "business_intelligence": business_intelligence,
         "competitor_intelligence": competitor_intelligence,
+        "product_intelligence": product_intelligence,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -236,6 +245,8 @@ def build_command_center(
             "business_plans_created": 0,
             "competitor_observations_received": competitor_intelligence["observations_received"],
             "competitor_observations_rejected": competitor_intelligence["observations_rejected"],
+            "product_observations_received": product_intelligence["observations_received"],
+            "product_observations_rejected": product_intelligence["observations_rejected"],
             "business_actions_executed": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
