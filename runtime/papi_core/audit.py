@@ -88,8 +88,11 @@ def _open_regular_file(path: Path, flags: int, mode: int = 0o600) -> int:
         raise AuditError("La plateforme ne permet pas de refuser les liens symboliques.")
     descriptor = os.open(path, flags | nofollow | getattr(os, "O_NONBLOCK", 0), mode)
     try:
-        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+        file_stat = os.fstat(descriptor)
+        if not stat.S_ISREG(file_stat.st_mode):
             raise AuditError("Le journal et son verrou doivent être des fichiers réguliers.")
+        if stat.S_IMODE(file_stat.st_mode) & 0o077:
+            raise AuditError("Permissions trop ouvertes: journal et verrou doivent être privés (0600).")
         return descriptor
     except BaseException:
         os.close(descriptor)
