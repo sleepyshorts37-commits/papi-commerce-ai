@@ -47,6 +47,14 @@ class AutomationCoordinationTests(unittest.TestCase):
         ]})
         self.assertEqual(result["summary"]["rejected_invalid"], 2)
 
+    def test_generator_inputs_are_counted_correctly(self):
+        def tasks():
+            yield {"task_type": "one", "title": "Task one"}
+            yield {"task_type": "two", "title": "Task two"}
+        result = coordinate_department_plans({"PAPI SERVICES": tasks()})
+        self.assertEqual(result["summary"]["total_received"], 2)
+        self.assertEqual(result["summary"]["total_unique"], 2)
+
     def test_no_external_execution(self):
         result = coordinate_department_plans({})
         self.assertFalse(result["execution_enabled"])
