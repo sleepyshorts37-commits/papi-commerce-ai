@@ -40,7 +40,7 @@ class TaskAssignmentTests(unittest.TestCase):
         self.identities = {
             "schema_version": 1,
             "identities": [
-                card("manager", "Manager", "Direction", None,
+                card("manager", "Manager", "Direction", "owner",
                      ["assign_internal_tasks"], []),
                 card("worker", "Worker", "Analyste", "manager",
                      ["read_reports"], []),
