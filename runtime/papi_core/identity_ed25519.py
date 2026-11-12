@@ -78,7 +78,10 @@ def _registry_locked(path_parameter: str):
 
         @functools.wraps(function)
         def wrapped(*args, **kwargs):
-            bound = signature.bind_partial(*args, **kwargs)
+            # A wrapped function may rely on its declared default registry path.
+            # bind_partial() omits defaults, which would raise KeyError before locking.
+            bound = signature.bind(*args, **kwargs)
+            bound.apply_defaults()
             registry_path = Path(bound.arguments[path_parameter])
             registry_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             lock_path = registry_path.with_name(registry_path.name + ".lock")
