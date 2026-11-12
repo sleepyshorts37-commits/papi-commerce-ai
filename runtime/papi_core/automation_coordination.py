@@ -6,7 +6,6 @@ blocked when their declared prerequisites are not complete. It never executes.
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Any, Iterable, Mapping
 
 
@@ -40,12 +39,14 @@ def coordinate_department_plans(
     consolidated: dict[str, dict[str, Any]] = {}
     rejected = 0
     duplicates = 0
+    total_received = 0
 
     for department, tasks in department_plans.items():
         if not isinstance(department, str) or not department.strip():
             rejected += 1
             continue
         for task in tasks:
+            total_received += 1
             if not isinstance(task, Mapping):
                 rejected += 1
                 continue
@@ -112,8 +113,7 @@ def coordinate_department_plans(
         "budget_xof": 0,
         "tasks": tasks_out,
         "summary": {
-            "total_received": sum(len(list(items)) if not isinstance(items, list) else len(items)
-                                  for items in department_plans.values()),
+            "total_received": total_received,
             "total_unique": len(tasks_out),
             "duplicates_removed": duplicates,
             "rejected_invalid": rejected,
