@@ -601,14 +601,16 @@ class WorkerTests(unittest.TestCase):
         worker.registry.register("internal.guarded", "read_only", guarded_handler)
         job = {"id": "JOB-GUARDED-LEASE", "task_id": "TASK-1",
                "handler": "internal.guarded", "payload": {}, "lease_token": "lease-guarded"}
-        with patch.object(worker.queue, "claim", return_value=job), \\
-             patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False,
-                          "owner_agent": "agent-test"}
-             }), \\
-             patch.object(worker.queue, "renew", side_effect=[True, False]) as renew, \\
-             patch.object(worker.queue, "complete") as complete, \\
-             patch.object(worker.queue, "fail") as fail:
+        with (
+            patch.object(worker.queue, "claim", return_value=job),
+            patch.object(worker.queue.store, "get_task", return_value={
+                "task": {"status": "in_progress", "approval_required": False,
+                         "owner_agent": "agent-test"}
+            }),
+            patch.object(worker.queue, "renew", side_effect=[True, False]) as renew,
+            patch.object(worker.queue, "complete") as complete,
+            patch.object(worker.queue, "fail") as fail,
+        ):
             result = worker.run_once()
 
         self.assertEqual(result["status"], "lease_lost")
