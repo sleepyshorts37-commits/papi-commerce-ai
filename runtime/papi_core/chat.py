@@ -90,7 +90,8 @@ def validate_message(
 def send_message(
     *, sender: str, recipient: str, subject: str, body: str,
     message_type: str = "info", path: Path = CHAT_FILE,
-    agents_path: Path = AGENTS_FILE, private_key_path: Path | None = None,
+    agents_path: Path = AGENTS_FILE, identities_path: Path | None = None,
+    private_key_path: Path | None = None,
     key_version: int = 1, public_registry_path: Path = DEFAULT_PUBLIC_REGISTRY,
     replay_db_path: Path = DEFAULT_REPLAY_DB,
 ) -> dict[str, Any]:
@@ -113,6 +114,7 @@ def send_message(
         if sender in load_agents(agents_path):
             authenticate_agent_request(
                 envelope, agents_path=agents_path,
+                **({"identities_path": identities_path} if identities_path is not None else {}),
                 public_registry_path=public_registry_path, replay_db=replay_db_path,
             )
         else:
@@ -135,6 +137,7 @@ def send_message(
 def read_messages(
     *, reader: str, limit: int = 50,
     path: Path = CHAT_FILE, agents_path: Path = AGENTS_FILE,
+    identities_path: Path | None = None,
     private_key_path: Path | None = None, key_version: int = 1,
     public_registry_path: Path = DEFAULT_PUBLIC_REGISTRY,
     replay_db_path: Path = DEFAULT_REPLAY_DB,
@@ -154,6 +157,7 @@ def read_messages(
         if reader in load_agents(agents_path):
             authenticate_agent_request(
                 challenge, agents_path=agents_path,
+                **({"identities_path": identities_path} if identities_path is not None else {}),
                 public_registry_path=public_registry_path, replay_db=replay_db_path,
             )
         else:
