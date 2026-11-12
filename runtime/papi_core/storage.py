@@ -78,6 +78,42 @@ class SupabaseStore:
             ),
         }
 
+    def get_dashboard_snapshot(
+        self, *, task_limit: int = 10000, event_limit: int = 10000
+    ) -> dict[str, Any]:
+        """Lit tâches et audit via une RPC STABLE, dans un snapshot MVCC unique."""
+        for name, value in (("task_limit", task_limit), ("event_limit", event_limit)):
+            if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 20000:
+                raise StoreError(f"{name} doit être compris entre 1 et 20000.")
+        result = self._request(
+            "POST",
+            "rpc/papi_get_dashboard_snapshot",
+            {"p_task_limit": task_limit, "p_event_limit": event_limit},
+        )
+        if not isinstance(result, dict):
+            raise StoreError("Réponse inattendue de la RPC de snapshot.")
+        tasks = result.get("tasks")
+        events = result.get("audit_events")
+        if not isinstance(tasks, list) or not isinstance(events, list):
+            raise StoreError("Snapshot Supabase incomplet ou invalide.")
+        if result.get("tasks_truncated") is not False or result.get("audit_events_truncated") is not False:
+            raise StoreError("Snapshot trop volumineux : augmenter les limites avant affichage.")
+        if result.get("snapshot_consistency") != "single_statement_snapshot":
+            raise StoreError("La cohérence transactionnelle du snapshot n'est pas confirmée.")
+        for row in tasks:
+            if not isinstance(row, dict) or not isinstance(row.get("task"), dict):
+                raise StoreError("Enregistrement de tâche Supabase invalide.")
+            if row.get("id") != row["task"].get("id"):
+                raise StoreError("Identifiant de tâche incohérent dans Supabase.")
+            if isinstance(row.get("version"), bool) or not isinstance(row.get("version"), int) or row["version"] < 1:
+                raise StoreError("Version de tâche invalide dans Supabase.")
+        try:
+            for event in events:
+                validate_event(event)
+        except (TypeError, ValueError) as exc:
+            raise StoreError(f"Événement Supabase invalide : {exc}") from exc
+        return {"tasks": [row["task"] for row in tasks], "audit_events": events}
+
     def get_task(self, task_id: str) -> dict[str, Any] | None:
         rows = self._request("GET", f"papi_tasks?id=eq.{quote(task_id, safe='')}&select=task,version")
         if not isinstance(rows, list):

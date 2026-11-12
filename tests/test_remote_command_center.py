@@ -29,8 +29,11 @@ class RemoteCommandCenterTests(unittest.TestCase):
                     "tasks_completed_by_agent": 1, "tasks_blocked_by_agent": 0,
                     "tasks_cancelled_by_agent": 0}},
             }
-            with patch.object(store, "get_tasks", return_value=tasks) as get_tasks, \
-                 patch.object(store, "get_agent_histories", return_value=histories) as get_histories:
+            with patch.object(store, "get_dashboard_snapshot", return_value={
+                    "tasks": tasks, "audit_events": []
+                 }) as get_snapshot, \
+                 patch("papi_core.remote_command_center.summarize_agent_history",
+                       side_effect=[histories["astou"], histories["worker"]]):
                 result = build_remote_command_center(
                     store, agents_path=agents_path, environ={}, page_size=100, max_pages=2
                 )
@@ -40,8 +43,8 @@ class RemoteCommandCenterTests(unittest.TestCase):
         self.assertEqual(result["agent_history"]["totals"]["agents_with_activity"], 2)
         self.assertFalse(result["controls"]["writes_performed"])
         self.assertFalse(result["controls"]["worker_started"])
-        get_tasks.assert_called_once_with(page_size=100, max_pages=2)
-        get_histories.assert_called_once()
+        get_snapshot.assert_called_once_with(task_limit=200, event_limit=200)
+        self.assertEqual(result["snapshot_consistency"], "single_statement_snapshot")
 
     def test_requires_real_supabase_store(self):
         with self.assertRaises(TypeError):
