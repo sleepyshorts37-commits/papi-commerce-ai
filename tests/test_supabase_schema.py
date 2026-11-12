@@ -41,7 +41,7 @@ class SupabaseSchemaTests(unittest.TestCase):
 
     def test_nonce_rpc_locks_the_active_key_during_consumption(self):
         match = re.search(
-            r"create or replace function public\\.papi_consume_agent_nonce\\(.*?\\n\\$\\$;",
+            r"create or replace function public\.papi_consume_agent_nonce\(.*?\n\$\$;",
             self.sql, flags=re.IGNORECASE | re.DOTALL,
         )
         self.assertIsNotNone(match)
