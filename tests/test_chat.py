@@ -67,7 +67,7 @@ class PapiChatTests(unittest.TestCase):
                   body="Aucune dépense sans autorisation.",
                   private_key_path=self.owner_key)
         received = read_messages(reader="astou", private_key_path=self.astou_key, path=self.messages,
-                                 agents_path=self.agents, public_registry_path=self.public_registry,
+                                 agents_path=self.agents, identities_path=self.identities public_registry_path=self.public_registry,
                                  replay_db_path=self.replay_db)
         self.assertEqual(len(received), 1)
 
@@ -81,7 +81,7 @@ class PapiChatTests(unittest.TestCase):
     def test_unsigned_or_spoofed_message_is_rejected(self):
         with self.assertRaises(ChatError):
             send_message(sender="astou", recipient="marietou", subject="Usurpation",
-                         body="Message sans clé", path=self.messages, agents_path=self.agents,
+                         body="Message sans clé", path=self.messages, agents_path=self.agents, identities_path=self.identities
                          public_registry_path=self.public_registry, replay_db_path=self.replay_db)
         self.send(sender="astou", recipient="marietou", subject="Authentique", body="Bonjour")
         records = [json.loads(line) for line in self.messages.read_text(encoding="utf-8").splitlines()]
@@ -89,7 +89,7 @@ class PapiChatTests(unittest.TestCase):
         self.messages.write_text(json.dumps(records[0]) + "\n", encoding="utf-8")
         with self.assertRaises(ChatError):
             read_messages(reader="owner", private_key_path=self.owner_key, path=self.messages,
-                          agents_path=self.agents, public_registry_path=self.public_registry,
+                          agents_path=self.agents, identities_path=self.identities public_registry_path=self.public_registry,
                           replay_db_path=self.replay_db)
 
     def test_tampered_body_is_rejected_on_read(self):
@@ -99,14 +99,14 @@ class PapiChatTests(unittest.TestCase):
         self.messages.write_text(json.dumps(record) + "\n", encoding="utf-8")
         with self.assertRaises(ChatError):
             read_messages(reader="owner", private_key_path=self.owner_key, path=self.messages,
-                          agents_path=self.agents, public_registry_path=self.public_registry,
+                          agents_path=self.agents, identities_path=self.identities public_registry_path=self.public_registry,
                           replay_db_path=self.replay_db)
 
     def test_repeated_reads_do_not_trigger_replay_error(self):
         self.send(sender="astou", recipient="marietou", subject="Sujet", body="Relisible")
         for _ in range(3):
             self.assertEqual(len(read_messages(
-                reader="owner", private_key_path=self.owner_key, path=self.messages, agents_path=self.agents,
+                reader="owner", private_key_path=self.owner_key, path=self.messages, agents_path=self.agents, identities_path=self.identities
                 public_registry_path=self.public_registry, replay_db_path=self.replay_db)), 1)
 
     def test_limit_is_bounded(self):
@@ -149,7 +149,7 @@ class PapiChatTests(unittest.TestCase):
     def test_agent_can_only_read_its_own_inbox(self):
         self.send(sender="owner", recipient="marietou", subject="Privé", body="Pour Marietou")
         own = read_messages(reader="astou", private_key_path=self.astou_key,
-                            path=self.messages, agents_path=self.agents,
+                            path=self.messages, agents_path=self.agents, identities_path=self.identities
                             public_registry_path=self.public_registry, replay_db_path=self.replay_db)
         self.assertEqual(own, [])
 
@@ -166,7 +166,7 @@ class PapiChatTests(unittest.TestCase):
         self.agents.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(ChatError):
             read_messages(reader="astou", private_key_path=self.astou_key,
-                          path=self.messages, agents_path=self.agents,
+                          path=self.messages, agents_path=self.agents, identities_path=self.identities
                           public_registry_path=self.public_registry, replay_db_path=self.replay_db)
 
     def test_inactive_agent_cannot_send(self):
