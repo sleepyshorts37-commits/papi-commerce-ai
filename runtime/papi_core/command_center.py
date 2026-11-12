@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,7 @@ from .agent_memory import build_memory_center
 from .agent_learning import build_agent_learning
 from .quality_control import build_quality_control
 from .business_intelligence import build_business_intelligence
+from .opportunity_scanner import scan_opportunity_signals
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -38,6 +40,7 @@ def build_command_center(
     identities_path=IDENTITIES_FILE,
     scheduler_snapshot: dict[str, Any] | None = None,
     supervision_snapshot: dict[str, Any] | None = None,
+    opportunity_signals: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -111,7 +114,30 @@ def build_command_center(
     quality_control = build_quality_control(valid_tasks, events)
     effective_policy_path = policy_path or (ROOT / "config" / "policy.json")
     business_policy = load_json(effective_policy_path)
-    business_intelligence = build_business_intelligence([], business_policy)
+    scanner = scan_opportunity_signals(
+        opportunity_signals or [],
+        as_of=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    )
+    analyzed_candidates = []
+    for signal in scanner["signals"]:
+        if signal["triage_status"] != "ready_for_business_analysis":
+            continue
+        analyzed_candidates.append({
+            "opportunity_id": signal["signal_id"],
+            "source": signal["source"], "source_ref": signal["source_ref"],
+            "observed_at": signal["observed_at"], "business_line": signal["business_line"],
+            "market": signal["market"], "customer_segment": signal["customer_segment"],
+            "offer": signal["offer"],
+            "expected_price_xof": signal.get("expected_price_xof"),
+            "variable_cost_xof": signal.get("variable_cost_xof"),
+            "acquisition_cost_xof": signal.get("acquisition_cost_xof"),
+            "fulfillment_cost_xof": signal.get("fulfillment_cost_xof"),
+            "estimated_monthly_volume": signal.get("estimated_monthly_volume"),
+            "time_to_first_revenue_days": signal.get("time_to_first_revenue_days"),
+            "upfront_cost_xof": signal.get("upfront_cost_xof"),
+            "evidence_refs": [signal["source_ref"]], "risk_flags": [],
+        })
+    business_intelligence = build_business_intelligence(analyzed_candidates, business_policy)
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -158,6 +184,7 @@ def build_command_center(
         "agent_memory_center": memories,
         "agent_learning_engine": learning,
         "quality_control_engine": quality_control,
+        "opportunity_scanner": scanner,
         "business_intelligence": business_intelligence,
         "agent_identity_security": {
             **identity_validation,
@@ -197,6 +224,8 @@ def build_command_center(
             "quality_reviews_created": 0,
             "quality_tasks_changed": 0,
             "business_opportunities_scanned": 0,
+            "opportunity_signals_received": scanner["signals_received"],
+            "opportunity_signals_rejected": scanner["signals_rejected"],
             "business_plans_created": 0,
             "business_actions_executed": 0,
             "external_actions_enabled": False,
