@@ -35,6 +35,7 @@ from .inventory_control import build_inventory_control
 from .order_management import analyze_orders
 from .customer_service import analyze_customer_service
 from .marketing_growth import analyze_marketing_campaigns
+from .affiliate_partners import analyze_affiliate_partners
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -68,6 +69,7 @@ def build_command_center(
     customer_service_tickets: list[dict[str, Any]] | None = None,
     marketing_observations: list[dict[str, Any]] | None = None,
     marketing_monthly_budget_xof: int = 0,
+    affiliate_partner_records: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -188,6 +190,7 @@ def build_command_center(
     order_management = analyze_orders(order_records or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
     customer_service = analyze_customer_service(customer_service_tickets or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
     marketing_growth = analyze_marketing_campaigns(marketing_observations or [], monthly_budget_xof=marketing_monthly_budget_xof)
+    affiliate_partners = analyze_affiliate_partners(affiliate_partner_records or [])
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -246,6 +249,7 @@ def build_command_center(
         "order_management": order_management,
         "customer_service": customer_service,
         "marketing_growth": marketing_growth,
+        "affiliate_partners": affiliate_partners,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -335,6 +339,14 @@ def build_command_center(
             "marketing_posts_published": 0,
             "marketing_ads_spend_xof": 0,
             "marketing_external_messages_sent": 0,
+            "affiliate_partner_records_received": affiliate_partners["records_received"],
+            "affiliate_partner_records_analyzed": affiliate_partners["records_analyzed"],
+            "affiliate_partner_records_rejected": affiliate_partners["records_rejected"],
+            "affiliate_partners_analyzed": affiliate_partners["partners_analyzed"],
+            "affiliate_verified_paid_sale_candidates": affiliate_partners["verified_paid_sale_candidates"],
+            "affiliate_commission_estimates_xof": affiliate_partners["provisional_commission_estimate_xof"],
+            "affiliate_payouts_executed": 0,
+            "affiliate_partner_contacts_sent": 0,
             "ledger_writes_performed": 0,
             "transfers_executed": 0,
             "withdrawals_executed": 0,
