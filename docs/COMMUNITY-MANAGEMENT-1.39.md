@@ -1,7 +1,7 @@
 # PAPI COMMUNITY MANAGEMENT 1.39
 
 ## Décision
-Le rôle de Responsable Community Management central est approuvé comme poste cible de l'organisation PAPI COMMERCE AI. Cette approbation valide la définition du rôle, pas l'embauche ou la désignation d'une personne, ni l'activation d'un agent.
+Le rôle de Responsable Community Management central est approuvé comme poste cible de l'organisation PAPI COMMERCE AI. Le titulaire désigné par le propriétaire est **Sonko**. Cette désignation fixe le responsable prévu, mais ne constitue pas une activation technique ni l'octroi de permissions de publication.
 
 ## Mission
 Piloter la présence éditoriale et l'animation des communautés PAPI sur les canaux autorisés, assurer une expérience cohérente, transformer les interactions entrantes en opportunités commerciales qualifiées et rendre compte des résultats observés.
@@ -25,7 +25,7 @@ Piloter la présence éditoriale et l'animation des communautés PAPI sur les ca
 - Aucun chiffre de croissance, lead, vente ou revenu ne peut être inventé.
 
 ## Coordination proposée
-Le Responsable Community Management coordonne les activités de contenu et d'animation. Les profils Sokhna (Instagram), Babacar (Facebook) et Ndeye (LinkedIn) figurent déjà dans le registre comme profils de prospection planifiés ; ils ne sont pas automatiquement réaffectés et leurs missions actuelles ne sont pas considérées comme une fonction de community management. Toute affectation doit être documentée et approuvée.
+**Sonko** est le Responsable Community Management désigné. Il coordonne les activités de contenu et d'animation. Les profils Sokhna (Instagram), Babacar (Facebook) et Ndeye (LinkedIn) figurent déjà dans le registre comme profils de prospection planifiés ; ils ne sont pas automatiquement réaffectés et leurs missions actuelles ne sont pas considérées comme une fonction de community management. Toute affectation doit être documentée et approuvée.
 
 ## Indicateurs de pilotage
 - Publications planifiées, validées et réellement publiées.
@@ -36,10 +36,10 @@ Le Responsable Community Management coordonne les activités de contenu et d'ani
 - Incidents de modération et escalades ouvertes/résolues.
 
 ## Statut de mise en œuvre
-`approved_role_specification`; responsable humain/agent non désigné; identité professionnelle complète à créer; permissions non accordées; intégrations sociales non vérifiées; aucun agent ni publication activé par ce document.
+`role_holder_designated`; titulaire : Sonko; fiche d'identité ajoutée au registre avec statut `planned` et profil incomplet; permissions non accordées; intégrations sociales non vérifiées; aucun agent ni publication activé par ce document.
 
 ## Prochaines étapes
-1. Désigner le titulaire du rôle et compléter sa fiche d'identité.
+1. Compléter et faire valider la fiche d'identité professionnelle de Sonko.
 2. Définir les marques/comptes sociaux concernés et leurs administrateurs autorisés.
 3. Valider la charte éditoriale, les sujets interdits et le circuit de validation.
 4. Connecter les comptes uniquement après autorisation explicite et vérifier les permissions minimales.
