@@ -44,14 +44,14 @@ class SupabaseAgentHistoryTests(unittest.TestCase):
 
     def test_builds_history_from_supabase_events(self):
         rows = [audit_event()]
-        with patch.object(self.store, "get_audit_events", side_effect=[rows, []]) as reader:
+        with patch.object(self.store, "get_audit_events", return_value=rows) as reader:
             result = self.store.get_agent_history(
                 "agent-a", [{"id": "T-1", "created_at": "2026-11-10T10:00:00Z"}],
                 page_size=10, max_pages=3, as_of="2026-11-11T00:00:00Z",
             )
         self.assertEqual(result["metrics"]["tasks_completed_by_agent"], 1)
         self.assertEqual(result["metrics"]["average_completion_seconds"], 7200.0)
-        self.assertEqual(reader.call_count, 2)
+        self.assertEqual(reader.call_count, 1)
         self.assertTrue(result["read_only"])
 
     def test_refuses_to_return_silently_truncated_history(self):
