@@ -2,11 +2,17 @@
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
 from .astou import build_director_brief
+from .audit import read_events
+from .agent_history import summarize_agent_history
 from .registry import AGENTS_FILE, TASKS_FILE, load_agents, load_json
 from .doctor import diagnose_environment
+
+ROOT = Path(__file__).resolve().parents[2]
+AUDIT_FILE = ROOT / "data" / "events.jsonl"
 
 
 def build_command_center(
@@ -14,8 +20,9 @@ def build_command_center(
     agents_path=AGENTS_FILE,
     policy_path=None,
     environ=None,
+    audit_path=AUDIT_FILE,
 ) -> dict[str, Any]:
-    """Agrège les indicateurs locaux sans modifier les données ni lancer de worker."""
+    """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
     tasks_data = load_json(tasks_path)
     tasks = tasks_data.get("tasks")
@@ -26,6 +33,20 @@ def build_command_center(
     task_statuses = Counter(str(task.get("status", "unknown")) for task in valid_tasks)
     brief = build_director_brief(tasks_path, agents_path, policy_path) if policy_path else build_director_brief(tasks_path, agents_path)
     doctor = diagnose_environment(environ)
+
+    events = read_events(audit_path) if audit_path is not None else []
+    per_agent = {}
+    for agent_id in sorted(agents):
+        summary = summarize_agent_history(agent_id, events, valid_tasks)
+        per_agent[agent_id] = summary["metrics"]
+    history_totals = {
+        "agents_with_activity": sum(1 for metrics in per_agent.values() if metrics["recorded_events"]),
+        "tasks_assigned": sum(metrics["tasks_assigned"] for metrics in per_agent.values()),
+        "tasks_completed_by_agent": sum(metrics["tasks_completed_by_agent"] for metrics in per_agent.values()),
+        "tasks_blocked_by_agent": sum(metrics["tasks_blocked_by_agent"] for metrics in per_agent.values()),
+        "tasks_cancelled_by_agent": sum(metrics["tasks_cancelled_by_agent"] for metrics in per_agent.values()),
+        "recorded_events": sum(metrics["recorded_events"] for metrics in per_agent.values()),
+    }
     return {
         "product": "PAPI COMMAND CENTER",
         "mode": "read_only_local",
@@ -37,6 +58,13 @@ def build_command_center(
             "open_tasks": sum(task_statuses.get(status, 0) for status in ("backlog", "ready", "in_progress", "blocked", "review")),
             "pending_approvals": len(brief["owner_escalations"]),
             "unassigned_open_tasks": len(brief["unassigned_tasks"]),
+        },
+        "agent_history": {
+            "status": "available" if events else "no_events",
+            "source": "append_only_audit_events",
+            "read_only": True,
+            "totals": history_totals,
+            "by_agent": per_agent,
         },
         "astou_brief": brief,
         "environment": {
