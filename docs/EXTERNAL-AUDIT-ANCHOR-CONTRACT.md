@@ -54,7 +54,8 @@ For each publication:
 6. Construct a signed record whose `previous_record_digest` equals the exact current external record digest.
 7. Insert the immutable record, then CAS the latest pointer from the expected previous digest to the new record digest.
 8. On CAS conflict, reload and restart verification from step 1. Never overwrite or force the pointer.
-9. After publication, independently read back the latest record and verify its signature, digest, journal ID, sequence, and head hash.
+9. If a timeout occurs after an uncertain CAS, reload latest and its immutable bytes. Treat the retry as successful only when the latest bytes exactly equal the same canonical, validly signed candidate record and its digest; otherwise restart verification and publication from step 1.
+10. After publication, independently read back the latest record and verify its signature, digest, journal ID, sequence, and head hash.
 
 For the first publication, the expected predecessor is the configured genesis value and the checkpoint must be derived from the verified journal beginning at sequence zero.
 
@@ -97,7 +98,7 @@ A provider adapter is not acceptable until tests demonstrate:
 - rejection of same-sequence conflicting hashes and sequence regression;
 - CAS conflict under two concurrent publishers, with only one accepted successor;
 - immutable-record idempotency on retry;
-- timeout-after-commit recovery by reading the latest pointer;
+- timeout-after-commit recovery by reading the latest pointer and accepting only an exact canonical match of the already committed signed record;
 - rejection of invalid signatures, altered payloads, unknown key IDs, wrong journal IDs, and broken predecessor links;
 - rejection of deletion or mutation attempts against accepted records;
 - read-only verifier operation without publisher credentials;
