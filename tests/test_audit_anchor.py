@@ -150,6 +150,36 @@ class AuditAnchorContractTests(unittest.TestCase):
         with self.assertRaises(CheckpointAnchorError):
             self.publish(duplicate)
 
+    def test_tampered_predecessor_bytes_are_rejected(self):
+        self.add_event("evt-1")
+        digest = self.publish(self.record(None))
+        self.store.records[digest] = self.store.records[digest] + b" "
+        self.add_event("evt-2")
+        with self.assertRaises(CheckpointAnchorError):
+            self.publish(self.record(digest))
+
+    def test_noncanonical_predecessor_encoding_is_rejected(self):
+        self.add_event("evt-1")
+        digest = self.publish(self.record(None))
+        decoded = json.loads(self.store.records[digest].decode("utf-8"))
+        self.store.records[digest] = json.dumps(decoded, indent=2).encode("utf-8")
+        self.add_event("evt-2")
+        with self.assertRaises(CheckpointAnchorError):
+            self.publish(self.record(digest))
+
+    def test_competing_publisher_cannot_overwrite_latest_pointer(self):
+        self.add_event("evt-1")
+        record = self.record(None)
+        competing_digest = "a" * 64
+        original_cas = self.store.compare_and_swap_latest
+        def competing_cas(journal_id, expected_digest, new_digest):
+            self.store.latest[journal_id] = competing_digest
+            return original_cas(journal_id, expected_digest, new_digest)
+        self.store.compare_and_swap_latest = competing_cas
+        with self.assertRaises(CheckpointConflict):
+            self.publish(record)
+        self.assertEqual(self.store.get_latest(self.journal_id), competing_digest)
+
     def test_store_record_bytes_are_canonical(self):
         self.add_event("evt-1")
         record = self.record(None)
