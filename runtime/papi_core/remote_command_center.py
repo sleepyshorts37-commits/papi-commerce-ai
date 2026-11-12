@@ -5,6 +5,7 @@ from collections import Counter
 from typing import Any
 
 from .doctor import diagnose_environment
+from .agent_history import AgentHistoryError, summarize_agent_history
 from .registry import AGENTS_FILE, load_agents
 from .storage import SupabaseStore
 
@@ -26,10 +27,19 @@ def build_remote_command_center(
     if not isinstance(store, SupabaseStore):
         raise TypeError("store doit être une instance de SupabaseStore.")
     agents = load_agents(agents_path)
-    tasks = store.get_tasks(page_size=page_size, max_pages=max_pages)
-    histories = store.get_agent_histories(
-        sorted(agents), tasks, page_size=page_size, max_pages=max_pages
+    snapshot_limit = page_size * max_pages
+    snapshot = store.get_dashboard_snapshot(
+        task_limit=snapshot_limit, event_limit=snapshot_limit
     )
+    tasks = snapshot["tasks"]
+    try:
+        histories = {
+            agent_id: summarize_agent_history(agent_id, snapshot["audit_events"], tasks)
+            for agent_id in sorted(agents)
+        }
+    except AgentHistoryError as exc:
+        from .storage import StoreError
+        raise StoreError(f"Historique du snapshot invalide : {exc}") from exc
 
     agent_statuses = Counter(str(agent.get("status", "unknown")) for agent in agents.values())
     task_statuses = Counter(str(task.get("status", "unknown")) for task in tasks)
@@ -47,7 +57,7 @@ def build_remote_command_center(
         "product": "PAPI COMMAND CENTER",
         "mode": "read_only_remote",
         "source": "supabase",
-        "snapshot_consistency": "independent_reads_not_transactional",
+        "snapshot_consistency": "single_statement_snapshot",
         "dashboard": {
             "agents_total": len(agents),
             "agents_by_status": dict(sorted(agent_statuses.items())),
