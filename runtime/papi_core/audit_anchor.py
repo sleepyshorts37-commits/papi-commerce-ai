@@ -186,6 +186,18 @@ def publish_checkpoint_record(
     candidate = build_checkpoint(journal_path)
     if record.get("checkpoint") != candidate:
         raise CheckpointAnchorError("Le checkpoint signé ne correspond pas au journal local vérifié.")
+    # A timeout may occur after the store committed CAS. Treat only the exact
+    # already-anchored canonical record as an idempotent successful retry.
+    if latest_digest is not None:
+        latest_bytes = store.get_record(latest_digest)
+        candidate_bytes = canonical_record_bytes(record)
+        if latest_bytes == candidate_bytes and _record_digest(candidate_bytes) == latest_digest:
+            _validate_record(
+                record, journal_id=journal_id,
+                expected_digest=record["previous_record_digest"],
+                verifier=verify_signature,
+            )
+            return latest_digest
     expected_previous = latest_digest
     if record.get("previous_record_digest") != expected_previous:
         raise CheckpointAnchorError("Le nouveau checkpoint ne référence pas le dernier enregistrement.")
