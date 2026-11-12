@@ -142,12 +142,13 @@ class Ed25519IdentityTests(unittest.TestCase):
 
 
     def test_registry_lock_rejects_symlink_lock_file(self):
-        lock_path = self.registry.with_name(self.registry.name + ".lock")
+        registry_path = self.root / "symlink-registry.json"
+        lock_path = registry_path.with_name(registry_path.name + ".lock")
         target = self.root / "lock-target"
         target.write_text("unchanged", encoding="utf-8")
         lock_path.symlink_to(target)
 
-        def operation(registry_path=self.registry):
+        def operation(registry_path=registry_path):
             return registry_path
 
         with self.assertRaises(OSError):
@@ -167,10 +168,11 @@ class Ed25519IdentityTests(unittest.TestCase):
 
     @unittest.skipUnless(hasattr(os, "mkfifo"), "POSIX FIFO support required")
     def test_registry_lock_rejects_fifo_without_blocking(self):
-        lock_path = self.registry.with_name(self.registry.name + ".lock")
+        registry_path = self.root / "fifo-registry.json"
+        lock_path = registry_path.with_name(registry_path.name + ".lock")
         os.mkfifo(lock_path, 0o600)
 
-        def operation(registry_path=self.registry):
+        def operation(registry_path=registry_path):
             return registry_path
 
         with self.assertRaises(PermissionError):
