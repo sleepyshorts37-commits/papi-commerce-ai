@@ -30,6 +30,7 @@ from .product_intelligence import analyze_product_options
 from .sales_intelligence import analyze_sales_channels
 from .revenue_optimization import optimize_revenue
 from .financial_control import build_financial_control
+from .procurement import analyze_procurement
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -54,6 +55,7 @@ def build_command_center(
     financial_entries: list[dict[str, Any]] | None = None,
     financial_opening_balances: dict[str, int] | None = None,
     financial_provider_balances: dict[str, int] | None = None,
+    procurement_observations: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -169,6 +171,7 @@ def build_command_center(
         financial_entries or [], opening_balances=financial_opening_balances,
         provider_balances=financial_provider_balances,
     )
+    procurement_intelligence = analyze_procurement(procurement_observations or [], as_of=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -222,6 +225,7 @@ def build_command_center(
         "sales_intelligence": sales_intelligence,
         "revenue_optimization": revenue_optimization,
         "financial_control": financial_control,
+        "procurement_intelligence": procurement_intelligence,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -278,6 +282,14 @@ def build_command_center(
             "financial_entries_received": financial_control["entries_received"],
             "financial_entries_analyzed": financial_control["entries_analyzed"],
             "financial_entries_rejected": financial_control["entries_rejected"],
+            "supplier_observations_received": procurement_intelligence["observations_received"],
+            "supplier_observations_analyzed": procurement_intelligence["observations_analyzed"],
+            "supplier_observations_rejected": procurement_intelligence["observations_rejected"],
+            "live_supplier_searches": 0,
+            "suppliers_contacted": 0,
+            "purchase_orders_created": 0,
+            "purchases_executed": 0,
+            "procurement_spending_xof": 0,
             "ledger_writes_performed": 0,
             "transfers_executed": 0,
             "withdrawals_executed": 0,
