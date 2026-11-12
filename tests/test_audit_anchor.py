@@ -329,5 +329,25 @@ class AuditAnchorContractTests(unittest.TestCase):
             )
 
 
+    def test_read_only_verifier_rejects_retired_historical_signature(self):
+        self.add_event("evt-1")
+        first_digest = self.publish(self.record(None, key_id="test-key-1"))
+        self.add_event("evt-2")
+        self.publish(self.record(first_digest, key_id="test-key-2"))
+
+        def verifier_without_retired_key(key_id, payload, signature):
+            if key_id == "test-key-1":
+                return False
+            return self.verify(key_id, payload, signature)
+
+        with self.assertRaises(CheckpointAnchorError):
+            verify_checkpoint_anchor(
+                journal_path=self.path, journal_id=self.journal_id,
+                store=self.store, verify_signature=verifier_without_retired_key,
+            )
+
+
+
+
 if __name__ == "__main__":
     unittest.main()
