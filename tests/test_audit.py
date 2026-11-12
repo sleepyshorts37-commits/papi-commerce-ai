@@ -64,6 +64,25 @@ class AuditHashChainTests(unittest.TestCase):
         with self.assertRaises(AuditError):
             append_event(self.event("evt-after-partial"), self.path)
 
+    @unittest.skipUnless(hasattr(__import__("os"), "O_NOFOLLOW"), "O_NOFOLLOW unavailable")
+    def test_journal_symlink_is_rejected(self):
+        target = Path(self.temp_dir.name) / "target.jsonl"
+        target.write_text("", encoding="utf-8")
+        self.path.symlink_to(target)
+        with self.assertRaises(OSError):
+            append_event(self.event("evt-symlink"), self.path)
+        self.assertEqual(target.read_text(encoding="utf-8"), "")
+
+    @unittest.skipUnless(hasattr(__import__("os"), "O_NOFOLLOW"), "O_NOFOLLOW unavailable")
+    def test_lock_symlink_is_rejected(self):
+        lock_target = Path(self.temp_dir.name) / "lock-target"
+        lock_target.write_text("", encoding="utf-8")
+        lock_path = self.path.with_name(self.path.name + ".lock")
+        lock_path.symlink_to(lock_target)
+        with self.assertRaises(OSError):
+            read_events(self.path)
+        self.assertEqual(lock_target.read_text(encoding="utf-8"), "")
+
     def test_zero_length_write_fails_instead_of_looping(self):
         with patch("runtime.papi_core.audit.os.write", return_value=0):
             with self.assertRaises(OSError):
