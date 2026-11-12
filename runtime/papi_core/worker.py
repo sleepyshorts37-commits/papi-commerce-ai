@@ -18,6 +18,10 @@ class WorkerError(RuntimeError):
     """Erreur contrôlée du worker."""
 
 
+class LeaseLostError(WorkerError):
+    """Le worker ne détient plus le bail courant."""
+
+
 PERMISSION_BY_CLASS = {
     "read_only": "read_reports",
     "internal_write": "update_internal_state",
@@ -139,11 +143,18 @@ class PapiWorker:
                                       actor=authenticated_actor, action="job.failed",
                                       handler=handler, outcome="audit_unavailable")
 
+            def ensure_lease() -> None:
+                """Renouvelle le bail ; à appeler avant chaque effet externe et périodiquement."""
+                if not self.queue.renew(job_id=job_id, worker_id=self.worker_id,
+                                        lease_token=lease_token, lease_seconds=900):
+                    raise LeaseLostError("lease_lost")
+
             result = execute_authorized_job(
                 job, task, self.policy, self.registry,
                 context={"worker_id": self.worker_id, "task_id": task_id,
                          "authenticated_agent_id": authenticated_actor,
-                         "authenticated_principal": principal},
+                         "authenticated_principal": principal,
+                         "ensure_lease": ensure_lease},
             )
             if not self.queue.complete(job_id=job_id, worker_id=self.worker_id,
                                         lease_token=lease_token, result=result):
@@ -152,6 +163,10 @@ class PapiWorker:
                 return {"status": "lease_lost", "claimed": True, "job_id": job_id}
             self._audit_best_effort(job_id, "job.completed", authenticated_actor, handler=handler)
             return {"status": "completed", "claimed": True, "job_id": job_id}
+        except LeaseLostError:
+            self._audit_best_effort(job_id, "job.lease_lost", system_actor,
+                                    handler=handler, outcome="lease_lost_during_handler")
+            return {"status": "lease_lost", "claimed": True, "job_id": job_id}
         except AccessDenied:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
                                   error_code="authentication_failed", status="blocked",
