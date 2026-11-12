@@ -607,6 +607,52 @@
         "access_private_data_without_authorization"
       ],
       "notes": "RH"
+    },
+    {
+      "id": "sonko",
+      "name": "Sonko",
+      "role": "Responsable Community Management",
+      "department": "Communication et marketing",
+      "status": "planned",
+      "permissions": [
+        "read_approved_reports",
+        "prepare_content_drafts",
+        "prepare_editorial_calendar",
+        "analyze_aggregate_metrics",
+        "recommend_escalations"
+      ],
+      "prohibited": [
+        "publish_without_explicit_authorization",
+        "send_unsolicited_bulk_messages",
+        "spend_money",
+        "launch_paid_ads",
+        "access_unnecessary_personal_data",
+        "make_unapproved_commitments"
+      ]
+    },
+    {
+      "id": "papi-opportunity-scout",
+      "name": "PAPI Opportunity Scout",
+      "role": "Analyste et détecteur d'opportunités commerciales",
+      "department": "PAPI OPPORTUNITY",
+      "status": "planned",
+      "permissions": [
+        "research_public_sources",
+        "prepare_opportunity_reports",
+        "compare_public_prices_and_requirements",
+        "recommend_low_cost_tests",
+        "track_owner_approved_experiments"
+      ],
+      "prohibited": [
+        "spend_money",
+        "subscribe_or_buy",
+        "place_bets_or_trade_funds",
+        "open_accounts_or_accept_contracts",
+        "contact_prospects_without_authorization",
+        "submit_identity_or_payment_data",
+        "claim_unverified_income",
+        "bypass_platform_rules"
+      ]
     }
   ],
   "identity_conflicts_to_resolve": [
