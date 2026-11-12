@@ -436,6 +436,46 @@ class WorkerTests(unittest.TestCase):
         self.assertNotIn("forged-actor", raw)
 
 
+    def test_authentication_failure_is_attributed_only_to_system_worker(self):
+        from papi_core.audit import read_events
+        from papi_core.worker import AccessDenied
+        worker = self.make_worker()
+        job = {"id": "JOB-AUTH-FAIL", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-auth-fail"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \
+             patch("papi_core.worker.authorize_authenticated_agent",
+                   side_effect=AccessDenied("invalid proof")), \
+             patch.object(worker.queue, "fail", return_value="retry"):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "blocked")
+        events = read_events(worker.audit_path)
+        blocked = next(event for event in events if event["action"] == "job.authentication_blocked")
+        self.assertEqual(blocked["actor"], "system:worker:worker-test")
+        self.assertFalse(any(event["action"] == "job.handler_started" for event in events))
+
+    def test_post_authentication_policy_block_uses_authenticated_principal(self):
+        from papi_core.audit import read_events
+        from papi_core.handler_registry import PermissionError as HandlerPermissionError
+        worker = self.make_worker()
+        job = {"id": "JOB-POLICY-BLOCK", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-policy-block"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \
+             patch("papi_core.worker.authorize_job",
+                   side_effect=HandlerPermissionError("policy denied")), \
+             patch.object(worker.queue, "fail", return_value="retry"):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "blocked")
+        events = read_events(worker.audit_path)
+        blocked = next(event for event in events if event["action"] == "job.blocked")
+        self.assertEqual(blocked["actor"], "agent-test")
+        self.assertFalse(any(event["action"] == "job.handler_started" for event in events))
+
     def test_audit_failure_before_handler_fails_closed(self):
         worker = self.make_worker()
         job = {"id": "JOB-AUDIT-1", "task_id": "TASK-1", "handler": "internal.echo",
