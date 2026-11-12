@@ -135,7 +135,7 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
     now = int(time.time())
     history = current.setdefault("key_history", [{
         "key_version": int(current["key_version"]), "public_key": current["public_key"],
-        "activated_at": int(current.get("created_at", now)), "retired_at": None,
+        "activated_at": int(current.get("created_at", 0)), "retired_at": None,
         "revoked_at": None,
     }])
     if not isinstance(history, list) or not history:
@@ -165,7 +165,7 @@ def revoke_ed25519_agent(agent_id: str, registry_path: Path = DEFAULT_PUBLIC_REG
     record["revoked_at"] = now
     history = record.setdefault("key_history", [{
         "key_version": int(record["key_version"]), "public_key": record["public_key"],
-        "activated_at": int(record.get("created_at", now)), "retired_at": None,
+        "activated_at": int(record.get("created_at", 0)), "retired_at": None,
         "revoked_at": None,
     }])
     if not isinstance(history, list) or not history:
