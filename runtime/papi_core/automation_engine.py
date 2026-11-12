@@ -65,10 +65,14 @@ def build_automation_plan(
             {"instruction": "Review supplied prospect snapshot; do not contact prospects."},
         ))
 
+    active_prospect_statuses = {
+        "new", "qualified", "contact_approved", "contacted",
+        "interested", "quote_prepared", "follow_up_due",
+    }
     for prospect in prospects:
         status = prospect.get("status")
         due = _parse_datetime(prospect.get("next_followup_at"))
-        if status not in {"new", "qualified", "follow_up_due"}:
+        if status not in active_prospect_statuses:
             continue
         if due and due <= current:
             proposed.append(_task(

@@ -20,6 +20,17 @@ class AutomationEngineTests(unittest.TestCase):
         self.assertEqual(plan["tasks"][0]["task_type"], "overdue_followups")
         self.assertEqual(plan["tasks"][0]["priority"], "high")
 
+    def test_active_sales_statuses_are_not_ignored(self):
+        for status in ("contacted", "interested", "quote_prepared", "contact_approved"):
+            with self.subTest(status=status):
+                plan = build_automation_plan(
+                    now="2026-11-12T10:00:00Z",
+                    prospects=[{"prospect_ref": "P-9", "status": status,
+                                "next_followup_at": "2026-11-11T10:00:00Z"}],
+                    include_daily_qualification=False,
+                )
+                self.assertEqual(plan["summary"]["total"], 1)
+
     def test_unresolved_case_is_flagged(self):
         plan = build_automation_plan(
             now="2026-11-12T10:00:00Z",
