@@ -69,11 +69,11 @@ def build_incident_response_plan(incident_snapshot: dict[str, Any]) -> dict[str,
         if incident_id in seen:
             raise IncidentResponsePlannerError("incident_id dupliqué.")
         seen.add(incident_id)
-        if severity not in {"info", "warning", "critical"}:
+        if not isinstance(severity, str) or severity not in {"info", "warning", "critical"}:
             raise IncidentResponsePlannerError("Gravité inconnue.")
-        if category not in _CATEGORY_GUIDANCE:
+        if not isinstance(category, str) or category not in _CATEGORY_GUIDANCE:
             raise IncidentResponsePlannerError("Catégorie inconnue.")
-        if status not in {"open", "acknowledged", "resolved"}:
+        if not isinstance(status, str) or status not in {"open", "acknowledged", "resolved"}:
             raise IncidentResponsePlannerError("Statut inconnu.")
         if status == "resolved":
             continue
