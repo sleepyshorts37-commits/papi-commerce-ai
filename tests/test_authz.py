@@ -32,6 +32,28 @@ class AgentAccessTests(unittest.TestCase):
     def write(self):
         self.path.write_text(json.dumps(self.agents), encoding="utf-8")
 
+
+    def test_malformed_agent_permission_lists_fail_closed(self):
+        cases = [
+            ("permissions", "read_reports"),
+            ("permissions", ["read_reports", None]),
+            ("permissions", ["read_reports", "read_reports"]),
+            ("prohibited", "send_email"),
+            ("prohibited", ["send_email", None]),
+            ("prohibited", ["send_email", "send_email"]),
+        ]
+        for field, value in cases:
+            with self.subTest(field=field, value=value):
+                self.agents["agents"][0][field] = value
+                self.write()
+                with self.assertRaises(AccessDenied):
+                    authorize_agent("agent-a", "read_reports", self.path, self.policy)
+                self.agents["agents"][0] = {
+                    "id": "agent-a", "name": "Agent A", "status": "active",
+                    "permissions": ["read_reports", "send_email"],
+                    "prohibited": ["send_email"],
+                }
+
     def test_active_agent_can_use_declared_permission(self):
         result = authorize_agent("agent-a", "read_reports", self.path, self.policy)
         self.assertTrue(result["authorized"])
