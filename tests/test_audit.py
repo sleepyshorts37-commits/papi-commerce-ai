@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from runtime.papi_core.audit import AuditError, append_event, new_event, read_events, _journal_lock
-from runtime.papi_core.audit_checkpoint import build_checkpoint, verify_checkpoint
+from runtime.papi_core.audit_checkpoint import build_checkpoint, verify_checkpoint, verify_checkpoint_transition
 
 
 class AuditHashChainTests(unittest.TestCase):
@@ -145,6 +145,32 @@ class AuditHashChainTests(unittest.TestCase):
         future = {**checkpoint, "sequence": 2}
         with self.assertRaises(AuditError):
             verify_checkpoint(self.path, future)
+
+    def test_checkpoint_transition_accepts_monotonic_progress(self):
+        append_event(self.event("evt-1"), self.path)
+        first = build_checkpoint(self.path)
+        append_event(self.event("evt-2"), self.path)
+        second = build_checkpoint(self.path)
+        self.assertIsNone(verify_checkpoint_transition(first, second))
+
+    def test_checkpoint_transition_rejects_rollback(self):
+        append_event(self.event("evt-1"), self.path)
+        first = build_checkpoint(self.path)
+        append_event(self.event("evt-2"), self.path)
+        second = build_checkpoint(self.path)
+        with self.assertRaises(AuditError):
+            verify_checkpoint_transition(second, first)
+
+    def test_checkpoint_transition_rejects_same_sequence_equivocation(self):
+        append_event(self.event("evt-1"), self.path)
+        first = build_checkpoint(self.path)
+        conflicting = {**first, "head_hash": "f" * 64}
+        with self.assertRaises(AuditError):
+            verify_checkpoint_transition(first, conflicting)
+
+    def test_checkpoint_transition_rejects_malformed_input(self):
+        with self.assertRaises(AuditError):
+            verify_checkpoint_transition({}, {})
 
     def test_zero_length_write_fails_instead_of_looping(self):
         with patch("runtime.papi_core.audit.os.write", return_value=0):
