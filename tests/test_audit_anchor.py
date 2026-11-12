@@ -12,6 +12,7 @@ from runtime.papi_core.audit_anchor import (
     CheckpointConflict,
     canonical_record_bytes,
     publish_checkpoint_record,
+    verify_checkpoint_anchor,
 )
 
 
@@ -236,6 +237,54 @@ class AuditAnchorContractTests(unittest.TestCase):
         with self.assertRaises(CheckpointConflict):
             self.publish(record)
         self.assertEqual(self.store.get_latest(self.journal_id), competing_digest)
+
+
+    def test_read_only_verifier_reports_genesis_as_unanchored(self):
+        self.add_event("evt-1")
+        result = verify_checkpoint_anchor(
+            journal_path=self.path, journal_id=self.journal_id,
+            store=self.store, verify_signature=self.verify,
+        )
+        self.assertFalse(result["anchored"])
+        self.assertIsNone(result["latest_digest"])
+        self.assertEqual(result["unanchored_suffix"], 1)
+
+    def test_read_only_verifier_checks_full_chain_and_reports_suffix(self):
+        self.add_event("evt-1")
+        first_digest = self.publish(self.record(None, key_id="test-key-1"))
+        self.add_event("evt-2")
+        second_digest = self.publish(
+            self.record(first_digest, key_id="test-key-2")
+        )
+        self.add_event("evt-3")
+        result = verify_checkpoint_anchor(
+            journal_path=self.path, journal_id=self.journal_id,
+            store=self.store, verify_signature=self.verify,
+        )
+        self.assertTrue(result["anchored"])
+        self.assertEqual(result["latest_digest"], second_digest)
+        self.assertEqual(result["checkpoint"]["sequence"], 2)
+        self.assertEqual(result["unanchored_suffix"], 1)
+
+    def test_read_only_verifier_rejects_local_rollback(self):
+        self.add_event("evt-1")
+        self.publish(self.record(None))
+        self.path.write_text("", encoding="utf-8")
+        with self.assertRaises(CheckpointAnchorError):
+            verify_checkpoint_anchor(
+                journal_path=self.path, journal_id=self.journal_id,
+                store=self.store, verify_signature=self.verify,
+            )
+
+    def test_read_only_verifier_rejects_tampered_external_record(self):
+        self.add_event("evt-1")
+        digest = self.publish(self.record(None))
+        self.store.records[digest] += b" "
+        with self.assertRaises(CheckpointAnchorError):
+            verify_checkpoint_anchor(
+                journal_path=self.path, journal_id=self.journal_id,
+                store=self.store, verify_signature=self.verify,
+            )
 
     def test_store_record_bytes_are_canonical(self):
         self.add_event("evt-1")
