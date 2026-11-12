@@ -31,7 +31,7 @@ def main() -> int:
     remote_dashboard = sub.add_parser("dashboard-remote", help="Lire PAPI COMMAND CENTER depuis Supabase, sans écriture")
     remote_dashboard.add_argument("--page-size", type=int, default=500)
     remote_dashboard.add_argument("--max-pages", type=int, default=20)
-    sub.add_parser("supabase-check", help="Tester explicitement la lecture des tables Supabase essentielles")
+    sub.add_parser("supabase-check", help="Tester les tables et la RPC de snapshot Supabase en lecture seule")
     sub.add_parser("schedule-preview", help="Afficher les échéances récurrentes à examiner, sans exécution")
     sub.add_parser("sales-validate", help="Valider le registre commercial local")
     sub.add_parser("sales-report", help="Afficher le rapport commercial local en lecture seule")
