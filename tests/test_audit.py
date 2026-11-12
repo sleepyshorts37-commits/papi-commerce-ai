@@ -205,6 +205,34 @@ class AuditHashChainTests(unittest.TestCase):
         with self.assertRaises(AuditError):
             read_events(self.path)
 
+    def test_oversized_or_deep_audit_details_are_rejected(self):
+        oversized_list = self.event("oversized-list")
+        oversized_list["details"]["items"] = list(range(101))
+        with self.assertRaises(AuditError):
+            append_event(oversized_list, self.path)
+
+        oversized_integer = self.event("oversized-integer")
+        oversized_integer["details"]["amount"] = 1 << 63
+        with self.assertRaises(AuditError):
+            append_event(oversized_integer, self.path)
+
+        deeply_nested = self.event("deeply-nested")
+        value = "leaf"
+        for _ in range(10):
+            value = {"nested": value}
+        deeply_nested["details"]["value"] = value
+        with self.assertRaises(AuditError):
+            append_event(deeply_nested, self.path)
+
+        oversized_text = self.event("oversized-event")
+        oversized_text["details"]["payload"] = "x" * 500
+        oversized_text["details"]["other"] = "y" * 500
+        oversized_text["details"]["third"] = "z" * 500
+        # Individual field limits and total serialized size are both enforced.
+        oversized_text["details"]["extra"] = ["a" * 500 for _ in range(100)]
+        with self.assertRaises(AuditError):
+            append_event(oversized_text, self.path)
+
     def test_non_finite_numbers_are_rejected(self):
         for value in (math.nan, math.inf, -math.inf):
             with self.subTest(value=value):
