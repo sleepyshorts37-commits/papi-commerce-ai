@@ -8,6 +8,7 @@ import inspect
 import os
 import secrets
 import sqlite3
+import stat
 import time
 from pathlib import Path
 from typing import Any
@@ -85,16 +86,33 @@ def _registry_locked(path_parameter: str):
             registry_path = Path(bound.arguments[path_parameter])
             registry_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             lock_path = registry_path.with_name(registry_path.name + ".lock")
-            fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+            if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "getuid"):
+                raise OSError("Verrou de registre sûr indisponible sur cette plateforme.")
+            flags = (
+                os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW
+                | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0)
+            )
+            fd = os.open(lock_path, flags, 0o600)
             try:
-                with os.fdopen(fd, "r+b") as lock_file:
+                metadata = os.fstat(fd)
+                if (
+                    not stat.S_ISREG(metadata.st_mode)
+                    or metadata.st_uid != os.getuid()
+                    or metadata.st_nlink != 1
+                    or stat.S_IMODE(metadata.st_mode) & 0o077
+                ):
+                    raise PermissionError("Fichier de verrou non sûr : accès fermé.")
+                lock_file = os.fdopen(fd, "r+b")
+                fd = None
+                with lock_file:
                     fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
                     try:
                         return function(*args, **kwargs)
                     finally:
                         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
-            except Exception:
-                raise
+            finally:
+                if fd is not None:
+                    os.close(fd)
         return wrapped
     return decorate
 
