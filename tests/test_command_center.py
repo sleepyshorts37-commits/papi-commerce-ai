@@ -70,5 +70,51 @@ class CommandCenterTests(unittest.TestCase):
                 build_command_center(tasks, agents)
 
 
+    def test_scheduler_is_explicitly_unconfigured_without_snapshot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents, tasks, policy = self._fixtures(root)
+            result = build_command_center(tasks, agents, policy, {})
+        self.assertEqual(result["worker_scheduler"]["status"], "not_configured")
+        self.assertTrue(result["worker_scheduler"]["read_only"])
+        self.assertEqual(result["controls"]["scheduler_claims_performed"], 0)
+        self.assertFalse(result["controls"]["worker_started"])
+
+    def test_scheduler_preview_is_embedded_without_starting_workers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents, tasks, policy = self._fixtures(root)
+            snapshot = {
+                "jobs": [{
+                    "id": "JOB-1", "status": "queued", "handler": "report.build",
+                    "priority": "high", "queued_at": "2026-11-12T09:00:00Z"
+                }],
+                "workers": [{
+                    "worker_id": "agent-a", "status": "active", "capacity": 1,
+                    "permissions": ["reports.build"],
+                    "identity": {
+                        "status": "active", "profile_state": "complete",
+                        "permissions": ["reports.build"], "prohibited_actions": []
+                    }
+                }],
+                "as_of": "2026-11-12T10:00:00Z",
+                "handlers": {"report.build": {"permission": "reports.build", "enabled": True}},
+                "policy": {"execution_enabled": False, "external_actions_enabled": False}
+            }
+            result = build_command_center(tasks, agents, policy, {}, scheduler_snapshot=snapshot)
+        scheduler = result["worker_scheduler"]
+        self.assertEqual(scheduler["status"], "preview_available")
+        self.assertEqual(scheduler["plan"]["decisions"][0]["reason"], "execution_disabled")
+        self.assertEqual(scheduler["plan"]["summary"]["claims_performed"], 0)
+        self.assertFalse(result["controls"]["worker_started"])
+
+    def test_scheduler_snapshot_requires_exact_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents, tasks, policy = self._fixtures(root)
+            with self.assertRaises(ValueError):
+                build_command_center(tasks, agents, policy, {}, scheduler_snapshot={"jobs": []})
+
+
 if __name__ == "__main__":
     unittest.main()
