@@ -68,7 +68,7 @@ class SharedMemoryTests(unittest.TestCase):
 
 
     def test_corrupted_event_schema_fails_closed(self):
-        self.path.write_text('{"event_type":"remember","event_id":"x"}\\n', encoding="utf-8")
+        self.path.write_text('{"event_type":"remember","event_id":"x"}\n', encoding="utf-8")
         with self.assertRaises(MemoryError):
             search_memory(actor="owner", path=self.path)
 
@@ -78,7 +78,7 @@ class SharedMemoryTests(unittest.TestCase):
         import json
         event = json.loads(lines[0])
         event["scope"] = "public"
-        self.path.write_text(json.dumps(event) + "\\n", encoding="utf-8")
+        self.path.write_text(json.dumps(event) + "\n", encoding="utf-8")
         with self.assertRaises(MemoryError):
             search_memory(actor="owner", path=self.path)
 
