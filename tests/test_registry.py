@@ -80,7 +80,13 @@ class AuditTests(unittest.TestCase):
             path = Path(directory) / "events.jsonl"
             event = self.make_event()
             self.assertTrue(append_event(event, path))
-            self.assertEqual(read_events(path), [event])
+            events = read_events(path)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(
+                {key: value for key, value in events[0].items()
+                 if key not in {"previous_hash", "event_hash"}},
+                event,
+            )
 
     def test_duplicate_event_is_idempotent(self):
         with tempfile.TemporaryDirectory() as directory:
