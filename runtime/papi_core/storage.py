@@ -53,6 +53,69 @@ class SupabaseStore:
             return None
         return rows[0]
 
+    def get_tasks(self, *, page_size: int = 500, max_pages: int = 20) -> list[dict[str, Any]]:
+        """Lit un instantané borné des tâches Supabase, sans écrire."""
+        if isinstance(page_size, bool) or not isinstance(page_size, int) or not 1 <= page_size <= 1000:
+            raise StoreError("page_size doit être compris entre 1 et 1000.")
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or not 1 <= max_pages <= 20:
+            raise StoreError("max_pages doit être compris entre 1 et 20.")
+        tasks: list[dict[str, Any]] = []
+        for page in range(max_pages):
+            query = (
+                "papi_tasks?select=id,task,version"
+                f"&order=id.asc&limit={page_size}&offset={page * page_size}"
+            )
+            rows = self._request("GET", query)
+            if not isinstance(rows, list) or len(rows) > page_size:
+                raise StoreError("Réponse inattendue lors de la lecture des tâches.")
+            for row in rows:
+                if not isinstance(row, dict) or not isinstance(row.get("task"), dict):
+                    raise StoreError("Enregistrement de tâche Supabase invalide.")
+                if row.get("id") != row["task"].get("id"):
+                    raise StoreError("Identifiant de tâche incohérent dans Supabase.")
+                if not isinstance(row.get("version"), int) or row["version"] < 1:
+                    raise StoreError("Version de tâche invalide dans Supabase.")
+                tasks.append(row["task"])
+            if len(rows) < page_size:
+                return tasks
+        raise StoreError("Instantané trop volumineux : la lecture a atteint la limite de pages.")
+
+    def get_agent_histories(
+        self,
+        agent_ids: list[str],
+        tasks: list[dict[str, Any]],
+        *,
+        page_size: int = 500,
+        max_pages: int = 20,
+        as_of: str | None = None,
+    ) -> dict[str, dict[str, Any]]:
+        """Charge une seule fois le journal distant puis calcule les historiques demandés."""
+        if not isinstance(max_pages, int) or isinstance(max_pages, bool) or not 1 <= max_pages <= 20:
+            raise StoreError("max_pages doit être compris entre 1 et 20.")
+        if not isinstance(page_size, int) or isinstance(page_size, bool) or not 1 <= page_size <= 1000:
+            raise StoreError("page_size doit être compris entre 1 et 1000.")
+        if not isinstance(agent_ids, list) or any(not isinstance(item, str) or not item for item in agent_ids):
+            raise StoreError("agent_ids doit être une liste d'identifiants valides.")
+        if len(set(agent_ids)) != len(agent_ids):
+            raise StoreError("agent_ids contient des doublons.")
+        from .agent_history import AgentHistoryError, summarize_agent_history
+
+        events: list[dict[str, Any]] = []
+        for page in range(max_pages):
+            batch = self.get_audit_events(limit=page_size, offset=page * page_size)
+            events.extend(batch)
+            if len(batch) < page_size:
+                break
+        else:
+            raise StoreError("Historique trop volumineux : résultat complet non garanti.")
+        try:
+            return {
+                agent_id: summarize_agent_history(agent_id, events, tasks, as_of=as_of)
+                for agent_id in sorted(agent_ids)
+            }
+        except AgentHistoryError as exc:
+            raise StoreError(f"Impossible de calculer les historiques : {exc}") from exc
+
     def get_audit_events(self, *, limit: int = 500, offset: int = 0) -> list[dict[str, Any]]:
         """Lit une page bornée d'événements d'audit ; ne modifie jamais le journal."""
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1000:
