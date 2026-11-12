@@ -296,5 +296,38 @@ class AuditAnchorContractTests(unittest.TestCase):
         self.assertEqual(json.loads(stored.decode("utf-8")), record)
 
 
+    def test_read_only_verifier_rejects_signed_broken_predecessor_link(self):
+        self.add_event("evt-1")
+        record = self.record(None)
+        record["previous_record_digest"] = "b" * 64
+        from runtime.papi_core.audit_anchor import _unsigned_payload
+        record["signature"] = self.sign("test-key-1", _unsigned_payload(record))
+        raw = canonical_record_bytes(record)
+        digest = hashlib.sha256(raw).hexdigest()
+        self.store.records[digest] = raw
+        self.store.latest[self.journal_id] = digest
+        with self.assertRaises(CheckpointAnchorError):
+            verify_checkpoint_anchor(
+                journal_path=self.path, journal_id=self.journal_id,
+                store=self.store, verify_signature=self.verify,
+            )
+
+    def test_read_only_verifier_rejects_malformed_signed_checkpoint(self):
+        self.add_event("evt-1")
+        record = self.record(None)
+        record["checkpoint"]["sequence"] = True
+        from runtime.papi_core.audit_anchor import _unsigned_payload
+        record["signature"] = self.sign("test-key-1", _unsigned_payload(record))
+        raw = canonical_record_bytes(record)
+        digest = hashlib.sha256(raw).hexdigest()
+        self.store.records[digest] = raw
+        self.store.latest[self.journal_id] = digest
+        with self.assertRaises(CheckpointAnchorError):
+            verify_checkpoint_anchor(
+                journal_path=self.path, journal_id=self.journal_id,
+                store=self.store, verify_signature=self.verify,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
