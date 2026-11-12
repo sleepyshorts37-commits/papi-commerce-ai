@@ -92,7 +92,8 @@ def evaluate_execution_readiness(
     if category not in ACTION_CATEGORIES:
         block("ACTION_CATEGORY_INVALID", "Catégorie d'action absente ou non reconnue.")
     else:
-        category_policy = policy.get("action_permissions", {}).get(category, {})
+        action_permissions = policy.get("action_permissions")
+        category_policy = action_permissions.get(category, {}) if isinstance(action_permissions, dict) else {}
         if not isinstance(category_policy, dict) or category_policy.get("enabled") is not True:
             block("ACTION_CATEGORY_DISABLED", "Cette catégorie d'action est désactivée.")
         if category in {"external_communication", "financial", "legal"} and policy.get("external_actions_enabled") is not True and category == "external_communication":
