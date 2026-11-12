@@ -28,6 +28,6 @@ updated_task, audit_event = assign_task(
 L'appelant doit authentifier cryptographiquement l'acteur avant d'appeler ce module, puis persister la tâche et l'événement dans une transaction atomique avec le stockage. Le module ne prétend pas authentifier un processus, ne persiste rien et ne déclenche aucune exécution.
 
 ## Tests
-`PYTHONPATH=runtime python -m unittest tests.test_task_assignment -v`
+`PYTHONPATH=runtime python -m unittest discover -s tests -p 'test_task_assignment.py' -v`
 
 Les identités actuelles du dépôt sont encore planifiées/incomplètes : aucune affectation réelle à un agent n'est donc autorisée à ce stade.
