@@ -42,7 +42,7 @@ def analyze_sales_delivery(sales: list[dict], deliveries: list[dict])->dict:
     valid_deliveries=[]; seen=set()
     for i,x in enumerate(deliveries):
         try:
-            if not isinstance(x,dict) or set(x)-DELIVERY_FIELDS or not DELIVERY_FIELDS.issubset(x): raise ValueError("Structure de livraison invalide ou donnée personnelle interdite.")
+            if not isinstance(x,dict) or set(x)-DELIVERY_FIELDS or not {"delivery_id","order_id","status","created_at","updated_at"}.issubset(x): raise ValueError("Structure de livraison invalide ou donnée personnelle interdite.")
             did=_id(x["delivery_id"],"delivery_id"); oid=_id(x["order_id"],"order_id")
             if did in seen: raise ValueError("delivery_id dupliqué.")
             seen.add(did)
