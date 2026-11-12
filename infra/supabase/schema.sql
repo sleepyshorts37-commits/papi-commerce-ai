@@ -171,7 +171,7 @@ create or replace function public.papi_renew_job_lease(
 ) returns boolean
 language plpgsql security invoker
 set search_path = public, pg_temp
-as $
+as $lease$
 declare v_count integer;
 begin
     if p_job_id is null or p_worker_id is null or length(trim(p_worker_id)) = 0
@@ -188,7 +188,7 @@ begin
     get diagnostics v_count = row_count;
     return v_count = 1;
 end;
-$;
+$lease$;
 
 create or replace function public.papi_complete_job(
     p_job_id text, p_worker_id text, p_lease_token uuid, p_result jsonb default '{}'::jsonb
