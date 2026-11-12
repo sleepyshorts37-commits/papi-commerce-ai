@@ -132,6 +132,8 @@ def read_messages(
     replay_db_path: Path = DEFAULT_REPLAY_DB,
 ) -> list[dict[str, Any]]:
     """Lit la boîte autorisée après authentification Ed25519 du lecteur."""
+    if not isinstance(reader, str) or not reader:
+        raise ChatError("Lecteur invalide.")
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 200:
         raise ChatError("limit doit être compris entre 1 et 200.")
     key_path = Path(private_key_path) if private_key_path is not None else DEFAULT_PRIVATE_DIR / (reader + ".ed25519.pem")
