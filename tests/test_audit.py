@@ -71,6 +71,8 @@ class AuditHashChainTests(unittest.TestCase):
         self.path.symlink_to(target)
         with self.assertRaises(OSError):
             append_event(self.event("evt-symlink"), self.path)
+        with self.assertRaises(OSError):
+            read_events(self.path)
         self.assertEqual(target.read_text(encoding="utf-8"), "")
 
     @unittest.skipUnless(hasattr(__import__("os"), "O_NOFOLLOW"), "O_NOFOLLOW unavailable")
