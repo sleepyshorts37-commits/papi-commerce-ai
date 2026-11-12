@@ -350,7 +350,7 @@ begin
     ) as e;
 
     if v_events_truncated then
-        select coalesce(jsonb_agg(value order by value->>'occurred_at', value->>'event_id'), '[]'::jsonb)
+        select coalesce(jsonb_agg(value order by (value->>'occurred_at')::timestamptz, value->>'event_id'), '[]'::jsonb)
           into v_events
           from jsonb_array_elements(v_events) as item(value)
          where value->>'event_id' in (
