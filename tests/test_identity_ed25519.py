@@ -51,6 +51,25 @@ class Ed25519IdentityTests(unittest.TestCase):
                                    key_version=2, timestamp=1000, nonce="e" * 16)
         self.assertTrue(verify_ed25519_request(new, self.registry, self.replay, now=1000)["authenticated"])
 
+    def test_concurrent_rotations_serialize_registry_versions(self):
+        from concurrent.futures import ThreadPoolExecutor
+        import json
+
+        def rotate():
+            return rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: rotate(), range(2)))
+
+        self.assertEqual(results, [self.private, self.private])
+        registry = json.loads(self.registry.read_text(encoding="utf-8"))
+        self.assertEqual(registry["agents"]["agent-a"]["key_version"], 3)
+        envelope = sign_ed25519_request(
+            "agent-a", {"permission": "read"}, self.private,
+            key_version=3, timestamp=1000, nonce="rotation-lock-test-0001")
+        self.assertTrue(verify_ed25519_request(
+            envelope, self.registry, self.replay, now=1000)["authenticated"])
+
     def test_revocation_rejected(self):
         revoke_ed25519_agent("agent-a", self.registry)
         envelope = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
