@@ -63,7 +63,7 @@ The trusted publisher's local-prefix check is essential: a larger sequence numbe
 
 ## Verification and recovery
 
-A verifier that does not trust the worker must obtain the signed latest record directly from the external store, validate the signature and record chain, then compare its checkpoint against the local journal with `verify_checkpoint`.
+A verifier that does not trust the worker must obtain the signed latest record directly from the external store, validate the signature and record chain, then compare its checkpoint against the local journal with `verify_checkpoint`. The provider-neutral module now exposes `verify_checkpoint_anchor(...)` for this read-only verification path. It returns whether an anchor exists, the latest digest and checkpoint, and the count of local events not yet anchored. It does not publish records or advance the latest pointer.
 
 - A local sequence shorter than the external sequence is a rollback or incomplete restore: raise an incident; do not silently reset the external pointer.
 - A different hash at the anchored sequence is an integrity incident.
