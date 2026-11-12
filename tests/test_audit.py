@@ -229,7 +229,7 @@ class AuditHashChainTests(unittest.TestCase):
         oversized_text["details"]["other"] = "y" * 500
         oversized_text["details"]["third"] = "z" * 500
         # Individual field limits and total serialized size are both enforced.
-        oversized_text["details"]["extra"] = ["a" * 500 for _ in range(100)]
+        oversized_text["details"]["extra"] = [["a" * 500 for _ in range(100)] for _ in range(2)]
         with self.assertRaises(AuditError):
             append_event(oversized_text, self.path)
 
