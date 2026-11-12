@@ -9,6 +9,7 @@
 - Seul le worker qui détient le bail courant peut terminer ou signaler l'échec.
 - Renouvellement atomique et clôturé par worker + jeton : un bail expiré ou remplacé ne peut pas être ressuscité.
 - Le worker renouvelle le bail avant de démarrer le handler et refuse le démarrage si le renouvellement échoue.
+- Le contexte du handler expose `ensure_lease()` : le handler doit l'appeler périodiquement pendant les traitements longs et immédiatement avant chaque effet externe. Un échec lève `LeaseLostError`, arrête le flux coopératif et empêche la confirmation du job.
 - Après le nombre maximal de tentatives, le travail passe à `failed`.
 
 ## API Python
@@ -29,6 +30,6 @@ Les méthodes `enqueue`, `claim`, `renew`, `complete` et `fail` pilotent la file
 - Le code ne lance aucun handler, message, prospection, achat ou paiement.
 - Une clé d'idempotence évite les insertions répétées, mais chaque producteur doit réutiliser la même clé pour le même travail logique.
 - Un bail expiré permet une reprise ; un handler devra aussi être idempotent car un crash après un effet externe mais avant la confirmation peut provoquer une nouvelle tentative.
-- Le renouvellement avant handler réduit le risque d'exécution avec un bail expiré, mais ne constitue pas un heartbeat pendant le handler. Les traitements longs doivent renouveler périodiquement leur bail et vérifier la propriété juste avant chaque effet externe ; les systèmes externes doivent accepter une clé d'idempotence/fencing. Sans cela, un effet externe commencé avant l'expiration peut se poursuivre après une reprise par un autre worker.
+- `ensure_lease()` est un garde coopératif, pas un heartbeat en arrière-plan : il ne protège que les handlers qui l'appellent. Un handler bloqué ou non coopératif peut continuer jusqu'à son prochain point de contrôle. Les systèmes externes doivent accepter une clé d'idempotence/fencing ; un effet externe déjà engagé peut sinon se poursuivre après une reprise par un autre worker.
 - Le worker ne doit jamais interpréter un payload comme du code exécutable.
 - Aucun worker permanent n'est déployé et aucune exécution autonome n'est activée.
