@@ -111,8 +111,6 @@ def _validate_record(
     if valid_signature is not True:
         raise CheckpointAnchorError("Signature externe invalide.")
     canonical = canonical_record_bytes(record)
-    if expected_digest is not None and _record_digest(canonical) != expected_digest:
-        raise CheckpointAnchorError("Le contenu du checkpoint ne correspond pas à son empreinte.")
     return record
 
 
@@ -148,6 +146,7 @@ def publish_checkpoint_record(
             raise CheckpointAnchorError("Enregistrement externe précédent illisible.") from exc
         cursor = latest_digest
         seen_digests: set[str] = set()
+        newer_sequence: int | None = None
         while cursor is not None:
             if cursor in seen_digests:
                 raise CheckpointAnchorError("Cycle dans la chaîne des checkpoints externes.")
@@ -165,6 +164,10 @@ def publish_checkpoint_record(
             )
             if _record_digest(canonical_record_bytes(chain_record)) != cursor:
                 raise CheckpointAnchorError("Empreinte d'un checkpoint externe incorrecte.")
+            sequence = chain_record["checkpoint"]["sequence"]
+            if newer_sequence is not None and sequence >= newer_sequence:
+                raise CheckpointAnchorError("Les séquences de la chaîne externe ne progressent pas.")
+            newer_sequence = sequence
             cursor = chain_record["previous_record_digest"]
             if cursor is None:
                 previous_record = chain_record
@@ -172,7 +175,10 @@ def publish_checkpoint_record(
                 # The next iteration verifies the referenced immutable predecessor.
                 pass
         previous_record = json.loads(store.get_record(latest_digest).decode("utf-8"))
-        verify_checkpoint(journal_path, previous_record["checkpoint"])
+        try:
+            verify_checkpoint(journal_path, previous_record["checkpoint"])
+        except AuditError as exc:
+            raise CheckpointAnchorError("Le journal local ne contient pas le préfixe déjà ancré.") from exc
 
     candidate = build_checkpoint(journal_path)
     if record.get("checkpoint") != candidate:
@@ -180,6 +186,8 @@ def publish_checkpoint_record(
     expected_previous = latest_digest
     if record.get("previous_record_digest") != expected_previous:
         raise CheckpointAnchorError("Le nouveau checkpoint ne référence pas le dernier enregistrement.")
+    if expected_previous is None and record.get("previous_record_digest") is not None:
+        raise CheckpointAnchorError("Le premier checkpoint doit référencer genesis.")
     _validate_record(
         record, journal_id=journal_id,
         expected_digest=expected_previous, verifier=verify_signature,
