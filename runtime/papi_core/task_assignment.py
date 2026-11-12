@@ -55,8 +55,8 @@ def assign_task(
         raise TaskAssignmentError("Agent destinataire non identifié.")
     if not isinstance(task.get("id"), str) or not task["id"].strip():
         raise TaskAssignmentError("La tâche doit posséder un identifiant.")
-    if task.get("status") in {"done", "cancelled"}:
-        raise TaskAssignmentError("Une tâche terminée ou annulée ne peut être réaffectée.")
+    if task.get("status") not in {"backlog", "ready", "blocked"}:
+        raise TaskAssignmentError("Seules les tâches en backlog, prêtes ou bloquées peuvent être affectées.")
     try:
         validate_identity_registry(identity_registry, agents)
     except (AgentIdentityError, TypeError) as exc:
@@ -70,11 +70,13 @@ def assign_task(
     assignee, assignee_card = _active_identity(assignee_id, agents, identity_registry)
     if assignee_card.get("manager_id") != assigner_id:
         raise TaskAssignmentError("L'agent destinataire ne relève pas directement de ce responsable.")
-    if assignee_id in set(assignee.get("prohibited", [])):
-        raise TaskAssignmentError("Affectation interdite par le profil de l'agent.")
-    if task.get("required_permission"):
-        if task["required_permission"] not in assignee.get("permissions", []):
-            raise TaskAssignmentError("L'agent ne possède pas la permission requise par la tâche.")
+    required_permission = task.get("required_permission")
+    if required_permission is not None:
+        if not isinstance(required_permission, str) or not required_permission.strip():
+            raise TaskAssignmentError("La permission requise par la tâche est invalide.")
+        if (required_permission not in assignee.get("permissions", [])
+                or required_permission in assignee.get("prohibited", [])):
+            raise TaskAssignmentError("L'agent ne possède pas la permission requise ou celle-ci lui est interdite.")
 
     updated = deepcopy(task)
     previous_assignee = task.get("owner_agent")
