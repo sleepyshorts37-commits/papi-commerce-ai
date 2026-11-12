@@ -8,6 +8,7 @@ from typing import Any
 from .astou import build_director_brief
 from .audit import read_events
 from .agent_history import summarize_agent_history
+from .agent_performance import build_agent_performance
 from .registry import AGENTS_FILE, TASKS_FILE, load_agents, load_json
 from .doctor import diagnose_environment
 from .worker_scheduler import build_schedule
@@ -92,6 +93,7 @@ def build_command_center(
     events = read_events(audit_path) if audit_path is not None else []
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
+    performance = build_agent_performance(agents, events, valid_tasks)
     per_agent = {}
     for agent_id in sorted(agents):
         summary = summarize_agent_history(agent_id, events, valid_tasks)
@@ -128,6 +130,7 @@ def build_command_center(
         "worker_supervision": supervision,
         "incident_center": incidents,
         "approval_center": approvals,
+        "agent_performance": performance,
         "environment": {
             "status": doctor["status"],
             "checks": doctor["checks"],
