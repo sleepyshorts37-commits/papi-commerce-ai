@@ -38,7 +38,7 @@ class PapiChatTests(unittest.TestCase):
     def test_send_and_read_direct_message_with_signature(self):
         record = self.send(sender="astou", recipient="marietou", subject="Priorités",
                            body="Merci de vérifier les tâches ouvertes.")
-        received = read_messages(reader="owner", private_key_path=self.owner_key, path=self.messages,
+        received = read_messages(reader="astou", private_key_path=self.astou_key, path=self.messages,
                                  agents_path=self.agents, public_registry_path=self.public_registry,
                                  replay_db_path=self.replay_db)
         self.assertEqual(len(received), 1)
