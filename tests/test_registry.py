@@ -418,10 +418,10 @@ class WorkerTests(unittest.TestCase):
             "agent_identity": {"agent_id": "forged-agent"},
             "actor": "forged-actor", "lease_token": "lease-private",
         }
-        with patch.object(worker.queue, "claim", return_value=job), \\
+        with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
-             }), \\
+             }), \
              patch.object(worker.queue, "complete", return_value=True):
             result = worker.run_once()
         self.assertEqual(result["status"], "completed")
