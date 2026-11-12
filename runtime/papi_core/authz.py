@@ -53,9 +53,17 @@ def authorize_agent(agent_id: str, permission: str, agents_path: Path = AGENTS_F
         raise AccessDenied("Agent non actif : statut défini/planifié insuffisant.")
     permissions = agent.get("permissions")
     prohibited = agent.get("prohibited")
-    if not isinstance(permissions, list) or permission not in permissions:
+    if (not isinstance(permissions, list)
+            or not all(isinstance(item, str) and item.strip() for item in permissions)
+            or len(permissions) != len(set(permissions))):
+        raise AccessDenied("Liste de permissions invalide : accès fermé.")
+    if (not isinstance(prohibited, list)
+            or not all(isinstance(item, str) and item.strip() for item in prohibited)
+            or len(prohibited) != len(set(prohibited))):
+        raise AccessDenied("Liste d'interdictions invalide : accès fermé.")
+    if permission not in permissions:
         raise AccessDenied("Permission absente du profil agent.")
-    if isinstance(prohibited, list) and permission in prohibited:
+    if permission in prohibited:
         raise AccessDenied("Action explicitement interdite pour cet agent.")
     active_policy = policy if policy is not None else load_policy()
     if not isinstance(active_policy, dict):
