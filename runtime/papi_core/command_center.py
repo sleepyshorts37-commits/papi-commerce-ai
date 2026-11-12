@@ -12,6 +12,7 @@ from .registry import AGENTS_FILE, TASKS_FILE, load_agents, load_json
 from .doctor import diagnose_environment
 from .worker_scheduler import build_schedule
 from .worker_supervision import build_worker_supervision
+from .incident_center import build_incident_center
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -88,6 +89,7 @@ def build_command_center(
         }
 
     events = read_events(audit_path) if audit_path is not None else []
+    incidents = build_incident_center(events)
     per_agent = {}
     for agent_id in sorted(agents):
         summary = summarize_agent_history(agent_id, events, valid_tasks)
@@ -122,6 +124,7 @@ def build_command_center(
         "astou_brief": brief,
         "worker_scheduler": scheduler,
         "worker_supervision": supervision,
+        "incident_center": incidents,
         "environment": {
             "status": doctor["status"],
             "checks": doctor["checks"],
@@ -135,6 +138,8 @@ def build_command_center(
             "scheduler_handlers_executed": 0,
             "supervision_mutations_performed": 0,
             "supervision_retries_triggered": 0,
+            "incident_writes_performed": 0,
+            "incident_notifications_sent": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
         },
