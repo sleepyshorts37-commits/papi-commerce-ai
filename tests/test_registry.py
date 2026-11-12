@@ -517,11 +517,11 @@ class WorkerTests(unittest.TestCase):
         worker = self.make_worker()
         job = {"id": "JOB-FAIL-TRANSITION", "task_id": "TASK-1", "handler": "internal.echo",
                "payload": {}, "lease_token": "lease-fail-transition"}
-        with patch.object(worker.queue, "claim", return_value=job), \\
+        with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
-             }), \\
-             patch("papi_core.worker.execute_authorized_job", side_effect=RuntimeError("handler failed")), \\
+             }), \
+             patch("papi_core.worker.execute_authorized_job", side_effect=RuntimeError("handler failed")), \
              patch.object(worker.queue, "fail", side_effect=OSError("queue unavailable")):
             result = worker.run_once()
         self.assertEqual(result["status"], "failure_transition_error")
