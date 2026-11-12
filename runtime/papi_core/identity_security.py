@@ -43,10 +43,22 @@ def validate_identity_registry(document: dict[str, Any]) -> dict[str, Any]:
             raise IdentitySecurityError("Identifiant d'identité ou agent_id dupliqué.")
         seen_ids.add(identity_id)
         seen_agents.add(agent_id)
-        for field in ("competencies", "objectives", "permissions", "prohibited_actions",
-                      "assignment_history", "evaluation_history"):
+        for field in ("competencies", "objectives", "permissions", "prohibited_actions"):
             if not isinstance(item[field], list) or any(not isinstance(v, str) for v in item[field]):
                 raise IdentitySecurityError(f"{field} doit être une liste de textes.")
+        for field in ("assignment_history", "evaluation_history"):
+            if not isinstance(item[field], list):
+                raise IdentitySecurityError(f"{field} doit être une liste.")
+            for entry in item[field]:
+                if isinstance(entry, str) and entry.strip():
+                    continue
+                if not isinstance(entry, dict) or any(
+                    not isinstance(key, str) or not isinstance(value, (str, int, float, bool, type(None)))
+                    for key, value in entry.items()
+                ):
+                    raise IdentitySecurityError(
+                        f"{field} doit contenir des textes ou des objets d'historique simples."
+                    )
         if item["manager_id"] is not None and not isinstance(item["manager_id"], str):
             raise IdentitySecurityError("manager_id doit être un texte ou null.")
         if item["status"] not in {"planned", "defined", "active", "suspended", "revoked", "deployed"}:
