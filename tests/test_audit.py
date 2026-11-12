@@ -130,7 +130,7 @@ class AuditHashChainTests(unittest.TestCase):
         checkpoint = build_checkpoint(self.path)
         append_event(self.event("evt-2"), self.path)
         records = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
-        self.path.write_text(json.dumps(records[0]) + "\\n", encoding="utf-8")
+        self.path.write_text(json.dumps(records[0]) + "\n", encoding="utf-8")
         self.assertEqual(verify_checkpoint(self.path, checkpoint), 0)
         self.path.write_text("", encoding="utf-8")
         with self.assertRaises(AuditError):
