@@ -1,10 +1,12 @@
 -- PAPI COMMAND CENTER 1.3 — snapshot cohérent en une seule transaction de lecture.
+-- STABLE : les lectures partagent le snapshot MVCC de la requête appelante.
 -- SECURITY INVOKER : les droits RLS/SQL de l'appelant restent applicables.
 create or replace function public.papi_get_dashboard_snapshot(
     p_task_limit integer default 10000,
     p_event_limit integer default 10000
 ) returns jsonb
 language plpgsql
+stable
 security invoker
 set search_path = public, pg_temp
 as $$
