@@ -56,7 +56,7 @@ class AgentIdentityAuthenticationTests(unittest.TestCase):
             data = json.loads(identities.read_text())
             data["identities"][0]["permissions"] = ["chat.send", "chat.broadcast"]
             _write(identities, data)
-            with self.assertRaisesRegex(AgentIdentityAuthenticationError, "permissions"):
+            with self.assertRaisesRegex(AgentIdentityAuthenticationError, "(?i)permissions"):
                 authenticate_agent_request(
                     {"agent_id": "astou"}, identities_path=identities, agents_path=agents,
                     public_registry_path=tmp_path / "keys.json", replay_db=tmp_path / "replay.db",
