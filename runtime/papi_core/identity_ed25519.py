@@ -202,8 +202,10 @@ def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAU
     except (ValueError, KeyError, TypeError, InvalidSignature) as exc:
         raise Ed25519IdentityError("Signature Ed25519 incorrecte.") from exc
     replay_db.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with sqlite3.connect(replay_db, timeout=10) as connection:
-        connection.execute("PRAGMA journal_mode=WAL")
+    with sqlite3.connect(replay_db, timeout=30) as connection:
+        # Wait for concurrent writers; do not change journal mode per request.
+        # Concurrent WAL initialization can fail with SQLITE_BUSY.
+        connection.execute("PRAGMA busy_timeout=30000")
         connection.execute("CREATE TABLE IF NOT EXISTS used_nonces (agent_id TEXT NOT NULL, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(agent_id, nonce))")
         connection.execute("DELETE FROM used_nonces WHERE expires_at < ?", (current,))
         try:
