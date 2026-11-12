@@ -1,10 +1,11 @@
 import json
 import math
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
-from runtime.papi_core.audit import AuditError, append_event, new_event, read_events
+from runtime.papi_core.audit import AuditError, append_event, new_event, read_events, _journal_lock
 
 
 class AuditHashChainTests(unittest.TestCase):
@@ -74,6 +75,26 @@ class AuditHashChainTests(unittest.TestCase):
         event["occurred_at"] = "2026-11-12T10:30:00+00:00"
         self.assertTrue(append_event(event, self.path))
         self.assertEqual(len(read_events(self.path)), 1)
+
+    def test_read_waits_for_an_active_append_lock(self):
+        append_event(self.event("evt-1"), self.path)
+        started = threading.Event()
+        finished = threading.Event()
+
+        def reader():
+            started.set()
+            read_events(self.path)
+            finished.set()
+
+        with _journal_lock(self.path):
+            thread = threading.Thread(target=reader)
+            thread.start()
+            self.assertTrue(started.wait(timeout=2))
+            self.assertFalse(finished.wait(timeout=0.1))
+
+        thread.join(timeout=2)
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(finished.is_set())
 
     def test_legacy_unlinked_journal_fails_closed(self):
         self.path.write_text(json.dumps(self.event("legacy")) + "\n", encoding="utf-8")
