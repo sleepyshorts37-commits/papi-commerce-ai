@@ -52,3 +52,31 @@ def verify_checkpoint(path: Path, checkpoint: dict[str, Any]) -> int:
     if local_hash != head_hash:
         raise AuditError("Le préfixe local ne correspond pas au checkpoint externe.")
     return len(events) - sequence
+
+
+def verify_checkpoint_transition(
+    previous: dict[str, Any], current: dict[str, Any]
+) -> None:
+    """Reject checkpoint rollback or equivocation between consecutive publications.
+
+    The external store must call this while enforcing an atomic, append-only
+    update. This local helper cannot prevent concurrent writers or authenticate
+    either checkpoint.
+    """
+    _validate_checkpoint_shape(previous)
+    _validate_checkpoint_shape(current)
+    if current["sequence"] < previous["sequence"]:
+        raise AuditError("Régression de séquence du checkpoint externe.")
+    if current["sequence"] == previous["sequence"] and current["head_hash"] != previous["head_hash"]:
+        raise AuditError("Deux hashes différents pour la même séquence de checkpoint.")
+
+
+def _validate_checkpoint_shape(checkpoint: dict[str, Any]) -> None:
+    if not isinstance(checkpoint, dict) or set(checkpoint) != CHECKPOINT_FIELDS:
+        raise AuditError("Format de checkpoint invalide.")
+    if type(checkpoint["schema_version"]) is not int or checkpoint["schema_version"] != CHECKPOINT_SCHEMA_VERSION:
+        raise AuditError("Version de checkpoint non prise en charge.")
+    if type(checkpoint["sequence"]) is not int or checkpoint["sequence"] < 0:
+        raise AuditError("Séquence de checkpoint invalide.")
+    if not isinstance(checkpoint["head_hash"], str) or not re.fullmatch(r"[0-9a-f]{64}", checkpoint["head_hash"]):
+        raise AuditError("Hash de checkpoint invalide.")
