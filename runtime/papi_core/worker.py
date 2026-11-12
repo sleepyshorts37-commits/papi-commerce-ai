@@ -67,6 +67,20 @@ class PapiWorker:
             # Une transition durable de queue ne peut pas être annulée par l'audit terminal.
             return
 
+    def _fail_job(self, *, job_id: str, lease_token: str, error_code: str,
+                  status: str, actor: str, action: str, handler: str,
+                  outcome: str) -> dict[str, Any]:
+        """Convertit aussi un échec de transition queue en résultat contrôlé."""
+        try:
+            self.queue.fail(job_id=job_id, worker_id=self.worker_id,
+                            lease_token=lease_token, error_code=error_code)
+        except Exception:
+            self._audit_best_effort(job_id, "job.failure_transition_error", actor,
+                                    handler=handler, outcome="queue_fail_error")
+            return {"status": "failure_transition_error", "claimed": True, "job_id": job_id}
+        self._audit_best_effort(job_id, action, actor, handler=handler, outcome=outcome)
+        return {"status": status, "claimed": True, "job_id": job_id}
+
     def run_once(self) -> dict[str, Any]:
         """Traite au maximum un travail ; l'audit handler_started est fail-closed."""
         if self.policy.get("execution_enabled") is not True:
@@ -113,9 +127,10 @@ class PapiWorker:
             try:
                 self._audit(job_id, "job.handler_started", authenticated_actor, handler=handler)
             except Exception:
-                self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token,
-                                error_code="audit_unavailable")
-                return {"status": "audit_blocked", "claimed": True, "job_id": job_id}
+                return self._fail_job(job_id=job_id, lease_token=lease_token,
+                                      error_code="audit_unavailable", status="audit_blocked",
+                                      actor=authenticated_actor, action="job.failed",
+                                      handler=handler, outcome="audit_unavailable")
 
             result = execute_authorized_job(
                 job, task, self.policy, self.registry,
@@ -131,26 +146,22 @@ class PapiWorker:
             self._audit_best_effort(job_id, "job.completed", authenticated_actor, handler=handler)
             return {"status": "completed", "claimed": True, "job_id": job_id}
         except AccessDenied:
-            self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token,
-                            error_code="authentication_failed")
-            self._audit_best_effort(job_id, "job.authentication_blocked", system_actor,
-                                    handler=handler, outcome="blocked")
-            return {"status": "blocked", "claimed": True, "job_id": job_id}
+            return self._fail_job(job_id=job_id, lease_token=lease_token,
+                                  error_code="authentication_failed", status="blocked",
+                                  actor=system_actor, action="job.authentication_blocked",
+                                  handler=handler, outcome="blocked")
         except HandlerPermissionError:
-            self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token,
-                            error_code="permission_denied")
-            self._audit_best_effort(job_id, "job.blocked", authenticated_actor or system_actor,
-                                    handler=handler, outcome="permission_denied")
-            return {"status": "blocked", "claimed": True, "job_id": job_id}
+            return self._fail_job(job_id=job_id, lease_token=lease_token,
+                                  error_code="permission_denied", status="blocked",
+                                  actor=authenticated_actor or system_actor, action="job.blocked",
+                                  handler=handler, outcome="permission_denied")
         except (WorkerError, StoreError, QueueError):
-            self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token,
-                            error_code="worker_validation_error")
-            self._audit_best_effort(job_id, "job.failed", authenticated_actor or system_actor,
-                                    handler=handler, outcome="validation_error")
-            return {"status": "failed", "claimed": True, "job_id": job_id}
+            return self._fail_job(job_id=job_id, lease_token=lease_token,
+                                  error_code="worker_validation_error", status="failed",
+                                  actor=authenticated_actor or system_actor, action="job.failed",
+                                  handler=handler, outcome="validation_error")
         except Exception:
-            self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token,
-                            error_code="handler_error")
-            self._audit_best_effort(job_id, "job.failed", authenticated_actor or system_actor,
-                                    handler=handler, outcome="handler_error")
-            return {"status": "failed", "claimed": True, "job_id": job_id}
+            return self._fail_job(job_id=job_id, lease_token=lease_token,
+                                  error_code="handler_error", status="failed",
+                                  actor=authenticated_actor or system_actor, action="job.failed",
+                                  handler=handler, outcome="handler_error")
