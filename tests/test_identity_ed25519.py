@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -138,6 +139,42 @@ class Ed25519IdentityTests(unittest.TestCase):
         locked_operation = _registry_locked("registry_path")(operation)
         self.assertEqual(locked_operation(), self.registry)
         self.assertTrue(self.registry.with_name(self.registry.name + ".lock").is_file())
+
+
+    def test_registry_lock_rejects_symlink_lock_file(self):
+        lock_path = self.registry.with_name(self.registry.name + ".lock")
+        target = self.root / "lock-target"
+        target.write_text("unchanged", encoding="utf-8")
+        lock_path.symlink_to(target)
+
+        def operation(registry_path=self.registry):
+            return registry_path
+
+        with self.assertRaises(OSError):
+            _registry_locked("registry_path")(operation)()
+        self.assertEqual(target.read_text(encoding="utf-8"), "unchanged")
+
+    def test_registry_lock_rejects_group_or_world_access(self):
+        lock_path = self.registry.with_name(self.registry.name + ".lock")
+        lock_path.touch()
+        lock_path.chmod(0o644)
+
+        def operation(registry_path=self.registry):
+            return registry_path
+
+        with self.assertRaises(PermissionError):
+            _registry_locked("registry_path")(operation)()
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "POSIX FIFO support required")
+    def test_registry_lock_rejects_fifo_without_blocking(self):
+        lock_path = self.registry.with_name(self.registry.name + ".lock")
+        os.mkfifo(lock_path, 0o600)
+
+        def operation(registry_path=self.registry):
+            return registry_path
+
+        with self.assertRaises(PermissionError):
+            _registry_locked("registry_path")(operation)()
 
 
 if __name__ == "__main__":
