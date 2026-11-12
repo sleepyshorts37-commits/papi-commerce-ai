@@ -122,3 +122,20 @@ def evaluate_opportunities(scan: dict[str, Any]) -> dict[str, Any]:
             "Aucune inscription, prise de contact, publication, dépense ou transaction n'est exécutée."
         ]
     }
+
+
+def scan_opportunity_signals(signals: list[dict[str, Any]], *, as_of: str) -> dict[str, Any]:
+    """Compatibilité du tableau de bord : normalise des signaux fournis, sans réseau."""
+    if not isinstance(signals, list) or len(signals) > MAX_ITEMS:
+        raise ValueError(f"signals doit contenir au maximum {MAX_ITEMS} éléments.")
+    _text(as_of, "as_of")
+    normalized, rejected = [], 0
+    required = ("signal_id", "source", "source_ref", "business_line", "market", "customer_segment", "offer")
+    for signal in signals:
+        if not isinstance(signal, dict) or any(not isinstance(signal.get(k), str) or not signal[k].strip() for k in required):
+            rejected += 1
+            continue
+        normalized.append({**signal, "triage_status": "needs_business_review"})
+    return {"status": "normalized" if normalized else "empty", "signals_received": len(signals),
+            "signals_rejected": rejected, "signals": normalized, "network_accessed": False,
+            "execution_authorized": False}

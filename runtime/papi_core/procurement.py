@@ -61,8 +61,6 @@ def analyze_procurement(observations: list[dict[str, Any]], *, as_of: str | None
                 row[f] = _integer(raw.get(f), f, optional=True)
             if row["shipping_total_xof"] is not None and (not row["shipping_allocation_units"] or row["shipping_allocation_units"] <= 0):
                 raise ProcurementError("shipping_allocation_units est obligatoire avec les frais de livraison.")
-            if row["shipping_total_xof"] is None and row["shipping_allocation_units"] is not None:
-                raise ProcurementError("shipping_allocation_units nécessite shipping_total_xof.")
             if row["on_time_orders"] is not None and (row["completed_orders"] is None or row["on_time_orders"] > row["completed_orders"]):
                 raise ProcurementError("Les commandes à temps doivent être comprises dans les commandes terminées.")
             if row["defective_units"] is not None and (row["inspected_units"] is None or row["defective_units"] > row["inspected_units"]):
@@ -79,7 +77,9 @@ def analyze_procurement(observations: list[dict[str, Any]], *, as_of: str | None
             costs = ("taxes_total_xof", "packaging_per_unit_xof", "other_fees_total_xof")
             complete = all(row[f] is not None for f in costs) and row["shipping_total_xof"] is not None
             shipping_unit = ((row["shipping_total_xof"] + row["shipping_allocation_units"] - 1) // row["shipping_allocation_units"]) if complete else None
-            landed = row["unit_price_xof"] + shipping_unit + sum(row[f] for f in costs) if complete else None
+            allocated_taxes = ((row["taxes_total_xof"] + row["minimum_order_quantity"] - 1) // row["minimum_order_quantity"]) if complete else None
+            allocated_other = ((row["other_fees_total_xof"] + row["minimum_order_quantity"] - 1) // row["minimum_order_quantity"]) if complete else None
+            landed = row["unit_price_xof"] + shipping_unit + allocated_taxes + row["packaging_per_unit_xof"] + allocated_other if complete else None
             row["shipping_cost_per_unit_xof"] = shipping_unit; row["landed_unit_cost_xof"] = landed
             row["landed_cost_status"] = "complete_estimate" if complete else "incomplete_cost_components"
             row["on_time_rate_percent"] = round(row["on_time_orders"] / row["completed_orders"] * 100, 2) if row["completed_orders"] and row["on_time_orders"] is not None else None

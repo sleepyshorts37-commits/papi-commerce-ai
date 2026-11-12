@@ -55,7 +55,7 @@ def build_incident_center(events: list[dict[str, Any]]) -> dict[str, Any]:
         current = incidents.get(incident_id)
         if current is None:
             raise IncidentCenterError("Transition d'un incident non déclaré.")
-        if current["status"] != "open":
+        if current["status"] not in ({"open"} if action == "incident.acknowledged" else {"open", "acknowledged"}):
             raise IncidentCenterError("Transition interdite depuis un incident non ouvert.")
         if details:
             raise IncidentCenterError("Les transitions incident ne doivent contenir aucun détail.")
