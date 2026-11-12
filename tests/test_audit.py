@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from runtime.papi_core.audit import AuditError, append_event, new_event, read_events, _journal_lock
+from runtime.papi_core.audit_checkpoint import build_checkpoint, verify_checkpoint
 
 
 class AuditHashChainTests(unittest.TestCase):
@@ -111,6 +112,39 @@ class AuditHashChainTests(unittest.TestCase):
         os.chmod(lock_path, 0o644)
         with self.assertRaises(AuditError):
             read_events(self.path)
+
+    def test_checkpoint_for_empty_journal_uses_genesis_hash(self):
+        checkpoint = build_checkpoint(self.path)
+        self.assertEqual(checkpoint["schema_version"], 1)
+        self.assertEqual(checkpoint["sequence"], 0)
+        self.assertEqual(verify_checkpoint(self.path, checkpoint), 0)
+
+    def test_checkpoint_verifies_prefix_and_reports_unanchored_suffix(self):
+        append_event(self.event("evt-1"), self.path)
+        checkpoint = build_checkpoint(self.path)
+        append_event(self.event("evt-2"), self.path)
+        self.assertEqual(verify_checkpoint(self.path, checkpoint), 1)
+
+    def test_checkpoint_detects_local_rollback_or_rewrite(self):
+        append_event(self.event("evt-1"), self.path)
+        checkpoint = build_checkpoint(self.path)
+        append_event(self.event("evt-2"), self.path)
+        records = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
+        self.path.write_text(json.dumps(records[0]) + "\\n", encoding="utf-8")
+        self.assertEqual(verify_checkpoint(self.path, checkpoint), 0)
+        self.path.write_text("", encoding="utf-8")
+        with self.assertRaises(AuditError):
+            verify_checkpoint(self.path, checkpoint)
+
+    def test_checkpoint_rejects_malformed_or_future_sequence(self):
+        append_event(self.event("evt-1"), self.path)
+        checkpoint = build_checkpoint(self.path)
+        malformed = {**checkpoint, "sequence": True}
+        with self.assertRaises(AuditError):
+            verify_checkpoint(self.path, malformed)
+        future = {**checkpoint, "sequence": 2}
+        with self.assertRaises(AuditError):
+            verify_checkpoint(self.path, future)
 
     def test_zero_length_write_fails_instead_of_looping(self):
         with patch("runtime.papi_core.audit.os.write", return_value=0):
