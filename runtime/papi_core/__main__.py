@@ -48,9 +48,19 @@ def main() -> int:
             return 0
         if args.command == "dashboard-remote":
             store = SupabaseStore()
+            preflight = store.check_readiness()
+            if preflight["status"] != "ready":
+                print(json.dumps({
+                    "mode": "read_only_remote",
+                    "status": "blocked",
+                    "preflight": preflight,
+                    "remote_data_loaded": False,
+                }, ensure_ascii=False, indent=2))
+                return 2
             result = build_remote_command_center(
                 store, page_size=args.page_size, max_pages=args.max_pages
             )
+            result["preflight"] = preflight
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 0
         if args.command == "supabase-check":
