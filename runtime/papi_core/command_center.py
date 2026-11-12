@@ -11,6 +11,7 @@ from .agent_history import summarize_agent_history
 from .registry import AGENTS_FILE, TASKS_FILE, load_agents, load_json
 from .doctor import diagnose_environment
 from .worker_scheduler import build_schedule
+from .worker_supervision import build_worker_supervision
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -23,6 +24,7 @@ def build_command_center(
     environ=None,
     audit_path=AUDIT_FILE,
     scheduler_snapshot: dict[str, Any] | None = None,
+    supervision_snapshot: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -60,6 +62,31 @@ def build_command_center(
             "plan": plan,
         }
 
+    supervision = {
+        "status": "not_configured",
+        "read_only": True,
+        "message": "Aucun instantané de supervision fourni ; aucun diagnostic calculé.",
+        "report": None,
+    }
+    if supervision_snapshot is not None:
+        required = {"jobs", "workers", "as_of"}
+        optional = {"heartbeat_timeout_seconds", "repeated_failure_threshold"}
+        if (not isinstance(supervision_snapshot, dict)
+            or not required.issubset(supervision_snapshot)
+            or set(supervision_snapshot) - required - optional):
+            raise ValueError("supervision_snapshot doit contenir jobs, workers, as_of et éventuellement les deux seuils documentés.")
+        options = {key: supervision_snapshot[key] for key in optional if key in supervision_snapshot}
+        report = build_worker_supervision(
+            supervision_snapshot["jobs"], supervision_snapshot["workers"],
+            as_of=supervision_snapshot["as_of"], **options
+        )
+        supervision = {
+            "status": "preview_available",
+            "read_only": True,
+            "message": "Diagnostic calculé à partir de données fournies ; aucune action de récupération.",
+            "report": report,
+        }
+
     events = read_events(audit_path) if audit_path is not None else []
     per_agent = {}
     for agent_id in sorted(agents):
@@ -94,6 +121,7 @@ def build_command_center(
         },
         "astou_brief": brief,
         "worker_scheduler": scheduler,
+        "worker_supervision": supervision,
         "environment": {
             "status": doctor["status"],
             "checks": doctor["checks"],
@@ -105,6 +133,8 @@ def build_command_center(
             "worker_started": False,
             "scheduler_claims_performed": 0,
             "scheduler_handlers_executed": 0,
+            "supervision_mutations_performed": 0,
+            "supervision_retries_triggered": 0,
             "external_actions_enabled": False,
             "financial_actions_enabled": False,
         },
