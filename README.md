@@ -39,6 +39,9 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 ## Documents
 - [Organisation](docs/ORGANISATION.md)
 - [PAPI AGENT FACTORY — expansion continue](docs/PAPI-AGENT-FACTORY-1.66.md)
+- [Registre central des 50 premiers agents](docs/PAPI-AGENT-REGISTRY-1.67.md)
+- [Registre machine lisible des agents](data/agents/registry.json)
+- [Contrôle global d'unicité des noms](runtime/papi_core/agent_name_registry.py)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Plan de réalisation](docs/ROADMAP.md)
