@@ -29,6 +29,7 @@ from .competitor_intelligence import analyze_competitor_observations
 from .product_intelligence import analyze_product_options
 from .sales_intelligence import analyze_sales_channels
 from .revenue_optimization import optimize_revenue
+from .financial_control import build_financial_control
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT_FILE = ROOT / "data" / "events.jsonl"
@@ -50,6 +51,9 @@ def build_command_center(
     target_product_selling_price_xof: int | None = None,
     sales_observations: list[dict[str, Any]] | None = None,
     revenue_observations: list[dict[str, Any]] | None = None,
+    financial_entries: list[dict[str, Any]] | None = None,
+    financial_opening_balances: dict[str, int] | None = None,
+    financial_provider_balances: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Agrège registres et métriques historiques sans modifier les données."""
     agents = load_agents(agents_path)
@@ -161,6 +165,10 @@ def build_command_center(
         as_of=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     )
     revenue_optimization = optimize_revenue(revenue_observations or [])
+    financial_control = build_financial_control(
+        financial_entries or [], opening_balances=financial_opening_balances,
+        provider_balances=financial_provider_balances,
+    )
     incidents = build_incident_center(events)
     approvals = build_approval_center(events)
     performance = build_agent_performance(agents, events, valid_tasks)
@@ -213,6 +221,7 @@ def build_command_center(
         "product_intelligence": product_intelligence,
         "sales_intelligence": sales_intelligence,
         "revenue_optimization": revenue_optimization,
+        "financial_control": financial_control,
         "agent_identity_security": {
             **identity_validation,
             "status": "validated_documentary_registry",
@@ -266,6 +275,13 @@ def build_command_center(
             "prices_changed": 0,
             "commissions_paid": 0,
             "payments_processed": 0,
+            "financial_entries_received": financial_control["entries_received"],
+            "financial_entries_analyzed": financial_control["entries_analyzed"],
+            "financial_entries_rejected": financial_control["entries_rejected"],
+            "ledger_writes_performed": 0,
+            "transfers_executed": 0,
+            "withdrawals_executed": 0,
+            "financial_reconciliations_executed": 0,
             "sales_prospects_contacted": 0,
             "sales_campaigns_launched": 0,
             "business_actions_executed": 0,
