@@ -13,8 +13,8 @@ class PapiChatTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.agents = self.root / "agents.json"
         self.agents.write_text(json.dumps({"agents": [
-            {"id": "astou", "name": "Astou", "status": "defined"},
-            {"id": "marietou", "name": "Marietou", "status": "planned"}
+            {"id": "astou", "name": "Astou", "status": "active", "permissions": ["chat.send", "chat.receive", "chat.read"]},
+            {"id": "marietou", "name": "Marietou", "status": "active", "permissions": ["chat.send", "chat.receive", "chat.read"]}
         ]}), encoding="utf-8")
         self.messages = self.root / "messages.jsonl"
         self.private_dir = self.root / "private"
@@ -22,6 +22,7 @@ class PapiChatTests(unittest.TestCase):
         self.replay_db = self.root / "replay.sqlite3"
         self.astou_key = provision_ed25519_agent("astou", self.private_dir, self.public_registry)
         self.owner_key = provision_ed25519_agent("owner", self.private_dir, self.public_registry)
+        self.marietou_key = provision_ed25519_agent("marietou", self.private_dir, self.public_registry)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -37,8 +38,9 @@ class PapiChatTests(unittest.TestCase):
     def test_send_and_read_direct_message_with_signature(self):
         record = self.send(sender="astou", recipient="marietou", subject="Priorités",
                            body="Merci de vérifier les tâches ouvertes.")
-        received = read_messages(recipient="marietou", path=self.messages,
-                                 agents_path=self.agents, public_registry_path=self.public_registry)
+        received = read_messages(reader="marietou", private_key_path=self.marietou_key, path=self.messages,
+                                 agents_path=self.agents, public_registry_path=self.public_registry,
+                                 replay_db_path=self.replay_db)
         self.assertEqual(len(received), 1)
         self.assertEqual(received[0]["message"]["message_id"], record["message"]["message_id"])
         self.assertEqual(received[0]["auth"]["agent_id"], "astou")
@@ -47,8 +49,9 @@ class PapiChatTests(unittest.TestCase):
         self.send(sender="owner", recipient="all", subject="Rappel",
                   body="Aucune dépense sans autorisation.",
                   private_key_path=self.owner_key)
-        received = read_messages(recipient="astou", path=self.messages,
-                                 agents_path=self.agents, public_registry_path=self.public_registry)
+        received = read_messages(reader="astou", private_key_path=self.astou_key, path=self.messages,
+                                 agents_path=self.agents, public_registry_path=self.public_registry,
+                                 replay_db_path=self.replay_db)
         self.assertEqual(len(received), 1)
 
     def test_unknown_recipient_and_secret_are_rejected(self):
@@ -68,8 +71,9 @@ class PapiChatTests(unittest.TestCase):
         records[0]["message"]["sender"] = "owner"
         self.messages.write_text(json.dumps(records[0]) + "\n", encoding="utf-8")
         with self.assertRaises(ChatError):
-            read_messages(path=self.messages, agents_path=self.agents,
-                          public_registry_path=self.public_registry)
+            read_messages(reader="owner", private_key_path=self.owner_key, path=self.messages,
+                          agents_path=self.agents, public_registry_path=self.public_registry,
+                          replay_db_path=self.replay_db)
 
     def test_tampered_body_is_rejected_on_read(self):
         self.send(sender="astou", recipient="marietou", subject="Sujet", body="Original")
@@ -77,19 +81,20 @@ class PapiChatTests(unittest.TestCase):
         record["message"]["body"] = "Altéré"
         self.messages.write_text(json.dumps(record) + "\n", encoding="utf-8")
         with self.assertRaises(ChatError):
-            read_messages(path=self.messages, agents_path=self.agents,
-                          public_registry_path=self.public_registry)
+            read_messages(reader="owner", private_key_path=self.owner_key, path=self.messages,
+                          agents_path=self.agents, public_registry_path=self.public_registry,
+                          replay_db_path=self.replay_db)
 
     def test_repeated_reads_do_not_trigger_replay_error(self):
         self.send(sender="astou", recipient="marietou", subject="Sujet", body="Relisible")
         for _ in range(3):
             self.assertEqual(len(read_messages(
-                recipient="marietou", path=self.messages, agents_path=self.agents,
-                public_registry_path=self.public_registry)), 1)
+                reader="owner", private_key_path=self.owner_key, path=self.messages, agents_path=self.agents,
+                public_registry_path=self.public_registry, replay_db_path=self.replay_db)), 1)
 
     def test_limit_is_bounded(self):
         with self.assertRaises(ChatError):
-            read_messages(limit=201, path=self.messages, agents_path=self.agents)
+            read_messages(reader="owner", limit=201, private_key_path=self.owner_key, path=self.messages, agents_path=self.agents)
 
     def test_malformed_types_raise_chat_error_not_type_error(self):
         from papi_core.chat import _validate_message_fields
@@ -118,8 +123,41 @@ class PapiChatTests(unittest.TestCase):
         with self.assertRaises(ChatError):
             _validate_message_fields(message, self.agents)
         with self.assertRaises(ChatError):
-            read_messages(limit=True, path=self.messages, agents_path=self.agents)
+            read_messages(reader="owner", limit=True, private_key_path=self.owner_key, path=self.messages, agents_path=self.agents)
 
+    def test_agent_cannot_broadcast_without_permission(self):
+        with self.assertRaises(ChatError):
+            self.send(sender="astou", recipient="all", subject="Annonce", body="Test")
+
+    def test_agent_can_only_read_its_own_inbox(self):
+        self.send(sender="owner", recipient="marietou", subject="Privé", body="Pour Marietou")
+        own = read_messages(reader="astou", private_key_path=self.astou_key,
+                            path=self.messages, agents_path=self.agents,
+                            public_registry_path=self.public_registry, replay_db_path=self.replay_db)
+        self.assertEqual(own, [])
+
+    def test_recipient_without_receive_permission_is_rejected(self):
+        data = json.loads(self.agents.read_text(encoding="utf-8"))
+        data["agents"][1]["permissions"].remove("chat.receive")
+        self.agents.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(ChatError):
+            self.send(sender="astou", recipient="marietou", subject="Test", body="Refus attendu")
+
+    def test_reader_without_read_permission_is_rejected(self):
+        data = json.loads(self.agents.read_text(encoding="utf-8"))
+        data["agents"][0]["permissions"].remove("chat.read")
+        self.agents.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(ChatError):
+            read_messages(reader="astou", private_key_path=self.astou_key,
+                          path=self.messages, agents_path=self.agents,
+                          public_registry_path=self.public_registry, replay_db_path=self.replay_db)
+
+    def test_inactive_agent_cannot_send(self):
+        data = json.loads(self.agents.read_text(encoding="utf-8"))
+        data["agents"][0]["status"] = "planned"
+        self.agents.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(ChatError):
+            self.send(sender="astou", recipient="marietou", subject="Test", body="Refus attendu")
 
 if __name__ == "__main__":
     unittest.main()
