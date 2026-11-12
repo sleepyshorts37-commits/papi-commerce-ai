@@ -599,6 +599,7 @@ class WorkerTests(unittest.TestCase):
             return {"ok": True}
 
         worker.registry.register("internal.guarded", "read_only", guarded_handler)
+        worker.policy["allowed_handlers"] = ["internal.echo", "internal.guarded"]
         job = {"id": "JOB-GUARDED-LEASE", "task_id": "TASK-1",
                "handler": "internal.guarded", "payload": {}, "lease_token": "lease-guarded"}
         with (
