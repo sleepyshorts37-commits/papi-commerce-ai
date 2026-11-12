@@ -33,10 +33,23 @@ class SupabaseSchemaTests(unittest.TestCase):
             "revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)",
             self.sql,
         )
+        self.assertIn("from public, anon, authenticated, service_role", self.sql)
         self.assertIn(
-            "grant execute on function public.papi_consume_agent_nonce(text, text, timestamptz)",
+            "grant execute on function public.papi_consume_agent_nonce(text, integer, text, timestamptz)",
             self.sql,
         )
+
+    def test_nonce_rpc_locks_the_active_key_during_consumption(self):
+        match = re.search(
+            r"create or replace function public\\.papi_consume_agent_nonce\\(.*?\\n\\$\\$;",
+            self.sql, flags=re.IGNORECASE | re.DOTALL,
+        )
+        self.assertIsNotNone(match)
+        body = match.group(0)
+        self.assertIn("p_key_version", body)
+        self.assertIn("status = 'active'", body)
+        self.assertIn("for share", body.lower())
+        self.assertLess(body.index("for share"), body.index("insert into public.papi_agent_used_nonces"))
 
 
 if __name__ == "__main__":
