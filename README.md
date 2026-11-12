@@ -38,6 +38,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 
 ## Documents
 - [Organisation](docs/ORGANISATION.md)
+- [PAPI AGENT FACTORY — expansion continue](docs/PAPI-AGENT-FACTORY-1.66.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Plan de réalisation](docs/ROADMAP.md)
