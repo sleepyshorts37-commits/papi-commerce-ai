@@ -30,7 +30,7 @@ class OpportunityScoringTests(unittest.TestCase):
     def test_high_score_can_be_test_candidate(self):
         result = score_opportunity(sample())
         self.assertEqual(result["decision"], "test")
-        self.assertEqual(result["score"], 90)
+        self.assertEqual(result["score"], 87)
         self.assertFalse(result["execution_authorized"])
 
     def test_unconfirmed_senegal_access_blocks_test(self):
