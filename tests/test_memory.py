@@ -66,6 +66,22 @@ class SharedMemoryTests(unittest.TestCase):
             supersede_memory(memory_id=saved["memory_id"], actor="astou",
                              reason="Tentative.", path=self.path)
 
+
+    def test_corrupted_event_schema_fails_closed(self):
+        self.path.write_text('{"event_type":"remember","event_id":"x"}\\n', encoding="utf-8")
+        with self.assertRaises(MemoryError):
+            search_memory(actor="owner", path=self.path)
+
+    def test_invalid_event_metadata_fails_closed(self):
+        saved = self.remember()
+        lines = self.path.read_text(encoding="utf-8").splitlines()
+        import json
+        event = json.loads(lines[0])
+        event["scope"] = "public"
+        self.path.write_text(json.dumps(event) + "\\n", encoding="utf-8")
+        with self.assertRaises(MemoryError):
+            search_memory(actor="owner", path=self.path)
+
     def test_invalid_limit_is_rejected(self):
         with self.assertRaises(MemoryError):
             search_memory(limit=0, path=self.path)
