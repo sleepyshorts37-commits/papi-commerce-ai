@@ -164,6 +164,32 @@ begin
 end;
 $$;
 
+-- Renouvelle un bail uniquement s'il est encore valide et appartient au worker/token.
+create or replace function public.papi_renew_job_lease(
+    p_job_id text, p_worker_id text, p_lease_token uuid,
+    p_lease_seconds integer default 900
+) returns boolean
+language plpgsql security invoker
+set search_path = public, pg_temp
+as $
+declare v_count integer;
+begin
+    if p_job_id is null or p_worker_id is null or length(trim(p_worker_id)) = 0
+       or length(p_worker_id) > 120 or p_lease_token is null
+       or p_lease_seconds < 15 or p_lease_seconds > 900 then
+        raise exception 'Invalid lease renewal request' using errcode = '22023';
+    end if;
+    update public.papi_jobs
+       set lease_until = now() + make_interval(secs => p_lease_seconds),
+           updated_at = now()
+     where id = p_job_id and status = 'running'
+       and lease_owner = p_worker_id and lease_token = p_lease_token
+       and lease_until > now();
+    get diagnostics v_count = row_count;
+    return v_count = 1;
+end;
+$;
+
 create or replace function public.papi_complete_job(
     p_job_id text, p_worker_id text, p_lease_token uuid, p_result jsonb default '{}'::jsonb
 ) returns boolean
@@ -226,9 +252,11 @@ end;
 $$;
 
 revoke all on function public.papi_claim_job(text, uuid, integer) from public, anon, authenticated;
+revoke all on function public.papi_renew_job_lease(text, text, uuid, integer) from public, anon, authenticated;
 revoke all on function public.papi_complete_job(text, text, uuid, jsonb) from public, anon, authenticated;
 revoke all on function public.papi_fail_job(text, text, uuid, text) from public, anon, authenticated;
 grant execute on function public.papi_claim_job(text, uuid, integer) to service_role;
+grant execute on function public.papi_renew_job_lease(text, text, uuid, integer) to service_role;
 grant execute on function public.papi_complete_job(text, text, uuid, jsonb) to service_role;
 grant execute on function public.papi_fail_job(text, text, uuid, text) to service_role;
 
