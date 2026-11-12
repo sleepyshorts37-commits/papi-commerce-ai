@@ -162,7 +162,10 @@ def publish_checkpoint_record(
                 chain_record, journal_id=journal_id,
                 expected_digest=None, verifier=verify_signature,
             )
-            if _record_digest(canonical_record_bytes(chain_record)) != cursor:
+            canonical_chain_record = canonical_record_bytes(chain_record)
+            if raw_record != canonical_chain_record:
+                raise CheckpointAnchorError("Enregistrement externe non canonique.")
+            if _record_digest(raw_record) != cursor:
                 raise CheckpointAnchorError("Empreinte d'un checkpoint externe incorrecte.")
             sequence = chain_record["checkpoint"]["sequence"]
             if newer_sequence is not None and sequence >= newer_sequence:
