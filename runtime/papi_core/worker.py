@@ -65,6 +65,7 @@ class PapiWorker:
                 "task_id": task_id[:120],
                 "attempt_id": attempt_id,
                 "worker_id": self.worker_id[:100],
+                "agent_id": actor if not actor.startswith("system:") else None,
                 "handler": handler[:120],
                 "outcome": outcome[:80],
                 "dedupe_id": dedupe_id,
