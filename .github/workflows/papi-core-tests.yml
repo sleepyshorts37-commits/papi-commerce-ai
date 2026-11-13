@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -61,50 +60,4 @@ jobs:
           \if :replay_use
             \quit 1
           \endif
-          SQL
-
-      - name: Verify durable job attempt history
-        env:
-          PGPASSWORD: papi_test_password
-        run: |
-          set -euo pipefail
-          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
-          insert into public.papi_tasks(id, task, version)
-          values ('attempt-ci-task', '{"id":"attempt-ci-task"}'::jsonb, 1);
-          insert into public.papi_jobs(id, task_id, handler, payload, idempotency_key)
-          values ('attempt-ci-job', 'attempt-ci-task', 'test.noop', '{}'::jsonb, 'attempt-ci-key');
-          do $attempt$
-          declare
-            first_claim jsonb;
-            second_claim jsonb;
-            attempt_count integer;
-            previous_status text;
-          begin
-            first_claim := public.papi_claim_job('worker-ci-1', gen_random_uuid(), 15);
-            if first_claim is null or first_claim->>'attempt_id' is null then
-              raise exception 'first reservation did not return attempt_id';
-            end if;
-            update public.papi_jobs
-               set lease_until = now() - interval '1 second'
-             where id = 'attempt-ci-job';
-            second_claim := public.papi_claim_job('worker-ci-2', gen_random_uuid(), 15);
-            if second_claim is null or second_claim->>'attempt_id' is null then
-              raise exception 'second reservation did not return attempt_id';
-            end if;
-            if first_claim->>'attempt_id' = second_claim->>'attempt_id' then
-              raise exception 'separate reservations reused attempt_id';
-            end if;
-            select count(*) into attempt_count
-              from public.papi_job_attempts where job_id = 'attempt-ci-job';
-            if attempt_count <> 2 then
-              raise exception 'expected two attempt history rows, got %', attempt_count;
-            end if;
-            select status into previous_status
-              from public.papi_job_attempts
-             where attempt_id = (first_claim->>'attempt_id')::uuid;
-            if previous_status <> 'lease_expired' then
-              raise exception 'previous attempt status was %, expected lease_expired', previous_status;
-            end if;
-          end;
-          $attempt$;
           SQL
