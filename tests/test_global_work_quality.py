@@ -51,6 +51,17 @@ class GlobalWorkQualityTests(unittest.TestCase):
         with self.assertRaises(GlobalWorkQualityError):
             fingerprint_candidate({"source_url": "http://example.org/job"})
 
+    def test_canonical_url_rejects_local_hosts_and_non_public_ips(self):
+        for url in ("https://localhost/task", "https://127.0.0.1/task",
+                    "https://192.168.1.10/task", "https://[::1]/task",
+                    "https://host.local/task"):
+            with self.subTest(url=url), self.assertRaises(GlobalWorkQualityError):
+                canonicalize_url(url)
+
+    def test_canonical_url_rejects_malformed_port(self):
+        with self.assertRaises(GlobalWorkQualityError):
+            canonicalize_url("https://example.org:invalid/task")
+
     def test_future_date_never_auto_queued(self):
         result = evaluate_candidate_freshness(
             {"published_at": "2026-11-14T00:00:00Z"},
