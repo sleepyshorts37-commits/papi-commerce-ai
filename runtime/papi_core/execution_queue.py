@@ -1,8 +1,10 @@
 """File de travaux avec baux, idempotence et preuve d'identité de l'agent."""
 from __future__ import annotations
+import math
 import re
 from typing import Any
 from uuid import uuid4
+from .retry_policy import RetryPolicyError, decide_retry
 from .storage import SupabaseStore
 
 class QueueError(RuntimeError):
@@ -69,13 +71,26 @@ class ExecutionQueue:
             {"p_job_id": job_id, "p_worker_id": worker_id, "p_lease_token": lease_token, "p_result": result or {}})
         return response is True
 
-    def fail(self, *, job_id: str, worker_id: str, lease_token: str, error_code: str) -> str:
+    def fail(self, *, job_id: str, worker_id: str, lease_token: str, error_code: str,
+             attempt: int = 1, max_attempts: int = 5, jitter_sample: float = 0.5) -> str:
         if not all(isinstance(x, str) and x.strip() for x in (job_id, worker_id, lease_token, error_code)):
             raise QueueError("Identifiants et code d'erreur obligatoires.")
         if not re.fullmatch(r"[a-z0-9_]{1,80}", error_code):
             raise QueueError("Code d'erreur invalide ou potentiellement sensible.")
+        try:
+            decision = decide_retry(
+                error_code=error_code, attempt=attempt, max_attempts=max_attempts,
+                base_delay_seconds=15, max_delay_seconds=3600,
+                jitter_fraction=0.2, jitter_sample=jitter_sample,
+            )
+        except RetryPolicyError as exc:
+            raise QueueError("Paramètres de reprise invalides.") from exc
+        retry_allowed = decision.retry
+        retry_delay_seconds = math.ceil(decision.delay_seconds) if retry_allowed else 0
         response = self.store._request("POST", "rpc/papi_fail_job",
-            {"p_job_id": job_id, "p_worker_id": worker_id, "p_lease_token": lease_token, "p_error_code": error_code})
+            {"p_job_id": job_id, "p_worker_id": worker_id, "p_lease_token": lease_token,
+             "p_error_code": error_code, "p_retry_allowed": retry_allowed,
+             "p_retry_delay_seconds": retry_delay_seconds})
         if response not in {"retry", "failed"}:
             raise QueueError("Réponse de reprise invalide.")
         return response

@@ -89,11 +89,13 @@ class PapiWorker:
 
     def _fail_job(self, *, job_id: str, lease_token: str, error_code: str,
                   status: str, actor: str, action: str, handler: str,
-                  outcome: str) -> dict[str, Any]:
+                  outcome: str, attempt: int = 1,
+                  max_attempts: int = 5) -> dict[str, Any]:
         """Convertit aussi un échec de transition queue en résultat contrôlé."""
         try:
             self.queue.fail(job_id=job_id, worker_id=self.worker_id,
-                            lease_token=lease_token, error_code=error_code)
+                            lease_token=lease_token, error_code=error_code,
+                            attempt=attempt, max_attempts=max_attempts)
         except Exception:
             self._audit_best_effort(job_id, "job.failure_transition_error", actor,
                                     handler=handler, outcome="queue_fail_error")
@@ -184,6 +186,8 @@ class PapiWorker:
                 self._audit(job_id, "job.handler_started", authenticated_actor, handler=handler)
             except Exception:
                 return self._fail_job(job_id=job_id, lease_token=lease_token,
+                                      attempt=job.get("attempts", 1),
+                                      max_attempts=job.get("max_attempts", 5),
                                       error_code="audit_unavailable", status="audit_blocked",
                                       actor=authenticated_actor, action="job.failed",
                                       handler=handler, outcome="audit_unavailable")
@@ -214,21 +218,29 @@ class PapiWorker:
             return {"status": "lease_lost", "claimed": True, "job_id": job_id}
         except AccessDenied:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
+                attempt=job.get("attempts", 1),
+                max_attempts=job.get("max_attempts", 5),
                                   error_code="authentication_failed", status="blocked",
                                   actor=system_actor, action="job.authentication_blocked",
                                   handler=handler, outcome="blocked")
         except HandlerPermissionError:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
+                attempt=job.get("attempts", 1),
+                max_attempts=job.get("max_attempts", 5),
                                   error_code="permission_denied", status="blocked",
                                   actor=authenticated_actor or system_actor, action="job.blocked",
                                   handler=handler, outcome="permission_denied")
         except (WorkerError, StoreError, QueueError):
             return self._fail_job(job_id=job_id, lease_token=lease_token,
+                attempt=job.get("attempts", 1),
+                max_attempts=job.get("max_attempts", 5),
                                   error_code="worker_validation_error", status="failed",
                                   actor=authenticated_actor or system_actor, action="job.failed",
                                   handler=handler, outcome="validation_error")
         except Exception:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
+                attempt=job.get("attempts", 1),
+                max_attempts=job.get("max_attempts", 5),
                                   error_code="handler_error", status="failed",
                                   actor=authenticated_actor or system_actor, action="job.failed",
                                   handler=handler, outcome="handler_error")

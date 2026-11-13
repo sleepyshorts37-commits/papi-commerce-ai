@@ -46,6 +46,100 @@ jobs:
             -c "create role anon; create role authenticated; create role service_role bypassrls;"
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/schema.sql
+          # Exercise the retry-aware queue RPC migration on disposable PostgreSQL.
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_002_retry_queue_integration_up.sql
+
+          # Exercise retry/permanent/attempt-ceiling transitions under service_role.
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'RETRY_QUEUE_SQL'
+          insert into public.papi_tasks(id, task, version)
+          values ('ci-retry-task', '{}'::jsonb, 1);
+          insert into public.papi_jobs(
+            id, task_id, handler, payload, idempotency_key, status,
+            attempts, max_attempts, lease_owner, lease_token, lease_until
+          ) values
+            ('ci-retry-job', 'ci-retry-task', 'test.noop', '{}'::jsonb, 'ci-retry-key',
+             'running', 2, 5, 'ci-worker', '00000000-0000-0000-0000-000000000001', now() + interval '5 minutes'),
+            ('ci-permanent-job', 'ci-retry-task', 'test.noop', '{}'::jsonb, 'ci-permanent-key',
+             'running', 1, 5, 'ci-worker', '00000000-0000-0000-0000-000000000002', now() + interval '5 minutes'),
+            ('ci-ceiling-job', 'ci-retry-task', 'test.noop', '{}'::jsonb, 'ci-ceiling-key',
+             'running', 5, 5, 'ci-worker', '00000000-0000-0000-0000-000000000003', now() + interval '5 minutes');
+          set role service_role;
+          do $retryqueue$
+          declare v_status text;
+          begin
+            if has_function_privilege(
+              'service_role', 'public.papi_fail_job(text,text,uuid,text)', 'EXECUTE'
+            ) then
+              raise exception 'Legacy retry RPC remained executable after migration';
+            end if;
+            if not has_function_privilege(
+              'service_role', 'public.papi_fail_job(text,text,uuid,text,boolean,integer)', 'EXECUTE'
+            ) then
+              raise exception 'Retry-aware RPC is not executable by service_role';
+            end if;
+            v_status := public.papi_fail_job(
+              'ci-retry-job', 'ci-worker',
+              '00000000-0000-0000-0000-000000000001',
+              'service_timeout', true, 30
+            );
+            if v_status <> 'retry' or not exists (
+              select 1 from public.papi_jobs
+               where id = 'ci-retry-job' and status = 'retry'
+                 and available_at >= now() + interval '25 seconds'
+            ) then
+              raise exception 'Transient failure was not scheduled for bounded retry';
+            end if;
+
+            v_status := public.papi_fail_job(
+              'ci-permanent-job', 'ci-worker',
+              '00000000-0000-0000-0000-000000000002',
+              'permission_denied', false, 0
+            );
+            if v_status <> 'failed' then
+              raise exception 'Permanent error was incorrectly retried';
+            end if;
+
+            v_status := public.papi_fail_job(
+              'ci-ceiling-job', 'ci-worker',
+              '00000000-0000-0000-0000-000000000003',
+              'service_timeout', true, 30
+            );
+            if v_status <> 'failed' then
+              raise exception 'Attempt ceiling was not enforced by PostgreSQL';
+            end if;
+          end
+          $retryqueue$;
+          reset role;
+          RETRY_QUEUE_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'RETRY_MIGRATION_SQL'
+          do $retrycheck$
+          begin
+            if to_regprocedure('public.papi_fail_job(text,text,uuid,text,boolean,integer)') is null then
+              raise exception 'Retry-aware queue RPC missing after migration';
+            end if;
+          end
+          $retrycheck$;
+          RETRY_MIGRATION_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_002_retry_queue_integration_down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'RETRY_MIGRATION_SQL'
+          do $retrycheck$
+          begin
+            if to_regprocedure('public.papi_fail_job(text,text,uuid,text,boolean,integer)') is not null then
+              raise exception 'Retry-aware queue RPC remained after rollback';
+            end if;
+            if not has_function_privilege(
+              'service_role', 'public.papi_fail_job(text,text,uuid,text)', 'EXECUTE'
+            ) then
+              raise exception 'Legacy queue RPC permission was not restored by rollback';
+            end if;
+          end
+          $retrycheck$;
+          RETRY_MIGRATION_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_002_retry_queue_integration_up.sql
+
 
           # Exercise the versioned migration lifecycle in a second disposable database.
           createdb -h 127.0.0.1 -U postgres papi_migration_test
