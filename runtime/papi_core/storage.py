@@ -45,6 +45,14 @@ class SupabaseStore:
         except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
             raise StoreError(f"Échec de communication avec Supabase ({type(exc).__name__}).") from exc
 
+    def request(self, method: str, path: str, payload: Any = None, prefer: str | None = None):
+        """Interface publique stable pour les adaptateurs internes PostgREST.
+
+        Les appels doivent rester internes au backend de confiance. Ne jamais
+        transmettre la clé serveur ni exposer cette méthode à un agent.
+        """
+        return self._request(method, path, payload, prefer)
+
     def get_task(self, task_id: str) -> dict[str, Any] | None:
         rows = self._request("GET", f"papi_tasks?id=eq.{quote(task_id, safe='')}&select=task,version")
         if not isinstance(rows, list):
