@@ -68,6 +68,16 @@ jobs:
           do $retryqueue$
           declare v_status text;
           begin
+            if has_function_privilege(
+              'service_role', 'public.papi_fail_job(text,text,uuid,text)', 'EXECUTE'
+            ) then
+              raise exception 'Legacy retry RPC remained executable after migration';
+            end if;
+            if not has_function_privilege(
+              'service_role', 'public.papi_fail_job(text,text,uuid,text,boolean,integer)', 'EXECUTE'
+            ) then
+              raise exception 'Retry-aware RPC is not executable by service_role';
+            end if;
             v_status := public.papi_fail_job(
               'ci-retry-job', 'ci-worker',
               '00000000-0000-0000-0000-000000000001',
@@ -118,6 +128,11 @@ jobs:
           begin
             if to_regprocedure('public.papi_fail_job(text,text,uuid,text,boolean,integer)') is not null then
               raise exception 'Retry-aware queue RPC remained after rollback';
+            end if;
+            if not has_function_privilege(
+              'service_role', 'public.papi_fail_job(text,text,uuid,text)', 'EXECUTE'
+            ) then
+              raise exception 'Legacy queue RPC permission was not restored by rollback';
             end if;
           end
           $retrycheck$;
