@@ -28,10 +28,13 @@ Ce cycle ne constitue ni une certification WCAG, ni une validation de production
 
 ## Jour 3 — Couverture responsive et navigation
 
-- [ ] Tester les vues mobile (390×844), tablette (768×1024) et desktop (1440×900).
-- [ ] Vérifier l'absence de débordement horizontal, la visibilité des titres et des liens de navigation.
-- [ ] Vérifier les liens entre pages, les feuilles CSS et les routes profondes.
-- [ ] Produire des captures d'écran comme artefacts CI, sans les considérer seules comme preuve de qualité.
+Implémentation ajoutée : tests Playwright multi-viewport, contrôle du débordement horizontal, navigation vers Contact et captures PNG CI. Validation CI du commit contenant ces changements encore requise.
+
+
+- [x] Tester les vues mobile (390×844), tablette (768×1024) et desktop (1440×900).
+- [x] Vérifier l'absence de débordement horizontal, la visibilité des titres et des liens de navigation.
+- [x] Vérifier la navigation vers la page secondaire depuis chaque viewport.
+- [x] Produire des captures PNG par viewport comme artefacts CI (rétention 7 jours).
 - Livrable : matrice viewport documentée et tests de navigation.
 
 ## Jour 4 — Contrôles d'accessibilité automatisables
