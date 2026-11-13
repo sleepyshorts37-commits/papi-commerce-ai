@@ -5,6 +5,9 @@
 - Le statut doit être exactement `active` ; `defined` et `planned` sont refusés.
 - La capacité demandée doit figurer dans `permissions`.
 - Une interdiction explicite prévaut toujours sur une permission.
+- Les statuts `suspended` et `revoked` sont refusés ; une permission retirée du registre est refusée dès le contrôle suivant.
+- La préparation d'une carte d'identité ou d'un dossier d'intégration ne crée pas de compte actif et ne modifie pas le registre en place.
+- Les changements de permissions doivent être effectués par un processus de confiance ; l'API d'autorisation ne permet pas à un agent de modifier son propre registre.
 - Les actions financières, juridiques et externes restent bloquées par la politique globale.
 - Les actions réservées au propriétaire ne peuvent jamais être accordées à un agent.
 
