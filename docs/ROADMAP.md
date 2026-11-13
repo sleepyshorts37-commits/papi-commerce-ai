@@ -150,5 +150,5 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 ### PAPI WEB BUILDER — durcissement du serveur de prévisualisation (cycle 5 jours)
 - [x] Définir le plan de tests adversariaux (`docs/PAPI-PREVIEW-SERVER-SECURITY-5-DAYS.md`).
 - [x] Ajouter des tests pour les séquences UTF-8 invalides, séparateurs Windows encodés et octets NUL encodés.
-- [ ] Valider les nouveaux tests en CI et poursuivre la matrice de robustesse.
+- [x] Valider Jour 1 en CI : core, Chromium, documentation et registre PASS sur `e011dd4`.
 - **Statut :** Jour 1 implémenté ; validation CI en attente. Aucune revue indépendante ou mise en production.
