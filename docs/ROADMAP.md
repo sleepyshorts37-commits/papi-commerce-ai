@@ -42,6 +42,10 @@
 - [ ] Connecter un fournisseur uniquement après choix et autorisation explicites du propriétaire.
 
 ## Phase 3 — PAPI DIGITALISATION & IA (nouveau département B2B)
+- [x] Définir l'agent PAPI WEB BUILDER pour créer et modifier des sites web à partir d'un prompt, sans compétences en programmation.
+- [ ] Concevoir son moteur de génération, aperçu isolé, modification itérative et export de code source.
+- [ ] Ajouter des tests de qualité web, sécurité, responsive et critères d'acceptation.
+- [ ] Définir les intégrations hébergement/domaine et leur approbation avant toute publication.
 - [x] Définir le catalogue : audit, conseil, intégration, accès employés, formation et support.
 - [x] Définir le parcours client, la facturation par livrable et les revenus récurrents.
 - [x] Documenter l'exemple de digitalisation d'une pharmacie et ses limites de sécurité.
