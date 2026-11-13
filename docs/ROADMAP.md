@@ -48,6 +48,13 @@
 - [ ] Intégrer les prestataires de paiement après validation de l'éligibilité, des frais, des permissions et des conditions.
 - [ ] Mettre en place sauvegardes, rapprochement périodique et séparation des rôles comptables.
 
+## Capacité transversale — génération de contenus
+- [x] Générateur local déterministe de fiches produits, services, pages établissement et publications.
+- [x] Modèles de sortie pour pharmacie, hôtel, restaurant, commerce et services professionnels.
+- [x] Garde-fous sur les allégations, dosages pharmaceutiques, données non fournies et revue humaine.
+- [ ] Vérifier la CI de la branche de livraison avant intégration.
+- [ ] Connecter un fournisseur IA uniquement après choix du modèle, budget, politique de données et autorisation explicite.
+
 ## Mise en service
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 
