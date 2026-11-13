@@ -64,7 +64,7 @@ class WorkerAuditAttributionRegressionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             worker, queue, job, task = self._worker(directory)
             claim, get_task, fail = self._patch_inputs(queue, job, task)
-            with claim, get_task, fail, \
+            with claim, get_task, fail as fail_mock, \
                  patch("papi_core.worker.authorize_authenticated_agent",
                        side_effect=AccessDenied("invalid identity")):
                 result = worker.run_once()
