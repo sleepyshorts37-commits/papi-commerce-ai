@@ -33,6 +33,26 @@ def _rows(value: Any) -> list[dict[str, Any]]:
     return value
 
 
+def _append_idempotently(store: SupabaseStore, table: str, payload: dict[str, Any], key: str) -> None:
+    """Insère une fois ; une répétition identique est un succès, une collision échoue."""
+    rows = store.request(
+        "POST", table, payload,
+        prefer="resolution=ignore-duplicates,return=representation",
+    )
+    if not isinstance(rows, list):
+        raise StoreError("Réponse inattendue après insertion partagée.")
+    if len(rows) == 1:
+        return
+    if rows:
+        raise StoreError("Réponse inattendue après insertion partagée.")
+    identity = quote(str(payload[key]), safe="")
+    existing = _rows(store.request(
+        "GET", f"{table}?select=*&{key}=eq.{identity}&limit=1"
+    ))
+    if len(existing) != 1 or existing[0] != payload:
+        raise StoreError("Collision d'identifiant : l'enregistrement existant diffère du nouvel envoi.")
+
+
 def _valid_timestamp(value: Any, field: str) -> None:
     if not isinstance(value, str):
         raise SharedPersistenceError(f"{field} doit être une date ISO 8601.")
@@ -117,11 +137,7 @@ class SharedMemoryAdapter:
                 "event_type": "supersede", "created_at": event["created_at"],
                 "actor": actor, "target_memory_id": target, "reason": reason,
             }
-        rows = self._store.request(
-            "POST", "papi_memory_events", common, prefer="return=representation"
-        )
-        if not isinstance(rows, list) or len(rows) != 1:
-            raise StoreError("Insertion de l'événement mémoire non confirmée.")
+        _append_idempotently(self._store, "papi_memory_events", common, "event_id")
 
     def search(
         self, *, principal: object, query: str = "", category: str | None = None,
@@ -222,11 +238,7 @@ class SharedChatAdapter:
             raise SharedPersistenceError("Contenu ressemblant à un secret d’authentification interdit.")
         if message["message_type"] not in {"info", "task", "alert", "report"}:
             raise SharedPersistenceError("Type de message invalide.")
-        rows = self._store.request(
-            "POST", "papi_chat_messages", message, prefer="return=representation"
-        )
-        if not isinstance(rows, list) or len(rows) != 1:
-            raise StoreError("Insertion du message non confirmée.")
+        _append_idempotently(self._store, "papi_chat_messages", message, "message_id")
 
     def read_messages(self, *, principal: object, limit: int = 50) -> list[dict[str, Any]]:
         authenticated = require_authenticated_agent_principal(principal)
