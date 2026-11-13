@@ -25,7 +25,7 @@ class SupabaseSchemaTests(unittest.TestCase):
         body = match.group(0)
         self.assertIn("p_error_code !~ '^[a-z0-9_]{1,80}$' then", body)
         self.assertEqual(body.count("raise exception 'Invalid error code'"), 1)
-        self.assertNotIn("\n        raise exception", body)
+        self.assertNotIn("\\n        raise exception", body)
 
     def test_lease_renewal_rejects_null_and_blank_inputs(self):
         match = re.search(
