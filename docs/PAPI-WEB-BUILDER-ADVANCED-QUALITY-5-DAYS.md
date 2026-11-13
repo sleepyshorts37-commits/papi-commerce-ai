@@ -17,13 +17,14 @@ Ce cycle n'est pas une certification WCAG 2.2 AA, un audit Lighthouse complet, n
 - [x] Ajouter le contrôle Chromium des landmarks, noms de navigation, titres uniques et hiérarchie des titres.
 - [x] Vérifier les noms accessibles des liens et l'unicité du lien courant dans la navigation.
 - [x] Contrôler les routes accueil, services et contact d'un site synthétique.
-- **Statut Jour 2 :** tests ajoutés dans `tests/browser/test_preview_browser.py` ; validation CI en attente.
+- **Statut Jour 2 :** tests ajoutés sur les deux routes réellement générées par le fixture (`/` et `/contact/`). Un premier test ciblait `/services/` absent du fixture ; correction effectuée. CI du commit corrigé en attente.
 - Livrable : rapport de structure sémantique reproductible.
 
 ## Jour 3 — Clavier, mouvement réduit et comportement responsive
-- [ ] Tester le lien d'évitement et le parcours clavier sur les pages.
-- [ ] Vérifier le respect de `prefers-reduced-motion` dans les styles calculés.
-- [ ] Renforcer les assertions de layout mobile et tablette sur les composants de navigation.
+- [x] Tester le lien d'évitement, son activation clavier et l'indicateur de focus sur toutes les routes générées.
+- [x] Vérifier le respect de `prefers-reduced-motion` dans les styles calculés.
+- [x] Renforcer les assertions de visibilité de la navigation et de ses liens sur mobile, tablette et desktop.
+- **Statut Jour 3 :** tests Chromium ajoutés ; validation CI en attente.
 - Livrable : contrôles navigateur sur interaction et mouvement.
 
 ## Jour 4 — Budgets de performance et réseau
