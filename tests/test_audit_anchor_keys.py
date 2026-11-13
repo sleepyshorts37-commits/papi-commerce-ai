@@ -68,6 +68,18 @@ class AuditAnchorKeyringTests(unittest.TestCase):
         with self.assertRaises(AuditKeyError):
             self.keyring.sign(key_id, b"x")
 
+
+    def test_private_key_symlink_is_rejected(self):
+        key_id = self.keyring.provision()
+        private_path = self.root / "private" / (key_id + ".pem")
+        target = self.root / "external.pem"
+        target.write_bytes(private_path.read_bytes())
+        os.chmod(target, 0o600)
+        private_path.unlink()
+        private_path.symlink_to(target)
+        with self.assertRaises(AuditKeyError):
+            self.keyring.sign(key_id, b"x")
+
     def test_private_public_key_mismatch_is_detected(self):
         key_id = self.keyring.provision()
         private_path = self.root / "private" / (key_id + ".pem")
