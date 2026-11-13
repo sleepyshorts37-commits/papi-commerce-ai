@@ -38,6 +38,14 @@ jobs:
       - name: Run unit tests
         run: PYTHONPATH=runtime python -m unittest discover -s tests -v
 
+      - name: Test all PAPI RPCs on disposable PostgreSQL
+        env:
+          PGPASSWORD: papi_test_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \\
+            -f tests/postgres/rpc-integration.sql
+
       - name: Apply Supabase schema to disposable PostgreSQL
         env:
           PGPASSWORD: papi_test_password
