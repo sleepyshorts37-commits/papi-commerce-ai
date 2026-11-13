@@ -5,10 +5,14 @@ n'ouvre pas de navigateur et ne génère aucune vue ou interaction artificielle.
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+ROOT = Path(__file__).resolve().parents[2]
+VIDEO_TASKS_FILE = ROOT / "data" / "video-tasks.json"
 YOUTUBE_HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}
 VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 DEFAULT_AGENT_IDS = tuple(f"video-analyst-{index:02d}" for index in range(1, 11))
@@ -101,6 +105,38 @@ def validate_video_task(task: dict[str, Any]) -> list[str]:
     if task.get("external_actions_enabled") is not False:
         errors.append("Les actions externes doivent rester désactivées.")
     return errors
+
+
+def validate_video_task_registry(data: dict[str, Any]) -> list[str]:
+    if not isinstance(data, dict) or data.get("project") != "PAPI COMMERCE AI":
+        return ["Registre VIDEO TASKS invalide."]
+    if set(data) - {"project", "schema_version", "tasks", "note"}:
+        return ["Sections inconnues dans le registre VIDEO TASKS."]
+    tasks = data.get("tasks")
+    if not isinstance(tasks, list):
+        return ["tasks doit être une liste."]
+    errors: list[str] = []
+    seen: set[str] = set()
+    for index, task in enumerate(tasks):
+        errors.extend(f"tasks[{index}]: {error}" for error in validate_video_task(task))
+        if isinstance(task, dict):
+            task_id = task.get("id")
+            if isinstance(task_id, str):
+                if task_id in seen:
+                    errors.append(f"Identifiant de tâche vidéo dupliqué: {task_id}.")
+                seen.add(task_id)
+    return errors
+
+
+def load_video_task_registry(path: Path = VIDEO_TASKS_FILE) -> dict[str, Any]:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise VideoTaskError("Impossible de lire le registre VIDEO TASKS.") from exc
+    errors = validate_video_task_registry(data)
+    if errors:
+        raise VideoTaskError("; ".join(errors))
+    return data
 
 
 def build_video_report(task: dict[str, Any]) -> dict[str, Any]:
