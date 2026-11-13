@@ -46,3 +46,20 @@ Les insertions mémoire et chat utilisent maintenant une stratégie idempotente 
 - si le même identifiant est réutilisé avec un contenu différent, l'adaptateur signale une collision et ne masque pas le conflit.
 
 La stratégie utilise `resolution=ignore-duplicates` puis relit l'enregistrement existant pour comparer le contenu. Elle ne remplace jamais un enregistrement append-only. Les tests couvrent la répétition identique et la collision d'identifiant. La validation CI du commit courant est nécessaire avant de considérer ce jour terminé.
+
+
+## Isolation mémoire et vérification finale — Phase 2, jour 5
+
+Le contrôle d'accès aux événements `supersede` a été renforcé :
+- un agent ne peut archiver que sa mémoire privée ou une mémoire explicitement partagée ;
+- une tentative d'archivage d'une mémoire privée appartenant à un autre agent est refusée avant insertion ;
+- lors d'une recherche, un événement `supersede` d'un autre agent ne peut plus masquer une mémoire privée de l'agent courant ;
+- les événements d'archivage d'une mémoire partagée restent pris en compte pour tous les lecteurs autorisés.
+
+La vérification d'idempotence tient compte du format canonique des dates renvoyées par PostgreSQL et des colonnes remplies par défaut ou à NULL. La comparaison porte sur les champs effectivement envoyés, sans exiger que la représentation JSON renvoyée soit identique octet par octet.
+
+### État de livraison
+
+Les adaptateurs restent opt-in et non connectés aux fonctions runtime locales. Aucun secret n'est ajouté, aucune migration distante n'est exécutée, aucun transfert de données n'est effectué, et aucun worker ni synchronisation n'est activé. La mise en production reste bloquée jusqu'à une revue distincte des permissions, des secrets, des migrations et des tests d'intégration dans un environnement contrôlé.
+
+La phase se clôt uniquement après succès des trois contrôles CI sur le commit final et revue de la PR.
