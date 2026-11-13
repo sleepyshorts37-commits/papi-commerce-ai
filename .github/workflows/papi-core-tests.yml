@@ -60,20 +60,24 @@ jobs:
           \if :replay_use
             \quit 1
           \endif
-          insert into public.papi_audit_anchor_records(journal_id, record_digest, canonical_record)
-          values (
-            'ci-anchor',
-            encode(extensions.digest(convert_to('{"schema_version":1,"journal_id":"ci-anchor","checkpoint":{"schema_version":1,"sequence":1,"head_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"previous_record_digest":null,"key_id":"ci-test-key","signature":"test-only"}', 'UTF8'), 'sha256'), 'hex'),
-            '{"schema_version":1,"journal_id":"ci-anchor","checkpoint":{"schema_version":1,"sequence":1,"head_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"previous_record_digest":null,"key_id":"ci-test-key","signature":"test-only"}'
+          select set_config(
+            'papi.ci_anchor_record',
+            '{"schema_version":1,"journal_id":"ci-anchor","checkpoint":{"schema_version":1,"sequence":1,"head_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"previous_record_digest":null,"key_id":"ci-test-key","signature":"test-only"}',
+            false
           );
+          select set_config(
+            'papi.ci_anchor_digest',
+            encode(extensions.digest(convert_to(current_setting('papi.ci_anchor_record'), 'UTF8'), 'sha256'), 'hex'),
+            false
+          );
+          insert into public.papi_audit_anchor_records(journal_id, record_digest, canonical_record)
+          values ('ci-anchor', current_setting('papi.ci_anchor_digest'), current_setting('papi.ci_anchor_record'));
           set role service_role;
           do $$
           declare
-            v_record text := '{"schema_version":1,"journal_id":"ci-anchor","checkpoint":{"schema_version":1,"sequence":1,"head_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"previous_record_digest":null,"key_id":"ci-test-key","signature":"test-only"}';
-            v_digest text;
+            v_digest text := current_setting('papi.ci_anchor_digest');
             v_result boolean;
           begin
-            v_digest := encode(extensions.digest(convert_to(v_record, 'UTF8'), 'sha256'), 'hex');
             v_result := public.papi_advance_audit_anchor('ci-anchor', null, v_digest);
             if v_result is distinct from true then
               raise exception 'First audit anchor publication was not confirmed';
