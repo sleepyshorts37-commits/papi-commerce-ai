@@ -38,3 +38,15 @@ history = read_events(Path("data/events.jsonl"))
 
 ## Statut
 Brique logicielle créée ; aucune mémoire persistante d'agents n'est déployée ni alimentée automatiquement.
+
+
+## Contrat de publication externe — prototype
+
+`runtime/papi_core/audit_anchor.py` définit une interface de backend pour publier uniquement un checkpoint (`schema_version`, `sequence`, `head_hash`) dans un service témoin séparément contrôlé.
+
+- Le backend doit fournir une lecture du dernier checkpoint et un `compare_and_append` atomique (compare-and-swap) ; il doit refuser toute modification concurrente, régression de séquence ou remplacement d'un checkpoint existant.
+- Avant d'avancer, le code vérifie que le checkpoint précédemment publié correspond bien à un préfixe du journal local. Une simple séquence croissante ne suffit pas à empêcher une bifurcation.
+- Une publication identique est idempotente. Une vérification indique le nombre d'événements locaux non encore ancrés ; elle détecte également un journal local tronqué ou réécrit.
+- Seuls le numéro de séquence et le hash de tête sont transmis ; aucun événement, contenu métier, identifiant client ou secret n'est envoyé par cette interface.
+
+**Limite de livraison :** aucun backend externe concret, compte fournisseur, stockage indépendant, clé de signature distante ou appel réseau n'est configuré. Les tests utilisent un backend simulé en mémoire. Ce prototype définit et teste le contrat d'intégration ; il ne constitue pas encore un ancrage externe opérationnel ni une preuve de résistance à un administrateur contrôlant le stockage local et le service distant.
