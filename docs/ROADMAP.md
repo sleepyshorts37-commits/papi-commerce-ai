@@ -98,3 +98,14 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [ ] Tests navigateur multi-viewport, audit WCAG 2.2 AA, performance et sécurité.
 - [ ] Formulaires/backend, intégrations métier, authentification, aperçu hébergé et déploiement.
 - **Statut :** génération multi-pages implémentée, mais qualité entreprise non certifiée et aucune publication autorisée ou réalisée.
+
+
+### PAPI WEB BUILDER — profils de design sectoriels
+- [x] Six profils de marque contrôlés : corporate, e-commerce, hospitality, services professionnels, éducation et santé.
+- [x] Tokens de couleur, accroches sectorielles et variantes de composition visuelle.
+- [x] Sections réutilisables : hero, cartes de contenu, CTA de clôture, navigation et pied de page.
+- [x] Tests ajoutés pour les profils, les tokens, l'échappement et la génération multi-pages.
+- [ ] Exécution réelle des tests et validation CI sur le commit final.
+- [ ] Images éditoriales, catalogue e-commerce, réservation, formulaires/backend et intégrations métier.
+- [ ] Tests navigateur, revue responsive réelle, audit WCAG 2.2 AA et mesure Core Web Vitals.
+- **Statut :** base de design sectorielle livrée ; aucune prétention de certification entreprise ou de mise en production.
