@@ -54,3 +54,12 @@ Cette documentation décrit le comportement du code et les précautions nécessa
 La RPC additive `papi_fail_job(..., p_retryable)` sépare les erreurs transitoires des erreurs terminales. Les erreurs de stockage, de file et d'exécution de handler sont réessayables ; les échecs d'authentification, de permission et de validation du worker sont terminaux. La surcharge historique à quatre arguments reste présente pour la compatibilité, tandis que le worker utilise explicitement le paramètre booléen.
 
 Les tests CI PostgreSQL créent un effet métier simulé avec une contrainte unique sur une clé d'idempotence stable, expirent le bail après cet effet, réclament une nouvelle tentative, puis vérifient qu'un second passage ne duplique pas l'effet. Ils vérifient également le statut `lease_expired` de l'ancienne tentative et le refus d'une seconde complétion après la première transition terminale.
+
+
+## Concurrence des claims et fencing des baux
+
+La réservation SQL utilise une sélection `FOR UPDATE SKIP LOCKED` : deux transactions concurrentes ne doivent pas réserver la même ligne pendant que le premier claim détient son verrou. Chaque réservation effective crée un nouvel `attempt_id` et remplace le jeton de bail. Le worker précédent est alors clôturé dans l'historique comme `lease_expired`.
+
+Le renouvellement est conditionnel : job toujours `running`, propriétaire identique, jeton identique et bail non expiré. Un renouvellement refusé (`false`) signifie que le worker ne possède plus un bail valide ; il doit cesser les opérations métier protégées. La complétion et l'échec appliquent le même contrôle de propriété/jeton et la vérification de validité temporelle.
+
+La CI PostgreSQL jetable vérifie deux claims simultanés sur deux jobs prêts : une transaction garde le verrou du premier job tandis qu'une seconde transaction doit en réserver un autre. Elle vérifie également le refus de renouvellement et de complétion par un worker obsolète. Ce test valide le comportement de verrouillage PostgreSQL dans ce scénario ; il ne prouve pas l'absence de toute course dans les systèmes externes ni l'exécution exactly-once.
