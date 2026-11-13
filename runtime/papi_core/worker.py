@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .audit import append_event, new_event
-from .authz import AccessDenied, authorize_authenticated_agent
+from .authz import AccessDenied, authorize_authenticated_agent, authorize_service_agent
 from .execution_queue import ExecutionQueue, QueueError
 from .handler_registry import HandlerRegistry, PermissionError as HandlerPermissionError, authorize_job, execute_authorized_job
 from .identity import DEFAULT_KEY_DIR, DEFAULT_REPLAY_DB
@@ -37,11 +37,27 @@ class PapiWorker:
                  key_dir: Path = DEFAULT_KEY_DIR, replay_db: Path = DEFAULT_REPLAY_DB,
                  public_registry: Path = DEFAULT_PUBLIC_REGISTRY,
                  shared_identity_verifier: Any | None = None,
+                 service_id: str | None = None,
+                 service_audience: str | None = None,
                  audit_path: Path | None = None) -> None:
         if not isinstance(worker_id, str) or not worker_id.strip():
             raise WorkerError("Identifiant worker obligatoire.")
         if not isinstance(policy, dict):
             raise WorkerError("Politique invalide.")
+        require_service_audience = policy.get("require_service_audience", False)
+        if not isinstance(require_service_audience, bool):
+            raise WorkerError("Politique require_service_audience invalide.")
+        configured_service = isinstance(service_id, str) and bool(service_id.strip())
+        configured_audience = isinstance(service_audience, str) and bool(service_audience.strip())
+        if configured_service != configured_audience:
+            raise WorkerError("service_id et service_audience doivent être configurés ensemble.")
+        if require_service_audience and not (configured_service and configured_audience):
+            raise WorkerError("Identité et audience du service obligatoires.")
+        if not require_service_audience and (configured_service or configured_audience):
+            raise WorkerError("La configuration de service exige require_service_audience=true.")
+        self.service_id = service_id.strip() if configured_service else None
+        self.service_audience = service_audience.strip() if configured_audience else None
+        self.require_service_audience = require_service_audience
         self.queue, self.registry, self.policy, self.worker_id = queue, registry, policy, worker_id
         self.key_dir, self.replay_db, self.public_registry = key_dir, replay_db, public_registry
         self.shared_identity_verifier = shared_identity_verifier
@@ -135,13 +151,23 @@ class PapiWorker:
             if permission is None:
                 raise AccessDenied("Classe de permission non prise en charge.")
             agent_id = task.get("owner_agent")
-            authorization = authorize_authenticated_agent(
-                agent_id, permission, job.get("agent_identity"),
-                task_id=task_id, handler=handler, policy=self.policy,
-                key_dir=self.key_dir, replay_db=self.replay_db,
-                public_registry=self.public_registry,
-                shared_identity_verifier=self.shared_identity_verifier,
-            )
+            if self.require_service_audience:
+                authorization = authorize_service_agent(
+                    agent_id, permission, job.get("agent_identity"),
+                    task_id=task_id, handler=handler,
+                    audience=self.service_audience, service_id=self.service_id,
+                    policy=self.policy, key_dir=self.key_dir,
+                    replay_db=self.replay_db, public_registry=self.public_registry,
+                    shared_identity_verifier=self.shared_identity_verifier,
+                )
+            else:
+                authorization = authorize_authenticated_agent(
+                    agent_id, permission, job.get("agent_identity"),
+                    task_id=task_id, handler=handler, policy=self.policy,
+                    key_dir=self.key_dir, replay_db=self.replay_db,
+                    public_registry=self.public_registry,
+                    shared_identity_verifier=self.shared_identity_verifier,
+                )
             principal = authorization.get("principal")
             authenticated_actor = getattr(principal, "agent_id", None)
             if not isinstance(authenticated_actor, str) or authenticated_actor != agent_id:
