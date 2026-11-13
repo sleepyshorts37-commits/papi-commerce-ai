@@ -36,6 +36,30 @@ class MultiPageBuilderTests(unittest.TestCase):
             self.assertIn("--ink: #26364a", (root / "styles.css").read_text())
             self.assertIn("hero--hospitality", (root / "index.html").read_text())
 
+
+    def test_custom_sections_replace_generic_feature_block(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = {
+                "name": "Portail institutionnel",
+                "industry": "education",
+                "sections": {
+                    "home": [
+                        {"id": "programmes", "type": "feature_grid", "eyebrow": "Programmes", "heading": "Nos parcours", "body": "Des formations adaptées.", "items": [
+                            {"title": "Débutant", "body": "Les fondamentaux."},
+                            {"title": "Avancé", "body": "Approfondir ses compétences."},
+                        ]},
+                        {"id": "faq", "type": "faq", "eyebrow": "Aide", "heading": "Questions fréquentes", "body": "Tout savoir.", "items": [
+                            {"question": "Quand commencer ?", "answer": "À tout moment."},
+                        ]},
+                    ]
+                },
+            }
+            generate_multi_page_project(tmp, "custom", spec, self.brief())
+            page = (Path(tmp) / "custom/index.html").read_text()
+            self.assertIn("Nos parcours", page)
+            self.assertIn("Questions fréquentes", page)
+            self.assertNotIn("Une expérience conçue avec intention.", page)
+
     def test_escapes_content_and_marks_current_navigation(self):
         with tempfile.TemporaryDirectory() as tmp:
             brief = self.brief()
