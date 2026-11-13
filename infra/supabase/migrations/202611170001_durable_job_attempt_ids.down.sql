@@ -1,3 +1,4 @@
+drop function if exists public.papi_renew_job(text, text, uuid, integer);
 -- Rollback for 202611170001_durable_job_attempt_ids.
 -- Existing jobs and their original attempts counter are preserved.
 drop trigger if exists papi_jobs_sync_attempt on public.papi_jobs;
