@@ -93,6 +93,29 @@ class SharedPersistenceAdapterTests(unittest.TestCase):
         self.memory.append_event(event, principal=self.astou)
         self.assertEqual(self.store.request.call_count, 2)
 
+    def test_supersede_retry_accepts_database_timestamp_and_default_columns(self):
+        event = {
+            "event_id": "33333333-3333-4333-8333-333333333333",
+            "event_type": "supersede", "target_memory_id": "22222222-2222-4222-8222-222222222222",
+            "created_at": "2026-01-02T00:00:00Z", "actor": "astou", "reason": "archive",
+        }
+        database_row = {
+            "event_id": event["event_id"], "memory_id": event["target_memory_id"],
+            "event_type": "supersede", "created_at": "2026-01-02T00:00:00+00:00",
+            "actor": "astou", "target_memory_id": event["target_memory_id"],
+            "reason": "archive", "category": None, "title": None, "content": None,
+            "source_type": None, "source_id": None, "confidence": None,
+            "scope": None, "tags": [], "sensitivity": None,
+        }
+        visible = [{"memory_id": event["target_memory_id"], "actor": "sokhna", "scope": "shared"}]
+        self.store.request.side_effect = [
+            visible, [{"event_id": event["event_id"]}],
+            visible, [], [database_row],
+        ]
+        self.memory.append_event(event, principal=self.astou)
+        self.memory.append_event(event, principal=self.astou)
+        self.assertEqual(self.store.request.call_count, 5)
+
     def test_memory_search_requires_authenticated_principal(self):
         with self.assertRaises(PermissionError):
             self.memory.search(principal="astou")
