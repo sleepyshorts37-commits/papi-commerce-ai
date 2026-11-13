@@ -40,13 +40,14 @@ history = read_events(Path("data/events.jsonl"))
 Brique logicielle créée ; aucune mémoire persistante d'agents n'est déployée ni alimentée automatiquement.
 
 
-## Contrat de publication externe — prototype
 
-`runtime/papi_core/audit_anchor.py` définit une interface de backend pour publier uniquement un checkpoint (`schema_version`, `sequence`, `head_hash`) dans un service témoin séparément contrôlé.
+## Contrat de publication externe — prêt pour adaptateur, fournisseur non connecté
 
-- Le backend doit fournir une lecture du dernier checkpoint et un `compare_and_append` atomique (compare-and-swap) ; il doit refuser toute modification concurrente, régression de séquence ou remplacement d'un checkpoint existant.
-- Avant d'avancer, le code vérifie que le checkpoint précédemment publié correspond bien à un préfixe du journal local. Une simple séquence croissante ne suffit pas à empêcher une bifurcation.
-- Une publication identique est idempotente. Une vérification indique le nombre d'événements locaux non encore ancrés ; elle détecte également un journal local tronqué ou réécrit.
-- Seuls le numéro de séquence et le hash de tête sont transmis ; aucun événement, contenu métier, identifiant client ou secret n'est envoyé par cette interface.
+`runtime/papi_core/audit_anchor.py` définit un protocole de stockage externe pour des enregistrements de checkpoint signés :
 
-**Limite de livraison :** aucun backend externe concret, compte fournisseur, stockage indépendant, clé de signature distante ou appel réseau n'est configuré. Les tests utilisent un backend simulé en mémoire. Ce prototype définit et teste le contrat d'intégration ; il ne constitue pas encore un ancrage externe opérationnel ni une preuve de résistance à un administrateur contrôlant le stockage local et le service distant.
+- Chaque enregistrement lie l'identifiant du journal, le checkpoint (séquence et hash de tête), le digest de l'enregistrement précédent, l'identifiant de clé et la signature.
+- Le stockage doit conserver les enregistrements de manière immuable et avancer le pointeur `latest` avec un compare-and-swap atomique.
+- Le code vérifie les signatures, les octets canoniques, la chaîne des digests, la progression des séquences et la présence du préfixe local déjà ancré.
+- Les tests utilisent un stockage en mémoire et des signatures HMAC de test uniquement. Elles ne représentent pas une gestion de clés de production.
+
+**Limite de livraison :** aucun fournisseur externe ni backend distant n'est encore connecté. Le protocole et ses tests sont présents, mais aucune publication externe réelle n'a été effectuée. Une intégration de production doit conserver les clés de signature hors du worker, utiliser un stockage indépendant avec contrôle d'accès séparé et vérifier la restauration ainsi que les conflits de publication.
