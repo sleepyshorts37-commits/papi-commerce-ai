@@ -61,3 +61,34 @@ jobs:
             \quit 1
           \endif
           SQL
+
+          select '{"schema_version":1,"journal_id":"ci-anchor","checkpoint":{"schema_version":1,"sequence":1,"head_hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"previous_record_digest":null,"key_id":"ci-test-key","signature":"test-only"}'::text as anchor_record \\gset
+          select encode(extensions.digest(convert_to(:'anchor_record', 'UTF8'), 'sha256'), 'hex') as anchor_digest \\gset
+          insert into public.papi_audit_anchor_records(journal_id, record_digest, canonical_record)
+          values ('ci-anchor', :'anchor_digest', :'anchor_record');
+          set role service_role;
+          select public.papi_advance_audit_anchor('ci-anchor', null, :'anchor_digest') as first_anchor \\gset
+          \\if :first_anchor
+          \\else
+            \\quit 1
+          \\endif
+          select public.papi_advance_audit_anchor('ci-anchor', null, :'anchor_digest') as retry_anchor \\gset
+          \\if :retry_anchor
+          \\else
+            \\quit 1
+          \\endif
+          select latest_record_digest = :'anchor_digest' as head_matches
+            from public.papi_audit_anchor_heads where journal_id = 'ci-anchor' \\gset
+          \\if :head_matches
+          \\else
+            \\quit 1
+          \\endif
+          reset role;
+          select not has_table_privilege('anon', 'public.papi_audit_anchor_records', 'select')
+             and not has_table_privilege('authenticated', 'public.papi_audit_anchor_records', 'select')
+             and not has_table_privilege('service_role', 'public.papi_audit_anchor_records', 'update')
+             as anchor_grants_safe \\gset
+          \\if :anchor_grants_safe
+          \\else
+            \\quit 1
+          \\endif
