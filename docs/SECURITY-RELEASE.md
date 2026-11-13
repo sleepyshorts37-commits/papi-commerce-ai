@@ -41,3 +41,12 @@ Revue statique du dépôt effectuée sur les permissions Supabase, l'identité E
 
 ### Limite de cette revue
 Cette revue est statique et fondée sur les fichiers du dépôt. Aucun test n'a été exécuté dans un environnement de déploiement, aucune connexion Supabase n'a été effectuée et aucun agent n'a été activé. Elle ne constitue pas une certification de sécurité.
+
+
+## Revue du 13 novembre 2026 — frontière interservices et décision de mise en production
+
+La revue du worker confirme que le binding service/audience est **optionnel pour préserver les workers locaux existants**. Un worker exposé comme frontière interservice doit obligatoirement activer `require_service_audience=true` et fournir `service_id` ainsi que `service_audience`. L'inventaire des workers et la preuve de configuration effective restent à produire ; le mode strict n'est pas activé globalement par cette PR.
+
+Le contrat `AuditSigningProvider` permet une future intégration isolée, mais l'adaptateur local ne constitue pas un KMS/HSM. De même, l'adaptateur Supabase a été testé avec un transport simulé : les permissions et politiques d'un projet réel restent à vérifier.
+
+La décision détaillée, les preuves, les limites et les conditions de levée du blocage sont consignées dans [PRODUCTION-READINESS-GATE.md](PRODUCTION-READINESS-GATE.md). À ce stade, la décision est **NO-GO production**. Aucun secret, compte de service, environnement distant, migration réelle, worker permanent ou action externe n'est activé.
