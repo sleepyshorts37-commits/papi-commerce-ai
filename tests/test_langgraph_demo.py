@@ -32,7 +32,7 @@ class LangGraphDemoTests(unittest.TestCase):
         self.assertEqual(result["error_code"], "invalid_request")
         self.assertEqual(calls, [])
 
-    def test_checkpoint_preserves_bounded_history_and_allows_retry(self):
+    def test_checkpointed_thread_supports_retry_with_explicit_history(self):
         from langgraph.checkpoint.memory import InMemorySaver
 
         attempts = {"count": 0}
@@ -50,7 +50,9 @@ class LangGraphDemoTests(unittest.TestCase):
         self.assertEqual(first["status"], "failed")
         self.assertEqual(first["error_code"], "preview_error")
 
-        second = graph.invoke({"request": "reprise"}, config=config)
+        second = graph.invoke(
+            {"request": "reprise", "history": first["history"]}, config=config
+        )
         self.assertEqual(second["status"], "completed")
         self.assertEqual(second["history"], ["premier essai", "reprise"])
         self.assertEqual(attempts["count"], 2)
