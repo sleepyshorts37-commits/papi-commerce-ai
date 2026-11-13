@@ -1,9 +1,14 @@
 -- PAPI COMMERCE AI — enforce active Ed25519 key version during nonce consumption.
 -- This migration supersedes the legacy three-argument RPC from the initial schema.
 
-revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
-    from public, anon, authenticated, service_role;
-drop function if exists public.papi_consume_agent_nonce(text, text, timestamptz);
+do $
+begin
+    if to_regprocedure('public.papi_consume_agent_nonce(text,text,timestamp with time zone)') is not null then
+        execute 'revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz) from public, anon, authenticated, service_role';
+        execute 'drop function public.papi_consume_agent_nonce(text, text, timestamptz)';
+    end if;
+end;
+$;
 
 create or replace function public.papi_consume_agent_nonce(
     p_agent_id text,
