@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from .authz import AccessDenied, authorize_authenticated_agent
 from .execution_queue import ExecutionQueue, QueueError
@@ -11,8 +12,10 @@ from .identity import DEFAULT_KEY_DIR, DEFAULT_REPLAY_DB
 from .identity_ed25519 import DEFAULT_PUBLIC_REGISTRY
 from .storage import StoreError
 
+
 class WorkerError(RuntimeError):
     """Erreur contrôlée du worker."""
+
 
 PERMISSION_BY_CLASS = {
     "read_only": "read_reports",
@@ -21,6 +24,7 @@ PERMISSION_BY_CLASS = {
     "financial": "make_payment",
     "legal": "accept_legal_commitments",
 }
+
 
 class PapiWorker:
     def __init__(self, *, queue: ExecutionQueue, registry: HandlerRegistry,
@@ -43,9 +47,13 @@ class PapiWorker:
         job = self.queue.claim(worker_id=self.worker_id)
         if job is None:
             return {"status": "idle", "claimed": False}
-        job_id, lease_token = job.get("id"), job.get("lease_token")
+        job_id, lease_token, attempt_id = job.get("id"), job.get("lease_token"), job.get("attempt_id")
         if not isinstance(job_id, str) or not isinstance(lease_token, str):
             return {"status": "invalid_claim", "claimed": True}
+        try:
+            attempt_id = str(UUID(attempt_id))
+        except (ValueError, TypeError, AttributeError):
+            return {"status": "invalid_claim", "claimed": True, "job_id": job_id}
         try:
             task_id = job.get("task_id")
             if not isinstance(task_id, str) or not task_id:
@@ -69,20 +77,21 @@ class PapiWorker:
             )
             result = execute_authorized_job(job, task, self.policy, self.registry,
                 context={"worker_id": self.worker_id, "task_id": task_id,
+                         "attempt_id": attempt_id,
                          "authenticated_agent_id": agent_id,
                          "authenticated_principal": authorization["principal"]})
             if not self.queue.complete(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, result=result):
-                return {"status": "lease_lost", "claimed": True, "job_id": job_id}
-            return {"status": "completed", "claimed": True, "job_id": job_id}
+                return {"status": "lease_lost", "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
+            return {"status": "completed", "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
         except AccessDenied:
             self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, error_code="authentication_failed")
-            return {"status": "blocked", "claimed": True, "job_id": job_id}
+            return {"status": "blocked", "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
         except HandlerPermissionError:
             self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, error_code="permission_denied")
-            return {"status": "blocked", "claimed": True, "job_id": job_id}
+            return {"status": "blocked", "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
         except (WorkerError, StoreError, QueueError):
             self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, error_code="worker_validation_error")
-            return {"status": "failed", "claimed": True, "job_id": job_id}
+            return {"status": "failed", "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
         except Exception:
             self.queue.fail(job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, error_code="handler_error")
-            return {"status": "failed", "claimed": True, "job_id": job_id}
+            return {"status": "failed", "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
