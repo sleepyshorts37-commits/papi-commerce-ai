@@ -45,6 +45,20 @@ class ExecutionQueue:
             raise QueueError("Réponse de réservation invalide.")
         return result
 
+    def renew(self, *, job_id: str, worker_id: str, lease_token: str,
+              lease_seconds: int = 900) -> bool:
+        """Prolonge uniquement un bail encore valide détenu par ce worker."""
+        if not all(isinstance(x, str) and x.strip() for x in (job_id, worker_id, lease_token)):
+            raise QueueError("Identifiants de réservation obligatoires.")
+        if len(worker_id) > 120:
+            raise QueueError("Identifiant worker trop long.")
+        if type(lease_seconds) is not int or not 15 <= lease_seconds <= 900:
+            raise QueueError("Le bail doit être un entier compris entre 15 et 900 secondes.")
+        response = self.store._request("POST", "rpc/papi_renew_job_lease",
+            {"p_job_id": job_id, "p_worker_id": worker_id,
+             "p_lease_token": lease_token, "p_lease_seconds": lease_seconds})
+        return response is True
+
     def complete(self, *, job_id: str, worker_id: str, lease_token: str,
                  result: dict[str, Any] | None = None) -> bool:
         if not all(isinstance(x, str) and x.strip() for x in (job_id, worker_id, lease_token)):

@@ -80,7 +80,13 @@ class AuditTests(unittest.TestCase):
             path = Path(directory) / "events.jsonl"
             event = self.make_event()
             self.assertTrue(append_event(event, path))
-            self.assertEqual(read_events(path), [event])
+            events = read_events(path)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(
+                {key: value for key, value in events[0].items()
+                 if key not in {"previous_hash", "event_hash"}},
+                event,
+            )
 
     def test_duplicate_event_is_idempotent(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -100,6 +106,21 @@ class AuditTests(unittest.TestCase):
             path.write_text("{broken json}\n", encoding="utf-8")
             with self.assertRaises(AuditError):
                 read_events(path)
+
+
+    def test_concurrent_appends_preserve_a_single_valid_chain(self):
+        from concurrent.futures import ThreadPoolExecutor
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            events = [self.make_event(event_id=f"EVT-CONCURRENT-{index:02d}")
+                      for index in range(24)]
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                results = list(executor.map(lambda event: append_event(event, path), events))
+            self.assertTrue(all(results))
+            stored = read_events(path)
+            self.assertEqual(len(stored), len(events))
+            self.assertEqual(len({event["event_id"] for event in stored}), len(events))
+            self.assertEqual(len({event["event_hash"] for event in stored}), len(events))
 
 
 class StateMachineTests(unittest.TestCase):
@@ -240,6 +261,19 @@ class ExecutionQueueTests(unittest.TestCase):
             queue.claim(worker_id="worker-01", lease_seconds=5)
 
     @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
+    def test_renew_requires_current_lease_and_uses_fenced_rpc(self):
+        from papi_core.execution_queue import ExecutionQueue
+        queue = ExecutionQueue(SupabaseStore())
+        with patch.object(queue.store, "_request", return_value=True) as request:
+            self.assertTrue(queue.renew(job_id="JOB-1", worker_id="worker-01",
+                                        lease_token="lease", lease_seconds=900))
+        self.assertEqual(request.call_args.args[1], "rpc/papi_renew_job_lease")
+        self.assertEqual(request.call_args.args[2]["p_lease_token"], "lease")
+        with self.assertRaises(Exception):
+            queue.renew(job_id="JOB-1", worker_id="worker-01",
+                        lease_token="lease", lease_seconds=901)
+
+    @patch.dict("os.environ", {"SUPABASE_URL": "https://example.supabase.co", "SUPABASE_KEY": "test-key"})
     def test_complete_requires_current_lease(self):
         from papi_core.execution_queue import ExecutionQueue
         queue = ExecutionQueue(SupabaseStore())
@@ -332,13 +366,18 @@ class HandlerPermissionTests(unittest.TestCase):
 
 class WorkerTests(unittest.TestCase):
     def make_worker(self, policy=None, job=None, task=None):
-        identity_patch = patch('papi_core.worker.authorize_authenticated_agent')
+        from types import SimpleNamespace
+        identity_patch = patch('papi_core.worker.authorize_authenticated_agent',
+                               return_value={"principal": SimpleNamespace(agent_id="agent-test")})
         identity_patch.start()
         self.addCleanup(identity_patch.stop)
         from papi_core.execution_queue import ExecutionQueue
         from papi_core.handler_registry import HandlerRegistry
         from papi_core.worker import PapiWorker
         queue = ExecutionQueue(SupabaseStore(url="https://example.supabase.co", key="test-key"))
+        renew_patch = patch.object(queue, "renew", return_value=True)
+        renew_patch.start()
+        self.addCleanup(renew_patch.stop)
         registry = HandlerRegistry()
         registry.register("internal.echo", "read_only", lambda payload, context: {"echo": payload})
         effective_policy = policy or {
@@ -346,7 +385,10 @@ class WorkerTests(unittest.TestCase):
             "allowed_handlers": ["internal.echo"],
             "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
         }
-        return PapiWorker(queue=queue, registry=registry, policy=effective_policy, worker_id="worker-test")
+        audit_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(audit_dir.cleanup)
+        return PapiWorker(queue=queue, registry=registry, policy=effective_policy,
+                          worker_id="worker-test", audit_path=Path(audit_dir.name) / "audit.jsonl")
 
     def test_disabled_worker_does_not_claim(self):
         worker = self.make_worker(policy={"execution_enabled": False})
@@ -363,11 +405,16 @@ class WorkerTests(unittest.TestCase):
         worker = self.make_worker()
         job = {"id": "JOB-1", "task_id": "TASK-1", "handler": "internal.echo",
                "payload": {"a": 1}, "lease_token": "lease-1"}
-        with patch.object(worker.queue, "claim", return_value=job), \
-             patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
-             }), \
-             patch.object(worker.queue, "complete", return_value=True) as complete:
+        with (
+            patch.object(worker.queue, "claim", return_value=job),
+            patch.object(worker.queue.store, "get_task", return_value={
+                "task": {"status": "in_progress", "approval_required": False,
+                         "owner_agent": "agent-test"}
+            }),
+            patch.object(worker.queue, "renew", side_effect=[True, False]) as renew,
+            patch.object(worker.queue, "complete") as complete,
+            patch.object(worker.queue, "fail") as fail,
+        ):
             result = worker.run_once()
         self.assertEqual(result["status"], "completed")
         complete.assert_called_once()
@@ -378,12 +425,31 @@ class WorkerTests(unittest.TestCase):
                "payload": {}, "lease_token": "lease-2"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
              }), \
              patch.object(worker.queue, "fail", return_value="retry") as fail:
             result = worker.run_once()
         self.assertEqual(result["status"], "blocked")
         self.assertEqual(fail.call_args.kwargs["error_code"], "permission_denied")
+
+    def test_worker_does_not_start_handler_if_lease_renewal_fails(self):
+        from papi_core.audit import read_events
+        worker = self.make_worker()
+        job = {"id": "JOB-LEASE-RENEW-FAIL", "task_id": "TASK-1",
+               "handler": "internal.echo", "payload": {}, "lease_token": "lease-renew"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False,
+                          "owner_agent": "agent-test"}
+             }), \
+             patch.object(worker.queue, "renew", return_value=False), \
+             patch("papi_core.worker.execute_authorized_job") as execute:
+            result = worker.run_once()
+        self.assertEqual(result["status"], "lease_lost")
+        execute.assert_not_called()
+        events = read_events(worker.audit_path)
+        lost = next(event for event in events if event["action"] == "job.lease_lost")
+        self.assertEqual(lost["actor"], "system:worker:worker-test")
 
     def test_worker_does_not_complete_if_lease_was_lost(self):
         worker = self.make_worker()
@@ -391,11 +457,171 @@ class WorkerTests(unittest.TestCase):
                "payload": {}, "lease_token": "lease-3"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
              }), \
              patch.object(worker.queue, "complete", return_value=False):
             result = worker.run_once()
         self.assertEqual(result["status"], "lease_lost")
+
+
+    def test_worker_audit_uses_authenticated_actor_and_excludes_job_payload(self):
+        from papi_core.audit import read_events
+        worker = self.make_worker()
+        job = {
+            "id": "JOB-AUDIT-IDENTITY", "task_id": "TASK-1", "handler": "internal.echo",
+            "payload": {"customer_email": "private@example.invalid", "note": "PRIVATE-PAYLOAD-MARKER"},
+            "agent_identity": {"agent_id": "forged-agent"},
+            "actor": "forged-actor", "lease_token": "lease-private",
+        }
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \
+             patch.object(worker.queue, "complete", return_value=True):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "completed")
+        events = read_events(worker.audit_path)
+        started = next(event for event in events if event["action"] == "job.handler_started")
+        self.assertEqual(started["actor"], "agent-test")
+        raw = worker.audit_path.read_text(encoding="utf-8")
+        self.assertNotIn("private@example.invalid", raw)
+        self.assertNotIn("PRIVATE-PAYLOAD-MARKER", raw)
+        self.assertNotIn("lease-private", raw)
+        self.assertNotIn("forged-agent", raw)
+        self.assertNotIn("forged-actor", raw)
+
+
+    def test_authentication_failure_is_attributed_only_to_system_worker(self):
+        from papi_core.audit import read_events
+        from papi_core.worker import AccessDenied
+        worker = self.make_worker()
+        job = {"id": "JOB-AUTH-FAIL", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-auth-fail"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \
+             patch("papi_core.worker.authorize_authenticated_agent",
+                   side_effect=AccessDenied("invalid proof")), \
+             patch.object(worker.queue, "fail", return_value="retry"):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "blocked")
+        events = read_events(worker.audit_path)
+        blocked = next(event for event in events if event["action"] == "job.authentication_blocked")
+        self.assertEqual(blocked["actor"], "system:worker:worker-test")
+        self.assertFalse(any(event["action"] == "job.handler_started" for event in events))
+
+    def test_post_authentication_policy_block_uses_authenticated_principal(self):
+        from papi_core.audit import read_events
+        from papi_core.handler_registry import PermissionError as HandlerPermissionError
+        worker = self.make_worker()
+        job = {"id": "JOB-POLICY-BLOCK", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-policy-block"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \
+             patch("papi_core.worker.authorize_job",
+                   side_effect=HandlerPermissionError("policy denied")), \
+             patch.object(worker.queue, "fail", return_value="retry"):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "blocked")
+        events = read_events(worker.audit_path)
+        blocked = next(event for event in events if event["action"] == "job.blocked")
+        self.assertEqual(blocked["actor"], "agent-test")
+        self.assertFalse(any(event["action"] == "job.handler_started" for event in events))
+
+    def test_audit_failure_before_handler_fails_closed(self):
+        worker = self.make_worker()
+        job = {"id": "JOB-AUDIT-1", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-audit"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \
+             patch.object(worker.queue, "fail", return_value="retry") as fail, \
+             patch("papi_core.worker.execute_authorized_job") as execute, \
+             patch.object(worker, "_audit", side_effect=OSError("disk unavailable")):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "audit_blocked")
+        self.assertEqual(fail.call_args.kwargs["error_code"], "audit_unavailable")
+        execute.assert_not_called()
+
+    def test_terminal_audit_failure_does_not_undo_completion(self):
+        worker = self.make_worker()
+        job = {"id": "JOB-AUDIT-2", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-audit-2"}
+        original_audit = worker._audit
+        def fail_terminal(job_id, action, actor, **kwargs):
+            if action == "job.completed":
+                raise OSError("disk unavailable")
+            return original_audit(job_id, action, actor, **kwargs)
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \
+             patch.object(worker.queue, "complete", return_value=True) as complete, \
+             patch.object(worker, "_audit", side_effect=fail_terminal):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "completed")
+        complete.assert_called_once()
+
+
+    def test_queue_failure_transition_error_returns_controlled_result(self):
+        from papi_core.audit import read_events
+        worker = self.make_worker()
+        job = {"id": "JOB-FAIL-TRANSITION", "task_id": "TASK-1", "handler": "internal.echo",
+               "payload": {}, "lease_token": "lease-fail-transition"}
+        with patch.object(worker.queue, "claim", return_value=job), \
+             patch.object(worker.queue.store, "get_task", return_value={
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
+             }), \
+             patch("papi_core.worker.execute_authorized_job", side_effect=RuntimeError("handler failed")), \
+             patch.object(worker.queue, "fail", side_effect=OSError("queue unavailable")):
+            result = worker.run_once()
+        self.assertEqual(result["status"], "failure_transition_error")
+        events = read_events(worker.audit_path)
+        failure = next(event for event in events if event["action"] == "job.failure_transition_error")
+        self.assertEqual(failure["actor"], "agent-test")
+        self.assertEqual(failure["details"]["outcome"], "queue_fail_error")
+
+
+
+    def test_handler_lease_guard_stops_work_when_lease_is_lost(self):
+        from papi_core.audit import read_events
+        worker = self.make_worker()
+        observed = []
+
+        def guarded_handler(payload, context):
+            observed.append("started")
+            context["ensure_lease"]()
+            observed.append("after_guard")
+            return {"ok": True}
+
+        worker.registry.register("internal.guarded", "read_only", guarded_handler)
+        worker.policy["allowed_handlers"] = ["internal.echo", "internal.guarded"]
+        job = {"id": "JOB-GUARDED-LEASE", "task_id": "TASK-1",
+               "handler": "internal.guarded", "payload": {}, "lease_token": "lease-guarded"}
+        with (
+            patch.object(worker.queue, "claim", return_value=job),
+            patch.object(worker.queue.store, "get_task", return_value={
+                "task": {"status": "in_progress", "approval_required": False,
+                         "owner_agent": "agent-test"}
+            }),
+            patch.object(worker.queue, "renew", side_effect=[True, False]) as renew,
+            patch.object(worker.queue, "complete") as complete,
+            patch.object(worker.queue, "fail") as fail,
+        ):
+            result = worker.run_once()
+
+        self.assertEqual(result["status"], "lease_lost")
+        self.assertEqual(observed, ["started"])
+        self.assertEqual(renew.call_count, 2)
+        complete.assert_not_called()
+        fail.assert_not_called()
+        events = read_events(worker.audit_path)
+        lost = next(event for event in events if event["action"] == "job.lease_lost")
+        self.assertEqual(lost["actor"], "system:worker:worker-test")
 
 
 class DoctorTests(unittest.TestCase):
@@ -433,3 +659,34 @@ class DoctorTests(unittest.TestCase):
             queue.fail(job_id="JOB-1", worker_id="worker-01",
                        lease_token="lease", error_code="Bearer secret-value")
 
+
+
+
+class LeaseRenewalInputTests(unittest.TestCase):
+    def test_renew_rejects_boolean_non_integer_and_out_of_range_duration(self):
+        from papi_core.execution_queue import ExecutionQueue, QueueError
+        queue = ExecutionQueue(SupabaseStore(url="https://example.supabase.co", key="test-key"))
+        with patch.object(queue.store, "_request") as request:
+            for value in (True, False, 14, 901, None, 15.0, "900"):
+                with self.subTest(lease_seconds=value):
+                    with self.assertRaises(QueueError):
+                        queue.renew(job_id="JOB-1", worker_id="worker-01",
+                                    lease_token="00000000-0000-0000-0000-000000000001",
+                                    lease_seconds=value)
+            request.assert_not_called()
+
+    def test_renew_rejects_blank_identifiers_and_oversized_worker_id(self):
+        from papi_core.execution_queue import ExecutionQueue, QueueError
+        queue = ExecutionQueue(SupabaseStore(url="https://example.supabase.co", key="test-key"))
+        with patch.object(queue.store, "_request") as request:
+            invalid = (
+                {"job_id": " ", "worker_id": "worker-01", "lease_token": "token"},
+                {"job_id": "JOB-1", "worker_id": " ", "lease_token": "token"},
+                {"job_id": "JOB-1", "worker_id": "worker-01", "lease_token": ""},
+                {"job_id": "JOB-1", "worker_id": "w" * 121, "lease_token": "token"},
+            )
+            for values in invalid:
+                with self.subTest(values=values):
+                    with self.assertRaises(QueueError):
+                        queue.renew(**values)
+            request.assert_not_called()
