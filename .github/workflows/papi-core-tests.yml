@@ -189,7 +189,7 @@ jobs:
           begin
             -- Crash after the business effect but before queue completion.
             first_claim := public.papi_claim_job('worker-crash-1', gen_random_uuid(), 15);
-            if first_claim->>'id' <> 'recovery-crash-job' then
+            if first_claim is null or first_claim->>'id' is distinct from 'recovery-crash-job' then
               raise exception 'unexpected first crash-recovery claim: %', first_claim->>'id';
             end if;
             insert into ci_business_effects(idempotency_key, applied_count)
@@ -233,7 +233,7 @@ jobs:
 
             -- Transient errors are retried, policy/validation failures are terminal.
             retry_claim := public.papi_claim_job('worker-retry', gen_random_uuid(), 15);
-            if retry_claim->>'id' <> 'recovery-retry-job' then
+            if retry_claim is null or retry_claim->>'id' is distinct from 'recovery-retry-job' then
               raise exception 'unexpected retryable claim';
             end if;
             retry_status := public.papi_fail_job(
@@ -247,7 +247,7 @@ jobs:
             update public.papi_jobs set available_at = now()
              where id = 'recovery-retry-job';
             retry_claim_second := public.papi_claim_job('worker-retry-2', gen_random_uuid(), 15);
-            if retry_claim_second->>'id' <> 'recovery-retry-job' then
+            if retry_claim_second is null or retry_claim_second->>'id' is distinct from 'recovery-retry-job' then
               raise exception 'second retry attempt was not claimable';
             end if;
             retry_status := public.papi_fail_job(
@@ -259,8 +259,10 @@ jobs:
               raise exception 'max_attempts did not stop further retries';
             end if;
 
+            update public.papi_jobs set available_at = now()
+             where id = 'recovery-terminal-job';
             terminal_claim := public.papi_claim_job('worker-terminal', gen_random_uuid(), 15);
-            if terminal_claim->>'id' <> 'recovery-terminal-job' then
+            if terminal_claim is null or terminal_claim->>'id' is distinct from 'recovery-terminal-job' then
               raise exception 'unexpected terminal-failure claim';
             end if;
             terminal_status := public.papi_fail_job(
@@ -272,8 +274,10 @@ jobs:
               raise exception 'non-retryable policy failure was not terminal';
             end if;
 
+            update public.papi_jobs set available_at = now()
+             where id = 'recovery-exhaust-job';
             exhausted_claim := public.papi_claim_job('worker-exhausted', gen_random_uuid(), 15);
-            if exhausted_claim->>'id' <> 'recovery-exhaust-job' then
+            if exhausted_claim is null or exhausted_claim->>'id' is distinct from 'recovery-exhaust-job' then
               raise exception 'unexpected max-attempts lease claim';
             end if;
             update public.papi_jobs set lease_until = now() - interval '1 second'
