@@ -114,6 +114,25 @@ jobs:
             ) then
               raise exception 'stale worker renewed a replaced lease';
             end if;
+            if public.papi_complete_job(
+              'attempt-ci-job', 'worker-ci-1', (first_claim->>'lease_token')::uuid,
+              '{"stale":true}'::jsonb
+            ) then
+              raise exception 'stale worker completed a replaced lease';
+            end if;
+            if not public.papi_complete_job(
+              'attempt-ci-job', 'worker-ci-2', (second_claim->>'lease_token')::uuid,
+              '{"verified":true}'::jsonb
+            ) then
+              raise exception 'current lease could not complete its job';
+            end if;
+            if (select status from public.papi_jobs where id = 'attempt-ci-job') <> 'done' then
+              raise exception 'job did not reach done state after current lease completion';
+            end if;
+            if (select status from public.papi_job_attempts
+                 where attempt_id = (second_claim->>'attempt_id')::uuid) <> 'completed' then
+              raise exception 'current attempt history was not marked completed';
+            end if;
           end;
           $attempt$;
           SQL
