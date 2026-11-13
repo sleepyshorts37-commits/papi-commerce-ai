@@ -127,3 +127,25 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
     return {**authorization, "identity_authenticated": True,
             "identity_algorithm": identity["algorithm"], "replay_protected": True,
             "principal": _issue_authenticated_agent_principal(agent_id)}
+
+
+
+def authorize_service_agent(agent_id: str, permission: str, envelope: dict[str, Any],
+                            *, task_id: str, handler: str, audience: str,
+                            service_id: str, agents_path: Path = AGENTS_FILE,
+                            policy: dict[str, Any] | None = None,
+                            key_dir: Path | None = None,
+                            replay_db: Path | None = None,
+                            public_registry: Path = DEFAULT_PUBLIC_REGISTRY,
+                            shared_identity_verifier: Any | None = None) -> dict[str, Any]:
+    """Autorise un appel interservice uniquement si l'audience et le service sont signés."""
+    if not isinstance(audience, str) or not audience.strip():
+        raise AccessDenied("Audience de service obligatoire.")
+    if not isinstance(service_id, str) or not service_id.strip():
+        raise AccessDenied("Identifiant de service obligatoire.")
+    return authorize_authenticated_agent(
+        agent_id, permission, envelope, task_id=task_id, handler=handler,
+        agents_path=agents_path, policy=policy, key_dir=key_dir,
+        replay_db=replay_db, public_registry=public_registry,
+        shared_identity_verifier=shared_identity_verifier,
+        audience=audience, service_id=service_id)
