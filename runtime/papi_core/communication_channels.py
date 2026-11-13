@@ -76,6 +76,9 @@ class OwnerEmailNotification:
     correlation_id: str
     idempotency_key: str
     created_at: str
+    evidence_refs: tuple[str, ...] = ()
+    requires_owner_action: bool = False
+    deadline: str | None = None
     recipient_class: str = "owner"
 
 
@@ -177,6 +180,12 @@ def validate_owner_notification(notification: OwnerEmailNotification) -> None:
             raise InvalidChannelPayloadError(f"Champ {name} invalide.")
     if notification.priority not in {"P0", "P1", "P2", "P3"}:
         raise InvalidChannelPayloadError("Priorité invalide.")
+    if not isinstance(notification.evidence_refs, tuple) or len(notification.evidence_refs) > 20 or any(not isinstance(ref, str) or not ref.strip() or len(ref) > 500 for ref in notification.evidence_refs):
+        raise InvalidChannelPayloadError("Références de preuve invalides.")
+    if not isinstance(notification.requires_owner_action, bool):
+        raise InvalidChannelPayloadError("requires_owner_action doit être booléen.")
+    if notification.deadline is not None and (not isinstance(notification.deadline, str) or len(notification.deadline) > 80):
+        raise InvalidChannelPayloadError("Échéance invalide.")
     if not isinstance(notification.subject, str) or not 1 <= len(notification.subject.strip()) <= MAX_EMAIL_SUBJECT_CHARS:
         raise InvalidChannelPayloadError("Sujet e-mail invalide.")
     if not isinstance(notification.body, str) or not 1 <= len(notification.body.strip()) <= MAX_EMAIL_BODY_CHARS:
