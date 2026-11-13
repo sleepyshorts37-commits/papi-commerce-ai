@@ -47,7 +47,7 @@ class CommercialSiteIntegrationTests(unittest.TestCase):
             with self.assertRaises(CommercialSiteError):
                 generate_commercial_site(
                     directory, "too-long",
-                    self.brief(facts=["Information détaillée " * 30]),
+                    self.brief(facts=[("Information détaillée numéro " + str(i) + " ") * 7 for i in range(8)]),
                 )
             self.assertFalse((Path(directory) / "too-long").exists())
 
