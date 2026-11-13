@@ -160,6 +160,12 @@ jobs:
             ('recovery-crash-job', 'recovery-crash-task', 'test.noop', '{}'::jsonb, 'recovery-crash-key'),
             ('recovery-retry-job', 'recovery-retry-task', 'test.noop', '{}'::jsonb, 'recovery-retry-key'),
             ('recovery-terminal-job', 'recovery-terminal-task', 'test.noop', '{}'::jsonb, 'recovery-terminal-key');
+          update public.papi_jobs set available_at = now() - interval '3 minutes'
+           where id = 'recovery-crash-job';
+          update public.papi_jobs set available_at = now() - interval '2 minutes'
+           where id = 'recovery-retry-job';
+          update public.papi_jobs set available_at = now() - interval '1 minute'
+           where id = 'recovery-terminal-job';
           do $recovery$
           declare
             first_claim jsonb;
