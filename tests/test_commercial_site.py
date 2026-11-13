@@ -33,16 +33,14 @@ class CommercialSiteIntegrationTests(unittest.TestCase):
             self.assertFalse(result["network_used"])
             self.assertEqual(set(result["files"]), {"index.html", "styles.css", "project.json"})
 
-    def test_escapes_untrusted_html_facts(self):
+    def test_rejects_markup_before_site_creation(self):
         with tempfile.TemporaryDirectory() as directory:
-            result = generate_commercial_site(
-                directory, "safe-hotel",
-                self.brief(facts=["Vue <script>alert(1)</script>"]),
-            )
-            html = (Path(directory) / "safe-hotel" / "index.html").read_text(encoding="utf-8")
-            self.assertNotIn("<script>alert(1)</script>", html)
-            self.assertIn("&lt;script&gt;", html)
-            self.assertTrue(result["quality"]["passed"])
+            with self.assertRaises(ValueError):
+                generate_commercial_site(
+                    directory, "safe-hotel",
+                    self.brief(facts=["Vue <script>alert(1)</script>"]),
+                )
+            self.assertFalse((Path(directory) / "safe-hotel").exists())
 
     def test_refuses_oversized_content_without_creating_project(self):
         with tempfile.TemporaryDirectory() as directory:
