@@ -23,9 +23,9 @@ Définir des niveaux de maturité vérifiables et empêcher toute déclaration d
 - Livrable : `tests/test_quality_gates.py`.
 
 ## Jour 4 — Documentation opérationnelle
-- [ ] Définir comment produire, stocker et réviser les preuves réelles.
-- [ ] Définir les limites : pas de certification automatique WCAG, audit sécurité, mesure terrain ou autorisation de publication.
-- [ ] Relier les critères aux rapports de recette existants.
+- [x] Définir comment produire, stocker et réviser les preuves réelles.
+- [x] Définir les limites : pas de certification automatique WCAG, audit sécurité, mesure terrain ou autorisation de publication.
+- [x] Relier les critères aux rapports de recette existants.
 - Livrable : registre de critères et guide de preuve.
 
 ## Jour 5 — CI, rapport et roadmap
@@ -80,3 +80,7 @@ Chaque critère doit posséder un enregistrement avec `status=passed`, `evidence
 - Une preuve absente, échouée, en attente, non datée ou sans réviseur bloque le niveau.
 - Les niveaux sont cumulatifs : un niveau supérieur ne compense jamais un contrôle inférieur manquant.
 - L'évaluation ne déploie, ne publie, ne contacte personne et ne dépense rien.
+
+
+## Note de validation CI
+La première exécution sur la branche par rapport à main a échoué avant le chargement des tests du générateur multi-pages, car main ne contient pas encore le module papi_core.site_architecture. Cette limitation concerne la base de comparaison, pas le moteur de portes de qualité. La revue est donc rattachée à la branche de coordination qui contient déjà le socle WEB BUILDER ; la CI doit être relancée sur cette base avant clôture.
