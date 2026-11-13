@@ -117,8 +117,8 @@ class WorkerAuditAttributionRegressionTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "audit_blocked")
             self.assertEqual(invoked, [])
-            self.assertEqual(fail.call_count, 1)
-            self.assertEqual(fail.call_args.kwargs["error_code"], "audit_unavailable")
+            self.assertEqual(fail_mock.call_count, 1)
+            self.assertEqual(fail_mock.call_args.kwargs["error_code"], "audit_unavailable")
 
 
 if __name__ == "__main__":
