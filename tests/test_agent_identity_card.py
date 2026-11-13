@@ -34,11 +34,17 @@ class AgentIdentityCardTests(unittest.TestCase):
             {"id": ""},
             {"permissions": ["read_reports", None]},
             {"status": "unknown"},
+            {"status": ["defined"]},
+            {"permissions": ["   "]},
             {"autonomy_level": "unlimited"},
         ):
             with self.subTest(changes=changes):
                 with self.assertRaises(IdentityCardError):
                     create_identity_card({**self.agent, **changes}, "2026-11-12")
+
+    def test_rejects_malformed_unhashable_status_without_type_error(self):
+        with self.assertRaises(IdentityCardError):
+            create_identity_card({**self.agent, "status": []}, "2026-11-12")
 
     def test_rejects_invalid_creation_date(self):
         with self.assertRaises(IdentityCardError):
