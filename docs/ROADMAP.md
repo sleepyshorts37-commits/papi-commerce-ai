@@ -43,9 +43,9 @@
 
 ## Phase 3 — PAPI DIGITALISATION & IA (nouveau département B2B)
 - [x] Définir l'agent PAPI WEB BUILDER pour créer et modifier des sites web à partir d'un prompt, sans compétences en programmation.
-- [ ] Concevoir son moteur de génération, aperçu isolé, modification itérative et export de code source.\n  - [x] Ajouter un serveur de prévisualisation statique local, loopback-only, lecture seule, avec contrôles de chemins et en-têtes CSP ; tests HTTP automatisés.\n  - [ ] Ajouter des tests de rendu navigateur réel, captures responsive et régressions visuelles (le serveur local seul ne constitue pas cette preuve).\n  - Contrat d'architecture multi-pages ajouté : sitemap déterministe, routes sûres et traçabilité exigences → pages ; génération multi-pages et aperçu toujours à faire.
+- [ ] Concevoir son moteur de génération, aperçu isolé, modification itérative et export de code source.\n  - [x] Ajouter un serveur de prévisualisation statique local, loopback-only, lecture seule, avec contrôles de chemins et en-têtes CSP ; tests HTTP automatisés.\n  - [x] Ajouter des tests de rendu navigateur réel, captures responsive et contrôles automatisés de base ; CI validée sur le commit `e704667230d21f5cb3561bd5647642f55fe467ce`. Les régressions visuelles comparatives restent à construire.\n  - Contrat d'architecture multi-pages ajouté : sitemap déterministe, routes sûres et traçabilité exigences → pages ; génération multi-pages et aperçu toujours à faire.
   - Socle partiel ajouté : génération statique déterministe, mises à jour structurées, contrôles locaux et export ZIP allowlisté ; aperçu navigateur isolé et moteur IA non implémentés (voir `docs/PAPI-WEB-BUILDER-MVP.md`).
-- [ ] Ajouter des tests de qualité web, sécurité, responsive et critères d'acceptation.\n  - [x] Ajouter des tests Chromium responsive (390×844, 768×1024, 1440×900), navigation et captures CI ; validation du dernier correctif CI en attente.\n  - [x] Ajouter des contrôles Chromium d'accessibilité structurelle et clavier (landmarks, H1, skip-link, noms des liens, focus visible) ; exécution CI en attente.
+- [ ] Ajouter des tests de qualité web, sécurité, responsive et critères d'acceptation.\n  - [x] Ajouter des tests Chromium responsive (390×844, 768×1024, 1440×900), navigation et captures CI ; validation du dernier correctif CI en attente.\n  - [x] Ajouter et valider en CI les contrôles Chromium d'accessibilité structurelle et clavier (landmarks, H1, skip-link, noms des liens, focus visible).
 - [ ] Atteindre le standard de création web agence/grande entreprise : direction artistique par projet, design system, architecture multi-pages, fonctionnalités réellement intégrées, responsive multi-écrans.
   - Première base visuelle premium ajoutée (composition éditoriale, tokens CSS, responsive tablette/mobile et fondamentaux clavier) ; ne constitue pas une livraison entreprise.
 - [ ] Ajouter une chaîne de preuves qualité : tests navigateur, régression visuelle, accessibilité cible WCAG 2.2 AA, SEO, Core Web Vitals, sécurité et documentation de livraison.
@@ -94,8 +94,8 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Navigation partagée, page active accessible, fil d'Ariane, CSS commun responsive.
 - [x] Titres/descriptions SEO, sitemap XML et manifeste des fichiers produits.
 - [x] Échappement HTML et vérification des liens internes dans un rapport qualité initial.
-- [ ] Tests automatisés exécutés et validés en CI sur le commit de livraison.
-- [ ] Validation CI des tests navigateur multi-viewport et captures (assertion de route corrigée, rerun requis), audit WCAG 2.2 AA, performance et sécurité.
+- [x] Tests automatisés exécutés et validés en CI sur `e704667230d21f5cb3561bd5647642f55fe467ce`.
+- [x] Tests navigateur multi-viewport et captures validés en CI ; audit WCAG 2.2 AA, performance et sécurité restent à réaliser.
 - [ ] Formulaires/backend, intégrations métier, authentification, aperçu hébergé et déploiement.
 - **Statut :** génération multi-pages implémentée, mais qualité entreprise non certifiée et aucune publication autorisée ou réalisée.
 
@@ -130,6 +130,6 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Retirer l'appel Google Fonts externe et imposer des polices système locales ; le test navigateur vérifie désormais l'absence de requêtes tierces.
 - [x] Confirmer le workflow Chromium sur `13acb342fcdf377f3f0b39fd30ddee5c66cc3b8b` : core tests, registre, documentation et Chromium tous réussis.
 - [x] Ajouter tests mobile, tablette, desktop, navigation inter-pages, débordement horizontal et captures d'écran CI (validation du commit à venir).
-- [ ] Ajouter les contrôles d'accessibilité automatisés et documenter les limites de validation humaine.
-- [ ] Exécuter la suite finale et publier un rapport de recette technique.
+- [x] Ajouter les contrôles d'accessibilité automatisés de base et documenter les limites de validation humaine (Chromium CI réussi ; aucune certification WCAG).
+- [x] Exécuter la suite finale et publier le rapport de recette technique (`docs/PAPI-WEB-BUILDER-BROWSER-VALIDATION-REPORT.md`) : core 428 tests, registre, documentation et Chromium (4 tests) réussis sur `e704667230d21f5cb3561bd5647642f55fe467ce`.
 - **Statut :** Jours 1 et 2 validés en CI sur `13acb342fcdf377f3f0b39fd30ddee5c66cc3b8b` ; tests responsive Jour 3 ajoutés, CI à confirmer. Aucun audit WCAG complet revendiqué.
