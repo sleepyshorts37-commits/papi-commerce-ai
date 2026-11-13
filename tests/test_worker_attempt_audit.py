@@ -3,6 +3,7 @@ import json
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from papi_core.audit import read_events
@@ -96,6 +97,50 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
             self.assertFalse(errors)
             self.assertTrue(all(not thread.is_alive() for thread in threads))
             self.assertEqual(len(read_events(worker.audit_path)), 1)
+
+    def test_interrupted_append_rolls_back_partial_record(self):
+        from papi_core.audit import append_event, new_event
+        import os
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            worker = PapiWorker(
+                queue=DummyQueue(), registry=object(),
+                policy={"execution_enabled": False}, worker_id="worker-a",
+                audit_path=path,
+            )
+            worker._audit(
+                job_id="job-interrupt", task_id="task-interrupt",
+                attempt_id="00000000-0000-4000-8000-000000000011",
+                action="job.claimed", actor="system:worker:worker-a",
+                handler="internal.echo", outcome="claimed",
+            )
+            original = path.read_bytes()
+            event = new_event(event_id="interrupted", actor="worker-a", action="job.retry",
+                              entity_type="job", entity_id="job-interrupt", details={})
+            real_write = os.write
+            calls = {"count": 0}
+            def partial_then_fail(fd, data):
+                calls["count"] += 1
+                if calls["count"] == 1:
+                    return real_write(fd, data[:7])
+                raise OSError("simulated interrupted write")
+            with patch("papi_core.audit.os.write", side_effect=partial_then_fail):
+                with self.assertRaises(OSError):
+                    append_event(event, path)
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual(len(read_events(path)), 1)
+
+    def test_lock_failure_does_not_append(self):
+        import fcntl
+        from papi_core.audit import append_event, new_event
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            event = new_event(event_id="lock-failure", actor="worker-a", action="job.retry",
+                              entity_type="job", entity_id="job-lock", details={})
+            with patch("fcntl.flock", side_effect=OSError("simulated lock failure")):
+                with self.assertRaises(OSError):
+                    append_event(event, path)
+            self.assertEqual(path.read_bytes(), b"")
 
     def test_incomplete_tail_is_rejected_without_losing_confirmed_events(self):
         with tempfile.TemporaryDirectory() as directory:
