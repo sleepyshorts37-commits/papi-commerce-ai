@@ -257,5 +257,44 @@ class AgentAccessTests(unittest.TestCase):
         self.write()
 
 
+    def test_authenticated_agent_loses_access_immediately_after_suspension(self):
+        private_dir = self.root / "lifecycle-private"
+        public_registry = self.root / "lifecycle-public.json"
+        private = provision_ed25519_agent("agent-a", private_dir, public_registry)
+        payload = {"permission": "read_reports", "task_id": "task-1",
+                   "handler": "report.preview"}
+        envelope = sign_ed25519_request("agent-a", payload, private, nonce="l" * 24)
+        kwargs = dict(task_id="task-1", handler="report.preview",
+                      agents_path=self.path, policy=self.policy,
+                      replay_db=self.root / "lifecycle-replay.sqlite3",
+                      public_registry=public_registry)
+        self.assertTrue(authorize_authenticated_agent(
+            "agent-a", "read_reports", envelope, **kwargs)["authorized"])
+        self.agents["agents"][0]["status"] = "suspended"
+        self.write()
+        fresh = sign_ed25519_request("agent-a", payload, private, nonce="m" * 24)
+        with self.assertRaises(AccessDenied):
+            authorize_authenticated_agent("agent-a", "read_reports", fresh, **kwargs)
+
+    def test_authenticated_agent_cannot_escalate_after_permission_removed(self):
+        private_dir = self.root / "escalation-private"
+        public_registry = self.root / "escalation-public.json"
+        private = provision_ed25519_agent("agent-a", private_dir, public_registry)
+        payload = {"permission": "read_reports", "task_id": "task-1",
+                   "handler": "report.preview"}
+        envelope = sign_ed25519_request("agent-a", payload, private, nonce="n" * 24)
+        kwargs = dict(task_id="task-1", handler="report.preview",
+                      agents_path=self.path, policy=self.policy,
+                      replay_db=self.root / "escalation-replay.sqlite3",
+                      public_registry=public_registry)
+        self.assertTrue(authorize_authenticated_agent(
+            "agent-a", "read_reports", envelope, **kwargs)["authorized"])
+        self.agents["agents"][0]["permissions"].remove("read_reports")
+        self.write()
+        fresh = sign_ed25519_request("agent-a", payload, private, nonce="o" * 24)
+        with self.assertRaises(AccessDenied):
+            authorize_authenticated_agent("agent-a", "read_reports", fresh, **kwargs)
+
+
 if __name__ == "__main__":
     unittest.main()
