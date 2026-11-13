@@ -38,6 +38,8 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core schedule-preview` — calculer les échéances récurrentes à examiner, sans exécuter de tâche.
 - `PYTHONPATH=runtime python -m papi_core sales-validate` — valider les registres commerciaux locaux.
 - `PYTHONPATH=runtime python -m papi_core sales-report` — afficher les indicateurs commerciaux locaux, sans action externe.
+- `PYTHONPATH=runtime python -m papi_core global-work-validate` — valider le registre local des missions internationales.
+- `PYTHONPATH=runtime python -m papi_core video-tasks-validate` — valider le registre local des liens et tâches vidéo.
 - `PYTHONPATH=runtime python -m papi_core finance-validate` — valider le registre financier local.
 - `PYTHONPATH=runtime python -m papi_core finance-report` — afficher les recettes vérifiées et dépenses payées, en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core security-check` — contrôler les garde-fous locaux sans réseau ni affichage de secrets.
