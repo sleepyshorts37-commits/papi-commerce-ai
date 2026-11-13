@@ -46,6 +46,48 @@ jobs:
             -c "create role anon; create role authenticated; create role service_role bypassrls;"
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/schema.sql
+
+          # Exercise the versioned migration lifecycle in a second disposable database.
+          createdb -h 127.0.0.1 -U postgres papi_migration_test
+          psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_001_audit_anchor_up.sql
+          # Re-application must be idempotent.
+          psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_001_audit_anchor_up.sql
+          psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_001_audit_anchor_down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 <<'MIGRATION_SQL'
+          do $migrationassert$
+          begin
+            if to_regclass('public.papi_audit_anchor_records') is not null
+               or to_regclass('public.papi_audit_anchor_heads') is not null then
+              raise exception 'Clean rollback left audit anchor tables behind';
+            end if;
+          end
+          $migrationassert$;
+          MIGRATION_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_001_audit_anchor_up.sql
+          # A populated rollback must fail atomically and leave the evidence intact.
+          psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 <<'MIGRATION_SQL'
+          insert into public.papi_audit_anchor_records(journal_id, record_digest, canonical_record)
+          values ('migration-guard', repeat('a', 64), '{"migration_test":true}');
+          MIGRATION_SQL
+          if psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_001_audit_anchor_down.sql; then
+            echo "Populated rollback unexpectedly succeeded" >&2
+            exit 1
+          fi
+          psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 <<'MIGRATION_SQL'
+          do $migrationassert$
+          begin
+            if not exists (select 1 from public.papi_audit_anchor_records where journal_id = 'migration-guard')
+               or to_regprocedure('public.papi_advance_audit_anchor(text,text,text)') is null then
+              raise exception 'Refused rollback changed or removed existing evidence';
+            end if;
+          end
+          $migrationassert$;
+          MIGRATION_SQL
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
           select public.papi_consume_agent_nonce(
             'ci-agent', 'nonce-ci-000000000001', now() + interval '5 minutes'
