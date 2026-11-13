@@ -85,6 +85,12 @@ class AgentIdentityCardTests(unittest.TestCase):
         ]
         validate_identity_card(card)
 
+    def test_rejects_boolean_schema_version(self):
+        card = create_identity_card(self.agent, "2026-11-12")
+        card["schema_version"] = True
+        with self.assertRaises(IdentityCardError):
+            validate_identity_card(card)
+
     def test_validation_detects_tampered_employee_identifier(self):
         card = create_identity_card(self.agent, "2026-11-12")
         card["employee_id"] = "PAPI-AG-OTHER"
