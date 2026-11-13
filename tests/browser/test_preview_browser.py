@@ -7,7 +7,7 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-from papi_core.multi_page_builder import generate_multi_page_project
+from papi_core.multi_page_builder import SECTOR_DESIGNS, generate_multi_page_project
 from papi_core.preview_server import create_preview_server
 
 
@@ -422,6 +422,83 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
                 else:
                     self.assertLess(first["top"], second["top"], f"{label}: mobile/tablet card order changed")
             self.assertGreaterEqual(audit["features"]["top"], audit["hero"]["bottom"] - 1, f"{label}: feature section overlaps hero")
+        await page.close()
+
+
+    async def test_all_six_sector_profiles_render_responsively(self):
+        """Render every supported sector through the real preview server in Chromium."""
+        architecture = {
+            "project_name": "Demo sectorielle",
+            "requirements": [
+                {"id": "brand", "description": "Présenter la marque", "priority": "must"},
+                {"id": "contact", "description": "Afficher le contact", "priority": "must"},
+            ],
+            "pages": [
+                {"slug": "home", "title": "Accueil", "purpose": "Découvrir le service", "requirements": ["brand"]},
+                {"slug": "contact", "title": "Contact", "purpose": "Contacter l'équipe", "requirements": ["contact"]},
+            ],
+        }
+        page = await self.browser.new_page()
+        viewports = (("mobile", 390, 844), ("tablet", 768, 1024), ("desktop", 1440, 900))
+        for index, (sector, design) in enumerate(SECTOR_DESIGNS.items()):
+            with self.subTest(sector=sector):
+                workspace = Path(self.workspace.name) / f"sector-{index}"
+                generate_multi_page_project(
+                    workspace, f"site-{index}",
+                    {"name": "Demo sectorielle", "industry": sector, "tagline": "Démonstration"},
+                    architecture,
+                )
+                server = create_preview_server(workspace / f"site-{index}")
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                sector_url = f"http://127.0.0.1:{server.server_port}"
+                try:
+                    for label, width, height in viewports:
+                        await page.set_viewport_size({"width": width, "height": height})
+                        response = await page.goto(sector_url + "/", wait_until="networkidle")
+                        self.assertIsNotNone(response)
+                        self.assertEqual(response.status, 200, f"{sector} {label}")
+                        audit = await page.evaluate("""() => {
+                            const body = document.body;
+                            const root = getComputedStyle(body);
+                            const hero = document.querySelector(".hero");
+                            const visual = document.querySelector(".hero-visual");
+                            const rect = visual.getBoundingClientRect();
+                            return {
+                                bodyClass: body.className,
+                                ink: root.getPropertyValue("--ink").trim().toLowerCase(),
+                                accent: root.getPropertyValue("--accent").trim().toLowerCase(),
+                                paper: root.getPropertyValue("--paper").trim().toLowerCase(),
+                                heroClass: hero.className,
+                                visualWidth: rect.width,
+                                visualHeight: rect.height,
+                                headingVisible: !!document.querySelector("h1") && getComputedStyle(document.querySelector("h1")).visibility !== "hidden",
+                                horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                                cards: [...document.querySelectorAll(".feature-card")].map(card => {
+                                    const r = card.getBoundingClientRect();
+                                    return {width:r.width,height:r.height,top:r.top,left:r.left};
+                                })
+                            };
+                        }""")
+                        self.assertEqual(audit["bodyClass"], f"sector-{sector}", f"{sector} {label}")
+                        self.assertEqual(audit["ink"], design["primary"].lower(), f"{sector} {label} primary token")
+                        self.assertEqual(audit["accent"], design["accent"].lower(), f"{sector} {label} accent token")
+                        self.assertEqual(audit["paper"], design["surface"].lower(), f"{sector} {label} surface token")
+                        self.assertIn(f"hero--{design['layout']}", audit["heroClass"], f"{sector} {label} hero variant")
+                        self.assertGreater(audit["visualWidth"], 100, f"{sector} {label} hero visual width")
+                        self.assertGreater(audit["visualHeight"], 100, f"{sector} {label} hero visual height")
+                        self.assertTrue(audit["headingVisible"], f"{sector} {label} heading")
+                        self.assertFalse(audit["horizontalOverflow"], f"{sector} {label} horizontal overflow")
+                        self.assertEqual(len(audit["cards"]), 3, f"{sector} {label} feature cards")
+                        self.assertTrue(all(card["width"] > 0 and card["height"] > 0 for card in audit["cards"]), f"{sector} {label} hidden cards")
+                    contact = await page.goto(sector_url + "/contact/", wait_until="networkidle")
+                    self.assertIsNotNone(contact)
+                    self.assertEqual(contact.status, 200, f"{sector} contact route")
+                    self.assertTrue(await page.locator('nav[aria-label="Navigation principale"]').is_visible())
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    thread.join(timeout=2)
         await page.close()
 
 if __name__ == "__main__":
