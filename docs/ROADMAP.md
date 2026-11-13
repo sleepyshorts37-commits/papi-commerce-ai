@@ -109,3 +109,14 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [ ] Images éditoriales, catalogue e-commerce, réservation, formulaires/backend et intégrations métier.
 - [ ] Tests navigateur, revue responsive réelle, audit WCAG 2.2 AA et mesure Core Web Vitals.
 - **Statut :** base de design sectorielle livrée ; aucune prétention de certification entreprise ou de mise en production.
+
+
+### PAPI WEB BUILDER — sections éditoriales configurables
+- [x] Ajouter un catalogue contrôlé de sections : intro, grille de fonctionnalités, statistiques, FAQ et CTA.
+- [x] Autoriser des sections distinctes sur chaque page via un brief structuré.
+- [x] Refuser HTML/CSS/scripts arbitraires et destinations CTA externes ; n'autoriser que les pages internes existantes.
+- [x] Ajouter des composants sémantiques, styles responsives et tests unitaires/intégration.
+- [ ] Confirmer le passage CI sur le commit final et traiter toute régression.
+- [ ] Ajouter des sections métier spécialisées (produits, équipe, témoignages, réservation) avec schémas de données validés.
+- [ ] Ajouter prévisualisation navigateur et tests visuels multi-viewport.
+- **Statut :** catalogue de sections statiques personnalisables implémenté ; aucune fonctionnalité transactionnelle ou backend n'est incluse.
