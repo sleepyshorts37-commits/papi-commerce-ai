@@ -112,7 +112,10 @@ create table if not exists public.papi_jobs (
     result jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    check ((status = 'running') = (lease_owner is not null and lease_token is not null and lease_until is not null))
+    check (
+        (status = 'running' and lease_owner is not null and lease_token is not null and lease_until is not null)
+        or (status <> 'running' and lease_owner is null and lease_token is null and lease_until is null)
+    )
 );
 alter table public.papi_jobs add column if not exists agent_identity jsonb check (agent_identity is null or jsonb_typeof(agent_identity) = 'object');
 create index if not exists papi_jobs_ready_idx on public.papi_jobs(status, available_at, created_at);
