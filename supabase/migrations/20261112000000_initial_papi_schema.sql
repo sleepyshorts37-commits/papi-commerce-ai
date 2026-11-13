@@ -41,7 +41,7 @@ create or replace function public.papi_commit_task_change(
 ) returns bigint
 language plpgsql
 security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
     v_new_version bigint;
@@ -127,7 +127,7 @@ create or replace function public.papi_claim_job(
     p_worker_id text, p_lease_token uuid, p_lease_seconds integer default 120
 ) returns jsonb
 language plpgsql security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare v_job public.papi_jobs%rowtype;
 begin
@@ -138,7 +138,8 @@ begin
      where status = 'running' and lease_until < now() and attempts >= max_attempts;
 
     if p_worker_id is null or length(trim(p_worker_id)) = 0 or length(p_worker_id) > 120
-       or p_lease_token is null or p_lease_seconds < 15 or p_lease_seconds > 900 then
+       or p_lease_token is null or p_lease_seconds is null
+       or p_lease_seconds < 15 or p_lease_seconds > 900 then
         raise exception 'Invalid worker lease request' using errcode = '22023';
     end if;
     select * into v_job
@@ -171,11 +172,11 @@ create or replace function public.papi_complete_job(
     p_job_id text, p_worker_id text, p_lease_token uuid, p_result jsonb default '{}'::jsonb
 ) returns boolean
 language plpgsql security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare v_count integer;
 begin
-    if jsonb_typeof(p_result) <> 'object' then
+    if p_result is null or jsonb_typeof(p_result) <> 'object' then
         raise exception 'Invalid result object' using errcode = '22023';
     end if;
     update public.papi_jobs
@@ -193,7 +194,7 @@ create or replace function public.papi_fail_job(
     p_job_id text, p_worker_id text, p_lease_token uuid, p_error_code text
 ) returns text
 language plpgsql security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
     v_job public.papi_jobs%rowtype;
@@ -273,7 +274,7 @@ create or replace function public.papi_consume_agent_nonce(
 ) returns boolean
 language plpgsql
 security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare v_inserted integer;
 begin
