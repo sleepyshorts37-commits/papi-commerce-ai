@@ -12,7 +12,7 @@ class SupabaseCheckpointStoreTests(unittest.TestCase):
         client = object.__new__(SupabaseStore)
         client.request = Mock()
         self.client = client
-        self.adapter = SupabaseCheckpointStore(client)
+        self.adapter = SupabaseCheckpointStore(client, verify_signature=lambda key, payload, signature: signature == "test-signature")
 
     def test_public_request_interface_delegates_without_exposing_credentials(self):
         client = object.__new__(SupabaseStore)
@@ -34,6 +34,29 @@ class SupabaseCheckpointStoreTests(unittest.TestCase):
             "key_id": "test-key",
             "signature": "test-signature",
         }
+
+
+    def test_constructor_requires_signature_verifier(self):
+        with self.assertRaises(TypeError):
+            SupabaseCheckpointStore(self.client)
+
+    def test_put_record_rejects_invalid_signature_before_network_write(self):
+        record = self.record()
+        record["signature"] = "forged"
+        canonical = json.dumps(record, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        digest = hashlib.sha256(canonical).hexdigest()
+        with self.assertRaises(StoreError):
+            self.adapter.put_record(digest, canonical)
+        self.client.request.assert_not_called()
+
+    def test_compare_and_swap_rejects_wrong_previous_digest(self):
+        record = self.record()
+        record["previous_record_digest"] = "c" * 64
+        canonical = json.dumps(record, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        self.client.request.return_value = [{"canonical_record": canonical}]
+        with self.assertRaises(StoreError):
+            self.adapter.compare_and_swap_latest("journal-01", None, digest)
 
     def test_get_latest_returns_none_or_digest(self):
         self.client.request.return_value = []

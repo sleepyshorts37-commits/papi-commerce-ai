@@ -84,7 +84,7 @@ class SupabaseEd25519EndToEndTests(unittest.TestCase):
         self.transport = PostgrestContractSimulator()
         client = object.__new__(SupabaseStore)
         client.request = self.transport.request
-        self.store = SupabaseCheckpointStore(client)
+        self.store = SupabaseCheckpointStore(client, verify_signature=self.keyring.verify)
 
     def tearDown(self):
         self.temp.cleanup()
