@@ -120,3 +120,14 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter des sections métier statiques (catalogue produits, équipe, témoignages avec provenance explicite, cartes de services) avec schémas de données validés.\n  - Réservation réelle, paiement, panier et formulaires connectés restent hors périmètre ; voir `docs/PAPI-WEB-BUILDER-BUSINESS-COMPONENTS.md`.
 - [ ] Ajouter prévisualisation navigateur et tests visuels multi-viewport.
 - **Statut :** catalogue de sections statiques personnalisables implémenté ; aucune fonctionnalité transactionnelle ou backend n'est incluse.
+
+
+### PAPI WEB BUILDER — validation navigateur (cycle 5 jours)
+- [x] Définir le programme de validation navigateur sur cinq jours (`docs/PAPI-WEB-BUILDER-BROWSER-VALIDATION-5-DAYS.md`).
+- [x] Corriger le routage de la racine `/` vers `index.html` dans le serveur de prévisualisation local après analyse d'un échec CI réel.
+- [ ] Compléter les tests HTTP et valider la CI du correctif.
+- [ ] Installer et intégrer les tests Playwright sur Chromium dans un environnement isolé.
+- [ ] Vérifier mobile, tablette, desktop, navigation et captures d'écran CI.
+- [ ] Ajouter les contrôles d'accessibilité automatisés et documenter les limites de validation humaine.
+- [ ] Exécuter la suite finale et publier un rapport de recette technique.
+- **Statut :** cycle planifié ; Jour 1 en cours. Aucun test navigateur réel ni audit WCAG complet revendiqué.
