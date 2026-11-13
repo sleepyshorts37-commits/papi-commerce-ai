@@ -32,6 +32,7 @@ class OwnerCommunicationAuthorizationTests(unittest.IsolatedAsyncioTestCase):
             identity_cards={"astou": self.card},
             owner_destination=self.destination,
             email_sender=self.sender,
+            notification_guard=FakeNotificationGuard(),
         )
         self.notification = OwnerEmailNotification(
             notification_id="n-1", agent_id="astou", priority="P1",
@@ -74,6 +75,7 @@ class OwnerCommunicationAuthorizationTests(unittest.IsolatedAsyncioTestCase):
                 agent_profiles={"astou": self.profile},
                 identity_cards={"astou": self.card},
                 owner_destination=destination, email_sender=self.sender,
+                notification_guard=FakeNotificationGuard(),
             )
             with self.assertRaises(CommunicationAuthorizationError):
                 await router.send_owner_notification(self.notification)
