@@ -18,3 +18,6 @@
 
 ## Validation
 La validation locale n'a pas été exécutée dans cette session. La CI de la PR devra être vérifiée sur son SHA exact avant de déclarer le cycle validé.
+
+## Base et intégration CI
+La branche est fondée sur le commit WEB BUILDER validé a467fdcaca144d5c0efe7af2b415eaee5de6eb86 et la PR cible main afin que les workflows GitHub configurés pour les pull requests vers main s'exécutent. Les changements WEB BUILDER requis sont donc inclus dans la comparaison de cette PR. La validation finale dépend des workflows lancés sur la tête la plus récente.
