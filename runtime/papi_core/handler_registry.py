@@ -71,9 +71,10 @@ def authorize_job(
     approval_status = task.get("approval_status")
     if not isinstance(approval_required, bool):
         raise PermissionError("Indicateur approval_required invalide : accès fermé.")
-    if approval_status is not None and approval_status not in {
-        "not_required", "pending", "approved", "rejected"
-    }:
+    if approval_status is not None and (
+        not isinstance(approval_status, str)
+        or approval_status not in {"not_required", "pending", "approved", "rejected"}
+    ):
         raise PermissionError("Statut d'approbation invalide : accès fermé.")
     if approval_required and approval_status != "approved":
         raise PermissionError("Approbation du propriétaire requise.")
