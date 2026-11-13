@@ -47,17 +47,17 @@ declare
     v_new_version bigint;
 begin
     if p_task_id is null or length(trim(p_task_id)) = 0
-       or jsonb_typeof(p_task) <> 'object'
+       or jsonb_typeof(p_task) is distinct from 'object'
        or p_task->>'id' is distinct from p_task_id
-       or jsonb_typeof(p_event) <> 'object'
+       or jsonb_typeof(p_event) is distinct from 'object'
        or p_event->>'entity_type' is distinct from 'task'
        or p_event->>'entity_id' is distinct from p_task_id
        or p_event->>'event_id' is null
        or p_event->>'occurred_at' is null
        or p_event->>'actor' is null
        or p_event->>'action' is null
-       or jsonb_typeof(p_event->'details') <> 'object'
-       or p_expected_version < 1 then
+       or jsonb_typeof(p_event->'details') is distinct from 'object'
+       or p_expected_version is null or p_expected_version < 1 then
         raise exception 'Invalid task change payload' using errcode = '22023';
     end if;
 
