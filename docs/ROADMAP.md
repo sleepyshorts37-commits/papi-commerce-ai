@@ -145,3 +145,10 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Valider les workflows core (429 tests), Chromium (9 tests), documentation et registre sur le commit testé `83092e61fd39612fa5ea448569d93c12a1070b96`.
 - [x] Publier le rapport `docs/PAPI-WEB-BUILDER-ADVANCED-QUALITY-REPORT.md` et conserver les captures CI (artefact 14067852956).
 - **Statut :** cycle de qualité avancée terminé, critères automatisés testés PASS. Cette validation ne constitue ni une certification WCAG 2.2 AA, ni un audit sécurité, ni des Core Web Vitals terrain. Aucun merge ni déploiement.
+
+
+### PAPI WEB BUILDER — durcissement du serveur de prévisualisation (cycle 5 jours)
+- [x] Définir le plan de tests adversariaux (`docs/PAPI-PREVIEW-SERVER-SECURITY-5-DAYS.md`).
+- [x] Ajouter des tests pour les séquences UTF-8 invalides, séparateurs Windows encodés et octets NUL encodés.
+- [ ] Valider les nouveaux tests en CI et poursuivre la matrice de robustesse.
+- **Statut :** Jour 1 implémenté ; validation CI en attente. Aucune revue indépendante ou mise en production.
