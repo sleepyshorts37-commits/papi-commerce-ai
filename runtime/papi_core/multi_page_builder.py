@@ -207,7 +207,7 @@ def multi_page_quality_report(workspace: str | Path, slug: str) -> dict[str, Any
         checks["all_pages_exist"] &= "<!doctype html>" in document and 'name="viewport"' in document
         checks["no_script_execution"] &= "<script" not in document.lower()
         checks["semantic_headings"] &= "<h1 " in document and "<main " in document
-        for href in re.findall(r'<a\\s+href="([^"]+)"', document):
+        for href in re.findall(r'<a\s+href="([^"]+)"', document):
             if href.startswith(("#", "https://", "mailto:")):
                 continue
             resolved = (root / Path(name).parent / href).resolve()
