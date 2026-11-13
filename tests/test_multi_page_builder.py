@@ -51,14 +51,19 @@ class MultiPageBuilderTests(unittest.TestCase):
                         {"id": "faq", "type": "faq", "eyebrow": "Aide", "heading": "Questions fréquentes", "body": "Tout savoir.", "items": [
                             {"question": "Quand commencer ?", "answer": "À tout moment."},
                         ]},
-                    ]
+                    ],
+                    "services": [
+                        {"id": "service-intro", "type": "intro", "eyebrow": "Formation", "heading": "Un parcours adapté", "body": "Un accompagnement structuré."},
+                    ],
                 },
             }
             generate_multi_page_project(tmp, "custom", spec, self.brief())
             page = (Path(tmp) / "custom/index.html").read_text()
             self.assertIn("Nos parcours", page)
             self.assertIn("Questions fréquentes", page)
-            self.assertNotIn("Une expérience conçue avec intention.", page)\n            services = (Path(tmp) / "custom/services/index.html").read_text()\n            self.assertIn("Un parcours adapté", services)
+            self.assertNotIn("Une expérience conçue avec intention.", page)
+            services = (Path(tmp) / "custom/services/index.html").read_text()
+            self.assertIn("Un parcours adapté", services)
 
     def test_escapes_content_and_marks_current_navigation(self):
         with tempfile.TemporaryDirectory() as tmp:
