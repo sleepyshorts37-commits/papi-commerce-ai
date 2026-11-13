@@ -134,6 +134,7 @@ def rank_global_work_opportunities(
         else:
             score -= 5
             reasons.append("preuves_absentes_ou_insuffisantes:-5")
+            blockers.append("preuves_insuffisantes")
 
         score = max(0, min(100, score))
         review_priority = not blockers and score >= 50
