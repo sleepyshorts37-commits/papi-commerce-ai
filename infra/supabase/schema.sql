@@ -268,21 +268,42 @@ revoke all on public.papi_agent_used_nonces from public, anon, authenticated;
 grant select, insert, update on public.papi_agent_public_keys to service_role;
 grant select, insert, delete on public.papi_agent_used_nonces to service_role;
 
--- L'insertion atomique garantit qu'un nonce ne peut être consommé que par un worker.
+-- L'insertion atomique lie le nonce à une version de clé Ed25519 active.
+revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
+    from public, anon, authenticated, service_role;
+drop function if exists public.papi_consume_agent_nonce(text, text, timestamptz);
+
 create or replace function public.papi_consume_agent_nonce(
-    p_agent_id text, p_nonce text, p_expires_at timestamptz
+    p_agent_id text,
+    p_key_version integer,
+    p_nonce text,
+    p_expires_at timestamptz
 ) returns boolean
 language plpgsql
 security invoker
 set search_path = pg_catalog, public, pg_temp
-as $$
-declare v_inserted integer;
+as $
+declare
+    v_inserted integer;
 begin
-    if p_agent_id is null or p_agent_id !~ '^[A-Za-z0-9_-]{1,100}$'
+    if p_agent_id is null or p_agent_id !~ '^[A-Za-z0-9_-]{1,100}
+       or p_key_version is null or p_key_version < 1
        or p_nonce is null or length(p_nonce) < 16 or length(p_nonce) > 128
        or p_expires_at is null or p_expires_at <= now()
        or p_expires_at > now() + interval '10 minutes' then
         raise exception 'Invalid agent nonce' using errcode = '22023';
+    end if;
+
+    -- Lock the active key row until commit to serialize nonce use against revocation.
+    perform 1
+      from public.papi_agent_public_keys
+     where agent_id = p_agent_id
+       and key_version = p_key_version
+       and status = 'active'
+     for share;
+
+    if not found then
+        return false;
     end if;
 
     delete from public.papi_agent_used_nonces where expires_at < now();
@@ -294,8 +315,8 @@ begin
     get diagnostics v_inserted = row_count;
     return v_inserted = 1;
 end;
-$$;
-revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
+$;
+revoke all on function public.papi_consume_agent_nonce(text, integer, text, timestamptz)
     from public, anon, authenticated;
-grant execute on function public.papi_consume_agent_nonce(text, text, timestamptz)
+grant execute on function public.papi_consume_agent_nonce(text, integer, text, timestamptz)
     to service_role;
