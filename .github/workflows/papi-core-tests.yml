@@ -61,6 +61,8 @@ jobs:
             \quit 1
           \endif
           SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.up.sql
 
       - name: Verify durable job attempt history
         env:
@@ -114,4 +116,24 @@ jobs:
             end if;
           end;
           $attempt$;
+          SQL
+
+      - name: Verify attempt migration rollback on disposable PostgreSQL
+        env:
+          PGPASSWORD: papi_test_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          do $rollback$
+          begin
+            if to_regclass('public.papi_job_attempts') is not null then
+              raise exception 'attempt table remains after rollback';
+            end if;
+            if to_regprocedure('public.papi_renew_job(text,text,uuid,integer)') is not null then
+              raise exception 'lease renewal RPC remains after rollback';
+            end if;
+          end;
+          $rollback$;
           SQL
