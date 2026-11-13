@@ -55,7 +55,6 @@ def _render_html(spec: dict[str, str]) -> str:
         f"  <title>{esc(spec['name'])}</title>\n"
         f"  <meta name=\"description\" content=\"{esc(spec['description'][:155])}\">\n"
         "  <meta name=\"theme-color\" content=\"#101d2d\">\n"
-        "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
         "  <link rel=\"stylesheet\" href=\"styles.css\">\n"
         "</head>\n<body>\n"
         "<a class=\"skip-link\" href=\"#main-content\">Aller au contenu</a>\n"
@@ -89,13 +88,13 @@ def _render_html(spec: dict[str, str]) -> str:
     )
 
 
-CSS = """@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+CSS = """/* System font stacks keep generated sites self-contained and privacy-friendly. */
 :root {
   color-scheme: light;
   --ink: #101d2d; --muted: #627184; --paper: #f7f8fa; --white: #fff;
   --accent: #b58a55; --accent-soft: #f0e7dc; --line: #e5e9ef;
-  --font-body: 'DM Sans', system-ui, sans-serif;
-  --font-display: 'Manrope', 'DM Sans', system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-family: var(--font-body); color: var(--ink); background: var(--paper);
   font-synthesis: none; text-rendering: optimizeLegibility;
 }
