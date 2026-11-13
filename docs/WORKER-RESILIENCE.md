@@ -20,11 +20,11 @@ les simulations restent déterministes.
 
 ## Intégration et garanties
 
-Cette étape n'altère pas les RPC SQL existantes ni le comportement de
-`ExecutionQueue.fail`. Elle fournit un contrat testable à intégrer plus tard
-dans un orchestrateur explicitement gouverné. Les valeurs SQL actuellement
-décrites dans `EXECUTION-QUEUE.md` restent la source de vérité opérationnelle
-jusqu'à une intégration et des tests d'acceptation distincts.
+L'intégration à la file persistante est maintenant fournie par
+`ExecutionQueue.fail` et la surcharge SQL `papi_fail_job(..., boolean, integer)`.
+Le client calcule un délai borné puis transmet la décision ; PostgreSQL
+revérifie le bail, la liste blanche de codes et le plafond durable de tentatives.
+Voir `RETRY-QUEUE-INTEGRATION.md` pour le contrat et ses limites.
 
 Les baux et jetons de fencing restent indispensables. Une reprise après
 expiration peut conduire à une nouvelle exécution après un effet externe déjà
@@ -33,6 +33,6 @@ fournisseur et vérifier le bail avant chaque effet. Cette bibliothèque ne
 garantit pas l'exécution exactly-once.
 
 Aucun worker permanent, heartbeat en arrière-plan, DLQ ou mécanisme de
-shutdown n'est activé par ce module. Ces sujets nécessitent une intégration
-runtime séparée et des tests dédiés. Aucun appel réel à Supabase n'est effectué
-par cette politique.
+shutdown n'est activé par ce module. La migration SQL reste uniquement dans le
+dépôt et n'a pas été appliquée à un projet Supabase réel. Aucun appel distant
+n'est effectué par cette intégration.
