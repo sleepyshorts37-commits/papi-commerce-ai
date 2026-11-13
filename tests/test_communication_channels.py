@@ -55,9 +55,9 @@ class CommunicationChannelContractTests(unittest.TestCase):
 
     def test_provider_timeout_is_typed(self):
         async def slow():
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.2)
         with self.assertRaises(ProviderTimeoutError):
-            asyncio.run(call_provider(slow(), timeout_seconds=0.01))
+            asyncio.run(call_provider(slow(), timeout_seconds=0.1))
 
     def test_provider_failure_is_normalized(self):
         async def fail():
