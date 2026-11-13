@@ -111,6 +111,7 @@ def rank_global_work_opportunities(
         if source is None:
             score -= 10
             reasons.append("source_non_repertoriee_ou_non_validee:-10")
+            blockers.append("source_non_repertoriee")
         else:
             if source["verification_status"] == "suspended":
                 blockers.append("source_suspendue")
@@ -120,6 +121,7 @@ def rank_global_work_opportunities(
             else:
                 score -= 10
                 reasons.append("source_non_active_ou_non_verifiee:-10")
+                blockers.append("source_non_verifiee_ou_inactive")
             if source["verification_status"] == "verified" and not source["enabled"]:
                 blockers.append("source_verifiee_mais_desactivee")
 
