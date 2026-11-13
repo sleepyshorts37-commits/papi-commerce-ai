@@ -198,7 +198,10 @@ def generate_multi_page_project(
 .breadcrumbs { padding-top:2rem; color:var(--muted); font-size:.85rem; }
 .breadcrumbs a { color:inherit; }
 .hero { padding-block:4rem; }
-@media(max-width:800px) { .header-inner { align-items:flex-start; flex-direction:column; gap:.8rem; padding-block:1rem; } }
+/* Prevent intrinsic grid sizing and long copy from widening narrow viewports. */
+.hero > *, .hero-copy, .hero-visual, .content-section, .feature-card { min-width:0; max-width:100%; }
+.hero h1, .hero p, .content-section h2, .content-section p, .feature-card h3, .feature-card p { overflow-wrap:anywhere; }
+@media(max-width:800px) { .header-inner { align-items:flex-start; flex-direction:column; gap:.8rem; padding-block:1rem; } .hero { grid-template-columns:minmax(0,1fr); } }
 """, encoding="utf-8")
         sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         for page in pages:
