@@ -32,6 +32,15 @@
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
+## Phase 2B — Communication directe avec le propriétaire
+- [x] Définir les contrats de conversation vocale STT/TTS et les profils vocaux distincts des IA chefs.
+- [x] Définir les notifications e-mail proactives 24/7 limitées à l'adresse vérifiée du propriétaire.
+- [x] Séparer notification propriétaire, e-mail tiers et permissions de session vocale.
+- [ ] Implémenter les interfaces techniques injectables et les tests simulés.
+- [ ] Implémenter le routage allowlisté, les quotas, l'idempotence et l'audit.
+- [ ] Effectuer la revue de sécurité et les tests avant activation.
+- [ ] Connecter un fournisseur uniquement après choix et autorisation explicites du propriétaire.
+
 ## Phase 3 — Première activité commerciale
 - [ ] Comparer les opportunités sans frais initiaux.
 - [ ] Vérifier éligibilité au Sénégal et moyens de paiement.
