@@ -78,3 +78,46 @@ PYTHONPATH=runtime python -m unittest tests.test_website_builder -v
 3. Définir les contrats d'interface pour un fournisseur IA, avec adaptateur simulé par défaut et secrets hors dépôt.
 4. Mettre en place une politique de quotas, limites de fichiers, journalisation et nettoyage des espaces projets.
 5. Faire une revue sécurité indépendante avant tout pilote réel.
+
+
+## Nouvelle cible produit : qualité agence / grande entreprise
+
+Le MVP déterministe décrit ci-dessus n'est pas le produit final et ne satisfait pas le standard attendu. La cible est un studio de création web professionnel capable de concevoir des sites et applications adaptés au besoin, du site institutionnel multi-pages à la plateforme métier ou e-commerce.
+
+La qualité visuelle doit être personnalisée par projet : direction artistique, design system, typographie, grilles, composants, iconographie, responsive multi-écrans et parcours utilisateur. La qualité technique doit inclure une architecture adaptée, des fonctionnalités réellement connectées, une gestion correcte des erreurs, la sécurité, le SEO, l'accessibilité, les performances, les tests et la documentation.
+
+### Portes de sortie obligatoires
+
+Chaque livraison doit disposer d'un dossier de preuves comprenant :
+- matrice exigences → pages/fonctionnalités → tests ;
+- capture ou rapport de revue visuelle sur plusieurs tailles d'écran ;
+- résultats des builds, tests unitaires, intégration et parcours navigateur ;
+- contrôles d'accessibilité avec cible WCAG 2.2 AA, écarts documentés et validation humaine ;
+- mesures de performance et Core Web Vitals sur environnement de test ;
+- rapport sécurité et dépendances, secrets absents du code livré ;
+- liste des intégrations réellement actives, simulées ou non configurées ;
+- défauts connus, documentation, sources et procédure de transfert.
+
+Les critères de performance et de couverture seront calibrés selon le type de site et son niveau de criticité. Aucun score Lighthouse ou résultat automatisé ne sera considéré comme preuve suffisante à lui seul.
+
+### Paliers de maturité
+
+1. Prototype : maquette ou démonstrateur, jamais présenté comme production.
+2. MVP : périmètre limité, fonctions réelles et limites explicites.
+3. Production professionnelle : tests, sécurité, performance, accessibilité, exploitation et transfert validés.
+4. Entreprise / critique : exigences de résilience, observabilité, sauvegarde/restauration, gouvernance des accès, audit indépendant et continuité adaptées au risque.
+
+Le niveau annoncé doit correspondre aux preuves. Le MVP actuel reste au palier de socle technique expérimental. Il ne produit pas encore de sites de niveau entreprise.
+
+### Chantiers structurants à réaliser
+
+- Moteur de spécification IA et orchestration de génération multi-fichiers.
+- Système de design et bibliothèque de composants professionnels.
+- Architecture multi-pages et choix de stack par cas d'usage.
+- Environnements isolés de prévisualisation et tests navigateur.
+- Génération frontend et backend avec contrats d'API, validation et tests.
+- Pipelines qualité : accessibilité, SEO, performance, sécurité, responsive et régression visuelle.
+- Versionnement, reprise après erreur, audit et export complet.
+- Intégrations de production optionnelles, isolées et autorisées.
+
+Aucune connexion payante, aucun déploiement ni aucune publication n'est autorisé par cette spécification seule.
