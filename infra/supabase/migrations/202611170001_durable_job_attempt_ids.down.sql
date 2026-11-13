@@ -48,3 +48,6 @@ begin
     );
 end;
 $$;
+
+revoke all on function public.papi_claim_job(text, uuid, integer) from public, anon, authenticated;
+grant execute on function public.papi_claim_job(text, uuid, integer) to service_role;
