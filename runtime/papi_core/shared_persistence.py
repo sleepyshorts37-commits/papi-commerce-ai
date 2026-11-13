@@ -82,6 +82,8 @@ class SharedMemoryAdapter:
                 value = event.get(key)
                 if not isinstance(value, str) or not value.strip() or len(value) > maximum:
                     raise SharedPersistenceError(f"{key} invalide.")
+                if _SECRET.search(value):
+                    raise SharedPersistenceError(f"Contenu ressemblant à un secret interdit dans {key}.")
             for key, maximum in (("type", 40), ("id", 120)):
                 value = source.get(key)
                 if not isinstance(value, str) or not value.strip() or len(value) > maximum:
@@ -216,6 +218,8 @@ class SharedChatAdapter:
             raise SharedPersistenceError("Sujet invalide.")
         if not isinstance(message["body"], str) or not 1 <= len(message["body"].strip()) <= 2000:
             raise SharedPersistenceError("Corps du message invalide.")
+        if _SECRET.search(message["subject"] + "\n" + message["body"]):
+            raise SharedPersistenceError("Contenu ressemblant à un secret d’authentification interdit.")
         if message["message_type"] not in {"info", "task", "alert", "report"}:
             raise SharedPersistenceError("Type de message invalide.")
         rows = self._store.request(
