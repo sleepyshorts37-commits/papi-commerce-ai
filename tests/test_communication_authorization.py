@@ -8,6 +8,13 @@ from papi_core.communication_authorization import (
 from papi_core.communication_channels import DeliveryReceipt, OwnerEmailNotification
 
 
+class FakeNotificationGuard:
+    async def authorize(self, notification):
+        return None
+    async def record(self, notification, outcome):
+        return None
+
+
 class OwnerCommunicationAuthorizationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.profile = {
