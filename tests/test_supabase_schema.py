@@ -53,5 +53,36 @@ class SupabaseSchemaTests(unittest.TestCase):
         )
 
 
+
+    def test_external_audit_anchor_store_is_immutable_and_service_role_only(self):
+        self.assertIn("create table if not exists public.papi_audit_anchor_records", self.sql)
+        self.assertIn("create table if not exists public.papi_audit_anchor_heads", self.sql)
+        self.assertIn("before update or delete on public.papi_audit_anchor_records", self.sql)
+        self.assertIn(
+            "revoke all on public.papi_audit_anchor_records from public, anon, authenticated",
+            self.sql,
+        )
+        self.assertIn(
+            "grant select, insert on public.papi_audit_anchor_records to service_role",
+            self.sql,
+        )
+        self.assertIn(
+            "grant execute on function public.papi_advance_audit_anchor(text, text, text) to service_role",
+            self.sql,
+        )
+
+    def test_external_audit_anchor_uses_digest_validation_and_atomic_head_lock(self):
+        match = re.search(
+            r"create or replace function public\\.papi_advance_audit_anchor\\(.*?\\n\\$\\$;",
+            self.sql,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        self.assertIsNotNone(match, "papi_advance_audit_anchor definition must exist")
+        body = match.group(0)
+        self.assertIn("digest(convert_to(v_canonical, 'UTF8'), 'sha256')", body)
+        self.assertIn("for update", body.lower())
+        self.assertIn("v_current.latest_record_digest is distinct from p_expected_digest", body)
+        self.assertIn("v_sequence <= v_current.sequence", body)
+
 if __name__ == "__main__":
     unittest.main()
