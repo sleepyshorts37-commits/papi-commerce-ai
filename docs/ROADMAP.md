@@ -156,3 +156,11 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Implémenter Jour 4 : fichiers absents, chemins de répertoire, noms Unicode, types MIME et stabilité après requêtes invalides ; quatre workflows PASS sur `0b7498a`.
 - [x] Terminer Jour 5 : core, Chromium, registre et documentation PASS ; publier `docs/PAPI-PREVIEW-SERVER-SECURITY-REPORT.md`.
 - **Statut :** cycle de 5/5 journées terminé (100 %) ; les quatre workflows CI sont PASS sur le commit de tests `0b7498a`. Validation limitée aux scénarios documentés ; aucun audit indépendant, merge ou déploiement.
+
+
+### PAPI WEB BUILDER — régression visuelle et cohérence responsive (cycle 5 jours)
+- [x] Définir le plan de travail (docs/PAPI-WEB-BUILDER-VISUAL-REGRESSION-5-DAYS.md).
+- [x] Ajouter un premier contrat Chromium de géométrie responsive : header, hero, visuel, titre, cartes et débordement horizontal sur mobile/tablette/desktop (2a1df36).
+- [ ] Vérifier les contrats des six profils sectoriels, routes et sections configurables.
+- [ ] Valider les captures et parcours visuels en CI ; aucune comparaison pixel-perfect n'est encore implémentée.
+- **Statut :** Jour 1 implémenté ; CI en attente. Contrôle structurel uniquement, pas une revue esthétique ou une certification WCAG.
