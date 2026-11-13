@@ -73,7 +73,7 @@ jobs:
           values ('attempt-ci-task', '{"id":"attempt-ci-task"}'::jsonb, 1);
           insert into public.papi_jobs(id, task_id, handler, payload, idempotency_key)
           values ('attempt-ci-job', 'attempt-ci-task', 'test.noop', '{}'::jsonb, 'attempt-ci-key');
-          do $
+          do $attempt$
           declare
             first_claim jsonb;
             second_claim jsonb;
@@ -106,5 +106,5 @@ jobs:
               raise exception 'previous attempt status was %, expected lease_expired', previous_status;
             end if;
           end;
-          $;
+          $attempt$;
           SQL
