@@ -36,7 +36,7 @@
 - [x] Définir les contrats de conversation vocale STT/TTS et les profils vocaux distincts des IA chefs.
 - [x] Définir les notifications e-mail proactives 24/7 limitées à l'adresse vérifiée du propriétaire.
 - [x] Séparer notification propriétaire, e-mail tiers et permissions de session vocale.
-- [ ] Implémenter les interfaces techniques injectables et les tests simulés.
+- [x] Implémenter les interfaces techniques injectables et les tests simulés (tests CI en attente de fin d'exécution).
 - [ ] Implémenter le routage allowlisté, les quotas, l'idempotence et l'audit.
 - [ ] Effectuer la revue de sécurité et les tests avant activation.
 - [ ] Connecter un fournisseur uniquement après choix et autorisation explicites du propriétaire.
