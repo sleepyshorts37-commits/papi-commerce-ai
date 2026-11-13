@@ -107,13 +107,25 @@ begin
     raise exception 'expired lease was not reclaimed';
   end if;
 
-  -- Nonce: first use succeeds, replay fails, invalid expiry is rejected.
-  v_ok := public.papi_consume_agent_nonce('ci-agent','nonce-integration-000001',now()+interval '5 minutes');
-  if not v_ok then raise exception 'first nonce use was rejected'; end if;
-  v_ok := public.papi_consume_agent_nonce('ci-agent','nonce-integration-000001',now()+interval '5 minutes');
+  -- Nonce: only an active key version may consume a nonce; replay is rejected.
+  insert into public.papi_agent_public_keys(agent_id, key_version, public_key_hex, status)
+  values ('ci-agent', 1, repeat('a', 64), 'active');
+  v_ok := public.papi_consume_agent_nonce(
+    'ci-agent', 1, 'nonce-integration-000001', now()+interval '5 minutes'
+  );
+  if not v_ok then raise exception 'first nonce use with active key was rejected'; end if;
+  v_ok := public.papi_consume_agent_nonce(
+    'ci-agent', 1, 'nonce-integration-000001', now()+interval '5 minutes'
+  );
   if v_ok then raise exception 'nonce replay was accepted'; end if;
+  v_ok := public.papi_consume_agent_nonce(
+    'missing-ci-agent', 1, 'nonce-missing-key-000001', now()+interval '5 minutes'
+  );
+  if v_ok then raise exception 'nonce without active key was accepted'; end if;
   begin
-    perform public.papi_consume_agent_nonce('ci-agent','short',now()+interval '5 minutes');
+    perform public.papi_consume_agent_nonce(
+      'ci-agent', 1, 'short', now()+interval '5 minutes'
+    );
     raise exception 'short nonce unexpectedly accepted';
   exception when sqlstate '22023' then null;
   end;
