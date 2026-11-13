@@ -131,7 +131,7 @@ def read_events(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     raw = path.read_bytes()
-    if raw and not raw.endswith(b"\\n"):
+    if raw and not raw.endswith(b"\n"):
         raise AuditError("Journal incomplet : dernière ligne tronquée.")
     try:
         content = raw.decode("utf-8")
