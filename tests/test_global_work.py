@@ -1,6 +1,7 @@
 import unittest
 
-from papi_core.global_work import (GlobalWorkError, evaluate_opportunity, validate_opportunity,\n                                   validate_global_work_registry)
+from papi_core.global_work import (GlobalWorkError, evaluate_opportunity, validate_opportunity,
+                                   validate_global_work_registry)
 
 
 def opportunity(**overrides):
