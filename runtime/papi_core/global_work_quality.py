@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -29,17 +30,27 @@ def _utc(value: str | datetime) -> datetime:
 
 
 def canonicalize_url(url: str) -> str:
-    """Normalize URL for duplicate detection without following redirects."""
+    """Normalize a public HTTPS URL for duplicate detection without following redirects."""
     if not isinstance(url, str):
         raise GlobalWorkQualityError("URL texte requise.")
-    parts = urlsplit(url.strip())
-    if parts.scheme != "https" or not parts.hostname or parts.username or parts.password:
+    try:
+        parts = urlsplit(url.strip())
+        host = parts.hostname
+        port = parts.port
+    except ValueError as exc:
+        raise GlobalWorkQualityError("URL ou port invalide.") from exc
+    if (parts.scheme.lower() != "https" or not host or parts.username or parts.password
+            or port not in (None, 443)):
         raise GlobalWorkQualityError("URL HTTPS publique requise.")
-    if parts.port not in (None, 443):
-        raise GlobalWorkQualityError("Port URL non standard interdit.")
-    host = parts.hostname.lower()
-    if host.endswith("."):
-        host = host[:-1]
+    host = host.lower().rstrip(".")
+    if not host or host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
+        raise GlobalWorkQualityError("Hôte local ou privé interdit.")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    if address is not None and not address.is_global:
+        raise GlobalWorkQualityError("Adresse IP non publique interdite.")
     path = re.sub(r"/{2,}", "/", parts.path or "/")
     if path != "/":
         path = path.rstrip("/")
