@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from runtime.papi_core.audit import AuditError, append_event, new_event, read_events, _journal_lock
 from runtime.papi_core.audit_checkpoint import build_checkpoint, verify_checkpoint, verify_checkpoint_transition
+from runtime.papi_core.audit_anchor import AuditAnchorError, publish_checkpoint, verify_against_anchor
 
 
 class AuditHashChainTests(unittest.TestCase):
@@ -280,6 +281,80 @@ class AuditHashChainTests(unittest.TestCase):
         with self.assertRaises(AuditError):
             append_event(self.event("new"), self.path)
 
+
+
+class _FakeAnchorBackend:
+    def __init__(self):
+        self.checkpoint = None
+        self.force_conflict = False
+
+    def latest(self):
+        return dict(self.checkpoint) if self.checkpoint is not None else None
+
+    def compare_and_append(self, expected_previous, checkpoint):
+        if self.force_conflict or self.checkpoint != expected_previous:
+            return False
+        self.checkpoint = dict(checkpoint)
+        return True
+
+
+class AuditExternalAnchorTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = Path(self.temp_dir.name) / "audit.jsonl"
+        self.backend = _FakeAnchorBackend()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def event(self, event_id):
+        return new_event(event_id=event_id, actor="agent-01", action="task.updated",
+                         entity_type="task", entity_id="task-01",
+                         details={"status": "review"})
+
+    def test_publish_and_verify_hash_only_checkpoint(self):
+        append_event(self.event("anchor-1"), self.path)
+        self.assertTrue(publish_checkpoint(self.path, self.backend))
+        self.assertEqual(set(self.backend.latest()), {"schema_version", "sequence", "head_hash"})
+        self.assertEqual(verify_against_anchor(self.path, self.backend), 0)
+
+    def test_repeated_publication_is_idempotent(self):
+        append_event(self.event("anchor-1"), self.path)
+        self.assertTrue(publish_checkpoint(self.path, self.backend))
+        self.assertFalse(publish_checkpoint(self.path, self.backend))
+
+    def test_new_events_are_reported_as_unanchored_suffix(self):
+        append_event(self.event("anchor-1"), self.path)
+        publish_checkpoint(self.path, self.backend)
+        append_event(self.event("anchor-2"), self.path)
+        self.assertEqual(verify_against_anchor(self.path, self.backend), 1)
+
+    def test_advance_requires_previous_anchor_to_be_local_prefix(self):
+        other = Path(self.temp_dir.name) / "other.jsonl"
+        append_event(new_event(event_id="fork", actor="agent-01", action="task.updated",
+                               entity_type="task", entity_id="task-01",
+                               details={"status": "different"}), other)
+        self.backend.checkpoint = build_checkpoint(other)
+        append_event(self.event("local-1"), self.path)
+        with self.assertRaises(AuditError):
+            publish_checkpoint(self.path, self.backend)
+
+    def test_compare_and_append_conflict_fails_closed(self):
+        append_event(self.event("anchor-1"), self.path)
+        self.backend.force_conflict = True
+        with self.assertRaises(AuditAnchorError):
+            publish_checkpoint(self.path, self.backend)
+
+    def test_missing_external_anchor_cannot_be_treated_as_verified(self):
+        with self.assertRaises(AuditAnchorError):
+            verify_against_anchor(self.path, self.backend)
+
+    def test_local_rollback_against_anchor_is_detected(self):
+        append_event(self.event("anchor-1"), self.path)
+        publish_checkpoint(self.path, self.backend)
+        self.path.write_text("", encoding="utf-8")
+        with self.assertRaises(AuditAnchorError):
+            verify_against_anchor(self.path, self.backend)
 
 if __name__ == "__main__":
     unittest.main()
