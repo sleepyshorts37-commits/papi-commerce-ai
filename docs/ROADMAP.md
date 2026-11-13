@@ -117,6 +117,6 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Refuser HTML/CSS/scripts arbitraires et destinations CTA externes ; n'autoriser que les pages internes existantes.
 - [x] Ajouter des composants sémantiques, styles responsives et tests unitaires/intégration.
 - [ ] Confirmer le passage CI sur le commit final et traiter toute régression.
-- [ ] Ajouter des sections métier spécialisées (produits, équipe, témoignages, réservation) avec schémas de données validés.
+- [x] Ajouter des sections métier statiques (catalogue produits, équipe, témoignages avec provenance explicite, cartes de services) avec schémas de données validés.\n  - Réservation réelle, paiement, panier et formulaires connectés restent hors périmètre ; voir `docs/PAPI-WEB-BUILDER-BUSINESS-COMPONENTS.md`.
 - [ ] Ajouter prévisualisation navigateur et tests visuels multi-viewport.
 - **Statut :** catalogue de sections statiques personnalisables implémenté ; aucune fonctionnalité transactionnelle ou backend n'est incluse.
