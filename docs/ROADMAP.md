@@ -48,6 +48,11 @@
 - [ ] Intégrer les prestataires de paiement après validation de l'éligibilité, des frais, des permissions et des conditions.
 - [ ] Mettre en place sauvegardes, rapprochement périodique et séparation des rôles comptables.
 
+## PAPI WEB BUILDER
+- [x] Modèles sectoriels de contenu pour entreprise, commerce, hôtellerie, services professionnels, éducation et santé (PR en revue).
+- [x] Contrôle de complétude des faits obligatoires, avec validation humaine maintenue.
+- [ ] Connecter les modèles au parcours de génération et réaliser une prévisualisation métier avec données validées.
+
 ## Mise en service
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 
