@@ -41,13 +41,12 @@ def render_page_sections(
         raise WebsiteSectionError("La liste de sections est invalide ou trop longue.")
     rendered: list[str] = []
     identifiers: set[str] = set()
-    prefix = "" if current_slug == "home" else "../"
 
     for index, section in enumerate(sections):
         if not isinstance(section, dict):
             raise WebsiteSectionError("Chaque section doit être un objet.")
         kind = section.get("type")
-        if kind not in SECTION_TYPES:
+        if not isinstance(kind, str) or kind not in SECTION_TYPES:
             raise WebsiteSectionError("Type de section non autorisé.")
         identifier = section.get("id")
         if not isinstance(identifier, str) or not SLUG_RE.fullmatch(identifier) or identifier in identifiers:
