@@ -95,7 +95,7 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Titres/descriptions SEO, sitemap XML et manifeste des fichiers produits.
 - [x] Échappement HTML et vérification des liens internes dans un rapport qualité initial.
 - [ ] Tests automatisés exécutés et validés en CI sur le commit de livraison.
-- [ ] Tests navigateur multi-viewport, audit WCAG 2.2 AA, performance et sécurité.
+- [ ] Validation CI des tests navigateur multi-viewport et captures (assertion de route corrigée, rerun requis), audit WCAG 2.2 AA, performance et sécurité.
 - [ ] Formulaires/backend, intégrations métier, authentification, aperçu hébergé et déploiement.
 - **Statut :** génération multi-pages implémentée, mais qualité entreprise non certifiée et aucune publication autorisée ou réalisée.
 
