@@ -88,6 +88,30 @@ class PreviewServerTests(unittest.TestCase):
             urlopen(self.base + "/linked.css")
         self.assertEqual(caught.exception.code, 404)
 
+
+    def test_blocks_double_encoded_and_absolute_paths_without_disclosing_files(self):
+        # A double-encoded traversal is decoded once and must never escape root.
+        for path in ("/%252e%252e/secret", "/etc/passwd", "/C:/Windows/win.ini"):
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(self.base + path)
+                self.assertIn(caught.exception.code, (403, 404))
+
+    def test_rejects_symlink_to_file_outside_preview_root(self):
+        with tempfile.TemporaryDirectory() as outside_dir:
+            outside_file = Path(outside_dir) / "private-sentinel.txt"
+            sentinel = "PAPI_PREVIEW_OUTSIDE_ROOT_SENTINEL"
+            outside_file.write_text(sentinel, encoding="utf-8")
+            link = self.root / "outside-secret.txt"
+            try:
+                link.symlink_to(outside_file)
+            except (OSError, NotImplementedError):
+                self.skipTest("Symlinks unavailable on this runner")
+            with self.assertRaises(HTTPError) as caught:
+                urlopen(self.base + "/outside-secret.txt")
+            self.assertEqual(caught.exception.code, 404)
+            self.assertNotIn(sentinel, caught.exception.read().decode("utf-8", errors="replace"))
+
     def test_server_refuses_non_loopback_and_invalid_ports(self):
         with self.assertRaises(PreviewServerError):
             create_preview_server(self.root, host="0.0.0.0")
