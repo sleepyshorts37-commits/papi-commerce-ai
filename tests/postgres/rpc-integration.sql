@@ -122,6 +122,16 @@ begin
     'missing-ci-agent', 1, 'nonce-missing-key-000001', now()+interval '5 minutes'
   );
   if v_ok then raise exception 'nonce without active key was accepted'; end if;
+  insert into public.papi_agent_public_keys(
+    agent_id, key_version, public_key_hex, status, revoked_at
+  ) values ('ci-agent', 2, repeat('b', 64), 'revoked', now());
+  v_ok := public.papi_consume_agent_nonce(
+    'ci-agent', 2, 'nonce-revoked-key-0001', now()+interval '5 minutes'
+  );
+  if v_ok then raise exception 'nonce with revoked key version was accepted'; end if;
+  if to_regprocedure('public.papi_consume_agent_nonce(text,text,timestamptz)') is not null then
+    raise exception 'legacy three-argument nonce RPC still exists';
+  end if;
   begin
     perform public.papi_consume_agent_nonce(
       'ci-agent', 1, 'short', now()+interval '5 minutes'
