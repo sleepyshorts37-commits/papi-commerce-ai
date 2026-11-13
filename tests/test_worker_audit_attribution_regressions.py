@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from papi_core.audit import read_events
-from papi_core.authz import AccessDenied
+from papi_core.authz import AccessDenied, AuthenticatedAuthorizationDenied
 from papi_core.execution_queue import ExecutionQueue
 from papi_core.handler_registry import HandlerRegistry, PermissionError as HandlerPermissionError
 from papi_core.storage import SupabaseStore
@@ -92,6 +92,25 @@ class WorkerAuditAttributionRegressionTests(unittest.TestCase):
             blocked = next(e for e in events if e["action"] == "job.blocked")
             self.assertEqual(blocked["actor"], "agent-authenticated")
             self.assertFalse(any(e["action"] == "job.handler_started" for e in events))
+
+    def test_policy_denial_after_cryptographic_authentication_uses_agent_actor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            worker, queue, job, task = self._worker(directory)
+            claim, get_task, fail = self._patch_inputs(queue, job, task)
+            principal = SimpleNamespace(agent_id="agent-authenticated")
+            with claim, get_task, fail as fail_mock:
+                with patch("papi_core.worker.authorize_authenticated_agent",
+                           side_effect=AuthenticatedAuthorizationDenied(principal)):
+                    result = worker.run_once()
+
+            self.assertEqual(result["status"], "blocked")
+            events = read_events(worker.audit_path)
+            blocked = next(e for e in events if e["action"] == "job.blocked")
+            self.assertEqual(blocked["actor"], "agent-authenticated")
+            self.assertEqual(blocked["details"]["outcome"],
+                             "authenticated_agent_permission_denied")
+            self.assertFalse(any(e["action"] == "job.handler_started" for e in events))
+            self.assertEqual(fail_mock.call_args.kwargs["error_code"], "permission_denied")
 
     def test_handler_is_not_invoked_when_handler_started_audit_fails(self):
         with tempfile.TemporaryDirectory() as directory:
