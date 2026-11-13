@@ -14,6 +14,13 @@ class SupabaseCheckpointStoreTests(unittest.TestCase):
         self.client = client
         self.adapter = SupabaseCheckpointStore(client)
 
+    def test_public_request_interface_delegates_without_exposing_credentials(self):
+        client = object.__new__(SupabaseStore)
+        client._request = Mock(return_value=[{"ok": True}])
+        result = client.request("GET", "health")
+        self.assertEqual(result, [{"ok": True}])
+        client._request.assert_called_once_with("GET", "health", None, None)
+
     def record(self):
         return {
             "schema_version": 1,
