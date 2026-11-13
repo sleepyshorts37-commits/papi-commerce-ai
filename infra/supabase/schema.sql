@@ -269,9 +269,14 @@ grant select, insert, update on public.papi_agent_public_keys to service_role;
 grant select, insert, delete on public.papi_agent_used_nonces to service_role;
 
 -- L'insertion atomique lie le nonce à une version de clé Ed25519 active.
-revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
-    from public, anon, authenticated, service_role;
-drop function if exists public.papi_consume_agent_nonce(text, text, timestamptz);
+do $
+begin
+    if to_regprocedure('public.papi_consume_agent_nonce(text,text,timestamp with time zone)') is not null then
+        execute 'revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz) from public, anon, authenticated, service_role';
+        execute 'drop function public.papi_consume_agent_nonce(text, text, timestamptz)';
+    end if;
+end;
+$;
 
 create or replace function public.papi_consume_agent_nonce(
     p_agent_id text,
