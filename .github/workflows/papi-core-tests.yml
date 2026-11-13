@@ -49,16 +49,16 @@ jobs:
             -f infra/supabase/schema.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
           insert into public.papi_agent_public_keys(agent_id, key_version, public_key_hex, status)
-          values ('ci-agent', 1, repeat('a', 64), 'active');
+          values ('ci-smoke-agent', 1, repeat('a', 64), 'active');
           select public.papi_consume_agent_nonce(
-            'ci-agent', 1, 'nonce-ci-000000000001', now() + interval '5 minutes'
+            'ci-smoke-agent', 1, 'nonce-ci-smoke-000000000001', now() + interval '5 minutes'
           ) as first_use \gset
           \if :first_use
           \else
             \quit 1
           \endif
           select public.papi_consume_agent_nonce(
-            'ci-agent', 1, 'nonce-ci-000000000001', now() + interval '5 minutes'
+            'ci-smoke-agent', 1, 'nonce-ci-smoke-000000000001', now() + interval '5 minutes'
           ) as replay_use \gset
           \if :replay_use
             \quit 1
