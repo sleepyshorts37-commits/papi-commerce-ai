@@ -16,7 +16,8 @@ def offer(**overrides):
         "infrastructure_cost": "3",
         "other_cost": "5",
         "estimated_hours": "4",
-        "target_hourly_rate": "10",
+        "labor_hourly_rate": "10",
+        "minimum_net_hourly_rate": "8",
         "minimum_margin_percent": "10",
     }
     value.update(overrides)
