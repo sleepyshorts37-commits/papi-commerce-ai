@@ -38,11 +38,13 @@ Implémentation et workflow CI présents. Le premier passage CI a détecté une 
 
 ## Jour 4 — Contrôles d'accessibilité automatisables
 
-- [ ] Contrôler la présence des landmarks, d'un titre principal unique, du lien d'évitement et des noms accessibles.
-- [ ] Contrôler le focus clavier visible et l'ordre de navigation de base.
-- [ ] Ajouter axe-core si son installation est compatible avec la chaîne CI et ses licences.
-- [ ] Documenter les limites : contraste, lecteur d'écran, clavier complet et WCAG 2.2 AA nécessitent aussi une revue humaine.
-- Livrable : rapport automatisé de contrôles, sans revendication de conformité certifiée.
+- [x] Ajouter un test Chromium sur les landmarks `main` et `nav`, l'unicité du H1 et le lien d'évitement.
+- [x] Vérifier que les liens ont un nom accessible via leur texte ou leurs attributs ARIA.
+- [x] Vérifier au clavier que le premier arrêt est visible et possède un indicateur de focus calculé.
+- [x] Garder les contrôles autonomes et sans chargement de script tiers ; axe-core n'est pas ajouté à cette étape afin de préserver le mode sans requêtes externes.
+- [x] Documenter les limites : contraste, lecteur d'écran, clavier complet et WCAG 2.2 AA nécessitent aussi une revue humaine.
+- [ ] Confirmer le nouveau test dans GitHub Actions.
+- Livrable : contrôles automatisés structurels et clavier de base, sans revendication de conformité certifiée.
 
 ## Jour 5 — Intégration CI et critères d'acceptation
 
