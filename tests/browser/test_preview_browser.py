@@ -315,5 +315,54 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(has_focus_indicator, f"No visible focus indicator: {first_focus}")
         await page.close()
 
+
+    async def test_visual_layout_contract_across_viewports(self):
+        """Guard key visual geometry and typography without claiming pixel-diff coverage."""
+        page = await self.browser.new_page()
+        viewports = (("mobile", 390, 844), ("tablet", 768, 1024), ("desktop", 1440, 900))
+        for label, width, height in viewports:
+            await page.set_viewport_size({"width": width, "height": height})
+            response = await page.goto(self.base_url + "/", wait_until="networkidle")
+            self.assertIsNotNone(response)
+            self.assertEqual(response.status, 200, label)
+            metrics = await page.evaluate("""() => {
+                const rect = (selector) => {
+                    const element = document.querySelector(selector);
+                    if (!element) return null;
+                    const box = element.getBoundingClientRect();
+                    const style = getComputedStyle(element);
+                    return {
+                        width: box.width, height: box.height,
+                        fontSize: parseFloat(style.fontSize),
+                        color: style.color, background: style.backgroundColor
+                    };
+                };
+                return {
+                    viewport: document.documentElement.clientWidth,
+                    documentWidth: document.documentElement.scrollWidth,
+                    header: rect(".site-header"),
+                    hero: rect(".hero"),
+                    heroVisual: rect(".hero-visual"),
+                    heading: rect(".hero h1"),
+                    cards: [...document.querySelectorAll(".feature-card")].map((el) => {
+                        const box = el.getBoundingClientRect();
+                        return {width: box.width, height: box.height};
+                    })
+                };
+            }""")
+            self.assertLessEqual(metrics["documentWidth"], metrics["viewport"] + 1, f"{label}: horizontal overflow {metrics}")
+            self.assertIsNotNone(metrics["header"], f"{label}: missing header")
+            self.assertIsNotNone(metrics["hero"], f"{label}: missing hero")
+            self.assertIsNotNone(metrics["heroVisual"], f"{label}: missing visual hero")
+            self.assertIsNotNone(metrics["heading"], f"{label}: missing hero heading")
+            self.assertGreater(metrics["header"]["height"], 40, f"{label}: header collapsed")
+            self.assertGreater(metrics["hero"]["height"], 180, f"{label}: hero collapsed")
+            self.assertGreater(metrics["heroVisual"]["width"], 100, f"{label}: hero visual too narrow")
+            self.assertGreater(metrics["heroVisual"]["height"], 100, f"{label}: hero visual too short")
+            self.assertGreater(metrics["heading"]["fontSize"], 24, f"{label}: heading typography too small")
+            self.assertEqual(len(metrics["cards"]), 3, f"{label}: expected three feature cards")
+            self.assertTrue(all(card["width"] > 0 and card["height"] > 0 for card in metrics["cards"]), f"{label}: invisible feature card")
+        await page.close()
+
 if __name__ == "__main__":
     unittest.main()
