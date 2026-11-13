@@ -87,6 +87,7 @@ class OwnerCommunicationAuthorizationTests(unittest.IsolatedAsyncioTestCase):
             identity_cards={"astou": self.card},
             owner_destination=OwnerDestination("not-an-email", True, True, True),
             email_sender=self.sender,
+            notification_guard=FakeNotificationGuard(),
         )
         with self.assertRaises(CommunicationAuthorizationError):
             await router.send_owner_notification(self.notification)
