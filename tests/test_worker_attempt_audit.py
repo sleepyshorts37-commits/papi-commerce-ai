@@ -142,6 +142,33 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
                     append_event(event, path)
             self.assertEqual(path.read_bytes(), b"")
 
+    def test_read_rejects_valid_json_without_final_newline(self):
+        from papi_core.audit import AuditError
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            worker = PapiWorker(
+                queue=DummyQueue(), registry=object(),
+                policy={"execution_enabled": False}, worker_id="worker-a",
+                audit_path=path,
+            )
+            worker._audit(
+                job_id="job-read-tail", task_id="task-read-tail",
+                attempt_id="00000000-0000-4000-8000-000000000012",
+                action="job.claimed", actor="system:worker:worker-a",
+                handler="internal.echo", outcome="claimed",
+            )
+            path.write_bytes(path.read_bytes().rstrip(b"\\n"))
+            with self.assertRaises(AuditError):
+                read_events(path)
+
+    def test_read_rejects_invalid_utf8(self):
+        from papi_core.audit import AuditError
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            path.write_bytes(b"\\xff\\xfe\\n")
+            with self.assertRaises(AuditError):
+                read_events(path)
+
     def test_incomplete_tail_is_rejected_without_losing_confirmed_events(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "events.jsonl"
