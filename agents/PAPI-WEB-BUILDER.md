@@ -116,3 +116,71 @@ Un projet n'est pas considéré livré simplement parce que du code a été gén
 ## État actuel
 
 L'identité de l'agent est inscrite dans `data/agents.json` avec le statut `planned`. Ce document définit sa mission et ses garde-fous. Aucun moteur de génération de site, fournisseur IA, hébergeur ou déploiement n'est encore connecté. Aucun site client n'est créé ou publié par cette inscription.
+
+
+## Exigence de qualité — standard grande entreprise
+
+La cible produit n'est pas un générateur de pages simples ou de modèles génériques. PAPI WEB BUILDER doit évoluer vers un studio de conception et d'ingénierie web capable de livrer, selon le périmètre validé, des sites de niveau agence professionnelle et grande entreprise. La qualité doit être démontrée par des critères mesurables, pas déclarée dans le discours commercial.
+
+### Typologies et complexité
+
+L'architecture cible doit couvrir :
+- sites institutionnels multi-pages, groupes, filiales et portails de marque ;
+- sites commerciaux et éditoriaux avec gestion de contenu ;
+- catalogues avancés et boutiques e-commerce ;
+- plateformes de réservation, espaces clients et portails partenaires ;
+- applications web métier, tableaux de bord et interfaces d'administration ;
+- sites multilingues, multi-pays et multi-entités lorsque requis.
+
+Le moteur doit savoir recommander une architecture adaptée au besoin. Il ne doit pas réduire une application complexe à une page statique ni prétendre fournir une fonction backend lorsqu'elle n'existe pas.
+
+### Direction artistique et expérience utilisateur
+
+Chaque projet doit commencer par un brief et une direction artistique adaptés au secteur, à la marque, au public et aux objectifs. Le moteur doit produire une composition cohérente et distinctive, et non simplement changer les couleurs d'un même template.
+
+Exigences :
+- design system propre au projet : couleurs, typographie, espacements, grilles, composants, états et règles responsive ;
+- hiérarchie visuelle, navigation, micro-interactions et appels à l'action cohérents ;
+- images et illustrations pertinentes, optimisées et utilisées avec droits appropriés ;
+- composants réutilisables, variantes et états vides/chargement/erreur ;
+- rendu soigné sur mobile, tablette, ordinateur et grands écrans ;
+- contenus crédibles, sans faux témoignages, fausses statistiques, logos non autorisés ni éléments fictifs présentés comme réels.
+
+### Architecture et ingénierie
+
+Le moteur doit choisir une pile technique justifiée selon le projet, avec séparation claire des couches présentation, logique métier, données et intégrations. Il doit gérer les routes, composants, formulaires, états, erreurs, validations, configurations par environnement, dépendances verrouillées, migrations et documentation quand ces éléments sont nécessaires.
+
+Les fonctions serveur, comptes utilisateurs, paiements, recherche, réservation et stockage doivent reposer sur des services réels configurés et testés. Aucun bouton ou parcours ne doit être annoncé comme opérationnel s'il est seulement une maquette.
+
+### Portes de qualité obligatoires
+
+Un projet ne peut être déclaré prêt à livrer qu'après les contrôles applicables et la production d'un rapport :
+1. conformité au cahier des charges et couverture des pages/fonctions promises ;
+2. build reproductible sans erreur bloquante ;
+3. tests unitaires, intégration et parcours critiques ;
+4. tests navigateur sur moteurs représentatifs et tailles d'écran définies ;
+5. responsive, navigation clavier, structure sémantique et contrôles d'accessibilité selon WCAG 2.2 AA comme cible ;
+6. SEO technique : titres, métadonnées, canonical, indexabilité, sitemap et données structurées lorsque pertinentes ;
+7. performance mesurée, images optimisées, chargement maîtrisé et objectifs Core Web Vitals documentés ;
+8. sécurité : validation côté serveur, contrôle d'accès, protection des formulaires, gestion des sessions, dépendances et secrets, selon le profil de risque ;
+9. liens, formulaires, erreurs, états de chargement et parcours métier testés ;
+10. absence de contenu de démonstration, secret, dépendance non déclarée ou fonctionnalité simulée non signalée ;
+11. revue visuelle multi-écrans et validation humaine des éléments de marque/contenu ;
+12. documentation, sources, dépendances, sauvegarde et procédure de transfert.
+
+Les seuils chiffrés de performance, de couverture de tests et de disponibilité doivent être définis par type de projet et validés dans le cahier des charges. Aucun score automatisé isolé ne garantit à lui seul la qualité ou la sécurité.
+
+### IA, spécialisation et contrôle
+
+Le futur moteur IA devra transformer un prompt en spécification, proposer une architecture, planifier le travail, générer les composants, exécuter les contrôles, analyser les défauts et corriger par itérations. Des agents spécialisés peuvent être mobilisés (design, frontend, backend, SEO, accessibilité, performance, sécurité, QA), avec responsabilités et permissions séparées. Un contrôleur indépendant doit vérifier le résultat et empêcher l'auto-validation non étayée.
+
+Le système doit conserver les versions, changements, résultats de tests, défauts connus et décisions. Les opérations destructrices, connexions à des services tiers, achats, changements DNS et publications restent soumises à autorisation explicite.
+
+### Niveaux de livraison
+
+- **Prototype** : démonstration explicitement non destinée à la production.
+- **MVP** : périmètre réduit, fonctions réelles identifiées, limites documentées et tests essentiels réussis.
+- **Production professionnelle** : exigences fonctionnelles, qualité, sécurité, performance, accessibilité, exploitation et transfert validés.
+- **Entreprise / critique** : exigences renforcées selon risques, architecture résiliente, observabilité, sauvegardes/restauration, contrôle d'accès avancé, revue sécurité indépendante, conformité et plan de continuité.
+
+Le statut « grande entreprise » ne peut être attribué que si les exigences du niveau concerné ont été démontrées et acceptées. L'agent ne doit jamais confondre apparence premium et préparation réelle à la production.
