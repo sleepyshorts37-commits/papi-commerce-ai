@@ -21,3 +21,12 @@ Les clés retirées restent valides pour vérifier les anciennes entrées. Aprè
 ## Limites
 
 Il s'agit d'un gestionnaire local de clés pour tests et déploiement contrôlé, pas d'un KMS/HSM, d'un coffre matériel ou d'une solution de gestion distribuée. Aucun mécanisme de synchronisation multi-instance ni de révocation transactionnelle distante n'est inclus. Les fichiers privés ne doivent jamais être copiés dans Git, transmis aux agents, ou exposés à une API publique. Les tests utilisent uniquement des clés éphémères générées en mémoire ou dans des répertoires temporaires.
+
+
+## Frontière fournisseur de signature
+
+Le module `papi_core.audit_signing` définit le contrat backend `AuditSigningProvider` : `sign(key_id, message)` et `verify(key_id, message, signature_hex)`. Les services de publication et de vérification peuvent dépendre de ce contrat plutôt que d'un stockage de clés concret.
+
+`LocalKeyringSigningProvider` est l'adaptateur de référence explicite autour de `LocalAuditKeyring`. Il ne fournit aucune méthode d'export de clé privée et normalise les erreurs en échec fermé. La révocation reste bloquante ; les clés retirées restent vérifiables selon la politique du keyring.
+
+Une future intégration KMS/HSM ou service de signature isolé devra implémenter le même protocole, avec authentification workload, contrôle d'accès par opération, journalisation, limites de débit, rotation et révocation. Aucun SDK cloud, secret, endpoint, fallback automatique ou intégration KMS/HSM n'est inclus dans cette étape. Le keyring local demeure réservé aux tests et aux environnements backend contrôlés.
