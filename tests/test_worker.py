@@ -119,9 +119,9 @@ class WorkerSafetyTests(unittest.TestCase):
             from papi_core.handler_registry import PermissionError
             raise PermissionError("policy_denied")
 
-        with patch("papi_core.worker.authorize_authenticated_agent", side_effect=authenticate), \\
-             patch("papi_core.worker.authorize_job", side_effect=deny_policy):
-            result = worker.run_once()
+        with patch("papi_core.worker.authorize_authenticated_agent", side_effect=authenticate):
+            with patch("papi_core.worker.authorize_job", side_effect=deny_policy):
+                result = worker.run_once()
 
         self.assertEqual(call_order, ["authenticate", "authorize_policy"])
         self.assertEqual(result["status"], "blocked")
