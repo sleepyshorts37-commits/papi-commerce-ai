@@ -114,6 +114,36 @@ def _validate_record(
     return record
 
 
+
+def validate_signed_checkpoint_record(
+    canonical_record: bytes,
+    *,
+    journal_id: str,
+    verify_signature: SignatureVerifier,
+    expected_previous_digest: str | None = None,
+) -> dict[str, Any]:
+    """Validate canonical bytes, record structure, journal, chain link and signature.
+
+    Storage adapters must call this at their own trust boundary; validation in
+    the publication service alone is insufficient because adapters can be used
+    directly by other backend code.
+    """
+    if not isinstance(canonical_record, bytes):
+        raise CheckpointAnchorError("Octets canoniques du checkpoint obligatoires.")
+    try:
+        record = json.loads(canonical_record.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CheckpointAnchorError("Enregistrement de checkpoint illisible.") from exc
+    if not isinstance(record, dict) or canonical_record_bytes(record) != canonical_record:
+        raise CheckpointAnchorError("Enregistrement de checkpoint non canonique.")
+    return _validate_record(
+        record,
+        journal_id=journal_id,
+        expected_digest=expected_previous_digest,
+        verifier=verify_signature,
+    )
+
+
 def publish_checkpoint_record(
     *,
     journal_path: Any,
