@@ -358,12 +358,12 @@ grant select on public.papi_audit_anchor_heads to service_role;
 create or replace function public.papi_reject_audit_anchor_record_mutation()
 returns trigger
 language plpgsql
-set search_path = public, pg_temp
-as $$
+set search_path = pg_catalog, public, pg_temp
+as $papi$
 begin
     raise exception 'Audit anchor records are immutable' using errcode = '55000';
 end;
-$$;
+$papi$;
 
 drop trigger if exists papi_audit_anchor_records_immutable
     on public.papi_audit_anchor_records;
@@ -371,9 +371,8 @@ create trigger papi_audit_anchor_records_immutable
     before update or delete on public.papi_audit_anchor_records
     for each row execute function public.papi_reject_audit_anchor_record_mutation();
 
--- The SECURITY DEFINER RPC is the only write path for the latest pointer.
--- It validates the immutable record digest and chain predecessor, then performs
--- a row-locked compare-and-swap. A retry after a lost response is idempotent.
+-- SECURITY DEFINER: keep pg_catalog first, qualify the extension digest function,
+-- and never rely on an untrusted schema shadowing built-ins or helper functions.
 create or replace function public.papi_advance_audit_anchor(
     p_journal_id text,
     p_expected_digest text,
@@ -381,19 +380,27 @@ create or replace function public.papi_advance_audit_anchor(
 ) returns boolean
 language plpgsql
 security definer
-set search_path = public, extensions, pg_temp
-as $$
+set search_path = pg_catalog, public, extensions, pg_temp
+as $papi$
 declare
     v_canonical text;
     v_record jsonb;
+    v_checkpoint jsonb;
     v_sequence bigint;
     v_head_hash text;
     v_previous_digest text;
+    v_key_id text;
+    v_signature text;
     v_current public.papi_audit_anchor_heads%rowtype;
 begin
-    if p_journal_id is null or p_journal_id !~ '^[A-Za-z0-9_.:-]{1,120}$'
-       or p_new_digest is null or p_new_digest !~ '^[0-9a-f]{64}$'
-       or (p_expected_digest is not null and p_expected_digest !~ '^[0-9a-f]{64}$') then
+    if p_journal_id is null or pg_catalog.length(p_journal_id) not between 1 and 120
+       or p_journal_id ~ '[^A-Za-z0-9_.:-]'
+       or p_new_digest is null or pg_catalog.length(p_new_digest) <> 64
+       or p_new_digest ~ '[^0-9a-f]'
+       or (p_expected_digest is not null and (
+           pg_catalog.length(p_expected_digest) <> 64
+           or p_expected_digest ~ '[^0-9a-f]'
+       )) then
         raise exception 'Invalid audit anchor pointer' using errcode = '22023';
     end if;
 
@@ -403,26 +410,64 @@ begin
     if not found then
         raise exception 'Audit anchor record not found' using errcode = '22023';
     end if;
-    if encode(digest(convert_to(v_canonical, 'UTF8'), 'sha256'), 'hex') <> p_new_digest then
+    if pg_catalog.encode(
+        extensions.digest(pg_catalog.convert_to(v_canonical, 'UTF8'), 'sha256'),
+        'hex'
+    ) <> p_new_digest then
         raise exception 'Audit anchor record digest mismatch' using errcode = '22023';
     end if;
 
     begin
         v_record := v_canonical::jsonb;
-        v_sequence := (v_record->'checkpoint'->>'sequence')::bigint;
+        if pg_catalog.jsonb_typeof(v_record) <> 'object' then
+            raise exception 'record must be an object';
+        end if;
+        if not (v_record ?& array['schema_version', 'journal_id', 'checkpoint', 'previous_record_digest', 'key_id', 'signature']) then
+            raise exception 'record is missing required fields';
+        end if;
+        if (v_record - array[
+            'schema_version', 'journal_id', 'checkpoint',
+            'previous_record_digest', 'key_id', 'signature'
+        ]) <> '{}'::jsonb then
+            raise exception 'record contains unknown fields';
+        end if;
+        if pg_catalog.jsonb_typeof(v_record->'schema_version') <> 'number'
+           or (v_record->>'schema_version')::integer <> 1 then
+            raise exception 'unsupported record schema';
+        end if;
+        if v_record->>'journal_id' is distinct from p_journal_id then
+            raise exception 'journal mismatch';
+        end if;
+
+        v_checkpoint := v_record->'checkpoint';
+        if pg_catalog.jsonb_typeof(v_checkpoint) <> 'object'
+           or not (v_checkpoint ?& array['schema_version', 'sequence', 'head_hash'])
+           or (v_checkpoint - array['schema_version', 'sequence', 'head_hash']) <> '{}'::jsonb
+           or pg_catalog.jsonb_typeof(v_checkpoint->'schema_version') <> 'number'
+           or (v_checkpoint->>'schema_version')::integer <> 1
+           or pg_catalog.jsonb_typeof(v_checkpoint->'sequence') <> 'number'
+           or (v_checkpoint->>'sequence')::numeric < 0
+           or (v_checkpoint->>'sequence')::numeric <> pg_catalog.trunc((v_checkpoint->>'sequence')::numeric)
+ then
+            raise exception 'invalid checkpoint envelope';
+        end if;
+        v_sequence := (v_checkpoint->>'sequence')::bigint;
+        v_head_hash := v_checkpoint->>'head_hash';
+        v_previous_digest := v_record->>'previous_record_digest';
+        v_key_id := v_record->>'key_id';
+        v_signature := v_record->>'signature';
     exception when others then
         raise exception 'Malformed audit anchor record' using errcode = '22023';
     end;
-    v_head_hash := v_record->'checkpoint'->>'head_hash';
-    v_previous_digest := v_record->>'previous_record_digest';
 
-    if jsonb_typeof(v_record) <> 'object'
-       or v_record->>'journal_id' is distinct from p_journal_id
+    if v_sequence < 0
+       or v_head_hash is null or pg_catalog.length(v_head_hash) <> 64 or v_head_hash ~ '[^0-9a-f]'
+       or (v_previous_digest is not null and (pg_catalog.length(v_previous_digest) <> 64 or v_previous_digest ~ '[^0-9a-f]'))
        or v_previous_digest is distinct from p_expected_digest
-       or v_sequence < 0
-       or v_head_hash is null or v_head_hash !~ '^[0-9a-f]{64}$'
-       or v_record->>'signature' is null
-       or v_record->>'key_id' is null then
+       or v_key_id is null or pg_catalog.length(v_key_id) not between 1 and 120 or v_key_id ~ '[^A-Za-z0-9_.:-]'
+
+       or v_signature is null or pg_catalog.length(v_signature) = 0
+       or pg_catalog.length(v_signature) > 2048 then
         raise exception 'Audit anchor record fields do not match pointer' using errcode = '22023';
     end if;
 
@@ -459,11 +504,11 @@ begin
        set latest_record_digest = p_new_digest,
            sequence = v_sequence,
            head_hash = v_head_hash,
-           updated_at = now()
+           updated_at = pg_catalog.now()
      where journal_id = p_journal_id;
     return true;
 end;
-$$;
+$papi$;
 
 revoke all on function public.papi_reject_audit_anchor_record_mutation() from public, anon, authenticated;
 revoke all on function public.papi_advance_audit_anchor(text, text, text) from public, anon, authenticated;

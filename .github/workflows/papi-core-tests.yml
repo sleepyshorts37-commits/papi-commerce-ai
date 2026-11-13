@@ -73,7 +73,7 @@ jobs:
           insert into public.papi_audit_anchor_records(journal_id, record_digest, canonical_record)
           values ('ci-anchor', current_setting('papi.ci_anchor_digest'), current_setting('papi.ci_anchor_record'));
           set role service_role;
-          do $$
+          do $anchorcheck$
           declare
             v_digest text := current_setting('papi.ci_anchor_digest');
             v_result boolean;
@@ -95,9 +95,71 @@ jobs:
               raise exception 'Audit anchor head does not match published record';
             end if;
           end
-          $$;
+          $anchorcheck$;
           reset role;
-          do $$
+          do $ci$
+          declare
+            v_record jsonb;
+            v_canonical text;
+            v_digest text;
+          begin
+            -- The SECURITY DEFINER RPC must reject unsupported envelope versions.
+            v_record := jsonb_build_object(
+              'schema_version', 99,
+              'journal_id', 'ci-invalid-anchor',
+              'checkpoint', jsonb_build_object(
+                'schema_version', 1, 'sequence', 1,
+                'head_hash', repeat('b', 64)
+              ),
+              'previous_record_digest', null,
+              'key_id', 'ci-test-key',
+              'signature', 'test-only'
+            );
+            v_canonical := v_record::text;
+            v_digest := encode(
+              extensions.digest(convert_to(v_canonical, 'UTF8'), 'sha256'), 'hex'
+            );
+            insert into public.papi_audit_anchor_records(
+              journal_id, record_digest, canonical_record
+            ) values ('ci-invalid-anchor', v_digest, v_canonical);
+            perform set_config('papi.ci_invalid_anchor_digest', v_digest, false);
+
+          end
+          $ci$;
+          set role service_role;
+          do $ci$
+          begin
+            perform public.papi_advance_audit_anchor(
+              'ci-invalid-anchor',
+              null,
+              current_setting('papi.ci_invalid_anchor_digest', true)
+            );
+            raise exception 'Unsupported audit record schema was accepted';
+          exception when sqlstate '22023' then
+            null;
+          end
+          $ci$;
+          reset role;
+          do $immutable$
+          begin
+            begin
+              update public.papi_audit_anchor_records
+                 set canonical_record = canonical_record
+               where journal_id = 'ci-anchor';
+              raise exception 'Immutable audit record UPDATE was accepted';
+            exception when sqlstate '55000' then
+              null;
+            end;
+            begin
+              delete from public.papi_audit_anchor_records
+               where journal_id = 'ci-anchor';
+              raise exception 'Immutable audit record DELETE was accepted';
+            exception when sqlstate '55000' then
+              null;
+            end;
+          end
+          $immutable$;
+          do $check$
           begin
             if has_table_privilege('anon', 'public.papi_audit_anchor_records', 'select')
                or has_table_privilege('authenticated', 'public.papi_audit_anchor_records', 'select')
@@ -105,4 +167,4 @@ jobs:
               raise exception 'Audit anchor table privileges are too broad';
             end if;
           end
-          $$;
+          $check$;
