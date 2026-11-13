@@ -60,6 +60,13 @@ class SharedPersistenceAdapterTests(unittest.TestCase):
             self.memory.append_event(event, principal=self.astou)
         self.store.request.assert_not_called()
 
+    def test_memory_append_rejects_secret_like_content(self):
+        event = self.valid_memory_event()
+        event["content"] = "api_key=super-secret-value"
+        with self.assertRaises(SharedPersistenceError):
+            self.memory.append_event(event, principal=self.astou)
+        self.store.request.assert_not_called()
+
     def test_memory_search_requires_authenticated_principal(self):
         with self.assertRaises(PermissionError):
             self.memory.search(principal="astou")
@@ -101,6 +108,13 @@ class SharedPersistenceAdapterTests(unittest.TestCase):
         query = self.store.request.call_args.args[1]
         self.assertIn("recipient.eq.astou", query)
         self.assertIn("recipient.eq.all", query)
+
+    def test_chat_append_rejects_secret_like_content(self):
+        message = self.valid_chat_message()
+        message["body"] = "Bearer abcdefghijklmnopqrstuvwxyz1234"
+        with self.assertRaises(SharedPersistenceError):
+            self.chat.append_message(message)
+        self.store.request.assert_not_called()
 
     def test_chat_read_rejects_raw_identity(self):
         with self.assertRaises(PermissionError):
