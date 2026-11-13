@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papi_core.multi_page_builder import SECTOR_DESIGNS, generate_multi_page_project, multi_page_quality_report
+from papi_core.multi_page_builder import SECTOR_DESIGNS, contrast_ratio, generate_multi_page_project, multi_page_quality_report
 
 
 class MultiPageBuilderTests(unittest.TestCase):
@@ -33,6 +33,7 @@ class MultiPageBuilderTests(unittest.TestCase):
             report = multi_page_quality_report(tmp, "portail")
             self.assertTrue(report["passed"], report["checks"])
             self.assertTrue(report["checks"]["sector_design_tokens"])
+            self.assertTrue(report["checks"]["sector_accent_wcag_aa"])
             self.assertIn("--ink: #26364a", (root / "styles.css").read_text())
             self.assertIn("hero--hospitality", (root / "index.html").read_text())
 
@@ -78,6 +79,14 @@ class MultiPageBuilderTests(unittest.TestCase):
     def test_all_sector_profiles_have_distinct_brand_tokens(self):
         self.assertEqual(len(SECTOR_DESIGNS), 6)
         self.assertEqual(len({item["primary"] for item in SECTOR_DESIGNS.values()}), 6)
+
+
+    def test_all_sector_accents_meet_wcag_aa_for_small_text(self):
+        self.assertEqual(len(SECTOR_DESIGNS), 6)
+        for sector, design in SECTOR_DESIGNS.items():
+            with self.subTest(sector=sector):
+                self.assertGreaterEqual(contrast_ratio(design["accent"], "#ffffff"), 4.5)
+                self.assertGreaterEqual(contrast_ratio(design["accent"], design["surface"]), 4.5)
 
     def test_rejects_unsupported_sector(self):
         with tempfile.TemporaryDirectory() as tmp:
