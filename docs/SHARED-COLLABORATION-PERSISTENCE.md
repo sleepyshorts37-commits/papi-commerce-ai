@@ -1,0 +1,66 @@
+# Persistance partagée de la mémoire et de PAPI CHAT
+
+## Migration 004
+
+`infra/supabase/migrations/004_shared_collaboration.sql` ajoute deux tables PostgreSQL :
+- `papi_memory_events` : événements de mémoire append-only (`remember` et `supersede`), avec portée `shared` ou `agent`, validation de forme et sensibilité normale uniquement.
+- `papi_chat_messages` : messages internes directs ou diffusés, avec tailles et types bornés.
+
+Les deux tables activent RLS, refusent les droits aux rôles `anon` et `authenticated`, et n'accordent que SELECT/INSERT à `service_role`. Des triggers refusent UPDATE et DELETE : l'historique reste append-only.
+
+## Limites actuelles
+
+Cette livraison établit le contrat SQL, pas encore la synchronisation runtime. Les fonctions locales `memory.py` et `chat.py` continuent à utiliser leurs journaux locaux. Aucun client Supabase n'est activé, aucune migration distante n'est exécutée et aucun secret n'est ajouté au dépôt.
+
+La prochaine étape devra implémenter des adaptateurs injectables, le filtrage d'accès par agent, la pagination stable et des tests PostgreSQL de concurrence avant d'autoriser une synchronisation entre instances.
+
+## Adaptateurs — Phase 2, jour 2
+
+Le module `runtime/papi_core/shared_persistence.py` fournit deux adaptateurs opt-in :
+- `SharedMemoryAdapter` : écrit les événements `remember` / `supersede` et lit les événements autorisés avec pagination stable.
+- `SharedChatAdapter` : écrit les messages et lit uniquement les messages directs de l'agent authentifié ou les diffusions `all`.
+
+Les adaptateurs exigent un `SupabaseStore` injecté depuis le backend de confiance. Les lectures exigent un objet `AuthenticatedAgentPrincipal` émis par la frontière d'authentification interne ; une chaîne contenant un identifiant d'agent est refusée. Les filtres d'accès sont appliqués dans la requête PostgREST avant le retour des lignes.
+
+**Non-activation volontaire :** les fonctions publiques existantes de `memory.py` et `chat.py` restent locales et inchangées. Aucun appel distant n'est déclenché automatiquement. Le déploiement, les identifiants, la migration distante, la synchronisation et les workers restent désactivés. Les tests utilisent un magasin simulé et ne contactent aucun service externe.
+
+ 
+## Durcissement — Phase 2, jour 3
+
+Les adaptateurs appliquent désormais des contrôles avant tout appel réseau :
+- l'ajout d'un événement mémoire exige une identité agent authentifiée et vérifie que l'acteur déclaré correspond à cette identité ;
+- les UUID, dates avec fuseau horaire, catégories, portées, tailles de texte, tags et niveaux de confiance sont validés côté application avant insertion ;
+- les messages vérifient leur identifiant, leur date, leurs champs et leurs limites avant insertion ;
+- les contenus mémoire et les messages sont aussi rejetés s'ils ressemblent à des secrets d'authentification (clés API, jetons, mots de passe, OTP, etc.) ;
+- les recherches mémoire sont plafonnées à 5 000 événements par requête ; si ce plafond est atteint sans épuiser les résultats, l'adaptateur échoue explicitement au lieu de retourner un résultat potentiellement incomplet ;
+- le filtre de catégorie est appliqué après la prise en compte des événements `supersede`, afin qu'une recherche catégorisée ne réaffiche pas une mémoire archivée.
+
+Les tests couvrent l'usurpation d'acteur, les identifiants et dates invalides, les entrées rejetées avant tout appel réseau, les recherches catégorisées et la confirmation d'insertion. La validation CI reste requise avant de déclarer cette journée terminée.
+
+
+## Idempotence — Phase 2, jour 4
+
+Les insertions mémoire et chat utilisent maintenant une stratégie idempotente basée sur leur clé primaire :
+- le premier envoi insère l'enregistrement ;
+- un nouvel envoi avec le même identifiant et exactement le même contenu est traité comme une répétition réussie ;
+- si le même identifiant est réutilisé avec un contenu différent, l'adaptateur signale une collision et ne masque pas le conflit.
+
+La stratégie utilise `resolution=ignore-duplicates` puis relit l'enregistrement existant pour comparer le contenu. Elle ne remplace jamais un enregistrement append-only. Les tests couvrent la répétition identique et la collision d'identifiant. La validation CI du commit courant est nécessaire avant de considérer ce jour terminé.
+
+
+## Isolation mémoire et vérification finale — Phase 2, jour 5
+
+Le contrôle d'accès aux événements `supersede` a été renforcé :
+- un agent ne peut archiver que sa mémoire privée ou une mémoire explicitement partagée ;
+- une tentative d'archivage d'une mémoire privée appartenant à un autre agent est refusée avant insertion ;
+- les motifs d'archivage sont également filtrés contre les chaînes ressemblant à des secrets d'authentification ;
+- lors d'une recherche, un événement `supersede` d'un autre agent ne peut plus masquer une mémoire privée de l'agent courant ;
+- les événements d'archivage d'une mémoire partagée restent pris en compte pour tous les lecteurs autorisés.
+
+La vérification d'idempotence tient compte du format canonique des dates renvoyées par PostgreSQL et des colonnes remplies par défaut ou à NULL. La comparaison porte sur les champs effectivement envoyés, sans exiger que la représentation JSON renvoyée soit identique octet par octet.
+
+### État de livraison
+
+Les adaptateurs restent opt-in et non connectés aux fonctions runtime locales. Aucun secret n'est ajouté, aucune migration distante n'est exécutée, aucun transfert de données n'est effectué, et aucun worker ni synchronisation n'est activé. La mise en production reste bloquée jusqu'à une revue distincte des permissions, des secrets, des migrations et des tests d'intégration dans un environnement contrôlé.
+
+La phase se clôt uniquement après succès des trois contrôles CI sur le commit final et revue de la PR.

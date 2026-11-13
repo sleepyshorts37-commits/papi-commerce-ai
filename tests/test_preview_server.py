@@ -1,0 +1,146 @@
+import tempfile
+import threading
+import unittest
+from pathlib import Path
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+from papi_core.preview_server import PreviewServerError, create_preview_server
+
+
+class PreviewServerTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        (self.root / "index.html").write_text("<!doctype html><h1>Preview</h1>", encoding="utf-8")
+        (self.root / "styles.css").write_text("body { color: black; }", encoding="utf-8")
+        (self.root / "contact").mkdir()
+        (self.root / "contact" / "index.html").write_text("<h1>Contact</h1>", encoding="utf-8")
+        self.server = create_preview_server(self.root)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base = f"http://127.0.0.1:{self.server.server_port}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+        self.tmp.cleanup()
+
+    def test_serves_root_nested_page_and_assets_with_security_headers(self):
+        with urlopen(self.base + "/") as response:
+            body = response.read().decode()
+            self.assertEqual(response.status, 200)
+            self.assertIn("Preview", body)
+            self._assert_security_headers(response)
+        with urlopen(self.base + "/styles.css") as response:
+            self.assertEqual(response.headers.get_content_type(), "text/css")
+            self._assert_security_headers(response)
+        with urlopen(self.base + "/contact/") as response:
+            self.assertIn("Contact", response.read().decode())
+        with urlopen(Request(self.base + "/", method="HEAD")) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers["Content-Length"], str(len((self.root / "index.html").read_bytes())))
+            self.assertEqual(response.read(), b"")
+        with urlopen(Request(self.base + "/styles.css", method="HEAD")) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get_content_type(), "text/css")
+            self.assertEqual(response.read(), b"")
+            self._assert_security_headers(response)
+
+    def _assert_security_headers(self, response):
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
+        self.assertIn("script-src 'none'", response.headers["Content-Security-Policy"])
+        self.assertIn("object-src 'none'", response.headers["Content-Security-Policy"])
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_rejects_write_methods_and_path_traversal(self):
+        for method in ("POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE"):
+            with self.assertRaises(HTTPError) as caught:
+                urlopen(Request(self.base + "/", data=b"x", method=method))
+            self.assertEqual(caught.exception.code, 405)
+        for path in ("/%2e%2e/secret", "/%2e%2e%2fsecret", "/missing.html"):
+            with self.assertRaises(HTTPError):
+                urlopen(self.base + path)
+
+
+    def test_rejects_malformed_encoded_paths_and_ambiguous_separators(self):
+        cases = (
+            ("/%E0%A4%A", 400),       # invalid UTF-8 after URL decoding
+            ("/folder%5c..%5csecret", 400),  # encoded Windows separators
+            ("/folder%00secret", 400),       # encoded NUL byte
+        )
+        for path, expected_status in cases:
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(self.base + path)
+                self.assertEqual(caught.exception.code, expected_status)
+
+    def test_rejects_symlink_even_when_target_is_inside_root(self):
+        outside = self.root / "styles.css"
+        link = self.root / "linked.css"
+        try:
+            link.symlink_to(outside)
+        except (OSError, NotImplementedError):
+            self.skipTest("Symlinks unavailable on this runner")
+        with self.assertRaises(HTTPError) as caught:
+            urlopen(self.base + "/linked.css")
+        self.assertEqual(caught.exception.code, 404)
+
+
+    def test_blocks_double_encoded_and_absolute_paths_without_disclosing_files(self):
+        # A double-encoded traversal is decoded once and must never escape root.
+        for path in ("/%252e%252e/secret", "/etc/passwd", "/C:/Windows/win.ini"):
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(self.base + path)
+                self.assertIn(caught.exception.code, (403, 404))
+
+    def test_rejects_symlink_to_file_outside_preview_root(self):
+        with tempfile.TemporaryDirectory() as outside_dir:
+            outside_file = Path(outside_dir) / "private-sentinel.txt"
+            sentinel = "PAPI_PREVIEW_OUTSIDE_ROOT_SENTINEL"
+            outside_file.write_text(sentinel, encoding="utf-8")
+            link = self.root / "outside-secret.txt"
+            try:
+                link.symlink_to(outside_file)
+            except (OSError, NotImplementedError):
+                self.skipTest("Symlinks unavailable on this runner")
+            with self.assertRaises(HTTPError) as caught:
+                urlopen(self.base + "/outside-secret.txt")
+            self.assertEqual(caught.exception.code, 404)
+            self.assertNotIn(sentinel, caught.exception.read().decode("utf-8", errors="replace"))
+
+
+    def test_resource_robustness_missing_directories_unicode_and_mime(self):
+        (self.root / "café.txt").write_text("Contenu Unicode", encoding="utf-8")
+        with urlopen(self.base + "/caf%C3%A9.txt") as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get_content_type(), "text/plain")
+            self.assertEqual(response.read().decode("utf-8"), "Contenu Unicode")
+        for path in ("/does-not-exist.txt", "/contact"):
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(self.base + path)
+                self.assertEqual(caught.exception.code, 404)
+
+    def test_server_remains_available_after_invalid_and_missing_requests(self):
+        for path, expected_status in (("/%E0%A4%A", 400), ("/not-found.txt", 404)):
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(self.base + path)
+                self.assertEqual(caught.exception.code, expected_status)
+        with urlopen(self.base + "/") as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn("Preview", response.read().decode("utf-8"))
+
+    def test_server_refuses_non_loopback_and_invalid_ports(self):
+        with self.assertRaises(PreviewServerError):
+            create_preview_server(self.root, host="0.0.0.0")
+        with self.assertRaises(PreviewServerError):
+            create_preview_server(self.root, port=-1)
+
+
+if __name__ == "__main__":
+    unittest.main()

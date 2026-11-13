@@ -27,6 +27,25 @@ Malick (missions freelance), Moustapha (petites missions), Aïssatou (traduction
 ### PAPI SERVICES
 Prestations numériques : visuels, rédaction, traduction, fiches produits, recherche, SEO, présentations, analyse de documents et assistants clients IA. Contrôle qualité avant livraison.
 
+### PAPI WEB BUILDER
+Agent spécialisé rattaché à PAPI DIGITALISATION & IA. Il transforme un prompt en langage naturel en site web complet, permet les modifications sans code, prépare un aperçu, teste le résultat et remet les sources. La publication et toute dépense d'hébergement/domaine restent soumises à validation. Fiche : `agents/PAPI-WEB-BUILDER.md`. Statut initial : planned, non opérationnel.
+
+### PAPI DIGITALISATION & IA — équipe spécialisée
+- Responsable de département / chef de projet : `papi-digitalisation-lead`.
+- Consultant transformation numérique : `papi-digital-consultant`.
+- Architecte solutions IA : `papi-ai-architect`.
+- Intégration et automatisation : `papi-integration-specialist`.
+- Sécurité, confidentialité et données : `papi-data-security`.
+- Formation et adoption : `papi-training-adoption`.
+- Support client : `papi-client-support`.
+- Commercial B2B : `papi-b2b-sales`.
+- PAPI WEB BUILDER : `papi-web-builder`.
+- Mariama conserve la fonction de contrôle qualité transversal indépendant.
+Fiches d'identité et permissions déclaratives : `agents/PAPI-DIGITALISATION-IA-TEAM.md`. Tous ces nouveaux rôles restent `planned`, sans instances actives ni permissions effectives.
+
+### PAPI DIGITALISATION & IA
+Département B2B de transformation numérique et d'adoption de l'IA. Il facture des audits, du conseil, la conception, l'intégration d'outils, la configuration des accès employés, la formation et le support récurrent. Équipe fonctionnelle cible : chef de projet, consultant digitalisation, architecte IA, intégrateur/automatisation, responsable sécurité et données, formateur, support/qualité et commercial B2B. Les rôles peuvent être regroupés au lancement puis séparés selon la charge. Voir `docs/PAPI-DIGITALISATION-IA.md` pour le catalogue, le processus client, les règles de sécurité et l'exemple pharmacie.
+
 ### PAPI BUSINESS PARTNERS
 Apport d'affaires pour hôtels, restaurants, immobilier, automobile, écoles, commerces, fournisseurs et services. Commission fixe ou pourcentage convenu par écrit avant l'apport de clients.
 

@@ -1,0 +1,43 @@
+name: PAPI browser preview tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-browser-test.txt
+      - name: Install project and browser-test dependencies
+        run: |
+          python -m pip install -r requirements.txt -r requirements-browser-test.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Run real-browser preview smoke tests
+        env:
+          PYTHONPATH: runtime
+          PAPI_BROWSER_ARTIFACT_DIR: artifacts/browser
+        run: |
+          mkdir -p artifacts/browser
+          python -m unittest discover -s tests/browser -v
+      - name: Upload responsive browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: papi-browser-responsive-screenshots
+          path: artifacts/browser/*.png
+          if-no-files-found: warn
+          retention-days: 7
