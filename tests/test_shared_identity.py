@@ -41,6 +41,9 @@ class SharedIdentityTests(unittest.TestCase):
             self.assertEqual(result["registry"], "supabase")
             self.assertEqual(len(store.calls), 2)
             self.assertEqual(store.calls[1][1], "rpc/papi_consume_agent_nonce")
+            self.assertEqual(store.calls[1][2]["p_agent_id"], "agent-a")
+            self.assertEqual(store.calls[1][2]["p_key_version"], envelope["key_version"])
+            self.assertEqual(store.calls[1][2]["p_nonce"], envelope["nonce"])
 
     def test_replay_or_rpc_failure_is_denied(self):
         with tempfile.TemporaryDirectory() as tmp:
