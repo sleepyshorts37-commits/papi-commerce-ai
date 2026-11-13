@@ -38,7 +38,7 @@ def evaluate_offer_profitability(offer: dict[str, Any]) -> dict[str, Any]:
     """Estimate net profit after fees, operating costs and valued labor.
 
     Required amounts: gross_revenue, platform_fee, payout_fee,
-    infrastructure_cost, other_cost, estimated_hours, target_hourly_rate.
+    infrastructure_cost, other_cost, estimated_hours, labor_hourly_rate.
     """
     if not isinstance(offer, dict):
         raise ProfitabilityError("offer doit être un objet.")
@@ -47,7 +47,7 @@ def evaluate_offer_profitability(offer: dict[str, Any]) -> dict[str, Any]:
         raise ProfitabilityError("currency doit être un code ISO 4217 à trois lettres.")
     required = (
         "gross_revenue", "platform_fee", "payout_fee", "infrastructure_cost",
-        "other_cost", "estimated_hours", "target_hourly_rate",
+        "other_cost", "estimated_hours", "labor_hourly_rate",
     )
     values = {field: _amount(offer.get(field), field) for field in required}
     hours = values["estimated_hours"]
@@ -56,7 +56,8 @@ def evaluate_offer_profitability(offer: dict[str, Any]) -> dict[str, Any]:
     gross = values["gross_revenue"]
     fees = values["platform_fee"] + values["payout_fee"]
     operating = values["infrastructure_cost"] + values["other_cost"]
-    labor = hours * values["target_hourly_rate"]
+    labor = hours * values["labor_hourly_rate"]
+    minimum_net_hourly = _amount(offer.get("minimum_net_hourly_rate", 0), "minimum_net_hourly_rate")
     cash_net = gross - fees - operating
     net_profit = cash_net - labor
     margin = (net_profit / gross * 100) if gross > 0 else Decimal("-100")
@@ -67,7 +68,7 @@ def evaluate_offer_profitability(offer: dict[str, Any]) -> dict[str, Any]:
 
     if gross <= 0 or net_profit < 0:
         status = "loss_making"
-    elif hourly_net < values["target_hourly_rate"]:
+    elif hourly_net < minimum_net_hourly:
         status = "below_hourly_target"
     elif margin < minimum_margin:
         status = "below_minimum_margin"
@@ -86,6 +87,7 @@ def evaluate_offer_profitability(offer: dict[str, Any]) -> dict[str, Any]:
         "estimated_net_hourly_rate": _money(hourly_net),
         "estimated_net_margin_percent": _money(margin),
         "minimum_margin_percent": _money(minimum_margin),
+        "minimum_net_hourly_rate": _money(minimum_net_hourly),
         "estimated_hours": str(hours),
         "status": status,
         "is_estimate": True,
