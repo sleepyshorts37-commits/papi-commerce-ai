@@ -161,6 +161,7 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 ### PAPI WEB BUILDER — régression visuelle et cohérence responsive (cycle 5 jours)
 - [x] Définir le plan de travail (docs/PAPI-WEB-BUILDER-VISUAL-REGRESSION-5-DAYS.md).
 - [x] Ajouter un premier contrat Chromium de géométrie responsive : header, hero, visuel, titre, cartes et débordement horizontal sur mobile/tablette/desktop (2a1df36).
+- [x] Ajouter le contrat Chromium des composants : tokens calculés, polices, hiérarchie typographique, espacements, bordures/rayons, ordre et chevauchements sur trois viewports (Jour 2, CI en attente).
 - [ ] Vérifier les contrats des six profils sectoriels, routes et sections configurables.
 - [ ] Valider les captures et parcours visuels en CI ; aucune comparaison pixel-perfect n'est encore implémentée.
-- **Statut :** Jour 1 implémenté ; CI en attente. Contrôle structurel uniquement, pas une revue esthétique ou une certification WCAG.
+- **Statut :** Jours 1 et 2 implémentés ; CI du nouveau test en attente. Contrôle structurel et de styles calculés uniquement, pas une revue esthétique ou une certification WCAG.
