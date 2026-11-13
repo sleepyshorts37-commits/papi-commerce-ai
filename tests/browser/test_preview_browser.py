@@ -59,15 +59,26 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_secondary_route_and_shared_stylesheet_load(self):
         page = await self.browser.new_page()
-        failed_requests = []
-        page.on("requestfailed", lambda request: failed_requests.append(request.url))
+        failed_local_requests = []
+        external_requests = []
+        page.on(
+            "request",
+            lambda request: external_requests.append(request.url)
+            if not request.url.startswith(self.base_url) else None,
+        )
+        page.on(
+            "requestfailed",
+            lambda request: failed_local_requests.append(request.url)
+            if request.url.startswith(self.base_url) else None,
+        )
         response = await page.goto(self.base_url + "/contact/", wait_until="networkidle")
         self.assertIsNotNone(response)
         self.assertEqual(response.status, 200)
         self.assertIn("Contact", await page.locator("h1").inner_text())
         stylesheet = await page.locator('link[rel="stylesheet"]').get_attribute("href")
         self.assertEqual(stylesheet, "../styles.css")
-        self.assertEqual(failed_requests, [])
+        self.assertEqual(failed_local_requests, [])
+        self.assertEqual(external_requests, [])
         await page.close()
 
 
