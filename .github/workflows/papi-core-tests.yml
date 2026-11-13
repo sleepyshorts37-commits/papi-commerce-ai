@@ -131,7 +131,11 @@ jobs:
               null;
             end;
 
-            -- UPDATE and DELETE remain blocked even for the privileged API role.
+          end
+          $ci$;
+          reset role;
+          do $immutable$
+          begin
             begin
               update public.papi_audit_anchor_records
                  set canonical_record = canonical_record
@@ -140,10 +144,16 @@ jobs:
             exception when sqlstate '55000' then
               null;
             end;
+            begin
+              delete from public.papi_audit_anchor_records
+               where journal_id = 'ci-anchor';
+              raise exception 'Immutable audit record DELETE was accepted';
+            exception when sqlstate '55000' then
+              null;
+            end;
           end
-          $ci$;
-          reset role;
-          do $
+          $immutable$;
+          do $check$
           begin
             if has_table_privilege('anon', 'public.papi_audit_anchor_records', 'select')
                or has_table_privilege('authenticated', 'public.papi_audit_anchor_records', 'select')
@@ -151,4 +161,4 @@ jobs:
               raise exception 'Audit anchor table privileges are too broad';
             end if;
           end
-          $$;
+          $check$;
