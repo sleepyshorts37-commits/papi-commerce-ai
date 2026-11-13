@@ -22,6 +22,8 @@ class _PreviewHandler(BaseHTTPRequestHandler):
     do_PUT = do_POST
     do_PATCH = do_POST
     do_DELETE = do_POST
+    do_OPTIONS = do_POST
+    do_TRACE = do_POST
 
     def do_GET(self) -> None:
         self._serve(head_only=False)
