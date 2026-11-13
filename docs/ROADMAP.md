@@ -50,7 +50,7 @@
 - [x] Définir le parcours client, la facturation par livrable et les revenus récurrents.
 - [x] Documenter l'exemple de digitalisation d'une pharmacie et ses limites de sécurité.
 - [x] Préparer une première grille de forfaits et tarifs indicatifs à partir de repères publics sénégalais ; validation terrain et calcul des coûts réels encore requis.
-- [ ] Définir les modèles de devis, contrat, cahier des charges, procès-verbal de recette et support.
+- [x] Définir les modèles de devis, contrat, cahier des charges, procès-verbal de recette et support.\n- [x] Formaliser les portes de validation commerciale, les responsabilités et le dossier de preuve.
 - [ ] Concevoir les agents spécialisés et leurs fiches d'identité, permissions et responsables.
 - [ ] Construire une offre pilote avec démonstration sur données fictives et mesurer les résultats.
 - [ ] Obtenir validation du propriétaire avant toute prospection, dépense ou engagement client.
