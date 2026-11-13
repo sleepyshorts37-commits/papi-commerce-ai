@@ -9,8 +9,9 @@ Renforcer par tests adversariaux le serveur HTTP local de prévisualisation, en 
 - Livrable : rejet déterministe des chemins ambigus/malformés.
 
 ## Jour 2 — Méthodes HTTP et politique de réponse
-- [ ] Couvrir toutes les méthodes HTTP non autorisées et les réponses HEAD/GET.
-- [ ] Vérifier systématiquement les en-têtes de sécurité sur HTML et ressources statiques.
+- [x] Refuser explicitement OPTIONS et TRACE en plus de POST, PUT, PATCH et DELETE ; vérifier GET et HEAD sur HTML/CSS.
+- [x] Vérifier les en-têtes CSP, nosniff, Referrer-Policy et no-store sur HTML et CSS.
+- **Statut Jour 2 :** implémentation et tests ajoutés dans `runtime/papi_core/preview_server.py` et `tests/test_preview_server.py` ; validation CI en attente.
 - Livrable : matrice méthodes/en-têtes vérifiée.
 
 ## Jour 3 — Traversée, symlinks et confinement
