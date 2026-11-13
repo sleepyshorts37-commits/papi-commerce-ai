@@ -170,3 +170,32 @@ $$;
 revoke all on function public.papi_sync_job_attempt() from public, anon, authenticated;
 revoke all on function public.papi_claim_job(text, uuid, integer) from public, anon, authenticated;
 grant execute on function public.papi_claim_job(text, uuid, integer) to service_role;
+
+-- Renew only a still-valid lease held by the same worker and fencing token.
+create or replace function public.papi_renew_job(
+    p_job_id text, p_worker_id text, p_lease_token uuid, p_lease_seconds integer default 900
+) returns boolean
+language plpgsql security invoker
+set search_path = public, pg_temp
+as $$
+declare v_count integer;
+begin
+    if p_job_id is null or length(trim(p_job_id)) = 0
+       or p_worker_id is null or length(trim(p_worker_id)) = 0 or length(p_worker_id) > 120
+       or p_lease_token is null or p_lease_seconds is null
+       or p_lease_seconds < 15 or p_lease_seconds > 900 then
+        raise exception 'Invalid worker lease renewal' using errcode = '22023';
+    end if;
+    update public.papi_jobs
+       set lease_until = now() + make_interval(secs => p_lease_seconds),
+           updated_at = now()
+     where id = p_job_id and status = 'running'
+       and lease_owner = p_worker_id and lease_token = p_lease_token
+       and lease_until > now();
+    get diagnostics v_count = row_count;
+    return v_count = 1;
+end;
+$$;
+
+revoke all on function public.papi_renew_job(text, text, uuid, integer) from public, anon, authenticated;
+grant execute on function public.papi_renew_job(text, text, uuid, integer) to service_role;

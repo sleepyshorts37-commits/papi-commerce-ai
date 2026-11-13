@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from pathlib import Path
+from types import SimpleNamespace
 
 from papi_core.registry import load_agents, validate_task, validate_registries
 from papi_core.audit import AuditError, append_event, new_event, read_events
@@ -332,7 +333,10 @@ class HandlerPermissionTests(unittest.TestCase):
 
 class WorkerTests(unittest.TestCase):
     def make_worker(self, policy=None, job=None, task=None):
-        identity_patch = patch('papi_core.worker.authorize_authenticated_agent')
+        identity_patch = patch(
+            "papi_core.worker.authorize_authenticated_agent",
+            return_value={"principal": SimpleNamespace(agent_id="agent-a")},
+        )
         identity_patch.start()
         self.addCleanup(identity_patch.stop)
         from papi_core.execution_queue import ExecutionQueue
@@ -346,7 +350,12 @@ class WorkerTests(unittest.TestCase):
             "allowed_handlers": ["internal.echo"],
             "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
         }
-        return PapiWorker(queue=queue, registry=registry, policy=effective_policy, worker_id="worker-test")
+        audit_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(audit_dir.cleanup)
+        return PapiWorker(
+            queue=queue, registry=registry, policy=effective_policy,
+            worker_id="worker-test", audit_path=Path(audit_dir.name) / "events.jsonl",
+        )
 
     def test_disabled_worker_does_not_claim(self):
         worker = self.make_worker(policy={"execution_enabled": False})
@@ -365,11 +374,14 @@ class WorkerTests(unittest.TestCase):
                "payload": {"a": 1}, "lease_token": "lease-1", "attempt_id": "00000000-0000-4000-8000-000000000001"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-a"}
              }), \
+             patch.object(worker.queue, "renew", return_value=True), \
+             patch.object(worker.queue, "fail", return_value="retry") as fail, \
              patch.object(worker.queue, "complete", return_value=True) as complete:
             result = worker.run_once()
-        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["status"], "completed", fail.call_args)
+        fail.assert_not_called()
         complete.assert_called_once()
 
     def test_worker_blocks_unknown_handler_and_releases_job_to_retry(self):
@@ -391,11 +403,14 @@ class WorkerTests(unittest.TestCase):
                "payload": {}, "lease_token": "lease-3", "attempt_id": "00000000-0000-4000-8000-000000000003"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-a"}
              }), \
+             patch.object(worker.queue, "renew", return_value=True), \
+             patch.object(worker.queue, "fail", return_value="retry") as fail, \
              patch.object(worker.queue, "complete", return_value=False):
             result = worker.run_once()
-        self.assertEqual(result["status"], "lease_lost")
+        self.assertEqual(result["status"], "lease_lost", fail.call_args)
+        fail.assert_not_called()
 
 
 class DoctorTests(unittest.TestCase):

@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from papi_core.identity_ed25519 import (
@@ -43,13 +44,31 @@ class Ed25519IdentityTests(unittest.TestCase):
     def test_rotation_invalidates_old_version(self):
         old = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
                                    timestamp=1000, nonce="d" * 16)
-        rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+        new_private = rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+        self.assertRegex(new_private.name, r"^agent-a\.v2\.[0-9a-f]{16}\.ed25519\.pem$")
+        self.assertTrue(self.private.is_file(), "La clé précédente est conservée pour audit/récupération.")
         with self.assertRaises(Ed25519IdentityError):
             verify_ed25519_request(old, self.registry, self.replay, now=1000)
         new = sign_ed25519_request("agent-a", {"permission": "read"},
-                                   self.private_dir / "agent-a.ed25519.pem",
+                                   new_private,
                                    key_version=2, timestamp=1000, nonce="e" * 16)
         self.assertTrue(verify_ed25519_request(new, self.registry, self.replay, now=1000)["authenticated"])
+
+    def test_failed_rotation_keeps_old_key_and_registry_consistent(self):
+        old_registry = self.registry.read_bytes()
+        old_envelope = sign_ed25519_request(
+            "agent-a", {"permission": "read"}, self.private,
+            timestamp=1000, nonce="q" * 16)
+        with patch("papi_core.identity_ed25519._write_registry",
+                   side_effect=OSError("simulated registry write failure")):
+            with self.assertRaises(OSError):
+                rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+        self.assertEqual(self.registry.read_bytes(), old_registry)
+        self.assertTrue(self.private.is_file())
+        # A candidate may remain after an ambiguous post-replace failure; it is
+        # not active unless the public registry references its matching key.
+        self.assertTrue(verify_ed25519_request(
+            old_envelope, self.registry, self.replay, now=1000)["authenticated"])
 
     def test_revocation_rejected(self):
         revoke_ed25519_agent("agent-a", self.registry)

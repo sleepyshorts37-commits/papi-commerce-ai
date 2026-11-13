@@ -51,5 +51,22 @@ class AgentIdentityCardTests(unittest.TestCase):
             validate_identity_card(card)
 
 
+    def test_validation_rejects_tampered_governance_fields(self):
+        original = create_identity_card(self.agent, "2026-11-12", "president")
+        mutations = (
+            {"status": []},
+            {"autonomy_level": []},
+            {"permissions": ["read_reports", "read_reports"]},
+            {"skills": ["analyse", None]},
+            {"manager_agent_id": ""},
+            {"created_at": None},
+        )
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                card = {**original, **mutation}
+                with self.assertRaises(IdentityCardError):
+                    validate_identity_card(card)
+
+
 if __name__ == "__main__":
     unittest.main()

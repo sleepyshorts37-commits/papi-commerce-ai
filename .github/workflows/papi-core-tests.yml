@@ -1,4 +1,4 @@
-name: PAPI core tests
+name: PAPI core tests — attempt audit
 
 on:
   push:
@@ -61,6 +61,8 @@ jobs:
             \quit 1
           \endif
           SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.up.sql
 
       - name: Verify durable job attempt history
         env:
@@ -102,6 +104,55 @@ jobs:
             if previous_status <> 'lease_expired' then
               raise exception 'previous attempt status was %, expected lease_expired', previous_status;
             end if;
+            if not public.papi_renew_job(
+              'attempt-ci-job', 'worker-ci-2', (second_claim->>'lease_token')::uuid, 60
+            ) then
+              raise exception 'current lease could not be renewed';
+            end if;
+            if public.papi_renew_job(
+              'attempt-ci-job', 'worker-ci-1', (first_claim->>'lease_token')::uuid, 60
+            ) then
+              raise exception 'stale worker renewed a replaced lease';
+            end if;
+            if public.papi_complete_job(
+              'attempt-ci-job', 'worker-ci-1', (first_claim->>'lease_token')::uuid,
+              '{"stale":true}'::jsonb
+            ) then
+              raise exception 'stale worker completed a replaced lease';
+            end if;
+            if not public.papi_complete_job(
+              'attempt-ci-job', 'worker-ci-2', (second_claim->>'lease_token')::uuid,
+              '{"verified":true}'::jsonb
+            ) then
+              raise exception 'current lease could not complete its job';
+            end if;
+            if (select status from public.papi_jobs where id = 'attempt-ci-job') <> 'done' then
+              raise exception 'job did not reach done state after current lease completion';
+            end if;
+            if (select status from public.papi_job_attempts
+                 where attempt_id = (second_claim->>'attempt_id')::uuid) <> 'completed' then
+              raise exception 'current attempt history was not marked completed';
+            end if;
           end;
           $attempt$;
+          SQL
+
+      - name: Verify attempt migration rollback on disposable PostgreSQL
+        env:
+          PGPASSWORD: papi_test_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          do $rollback$
+          begin
+            if to_regclass('public.papi_job_attempts') is not null then
+              raise exception 'attempt table remains after rollback';
+            end if;
+            if to_regprocedure('public.papi_renew_job(text,text,uuid,integer)') is not null then
+              raise exception 'lease renewal RPC remains after rollback';
+            end if;
+          end;
+          $rollback$;
           SQL

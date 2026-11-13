@@ -51,6 +51,8 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [File d'exécution et reprise](docs/EXECUTION-QUEUE.md)
 - [Registre de handlers et permissions](docs/HANDLER-PERMISSIONS.md)
 - [Worker contrôlé](docs/WORKER.md)
+- [Reprise des travaux et limites d'idempotence](docs/WORKER-RECOVERY.md)
+- [Contrôle d'accès des agents](docs/AGENT-ACCESS-CONTROL.md)
 - [Planificateur](docs/SCHEDULER.md)
 - [Outils commerciaux](docs/SALES-TOOLS.md)
 - [Finances et comptabilité](docs/FINANCE-LEDGER.md)
