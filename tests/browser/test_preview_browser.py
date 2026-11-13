@@ -196,7 +196,8 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
             ) or focused["boxShadow"] != "none"
             self.assertTrue(focus_visible, f"No visible focus on skip link: {route} {focused}")
             await page.keyboard.press("Enter")
-            self.assertEqual(await page.evaluate("document.activeElement.id"), "main-content", route)
+            self.assertEqual(await page.evaluate("window.location.hash"), "#main-content", route)
+            self.assertTrue(await page.locator("#main-content").is_visible(), route)
         await page.close()
 
     async def test_reduced_motion_preference_is_respected(self):
@@ -218,6 +219,44 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
                 for value in styles["transitionDuration"].split(",")),
             f"Reduced-motion transition duration too long: {styles}"
         )
+        await page.close()
+
+
+
+    async def test_local_performance_budgets_and_network_isolation(self):
+        page = await self.browser.new_page()
+        requests = []
+        failed = []
+        page.on("request", lambda request: requests.append(request.url))
+        page.on("requestfailed", lambda request: failed.append(request.url))
+        for route in ("/", "/contact/"):
+            requests.clear()
+            failed.clear()
+            response = await page.goto(self.base_url + route, wait_until="networkidle")
+            self.assertIsNotNone(response)
+            self.assertEqual(response.status, 200, route)
+            metrics = await page.evaluate("""async () => {
+                const resources = performance.getEntriesByType("resource");
+                const navigation = performance.getEntriesByType("navigation")[0];
+                const cssLink = document.querySelector('link[rel="stylesheet"]');
+                const cssResponse = await fetch(cssLink.href, {cache: "no-store"});
+                const cssBytes = new TextEncoder().encode(await cssResponse.text()).length;
+                return {
+                    htmlBytes: navigation ? navigation.encodedBodySize : 0,
+                    resourceCount: resources.length,
+                    domNodes: document.querySelectorAll("*").length,
+                    cssBytes,
+                    resourceUrls: resources.map((entry) => entry.name)
+                };
+            }""")
+            self.assertLessEqual(metrics["htmlBytes"], 100_000, f"HTML budget exceeded: {route} {metrics}")
+            self.assertLessEqual(metrics["cssBytes"], 100_000, f"CSS budget exceeded: {route} {metrics}")
+            self.assertLessEqual(metrics["resourceCount"] + 1, 4, f"Request budget exceeded: {route} {metrics}")
+            self.assertLessEqual(metrics["domNodes"], 500, f"DOM budget exceeded: {route} {metrics}")
+            self.assertEqual(failed, [], f"Failed requests on {route}: {failed}")
+            external = [url for url in requests if not url.startswith(self.base_url)]
+            self.assertEqual(external, [], f"Third-party requests on {route}: {external}")
+            self.assertTrue(all(url.startswith(self.base_url) for url in metrics["resourceUrls"]), metrics)
         await page.close()
 
     async def test_accessibility_landmarks_names_skip_link_and_keyboard_focus(self):
