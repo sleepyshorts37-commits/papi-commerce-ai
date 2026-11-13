@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from .agent_identity_card import IdentityCardError, validate_identity_card
-from .communication_resilience import NotificationGuard\nfrom .communication_channels import (
+from .communication_resilience import NotificationGuard
+from .communication_channels import (
     OwnerEmailNotification, OwnerEmailSender, DeliveryReceipt,
     InvalidChannelPayloadError, validate_owner_notification,
 )
@@ -38,11 +39,13 @@ class OwnerCommunicationRouter:
         identity_cards: Mapping[str, dict],
         owner_destination: OwnerDestination,
         email_sender: OwnerEmailSender,
+        notification_guard: NotificationGuard,
     ) -> None:
         self._profiles = agent_profiles
         self._cards = identity_cards
         self._destination = owner_destination
-        self._sender = email_sender\n        self._notification_guard = notification_guard
+        self._sender = email_sender
+        self._notification_guard = notification_guard
 
     def _authorize_agent(self, agent_id: str, permission: str) -> None:
         if not isinstance(agent_id, str) or not agent_id:
@@ -93,9 +96,11 @@ class OwnerCommunicationRouter:
             or destination.email.endswith("@")
         ):
             raise CommunicationAuthorizationError("Configuration de destination invalide.")
-        # L'adresse reste dans la configuration du sender injecté ; l'agent ne la fournit jamais.
+        await self._notification_guard.authorize(notification)
         try:
-            return await self._sender.send_owner_notification(notification)
+            receipt = await self._sender.send_owner_notification(notification)
         except Exception:
-            # Échec fermé : aucun autre destinataire ni fournisseur de secours implicite.
+            await self._notification_guard.record(notification, "provider_error")
             raise
+        await self._notification_guard.record(notification, "accepted")
+        return receipt
