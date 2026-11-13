@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -98,6 +99,19 @@ class SharedMemoryTests(unittest.TestCase):
         self.assertEqual(results.count(True), 1)
         self.assertEqual(results.count(False), 7)
         self.assertEqual(len(self.path.read_text(encoding="utf-8").splitlines()), 2)
+
+    def test_fifo_journal_is_rejected_without_blocking(self):
+        if not hasattr(os, "mkfifo"):
+            self.skipTest("FIFO tests require POSIX mkfifo")
+
+        os.mkfifo(self.path)
+        with self.assertRaises(MemoryError):
+            search_memory(principal=self.astou, path=self.path)
+
+        write_path = self.path.parent / "write-pipe.jsonl"
+        os.mkfifo(write_path)
+        with self.assertRaises(MemoryError):
+            self.remember(path=write_path)
 
     def test_memory_journal_symlink_is_rejected(self):
         target = self.path.parent / "target.jsonl"
