@@ -31,6 +31,7 @@ Les adaptateurs appliquent désormais des contrôles avant tout appel réseau :
 - l'ajout d'un événement mémoire exige une identité agent authentifiée et vérifie que l'acteur déclaré correspond à cette identité ;
 - les UUID, dates avec fuseau horaire, catégories, portées, tailles de texte, tags et niveaux de confiance sont validés côté application avant insertion ;
 - les messages vérifient leur identifiant, leur date, leurs champs et leurs limites avant insertion ;
+- les contenus mémoire et les messages sont aussi rejetés s'ils ressemblent à des secrets d'authentification (clés API, jetons, mots de passe, OTP, etc.) ;
 - les recherches mémoire sont plafonnées à 5 000 événements par requête ; si ce plafond est atteint sans épuiser les résultats, l'adaptateur échoue explicitement au lieu de retourner un résultat potentiellement incomplet ;
 - le filtre de catégorie est appliqué après la prise en compte des événements `supersede`, afin qu'une recherche catégorisée ne réaffiche pas une mémoire archivée.
 
