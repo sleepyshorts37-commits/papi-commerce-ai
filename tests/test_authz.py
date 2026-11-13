@@ -229,5 +229,33 @@ class AgentAccessTests(unittest.TestCase):
                 policy=self.policy, shared_identity_verifier=RejectingVerifier())
 
 
+    def test_suspended_and_revoked_agents_are_denied(self):
+        for status in ("suspended", "revoked"):
+            with self.subTest(status=status):
+                self.agents["agents"][0]["status"] = status
+                self.write()
+                with self.assertRaises(AccessDenied):
+                    authorize_agent("agent-a", "read_reports", self.path, self.policy)
+        self.agents["agents"][0]["status"] = "active"
+        self.write()
+
+    def test_permission_revocation_takes_effect_on_next_authorization(self):
+        authorize_agent("agent-a", "read_reports", self.path, self.policy)
+        self.agents["agents"][0]["permissions"].remove("read_reports")
+        self.write()
+        with self.assertRaises(AccessDenied):
+            authorize_agent("agent-a", "read_reports", self.path, self.policy)
+
+    def test_unknown_or_malformed_agent_status_fails_closed(self):
+        for status in (None, [], "ACTIVE", "unknown"):
+            with self.subTest(status=status):
+                self.agents["agents"][0]["status"] = status
+                self.write()
+                with self.assertRaises(AccessDenied):
+                    authorize_agent("agent-a", "read_reports", self.path, self.policy)
+        self.agents["agents"][0]["status"] = "active"
+        self.write()
+
+
 if __name__ == "__main__":
     unittest.main()
