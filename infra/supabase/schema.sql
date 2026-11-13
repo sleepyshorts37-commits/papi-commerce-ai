@@ -264,21 +264,48 @@ revoke all on public.papi_agent_used_nonces from public, anon, authenticated;
 grant select, insert, update on public.papi_agent_public_keys to service_role;
 grant select, insert, delete on public.papi_agent_used_nonces to service_role;
 
--- L'insertion atomique garantit qu'un nonce ne peut être consommé que par un worker.
+-- La clé active est verrouillée pendant la consommation du nonce.
+-- Une révocation concurrente attend la fin de cette transaction. Si elle est
+-- déjà validée, la vérification échoue avant toute consommation du nonce.
+-- Désactiver l'ancienne RPC 3 paramètres pour empêcher le contournement du contrôle.
+do $migration$
+begin
+    if to_regprocedure('public.papi_consume_agent_nonce(text,text,timestamptz)') is not null then
+        execute 'revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz) from public, anon, authenticated, service_role';
+    end if;
+end;
+$migration$;
+
 create or replace function public.papi_consume_agent_nonce(
-    p_agent_id text, p_nonce text, p_expires_at timestamptz
+    p_agent_id text, p_key_version integer, p_nonce text, p_expires_at timestamptz
 ) returns boolean
 language plpgsql
 security invoker
 set search_path = public, pg_temp
 as $$
-declare v_inserted integer;
+declare
+    v_key_active boolean;
+    v_inserted integer;
 begin
     if p_agent_id is null or p_agent_id !~ '^[A-Za-z0-9_-]{1,100}$'
+       or p_key_version is null or p_key_version < 1
        or p_nonce is null or length(p_nonce) < 16 or length(p_nonce) > 128
        or p_expires_at is null or p_expires_at <= now()
        or p_expires_at > now() + interval '10 minutes' then
         raise exception 'Invalid agent nonce' using errcode = '22023';
+    end if;
+
+    -- FOR SHARE holds this key row until the RPC transaction commits.
+    -- A concurrent UPDATE used for key rotation/revocation must wait.
+    select true into v_key_active
+      from public.papi_agent_public_keys
+     where agent_id = p_agent_id
+       and key_version = p_key_version
+       and status = 'active'
+     for share;
+
+    if not found then
+        return false;
     end if;
 
     delete from public.papi_agent_used_nonces where expires_at < now();
@@ -291,7 +318,7 @@ begin
     return v_inserted = 1;
 end;
 $$;
-revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
+revoke all on function public.papi_consume_agent_nonce(text, integer, text, timestamptz)
     from public, anon, authenticated;
-grant execute on function public.papi_consume_agent_nonce(text, text, timestamptz)
+grant execute on function public.papi_consume_agent_nonce(text, integer, text, timestamptz)
     to service_role;
