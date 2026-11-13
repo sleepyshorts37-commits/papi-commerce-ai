@@ -333,7 +333,8 @@ class HandlerPermissionTests(unittest.TestCase):
 
 class WorkerTests(unittest.TestCase):
     def make_worker(self, policy=None, job=None, task=None):
-        import papi_core.worker as worker_module
+        import importlib
+        worker_module = importlib.import_module("papi_core.worker")
         identity_patch = patch.object(worker_module, "authorize_authenticated_agent")
         identity_patch.start()
         identity_patch.return_value = {"principal": SimpleNamespace(agent_id="agent-a")}
