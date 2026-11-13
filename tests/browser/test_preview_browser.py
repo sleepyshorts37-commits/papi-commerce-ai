@@ -1,4 +1,5 @@
 """Real Chromium smoke tests for the isolated local website preview."""
+import os
 import tempfile
 import threading
 import unittest
@@ -81,6 +82,28 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(external_requests, [])
         await page.close()
 
+
+    async def test_responsive_viewports_navigation_and_screenshots(self):
+        page = await self.browser.new_page()
+        artifact_dir = Path(os.environ.get('PAPI_BROWSER_ARTIFACT_DIR', 'artifacts/browser'))
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        viewports = [('mobile', 390, 844), ('tablet', 768, 1024), ('desktop', 1440, 900)]
+        for label, width, height in viewports:
+            await page.set_viewport_size({'width': width, 'height': height})
+            response = await page.goto(self.base_url + '/', wait_until='networkidle')
+            self.assertIsNotNone(response)
+            self.assertEqual(response.status, 200)
+            self.assertTrue(await page.locator('h1').is_visible(), label)
+            self.assertTrue(await page.locator('main#main-content').is_visible(), label)
+            dimensions = await page.evaluate('() => ({viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth})')
+            self.assertLessEqual(dimensions['content'], dimensions['viewport'] + 1, f'Horizontal overflow at {label}: {dimensions}')
+            contact_link = page.locator('a[href*="contact"]').first
+            self.assertTrue(await contact_link.is_visible(), f'Contact navigation missing at {label}')
+            await contact_link.click()
+            self.assertEqual(page.url.rstrip('/').split('/')[-1], 'contact')
+            self.assertTrue(await page.locator('h1').is_visible())
+            await page.screenshot(path=str(artifact_dir / f'preview-{label}.png'), full_page=True)
+        await page.close()
 
 if __name__ == "__main__":
     unittest.main()
