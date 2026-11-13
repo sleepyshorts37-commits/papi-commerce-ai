@@ -27,6 +27,9 @@ Malick (missions freelance), Moustapha (petites missions), Aïssatou (traduction
 ### PAPI SERVICES
 Prestations numériques : visuels, rédaction, traduction, fiches produits, recherche, SEO, présentations, analyse de documents et assistants clients IA. Contrôle qualité avant livraison.
 
+### PAPI DIGITALISATION & IA
+Département B2B de transformation numérique et d'adoption de l'IA. Il facture des audits, du conseil, la conception, l'intégration d'outils, la configuration des accès employés, la formation et le support récurrent. Équipe fonctionnelle cible : chef de projet, consultant digitalisation, architecte IA, intégrateur/automatisation, responsable sécurité et données, formateur, support/qualité et commercial B2B. Les rôles peuvent être regroupés au lancement puis séparés selon la charge. Voir `docs/PAPI-DIGITALISATION-IA.md` pour le catalogue, le processus client, les règles de sécurité et l'exemple pharmacie.
+
 ### PAPI BUSINESS PARTNERS
 Apport d'affaires pour hôtels, restaurants, immobilier, automobile, écoles, commerces, fournisseurs et services. Commission fixe ou pourcentage convenu par écrit avant l'apport de clients.
 
