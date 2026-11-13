@@ -53,6 +53,7 @@ La stratégie utilise `resolution=ignore-duplicates` puis relit l'enregistrement
 Le contrôle d'accès aux événements `supersede` a été renforcé :
 - un agent ne peut archiver que sa mémoire privée ou une mémoire explicitement partagée ;
 - une tentative d'archivage d'une mémoire privée appartenant à un autre agent est refusée avant insertion ;
+- les motifs d'archivage sont également filtrés contre les chaînes ressemblant à des secrets d'authentification ;
 - lors d'une recherche, un événement `supersede` d'un autre agent ne peut plus masquer une mémoire privée de l'agent courant ;
 - les événements d'archivage d'une mémoire partagée restent pris en compte pour tous les lecteurs autorisés.
 
