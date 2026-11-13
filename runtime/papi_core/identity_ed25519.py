@@ -123,9 +123,9 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
     # Keep the current private key untouched until the public registry commit succeeds.
     # Versioned filenames make a failed registry update harmless: it leaves only an
     # unused candidate key, while the old key and registry remain mutually consistent.
-    private_path = private_dir / (agent_id + ".v" + str(next_version) + ".ed25519.pem")
-    if private_path.exists():
-        raise Ed25519IdentityError("Fichier de clé de destination déjà présent.")
+    private_path = private_dir / (
+        agent_id + ".v" + str(next_version) + "." + secrets.token_hex(8) + ".ed25519.pem"
+    )
     key = Ed25519PrivateKey.generate()
     private_bytes = key.private_bytes(serialization.Encoding.PEM,
         serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
@@ -142,12 +142,10 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
                                                   serialization.PublicFormat.Raw)
     registry["agents"][agent_id] = {"status": "active",
         "key_version": next_version, "public_key": public_bytes.hex()}
-    try:
-        _write_registry(registry_path, registry)
-    except Exception:
-        # Candidate private key is not active unless the registry points to it.
-        private_path.unlink(missing_ok=True)
-        raise
+    # Keep the candidate file if the registry write raises: the atomic registry
+    # writer may have replaced the file before a later metadata operation failed.
+    # An unused candidate is harmless; deleting it could invalidate a committed key.
+    _write_registry(registry_path, registry)
     return private_path
 
 
