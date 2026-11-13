@@ -34,3 +34,7 @@ Construire une chaîne de découverte et qualification des missions rémunérée
 - Provenance attachée à chaque opportunité acceptée.
 - Dédoublonnage déterministe.
 - Aucun appel réseau, candidature, message, paiement ou publication automatique dans cette mission sans autorisation séparée.
+
+
+## Suivi GitHub
+La PR est ouverte et cible `main` afin que les contrôles du dépôt puissent s'exécuter sur l'ensemble des dépendances empilées. Aucun merge ni déploiement.
