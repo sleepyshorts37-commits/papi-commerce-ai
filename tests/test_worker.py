@@ -189,6 +189,26 @@ class WorkerSafetyTests(unittest.TestCase):
         self.assertEqual(queue.fail_calls[0]["attempt"], 3)
         self.assertEqual(queue.fail_calls[0]["max_attempts"], 7)
 
+
+    def test_transient_storage_error_at_attempt_ceiling_reports_terminal_failure(self):
+        from papi_core.storage import StoreError
+        job = {"id": "job-last-attempt", "task_id": "task-last-attempt",
+               "handler": "report.preview", "payload": {},
+               "lease_token": "lease-last", "attempts": 5,
+               "max_attempts": 5, "agent_identity": None}
+        queue = QueueSpy(job)
+        queue.store = type("Store", (), {
+            "get_task": lambda self, task_id: (_ for _ in ()).throw(
+                StoreError("temporary outage", retry_code="service_timeout")
+            )
+        })()
+        worker = PapiWorker(queue=queue, registry=HandlerRegistry(),
+            policy={"execution_enabled": True}, worker_id="worker-test")
+        result = worker.run_once()
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(queue.fail_calls[0]["attempt"], 5)
+        self.assertEqual(queue.fail_calls[0]["max_attempts"], 5)
+
     def test_unclassified_storage_error_is_permanent(self):
         from papi_core.storage import StoreError
         job = {"id": "job-storage", "task_id": "task-storage",
