@@ -72,27 +72,58 @@ def new_event(*, event_id: str, actor: str, action: str, entity_type: str,
 
 
 def append_event(event: dict[str, Any], path: Path) -> bool:
-    """Ajoute un événement une seule fois. Conçu pour un écrivain unique."""
+    """Ajoute un événement avec verrou inter-processus et déduplication atomique."""
+    import fcntl
+
     validate_event(event)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        chunks = []
+        while True:
+            chunk = os.read(descriptor, 65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        existing_bytes = b"".join(chunks)
+        if existing_bytes and not existing_bytes.endswith(b"\\n"):
+            raise AuditError("Journal incomplet : dernière ligne tronquée, écriture refusée.")
+        seen = set()
+        for line_number, line in enumerate(existing_bytes.decode("utf-8").splitlines(), start=1):
             if not line.strip():
                 continue
             try:
                 existing = json.loads(line)
-            except json.JSONDecodeError as exc:
+                validate_event(existing)
+            except (json.JSONDecodeError, UnicodeDecodeError, AuditError) as exc:
                 raise AuditError(f"Journal corrompu à la ligne {line_number}.") from exc
-            if existing.get("event_id") == event["event_id"]:
-                return False
-    payload = (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-    try:
-        os.write(descriptor, payload)
+            event_id = existing["event_id"]
+            if event_id in seen:
+                raise AuditError(f"Identifiant d'événement dupliqué dans le journal: {event_id}")
+            seen.add(event_id)
+        if event["event_id"] in seen:
+            return False
+        payload = (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\\n").encode("utf-8")
+        original_size = len(existing_bytes)
+        try:
+            view = memoryview(payload)
+            written = 0
+            while written < len(payload):
+                written += os.write(descriptor, view[written:])
+            os.fsync(descriptor)
+        except Exception:
+            os.ftruncate(descriptor, original_size)
+            os.fsync(descriptor)
+            raise
+        return True
     finally:
-        os.close(descriptor)
-    return True
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
 
 
 def read_events(path: Path) -> list[dict[str, Any]]:
