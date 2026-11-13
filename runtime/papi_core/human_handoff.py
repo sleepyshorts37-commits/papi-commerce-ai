@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timezone
+import re
 from typing import Any
 from uuid import uuid4
 
 STATES = {"discovered", "awaiting_user", "user_confirmed", "resumed", "completed", "rejected"}
+SENSITIVE_TEXT = re.compile(r"\\b(?:otp|one[- ]time code|password|private key|seed phrase|recovery phrase|access token)\\s*[:=]", re.IGNORECASE)
 SENSITIVE_KEYS = {
     "password", "passwd", "otp", "one_time_code", "verification_code",
     "private_key", "secret_key", "seed_phrase", "recovery_phrase",
@@ -33,6 +35,8 @@ def _now() -> str:
 
 
 def _reject_sensitive(value: Any, path: str = "payload") -> None:
+    if isinstance(value, str) and SENSITIVE_TEXT.search(value):
+        raise HumanHandoffError(f"Contenu confidentiel détecté dans {path}.")
     if isinstance(value, dict):
         for key, child in value.items():
             normalized = str(key).strip().casefold().replace("-", "_")
