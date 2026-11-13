@@ -5,5 +5,6 @@ BEGIN;
 revoke all on function public.papi_fail_job(text, text, uuid, text, boolean, integer)
     from public, anon, authenticated;
 drop function if exists public.papi_fail_job(text, text, uuid, text, boolean, integer);
+grant execute on function public.papi_fail_job(text, text, uuid, text) to service_role;
 
 COMMIT;
