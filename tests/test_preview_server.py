@@ -32,20 +32,31 @@ class PreviewServerTests(unittest.TestCase):
             body = response.read().decode()
             self.assertEqual(response.status, 200)
             self.assertIn("Preview", body)
-            self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
-            self.assertIn("script-src 'none'", response.headers["Content-Security-Policy"])
-            self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self._assert_security_headers(response)
+        with urlopen(self.base + "/styles.css") as response:
+            self.assertEqual(response.headers.get_content_type(), "text/css")
+            self._assert_security_headers(response)
         with urlopen(self.base + "/contact/") as response:
             self.assertIn("Contact", response.read().decode())
         with urlopen(Request(self.base + "/", method="HEAD")) as response:
             self.assertEqual(response.status, 200)
             self.assertEqual(response.headers["Content-Length"], str(len((self.root / "index.html").read_bytes())))
             self.assertEqual(response.read(), b"")
-        with urlopen(self.base + "/styles.css") as response:
+        with urlopen(Request(self.base + "/styles.css", method="HEAD")) as response:
+            self.assertEqual(response.status, 200)
             self.assertEqual(response.headers.get_content_type(), "text/css")
+            self.assertEqual(response.read(), b"")
+            self._assert_security_headers(response)
+
+    def _assert_security_headers(self, response):
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
+        self.assertIn("script-src 'none'", response.headers["Content-Security-Policy"])
+        self.assertIn("object-src 'none'", response.headers["Content-Security-Policy"])
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
 
     def test_rejects_write_methods_and_path_traversal(self):
-        for method in ("POST", "PUT", "PATCH", "DELETE"):
+        for method in ("POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE"):
             with self.assertRaises(HTTPError) as caught:
                 urlopen(Request(self.base + "/", data=b"x", method=method))
             self.assertEqual(caught.exception.code, 405)
