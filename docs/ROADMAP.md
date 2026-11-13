@@ -50,7 +50,7 @@
   - Première base visuelle premium ajoutée (composition éditoriale, tokens CSS, responsive tablette/mobile et fondamentaux clavier) ; ne constitue pas une livraison entreprise.
 - [ ] Ajouter une chaîne de preuves qualité : tests navigateur, régression visuelle, accessibilité cible WCAG 2.2 AA, SEO, Core Web Vitals, sécurité et documentation de livraison.
   - Contrôles statiques de base et tests Chromium responsive/accessibilité structurelle ajoutés ; audit WCAG réel, revue lecteur d'écran, Core Web Vitals et revue de sécurité restent à construire.
-- [ ] Définir les paliers Prototype / MVP / Production professionnelle / Entreprise-critique et bloquer toute déclaration de niveau sans preuves.
+- [x] Définir les paliers Prototype / MVP / Production professionnelle / Entreprise-critique et bloquer toute déclaration de niveau sans preuves (docs/PAPI-WEB-BUILDER-QUALITY-POLICY.md, moteur runtime/papi_core/quality_gates.py ; tests CI à confirmer).
 - [ ] Développer l'orchestration IA multi-spécialistes (design, frontend, backend, SEO, accessibilité, performance, sécurité, QA) avec contrôleur indépendant.
 
 - [ ] Définir les intégrations hébergement/domaine et leur approbation avant toute publication.
@@ -169,3 +169,13 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Valider les quatre workflows CI sur le correctif final `b0d7b58` : core, Chromium (13 tests), registre et documentation PASS.
 - [x] Produire les captures CI (artefact `14070778672`) et publier `docs/PAPI-WEB-BUILDER-VISUAL-REGRESSION-REPORT.md`.
 - **Statut :** cycle de 5/5 journées terminé (100 %), quatre workflows PASS sur le commit final. Assertions structurelles, styles calculés et interactions Chromium ; pas de comparaison pixel-perfect, revue esthétique exhaustive ou certification WCAG.
+
+
+### PAPI WEB BUILDER — niveaux de qualité et portes de livraison (cycle 5 jours)
+- [x] Définir les quatre niveaux cumulatifs et les critères de preuve (docs/PAPI-WEB-BUILDER-QUALITY-POLICY.md).
+- [x] Implémenter le moteur fail-closed : preuves PASS, référence, horodatage avec fuseau et réviseur obligatoires.
+- [x] Ajouter les tests d'absence de preuves, de critères manquants, de statut pending, de date sans fuseau, de niveaux cumulés et d'entrée invalide.
+- [x] Garantir qu'aucun niveau ne donne automatiquement l'autorisation de publier ou déployer.
+- [ ] Exécuter et valider les tests ciblés et la CI complète sur le commit final.
+- [ ] Publier le rapport de recette et clore le cycle après résultats CI vérifiés.
+- **Statut provisoire :** moteur, tests et documentation ajoutés sur la branche papi-web-builder-quality-gates-2026-11-13. CI non encore confirmée ; aucun merge, déploiement ou publication.
