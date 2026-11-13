@@ -51,7 +51,7 @@ class QueueObservabilityTests(unittest.TestCase):
     def test_expired_lease_degrades_health(self):
         result = evaluate_queue_snapshot([
             job(status="running", lease_until="2026-11-13T11:59:59Z")
-        ], now=NOW)
+        ], now=NOW, stale_running_seconds=1)
         self.assertEqual(result["overall_status"], "degraded")
         self.assertEqual(result["expired_running_leases"], 1)
         self.assertIn("expired_running_lease", result["alert_reasons"])
