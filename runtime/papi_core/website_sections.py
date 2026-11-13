@@ -55,7 +55,9 @@ def render_page_sections(
         heading = html.escape(_text(section.get("heading"), f"{identifier}.heading"))
         eyebrow = html.escape(_text(section.get("eyebrow", "Découvrir"), f"{identifier}.eyebrow", 80))
         body_value = section.get("body")
-        body = html.escape(_text(body_value, f"{identifier}.body", 1000)) if body_value is not None else ""
+        if body_value is not None and not isinstance(body_value, str):
+            raise WebsiteSectionError(f"{identifier}.body: texte attendu.")
+        body = html.escape(_text(body_value, f"{identifier}.body", 1000)) if body_value is not None and body_value.strip() else ""
         heading_id = f"section-{identifier}"
 
         if kind == "intro":
