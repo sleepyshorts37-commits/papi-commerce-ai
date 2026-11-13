@@ -128,8 +128,8 @@ class PapiWorker:
             if not approval_required and approval_status not in (None, "not_required"):
                 raise HandlerPermissionError("État d'approbation incohérent.")
 
-            # Politique et handler sont prévalidés avant le contrôle cryptographique.
-            authorize_job(job, task, self.policy, self.registry)
+            # Le handler est résolu avant authentification ; les refus de politique
+            # seront évalués après authentification pour attribuer correctement l'audit.
             spec = self.registry.get(handler)
             permission = PERMISSION_BY_CLASS.get(spec.action_class)
             if permission is None:
@@ -146,6 +146,7 @@ class PapiWorker:
             authenticated_actor = getattr(principal, "agent_id", None)
             if not isinstance(authenticated_actor, str) or authenticated_actor != agent_id:
                 raise AccessDenied("Principal authentifié invalide.")
+            authorize_job(job, task, self.policy, self.registry)
             # Fencing: ne jamais démarrer le handler avec un bail expiré ou perdu.
             if not self.queue.renew(job_id=job_id, worker_id=self.worker_id,
                                     lease_token=lease_token, lease_seconds=900):
