@@ -36,8 +36,9 @@ class SupabaseCheckpointStoreTests(unittest.TestCase):
 
     def test_get_record_returns_exact_utf8_bytes(self):
         canonical = json.dumps(self.record(), sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         self.client._request.return_value = [{"canonical_record": canonical}]
-        self.assertEqual(self.adapter.get_record("c" * 64), canonical.encode("utf-8"))
+        self.assertEqual(self.adapter.get_record(digest), canonical.encode("utf-8"))
 
     def test_put_record_checks_digest_and_read_after_write(self):
         canonical = json.dumps(self.record(), sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -72,18 +73,20 @@ class SupabaseCheckpointStoreTests(unittest.TestCase):
         record = self.record()
         record["journal_id"] = "other-journal"
         canonical = json.dumps(record, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         self.client._request.return_value = [{"canonical_record": canonical}]
         with self.assertRaises(StoreError):
-            self.adapter.compare_and_swap_latest("journal-01", None, "d" * 64)
+            self.adapter.compare_and_swap_latest("journal-01", None, digest)
 
     def test_non_boolean_rpc_result_fails_closed(self):
         canonical = json.dumps(self.record(), sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         self.client._request.side_effect = [
             [{"canonical_record": canonical}],
             {"success": True},
         ]
         with self.assertRaises(StoreError):
-            self.adapter.compare_and_swap_latest("journal-01", None, "d" * 64)
+            self.adapter.compare_and_swap_latest("journal-01", None, digest)
 
 
 if __name__ == "__main__":
