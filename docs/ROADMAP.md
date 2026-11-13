@@ -166,3 +166,13 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter le parcours Chromium des sections configurables sur /contact/ : FAQ interactive, CTA interne, focus clavier, contenus/libellés longs et contrôle d'overflow sur trois viewports (Jour 4, commit `b8a7788`, CI en attente).
 - [ ] Valider les captures et parcours visuels en CI ; aucune comparaison pixel-perfect n'est encore implémentée.
 - **Statut :** Jours 1 à 4 implémentés ; validation CI du Jour 4 en attente. Contrôle structurel, styles calculés et interactions de base uniquement, pas une revue esthétique ou une certification WCAG.
+
+
+### PAPI WEB BUILDER — audit SEO statique (cycle 5 jours)
+- [x] Définir le périmètre et les critères de contrôle SEO local.
+- [x] Ajouter l'auditeur HTML en lecture seule : titre, description, langue, H1, liens internes, canonical et Open Graph.
+- [x] Vérifier le sitemap XML, robots.txt, les chemins et les liens symboliques.
+- [x] Ajouter six tests unitaires et le guide de correction SEO.
+- [ ] Exécuter les tests ciblés et la CI complète sur le commit final.
+- [ ] Publier le rapport final après vérification des workflows.
+- **Statut provisoire :** moteur et tests ajoutés sur `papi-web-builder-seo-audit-5-days-2026-11-13`. Aucun réseau, publication, merge ou déploiement ; la CI doit confirmer le cycle.
