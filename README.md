@@ -41,6 +41,8 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Plan de réalisation](docs/ROADMAP.md)
+- [Politique des niveaux de qualité PAPI WEB BUILDER](docs/PAPI-WEB-BUILDER-QUALITY-POLICY.md)
+- [Plan de travail — portes de qualité](docs/PAPI-WEB-BUILDER-QUALITY-GATES-5-DAYS.md)
 - [Exploitation et gestion des tâches](docs/OPERATIONS.md)
 - [Noyau de coordination](docs/CORE-ENGINE.md)
 - [Orchestrateur consultatif](docs/ORCHESTRATOR.md)
