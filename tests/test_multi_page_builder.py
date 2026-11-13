@@ -58,7 +58,7 @@ class MultiPageBuilderTests(unittest.TestCase):
             page = (Path(tmp) / "custom/index.html").read_text()
             self.assertIn("Nos parcours", page)
             self.assertIn("Questions fréquentes", page)
-            self.assertNotIn("Une expérience conçue avec intention.", page)
+            self.assertNotIn("Une expérience conçue avec intention.", page)\n            services = (Path(tmp) / "custom/services/index.html").read_text()\n            self.assertIn("Un parcours adapté", services)
 
     def test_escapes_content_and_marks_current_navigation(self):
         with tempfile.TemporaryDirectory() as tmp:
