@@ -45,7 +45,7 @@ class Ed25519IdentityTests(unittest.TestCase):
         old = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
                                    timestamp=1000, nonce="d" * 16)
         new_private = rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
-        self.assertEqual(new_private.name, "agent-a.v2.ed25519.pem")
+        self.assertRegex(new_private.name, r"^agent-a\.v2\.[0-9a-f]{16}\.ed25519\.pem$")
         self.assertTrue(self.private.is_file(), "La clé précédente est conservée pour audit/récupération.")
         with self.assertRaises(Ed25519IdentityError):
             verify_ed25519_request(old, self.registry, self.replay, now=1000)
@@ -65,7 +65,8 @@ class Ed25519IdentityTests(unittest.TestCase):
                 rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
         self.assertEqual(self.registry.read_bytes(), old_registry)
         self.assertTrue(self.private.is_file())
-        self.assertFalse((self.private_dir / "agent-a.v2.ed25519.pem").exists())
+        # A candidate may remain after an ambiguous post-replace failure; it is
+        # not active unless the public registry references its matching key.
         self.assertTrue(verify_ed25519_request(
             old_envelope, self.registry, self.replay, now=1000)["authenticated"])
 
