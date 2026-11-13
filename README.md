@@ -36,6 +36,9 @@ Depuis la racine du dépôt :
 
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
+## WEB BUILDER
+- [Modèles sectoriels](docs/PAPI-SECTOR-BLUEPRINTS-GUIDE.md) — six plans sectoriels avec contrôle de complétude des informations, sans vérification automatique de leur véracité.
+
 ## Documents
 - [Organisation](docs/ORGANISATION.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
