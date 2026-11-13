@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from papi_core.organization import OrganizationError, build_organization
+
 ROOT = Path(__file__).resolve().parents[2]
 AGENTS_FILE = ROOT / "data" / "agents.json"
 TASKS_FILE = ROOT / "data" / "tasks.json"
@@ -72,6 +74,10 @@ def validate_task(task: dict[str, Any], agents: dict[str, dict[str, Any]]) -> li
 def validate_registries(agents_path: Path = AGENTS_FILE, tasks_path: Path = TASKS_FILE) -> list[str]:
     agents = load_agents(agents_path)
     data = load_json(tasks_path)
+    try:
+        build_organization(list(agents.values()))
+    except OrganizationError as exc:
+        raise RegistryError(f"Organigramme invalide: {exc}") from exc
     tasks = data.get("tasks")
     if not isinstance(tasks, list):
         raise RegistryError("'tasks' doit être une liste.")
