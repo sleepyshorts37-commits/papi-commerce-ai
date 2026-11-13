@@ -10,35 +10,36 @@ Ce cycle n'est pas une certification WCAG 2.2 AA, un audit Lighthouse complet, n
 - [x] Corriger les accents utilisés pour du petit texte afin d'atteindre au moins 4,5:1 sur les surfaces prévues.
 - [x] Ajouter un contrôle de contraste dans le rapport qualité multi-pages.
 - [x] Ajouter des tests unitaires pour les six secteurs et une vérification Chromium du texte accentué.
-- **Statut Jour 1 :** premier run CI a révélé un défaut d'import (`re` local/global) ; correction appliquée dans `824692a337172c92ef17ae149d9d423899ef7fd0`, validation du rerun en attente.
+- **Statut Jour 1 :** PASS CI sur le commit testé `83092e61fd39612fa5ea448569d93c12a1070b96` ; suite core et Chromium réussies.
 - Livrable : tokens lisibles avec preuve automatisée, sans prétendre à un audit complet.
 
 ## Jour 2 — Sémantique et structure de toutes les pages
 - [x] Ajouter le contrôle Chromium des landmarks, noms de navigation, titres uniques et hiérarchie des titres.
 - [x] Vérifier les noms accessibles des liens et l'unicité du lien courant dans la navigation.
 - [x] Contrôler les routes accueil, services et contact d'un site synthétique.
-- **Statut Jour 2 :** tests ajoutés sur les deux routes réellement générées par le fixture (`/` et `/contact/`). Un premier test ciblait `/services/` absent du fixture ; correction effectuée. CI du commit corrigé en attente.
+- **Statut Jour 2 :** PASS CI sur `83092e61fd39612fa5ea448569d93c12a1070b96`, tests sémantiques exécutés sur `/` et `/contact/`.
 - Livrable : rapport de structure sémantique reproductible.
 
 ## Jour 3 — Clavier, mouvement réduit et comportement responsive
 - [x] Tester le lien d'évitement, son activation clavier et l'indicateur de focus sur toutes les routes générées.
 - [x] Vérifier le respect de `prefers-reduced-motion` dans les styles calculés.
 - [x] Renforcer les assertions de visibilité de la navigation et de ses liens sur mobile, tablette et desktop.
-- **Statut Jour 3 :** les contrôles clavier et mouvement réduit ont été ajoutés. Le premier run a révélé une assertion trop stricte sur le focus après activation du lien d'évitement ; corrigée pour vérifier le fragment `#main-content` et la visibilité de la cible. Validation CI du correctif en attente.
+- **Statut Jour 3 :** PASS CI sur `83092e61fd39612fa5ea448569d93c12a1070b96`, y compris clavier, lien d'évitement, focus, mouvement réduit et trois viewports.
 - Livrable : contrôles navigateur sur interaction et mouvement.
 
 ## Jour 4 — Budgets de performance et réseau
 - [x] Définir des budgets explicites : HTML ≤ 100 Ko, CSS ≤ 100 Ko, maximum 4 requêtes navigateur et 500 nœuds DOM.
 - [x] Vérifier l'absence de requêtes tierces et de requêtes échouées.
 - [x] Mesurer les tailles encodées, le nombre de ressources et les nœuds DOM via les APIs Performance du navigateur.
-- **Statut Jour 4 :** test Chromium `test_local_performance_budgets_and_network_isolation` ajouté sur les routes générées ; CI en attente. Ces budgets sont des seuils de laboratoire, pas des Core Web Vitals terrain.
+- **Statut Jour 4 :** PASS CI sur `83092e61fd39612fa5ea448569d93c12a1070b96`. Budgets HTML/CSS, requêtes, DOM et isolement réseau validés sur les routes synthétiques. Ces mesures restent des seuils de laboratoire, pas des Core Web Vitals terrain.
 - Livrable : budget de performance de laboratoire et limites clairement documentées.
 
 ## Jour 5 — CI, recette et rapport
-- [ ] Intégrer tous les contrôles dans la CI existante.
-- [ ] Exécuter les suites core, registry, docs et Chromium sur le commit final.
-- [ ] Conserver les artefacts utiles et produire le rapport de recette.
-- [ ] Mettre à jour la roadmap avec les preuves exactes.
+- [x] Intégrer tous les contrôles dans la CI existante.
+- [x] Exécuter les suites core, registry, docs et Chromium : toutes réussies sur `83092e61fd39612fa5ea448569d93c12a1070b96`.
+- [x] Conserver les captures Chromium (`papi-browser-responsive-screenshots`, artefact CI 14067852956) et produire `docs/PAPI-WEB-BUILDER-ADVANCED-QUALITY-REPORT.md`.
+- [x] Mettre à jour la roadmap avec les preuves exactes.
+- **Statut Jour 5 : PASS** — core 429 tests, Chromium 9 tests, documentation et registre réussis. Rapport : `docs/PAPI-WEB-BUILDER-ADVANCED-QUALITY-REPORT.md`.
 - Livrable : décision PASS/FAIL limitée aux critères réellement testés.
 
 ## Garde-fous
