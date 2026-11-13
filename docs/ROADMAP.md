@@ -166,5 +166,6 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter le parcours Chromium des sections configurables sur /contact/ : FAQ interactive, CTA interne, focus clavier, contenus/libellés longs et contrôle d'overflow sur trois viewports (Jour 4, commit `b8a7788`, CI en attente).
 - [ ] Valider les captures et parcours visuels en CI ; aucune comparaison pixel-perfect n'est encore implémentée.
 - [x] Jour 5 : analyser l'échec Chromium réel (overflow e-commerce mobile) et corriger le dimensionnement intrinsèque des grilles/hero et le retour à la ligne des contenus (commit `b0d7b58`, validation CI en attente).
-- [ ] Valider les quatre workflows CI du correctif final et publier le rapport de cycle.
-- **Statut :** cinq journées de travail exécutées ; clôture technique conditionnée à la CI du correctif et au rapport final. Contrôle structurel, styles calculés et interactions de base uniquement, pas une revue esthétique ou une certification WCAG.
+- [x] Valider les quatre workflows CI sur le correctif final `b0d7b58` : core, Chromium (13 tests), registre et documentation PASS.
+- [x] Produire les captures CI (artefact `14070778672`) et publier `docs/PAPI-WEB-BUILDER-VISUAL-REGRESSION-REPORT.md`.
+- **Statut :** cycle de 5/5 journées terminé (100 %), quatre workflows PASS sur le commit final. Assertions structurelles, styles calculés et interactions Chromium ; pas de comparaison pixel-perfect, revue esthétique exhaustive ou certification WCAG.
