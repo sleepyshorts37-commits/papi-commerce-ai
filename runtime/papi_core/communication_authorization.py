@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from .agent_identity_card import IdentityCardError, validate_identity_card
-from .communication_channels import (
+from .communication_resilience import NotificationGuard\nfrom .communication_channels import (
     OwnerEmailNotification, OwnerEmailSender, DeliveryReceipt,
     InvalidChannelPayloadError, validate_owner_notification,
 )
@@ -42,7 +42,7 @@ class OwnerCommunicationRouter:
         self._profiles = agent_profiles
         self._cards = identity_cards
         self._destination = owner_destination
-        self._sender = email_sender
+        self._sender = email_sender\n        self._notification_guard = notification_guard
 
     def _authorize_agent(self, agent_id: str, permission: str) -> None:
         if not isinstance(agent_id, str) or not agent_id:
