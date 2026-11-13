@@ -34,6 +34,12 @@ class SharedCollaborationMigrationTests(unittest.TestCase):
         self.assertIn("raise exception 'append-only records cannot be changed'", self.sql)
         self.assertIn("using errcode = '55000'", self.sql)
 
+    def test_rollback_refuses_to_delete_existing_shared_data(self):
+        rollback = MIGRATION.with_name("004_shared_collaboration_down.sql").read_text(encoding="utf-8").lower()
+        self.assertIn("cannot rollback shared collaboration migration with retained data", rollback)
+        self.assertIn("if exists (select 1 from public.papi_memory_events)", rollback)
+        self.assertIn("drop table if exists public.papi_memory_events", rollback)
+
 
 if __name__ == "__main__":
     unittest.main()
