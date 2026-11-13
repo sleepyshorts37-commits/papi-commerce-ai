@@ -83,7 +83,10 @@ def create_identity_card(agent: dict[str, Any], created_at: str,
 
 def validate_identity_card(card: dict[str, Any]) -> None:
     """Lève IdentityCardError si la carte ne respecte pas le schéma professionnel."""
-    if not isinstance(card, dict) or card.get("schema_version") != CARD_SCHEMA_VERSION:
+    if (not isinstance(card, dict)
+            or not isinstance(card.get("schema_version"), int)
+            or isinstance(card.get("schema_version"), bool)
+            or card["schema_version"] != CARD_SCHEMA_VERSION):
         raise IdentityCardError("Version ou structure de carte invalide.")
     required_text = ("agent_id", "name", "position", "department", "mission")
     if any(not isinstance(card.get(field), str) or not card[field].strip() for field in required_text):
