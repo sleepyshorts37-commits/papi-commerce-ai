@@ -68,7 +68,7 @@ def validate_identity_card(card: dict[str, Any]) -> None:
     if not isinstance(card, dict) or card.get("schema_version") != CARD_SCHEMA_VERSION:
         raise IdentityCardError("Version ou structure de carte invalide.")
     required_text = (
-        "employee_id", "agent_id", "name", "position", "department", "mission",
+        "employee_id", "agent_id", "name", "position", "department", "mission", "created_at",
     )
     if any(not isinstance(card.get(field), str) or not card[field].strip()
            for field in required_text):
@@ -83,9 +83,9 @@ def validate_identity_card(card: dict[str, Any]) -> None:
         manager_id = card["manager_agent_id"]
         if not isinstance(manager_id, str) or not manager_id.strip():
             raise IdentityCardError("Responsable hiérarchique invalide.")
-    if card.get("status") not in VALID_STATUSES:
+    if not isinstance(card.get("status"), str) or card["status"] not in VALID_STATUSES:
         raise IdentityCardError("Statut agent invalide.")
-    if card.get("autonomy_level") not in VALID_AUTONOMY_LEVELS:
+    if not isinstance(card.get("autonomy_level"), str) or card["autonomy_level"] not in VALID_AUTONOMY_LEVELS:
         raise IdentityCardError("Niveau d'autonomie invalide.")
     permissions = card.get("permissions")
     if not isinstance(permissions, list) or any(
