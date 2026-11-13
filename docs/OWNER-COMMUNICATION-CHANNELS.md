@@ -8,7 +8,8 @@ Permettre au propriétaire de dialoguer oralement avec les IA responsables et pe
 
 - Spécification Phase 2B, jour 1 : documentée.
 - Interfaces techniques Phase 2B, jour 2 : implémentées ; validation CI à confirmer sur le dernier commit.
-- Autorisation et routage Phase 2B, jour 3 : implémentés avec tests simulés ; aucune destination réelle configurée.\n- Résilience et audit Phase 2B, jour 4 : garde-fou idempotence/quotas/audit intégré au routeur ; stockages simulés uniquement.
+- Autorisation et routage Phase 2B, jour 3 : implémentés avec tests simulés ; aucune destination réelle configurée.
+- Résilience et audit Phase 2B, jour 4 : garde-fou idempotence/quotas/audit intégré au routeur ; stockages simulés uniquement.
 - Fournisseur de reconnaissance vocale (STT) : non choisi, non connecté.
 - Fournisseur de synthèse vocale (TTS) : non choisi, non connecté.
 - Fournisseur e-mail : non choisi, non connecté.
@@ -137,7 +138,27 @@ Le routeur de communication exige désormais un `NotificationGuard` injecté et 
 2. **Jour 2 — Interfaces techniques :** protocoles STT/TTS/e-mail, erreurs typées, délais bornés, validation des contenus et tests simulés. (Livré dans `communication_channels.py` et `test_communication_channels.py`.)
 3. **Jour 3 — Autorisation et routage :** contrôles identité/statut/permissions, destination propriétaire vérifiée et allowlistée, séparation voix/e-mail. (Implémenté avec tests simulés ; politique de priorité et limites de fréquence à compléter au jour 4.)
 4. **Jour 4 — Résilience et audit :** contrats d'idempotence, quotas, audit minimal et intégration obligatoire au routeur. (Implémentés avec tests simulés ; adaptateurs persistants et arrêt global restent à finaliser.)
-5. **Jour 5 — Validation :** tests de sécurité, tests d'intégration simulés, documentation d'exploitation et revue de préparation.
+5. **Jour 5 — Validation :** revue des contrôles, des tests et des limites de production documentée. La CI complète reste la preuve finale requise.
+
+## Revue de validation — jour 5
+
+Contrôles de livraison effectués :
+- les permissions voix et e-mail restent distinctes ;
+- le routage exige une identité active et des permissions concordantes ;
+- la destination propriétaire est configurée hors notification et doit être vérifiée, allowlistée et activée ;
+- l'idempotence et les quotas sont obligatoires avant transmission ;
+- les erreurs des stockages de contrôle bloquent l'envoi ;
+- l'audit conserve des métadonnées et exclut le corps du message ;
+- les tests sont exclusivement simulés.
+
+Limites restantes avant production :
+- implémenter des stockages persistants réellement atomiques pour idempotence et quotas ;
+- vérifier la signature/intégrité du registre d'identité à la frontière de composition ;
+- concevoir une reprise contrôlée et une console d'arrêt globale ;
+- tester les adaptateurs fournisseurs réels dans un environnement isolé après choix et autorisation ;
+- terminer la validation CI de l'ensemble des tests.
+
+La Phase 2B est donc livrée au niveau des contrats et du prototype sécurisé, mais n'est pas prête pour activation en production.
 
 ## Conditions d'activation
 
