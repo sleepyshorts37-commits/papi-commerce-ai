@@ -7,6 +7,7 @@ from papi_core.video_tasks import (
     create_video_task,
     extract_youtube_video_id,
     validate_video_task,
+    validate_video_task_registry,
 )
 
 
