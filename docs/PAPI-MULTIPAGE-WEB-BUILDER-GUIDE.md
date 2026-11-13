@@ -19,6 +19,6 @@ brief = {
 result = generate_multipage_site("./workspace", "hotel-baobab", brief)
 ```
 
-Le site produit `index.html`, `pages/*.html`, `styles.css` et `project.json`. Chaque page reçoit son contenu validé à partir des faits fournis. Le générateur accepte de 2 à 6 pages, refuse les identifiants invalides ou dupliqués et n'écrase jamais un projet existant.
+Le site produit `index.html`, `pages/*.html`, `styles.css` et `project.json`. Chaque page reçoit son contenu validé à partir des faits fournis. Le générateur accepte de 2 à 6 pages. Chaque résumé doit faire au maximum 180 caractères et chaque page accepte au maximum 7 faits (le résumé est lui aussi contrôlé comme un fait commercial). Les identifiants invalides ou dupliqués sont refusés et un projet existant n'est jamais écrasé.
 
 La génération est locale et déterministe. Aucun hébergement, publication, contact client ou transaction n'est déclenché. Relecture humaine obligatoire.
