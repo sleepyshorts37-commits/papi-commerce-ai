@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papi_core.authz import AccessDenied, authorize_agent, authorize_authenticated_agent
+from papi_core.authz import AccessDenied, authorize_agent, authorize_authenticated_agent, authorize_service_agent
 from papi_core.identity import provision_agent_key, sign_request
 from papi_core.identity_ed25519 import provision_ed25519_agent, sign_ed25519_request
 
@@ -227,6 +227,66 @@ class AgentAccessTests(unittest.TestCase):
             authorize_authenticated_agent("agent-a", "read_reports", envelope,
                 task_id="task-1", handler="report.preview", agents_path=self.path,
                 policy=self.policy, shared_identity_verifier=RejectingVerifier())
+
+
+    def test_service_authorization_requires_signed_audience_and_service(self):
+        private = provision_ed25519_agent("agent-a", self.root / "service-private",
+                                          self.root / "service-public.json")
+        payload = {"permission": "read_reports", "task_id": "task-svc",
+                   "handler": "report.preview", "audience": "papi-reporting",
+                   "service_id": "reporting-api"}
+        envelope = sign_ed25519_request("agent-a", payload, private, nonce="v" * 24)
+        result = authorize_service_agent(
+            "agent-a", "read_reports", envelope, task_id="task-svc",
+            handler="report.preview", audience="papi-reporting",
+            service_id="reporting-api", agents_path=self.path, policy=self.policy,
+            replay_db=self.root / "service-replay.sqlite3",
+            public_registry=self.root / "service-public.json")
+        self.assertTrue(result["identity_authenticated"])
+        self.assertEqual(result["principal"].agent_id, "agent-a")
+
+    def test_service_authorization_rejects_wrong_audience_or_service(self):
+        private = provision_ed25519_agent("agent-a", self.root / "service-private-wrong",
+                                          self.root / "service-public-wrong.json")
+        payload = {"permission": "read_reports", "task_id": "task-svc",
+                   "handler": "report.preview", "audience": "papi-reporting",
+                   "service_id": "reporting-api"}
+        for index, (audience, service_id) in enumerate((
+            ("papi-billing", "reporting-api"),
+            ("papi-reporting", "billing-api"),
+        )):
+            envelope = sign_ed25519_request("agent-a", payload, private,
+                                             nonce=(str(index + 2) * 24))
+            with self.subTest(audience=audience, service_id=service_id):
+                with self.assertRaises(AccessDenied):
+                    authorize_service_agent(
+                        "agent-a", "read_reports", envelope, task_id="task-svc",
+                        handler="report.preview", audience=audience,
+                        service_id=service_id, agents_path=self.path, policy=self.policy,
+                        replay_db=self.root / ("service-wrong-" + str(index) + ".sqlite3"),
+                        public_registry=self.root / "service-public-wrong.json")
+
+    def test_service_authorization_rejects_missing_or_partial_audience(self):
+        private = provision_ed25519_agent("agent-a", self.root / "service-private-missing",
+                                          self.root / "service-public-missing.json")
+        payload = {"permission": "read_reports", "task_id": "task-svc",
+                   "handler": "report.preview"}
+        envelope = sign_ed25519_request("agent-a", payload, private, nonce="w" * 24)
+        with self.assertRaises(AccessDenied):
+            authorize_service_agent(
+                "agent-a", "read_reports", envelope, task_id="task-svc",
+                handler="report.preview", audience="", service_id="reporting-api",
+                agents_path=self.path, policy=self.policy,
+                replay_db=self.root / "service-missing.sqlite3",
+                public_registry=self.root / "service-public-missing.json")
+        with self.assertRaises(AccessDenied):
+            authorize_authenticated_agent(
+                "agent-a", "read_reports", envelope, task_id="task-svc",
+                handler="report.preview", audience="papi-reporting",
+                agents_path=self.path, policy=self.policy,
+                replay_db=self.root / "service-partial.sqlite3",
+                public_registry=self.root / "service-public-missing.json")
+
 
 
 if __name__ == "__main__":
