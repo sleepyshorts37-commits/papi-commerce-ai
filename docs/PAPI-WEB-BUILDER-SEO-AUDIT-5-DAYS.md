@@ -22,7 +22,7 @@ L'audit ne remplace pas Google Search Console, une analyse de backlinks, une vé
 
 ## Suivi
 - [x] Jour 1 — spécification du périmètre et des critères.
-- [ ] Jour 2 — moteur d'audit SEO local.
-- [ ] Jour 3 — tests de conformité et de sécurité.
-- [ ] Jour 4 — guide de correction et intégration documentaire.
+- [x] Jour 2 — moteur d'audit SEO local (`runtime/papi_core/seo_audit.py`).
+- [x] Jour 3 — six tests de conformité et de sécurité (`tests/test_seo_audit.py`).
+- [x] Jour 4 — guide de correction SEO ajouté (`docs/PAPI-WEB-BUILDER-SEO-GUIDE.md`).
 - [ ] Jour 5 — CI complète et rapport final.
