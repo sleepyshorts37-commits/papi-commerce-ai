@@ -43,7 +43,7 @@
 
 ## Phase 3 — PAPI DIGITALISATION & IA (nouveau département B2B)
 - [x] Définir l'agent PAPI WEB BUILDER pour créer et modifier des sites web à partir d'un prompt, sans compétences en programmation.
-- [ ] Concevoir son moteur de génération, aperçu isolé, modification itérative et export de code source.\n  - Contrat d'architecture multi-pages ajouté : sitemap déterministe, routes sûres et traçabilité exigences → pages ; génération multi-pages et aperçu toujours à faire.
+- [ ] Concevoir son moteur de génération, aperçu isolé, modification itérative et export de code source.\n  - [x] Ajouter un serveur de prévisualisation statique local, loopback-only, lecture seule, avec contrôles de chemins et en-têtes CSP ; tests HTTP automatisés.\n  - [ ] Ajouter des tests de rendu navigateur réel, captures responsive et régressions visuelles (le serveur local seul ne constitue pas cette preuve).\n  - Contrat d'architecture multi-pages ajouté : sitemap déterministe, routes sûres et traçabilité exigences → pages ; génération multi-pages et aperçu toujours à faire.
   - Socle partiel ajouté : génération statique déterministe, mises à jour structurées, contrôles locaux et export ZIP allowlisté ; aperçu navigateur isolé et moteur IA non implémentés (voir `docs/PAPI-WEB-BUILDER-MVP.md`).
 - [ ] Ajouter des tests de qualité web, sécurité, responsive et critères d'acceptation.
 - [ ] Atteindre le standard de création web agence/grande entreprise : direction artistique par projet, design system, architecture multi-pages, fonctionnalités réellement intégrées, responsive multi-écrans.
