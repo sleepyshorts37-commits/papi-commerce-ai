@@ -218,21 +218,29 @@ class PapiWorker:
             return {"status": "lease_lost", "claimed": True, "job_id": job_id}
         except AccessDenied:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
+                attempt=job.get("attempts", 1),
+                max_attempts=job.get("max_attempts", 5),
                                   error_code="authentication_failed", status="blocked",
                                   actor=system_actor, action="job.authentication_blocked",
                                   handler=handler, outcome="blocked")
         except HandlerPermissionError:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
+                attempt=job.get("attempts", 1),
+                max_attempts=job.get("max_attempts", 5),
                                   error_code="permission_denied", status="blocked",
                                   actor=authenticated_actor or system_actor, action="job.blocked",
                                   handler=handler, outcome="permission_denied")
         except (WorkerError, StoreError, QueueError):
             return self._fail_job(job_id=job_id, lease_token=lease_token,
+                attempt=job.get("attempts", 1),
+                max_attempts=job.get("max_attempts", 5),
                                   error_code="worker_validation_error", status="failed",
                                   actor=authenticated_actor or system_actor, action="job.failed",
                                   handler=handler, outcome="validation_error")
         except Exception:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
+                attempt=job.get("attempts", 1),
+                max_attempts=job.get("max_attempts", 5),
                                   error_code="handler_error", status="failed",
                                   actor=authenticated_actor or system_actor, action="job.failed",
                                   handler=handler, outcome="handler_error")
