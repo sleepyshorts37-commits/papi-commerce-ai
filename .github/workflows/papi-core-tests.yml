@@ -63,6 +63,8 @@ jobs:
           SQL
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.up.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/202611170002_retryable_job_failures.up.sql
 
       - name: Verify durable job attempt history
         env:
@@ -137,11 +139,168 @@ jobs:
           $attempt$;
           SQL
 
+
+      - name: Verify crash recovery, idempotency and failure classification
+        env:
+          PGPASSWORD: papi_test_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          create temporary table ci_business_effects (
+            idempotency_key text primary key,
+            applied_count integer not null
+          );
+          insert into public.papi_tasks(id, task, version)
+          values
+            ('recovery-crash-task', '{"id":"recovery-crash-task"}'::jsonb, 1),
+            ('recovery-retry-task', '{"id":"recovery-retry-task"}'::jsonb, 1),
+            ('recovery-terminal-task', '{"id":"recovery-terminal-task"}'::jsonb, 1),
+            ('recovery-exhaust-task', '{"id":"recovery-exhaust-task"}'::jsonb, 1);
+          insert into public.papi_jobs(id, task_id, handler, payload, idempotency_key)
+          values
+            ('recovery-crash-job', 'recovery-crash-task', 'test.noop', '{}'::jsonb, 'recovery-crash-key'),
+            ('recovery-retry-job', 'recovery-retry-task', 'test.noop', '{}'::jsonb, 'recovery-retry-key'),
+            ('recovery-terminal-job', 'recovery-terminal-task', 'test.noop', '{}'::jsonb, 'recovery-terminal-key'),
+            ('recovery-exhaust-job', 'recovery-exhaust-task', 'test.noop', '{}'::jsonb, 'recovery-exhaust-key');
+          update public.papi_jobs set available_at = now() - interval '3 minutes'
+           where id = 'recovery-crash-job';
+          update public.papi_jobs set available_at = now() - interval '2 minutes'
+           where id = 'recovery-retry-job';
+          update public.papi_jobs set available_at = now() + interval '20 minutes'
+           where id = 'recovery-terminal-job';
+          update public.papi_jobs set max_attempts = 2
+           where id = 'recovery-retry-job';
+          update public.papi_jobs set max_attempts = 1,
+                                      available_at = now() + interval '30 minutes'
+           where id = 'recovery-exhaust-job';
+          do $recovery$
+          declare
+            first_claim jsonb;
+            second_claim jsonb;
+            retry_claim jsonb;
+            retry_claim_second jsonb;
+            terminal_claim jsonb;
+            exhausted_claim jsonb;
+            effect_count integer;
+            previous_attempt_status text;
+            retry_status text;
+            terminal_status text;
+            complete_again boolean;
+          begin
+            -- Crash after the business effect but before queue completion.
+            first_claim := public.papi_claim_job('worker-crash-1', gen_random_uuid(), 15);
+            if first_claim is null or first_claim->>'id' is distinct from 'recovery-crash-job' then
+              raise exception 'unexpected first crash-recovery claim: %', first_claim->>'id';
+            end if;
+            insert into ci_business_effects(idempotency_key, applied_count)
+            values ('order:42:charge', 1) on conflict (idempotency_key) do nothing;
+
+            update public.papi_jobs set lease_until = now() - interval '1 second'
+             where id = 'recovery-crash-job';
+            second_claim := public.papi_claim_job('worker-crash-2', gen_random_uuid(), 15);
+            if second_claim->>'id' <> 'recovery-crash-job'
+               or first_claim->>'attempt_id' = second_claim->>'attempt_id' then
+              raise exception 'crash recovery did not create a distinct attempt';
+            end if;
+            insert into ci_business_effects(idempotency_key, applied_count)
+            values ('order:42:charge', 1) on conflict (idempotency_key) do nothing;
+            select count(*) into effect_count from ci_business_effects
+             where idempotency_key = 'order:42:charge';
+            if effect_count <> 1 then
+              raise exception 'stable idempotency key did not suppress duplicate business effect';
+            end if;
+            select status into previous_attempt_status from public.papi_job_attempts
+             where attempt_id = (first_claim->>'attempt_id')::uuid;
+            if previous_attempt_status <> 'lease_expired' then
+              raise exception 'crashed attempt status is %, expected lease_expired', previous_attempt_status;
+            end if;
+            if not public.papi_complete_job(
+              'recovery-crash-job', 'worker-crash-2',
+              (second_claim->>'lease_token')::uuid, '{"recovered":true}'::jsonb
+            ) then
+              raise exception 'replacement attempt could not complete';
+            end if;
+            complete_again := public.papi_complete_job(
+              'recovery-crash-job', 'worker-crash-2',
+              (second_claim->>'lease_token')::uuid, '{"duplicate":true}'::jsonb
+            );
+            if complete_again then
+              raise exception 'completion retry unexpectedly rewrote a terminal job';
+            end if;
+            if (select status from public.papi_jobs where id = 'recovery-crash-job') <> 'done' then
+              raise exception 'job state was not durable after ambiguous completion response';
+            end if;
+
+            -- Transient errors are retried, policy/validation failures are terminal.
+            retry_claim := public.papi_claim_job('worker-retry', gen_random_uuid(), 15);
+            if retry_claim is null or retry_claim->>'id' is distinct from 'recovery-retry-job' then
+              raise exception 'unexpected retryable claim';
+            end if;
+            retry_status := public.papi_fail_job(
+              'recovery-retry-job', 'worker-retry',
+              (retry_claim->>'lease_token')::uuid, 'storage_unavailable', true
+            );
+            if retry_status <> 'retry' or
+               (select status from public.papi_jobs where id = 'recovery-retry-job') <> 'retry' then
+              raise exception 'transient failure was not scheduled for retry';
+            end if;
+            update public.papi_jobs set available_at = now()
+             where id = 'recovery-retry-job';
+            retry_claim_second := public.papi_claim_job('worker-retry-2', gen_random_uuid(), 15);
+            if retry_claim_second is null or retry_claim_second->>'id' is distinct from 'recovery-retry-job' then
+              raise exception 'second retry attempt was not claimable';
+            end if;
+            retry_status := public.papi_fail_job(
+              'recovery-retry-job', 'worker-retry-2',
+              (retry_claim_second->>'lease_token')::uuid, 'handler_error', true
+            );
+            if retry_status <> 'failed' or
+               (select status from public.papi_jobs where id = 'recovery-retry-job') <> 'failed' then
+              raise exception 'max_attempts did not stop further retries';
+            end if;
+
+            update public.papi_jobs set available_at = now()
+             where id = 'recovery-terminal-job';
+            terminal_claim := public.papi_claim_job('worker-terminal', gen_random_uuid(), 15);
+            if terminal_claim is null or terminal_claim->>'id' is distinct from 'recovery-terminal-job' then
+              raise exception 'unexpected terminal-failure claim';
+            end if;
+            terminal_status := public.papi_fail_job(
+              'recovery-terminal-job', 'worker-terminal',
+              (terminal_claim->>'lease_token')::uuid, 'permission_denied', false
+            );
+            if terminal_status <> 'failed' or
+               (select status from public.papi_jobs where id = 'recovery-terminal-job') <> 'failed' then
+              raise exception 'non-retryable policy failure was not terminal';
+            end if;
+
+            update public.papi_jobs set available_at = now()
+             where id = 'recovery-exhaust-job';
+            exhausted_claim := public.papi_claim_job('worker-exhausted', gen_random_uuid(), 15);
+            if exhausted_claim is null or exhausted_claim->>'id' is distinct from 'recovery-exhaust-job' then
+              raise exception 'unexpected max-attempts lease claim';
+            end if;
+            update public.papi_jobs set lease_until = now() - interval '1 second'
+             where id = 'recovery-exhaust-job';
+            if public.papi_claim_job('worker-after-exhaustion', gen_random_uuid(), 15) is not null then
+              raise exception 'expired final attempt was incorrectly reclaimed';
+            end if;
+            if (select status from public.papi_jobs where id = 'recovery-exhaust-job') <> 'failed'
+               or (select status from public.papi_job_attempts
+                    where attempt_id = (exhausted_claim->>'attempt_id')::uuid) <> 'failed' then
+              raise exception 'expired final attempt was not terminally recorded';
+            end if;
+          end;
+          $recovery$;
+          SQL
+
       - name: Verify attempt migration rollback on disposable PostgreSQL
         env:
           PGPASSWORD: papi_test_password
         run: |
           set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/202611170002_retryable_job_failures.down.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.down.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
@@ -152,6 +311,9 @@ jobs:
             end if;
             if to_regprocedure('public.papi_renew_job(text,text,uuid,integer)') is not null then
               raise exception 'lease renewal RPC remains after rollback';
+            end if;
+            if to_regprocedure('public.papi_fail_job(text,text,uuid,text,boolean)') is not null then
+              raise exception 'retryable failure RPC remains after rollback';
             end if;
           end;
           $rollback$;

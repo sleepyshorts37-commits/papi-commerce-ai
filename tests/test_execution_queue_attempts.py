@@ -40,5 +40,37 @@ class ExecutionQueueAttemptIdTests(unittest.TestCase):
             ExecutionQueue(store).claim(worker_id="worker-1")
 
 
+
+class ExecutionQueueFailurePolicyTests(unittest.TestCase):
+    def test_fail_sends_explicit_retryability_to_rpc(self):
+        store = FakeStore("retry")
+        result = ExecutionQueue(store).fail(
+            job_id="job-1", worker_id="worker-1", lease_token="lease-1",
+            error_code="storage_unavailable", retryable=True,
+        )
+        self.assertEqual(result, "retry")
+        method, path, payload = store.calls[0]
+        self.assertEqual((method, path), ("POST", "rpc/papi_fail_job"))
+        self.assertIs(payload["p_retryable"], True)
+
+    def test_terminal_failure_is_not_retried(self):
+        store = FakeStore("failed")
+        result = ExecutionQueue(store).fail(
+            job_id="job-1", worker_id="worker-1", lease_token="lease-1",
+            error_code="permission_denied", retryable=False,
+        )
+        self.assertEqual(result, "failed")
+        self.assertIs(store.calls[0][2]["p_retryable"], False)
+
+    def test_fail_rejects_non_boolean_retryability(self):
+        store = FakeStore("retry")
+        with self.assertRaises(QueueError):
+            ExecutionQueue(store).fail(
+                job_id="job-1", worker_id="worker-1", lease_token="lease-1",
+                error_code="storage_unavailable", retryable=1,
+            )
+        self.assertEqual(store.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -82,10 +82,13 @@ class PapiWorker:
 
     def _fail_job(self, *, job_id: str, task_id: str, attempt_id: str,
                   lease_token: str, error_code: str, status: str,
-                  actor: str, action: str, handler: str, outcome: str) -> dict[str, Any]:
+                  actor: str, action: str, handler: str, outcome: str,
+                  retryable: bool) -> dict[str, Any]:
         try:
-            self.queue.fail(job_id=job_id, worker_id=self.worker_id,
-                            lease_token=lease_token, error_code=error_code)
+            queue_status = self.queue.fail(
+                job_id=job_id, worker_id=self.worker_id, lease_token=lease_token,
+                error_code=error_code, retryable=retryable,
+            )
         except Exception:
             self._audit_best_effort(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                 action="job.failure_transition_error", actor=actor,
@@ -94,7 +97,8 @@ class PapiWorker:
                     "attempt_id": attempt_id}
         self._audit_best_effort(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
             action=action, actor=actor, handler=handler, outcome=outcome)
-        return {"status": status, "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
+        return {"status": status, "queue_status": queue_status, "claimed": True,
+                "job_id": job_id, "attempt_id": attempt_id}
 
     def run_once(self) -> dict[str, Any]:
         """Traite au maximum un travail ; handler interdit si l'audit de démarrage échoue."""
@@ -177,7 +181,7 @@ class PapiWorker:
                 return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                     lease_token=lease_token, error_code="audit_unavailable", status="audit_blocked",
                     actor=authenticated_actor, action="job.failed", handler=handler,
-                    outcome="audit_unavailable")
+                    outcome="audit_unavailable", retryable=True)
 
             def ensure_lease() -> None:
                 if not self.queue.renew(job_id=job_id, worker_id=self.worker_id,
@@ -208,19 +212,30 @@ class PapiWorker:
         except AccessDenied:
             return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                 lease_token=lease_token, error_code="authentication_failed", status="blocked",
-                actor=system_actor, action="job.authentication_blocked", handler=handler, outcome="blocked")
+                actor=system_actor, action="job.authentication_blocked", handler=handler,
+                outcome="blocked", retryable=False)
         except HandlerPermissionError:
             return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                 lease_token=lease_token, error_code="permission_denied", status="blocked",
                 actor=authenticated_actor or system_actor, action="job.blocked",
-                handler=handler, outcome="permission_denied")
-        except (WorkerError, StoreError, QueueError):
+                handler=handler, outcome="permission_denied", retryable=False)
+        except WorkerError:
             return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                 lease_token=lease_token, error_code="worker_validation_error", status="failed",
                 actor=authenticated_actor or system_actor, action="job.failed",
-                handler=handler, outcome="validation_error")
+                handler=handler, outcome="validation_error", retryable=False)
+        except StoreError:
+            return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
+                lease_token=lease_token, error_code="storage_unavailable", status="failed",
+                actor=authenticated_actor or system_actor, action="job.failed",
+                handler=handler, outcome="storage_error", retryable=True)
+        except QueueError:
+            return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
+                lease_token=lease_token, error_code="queue_unavailable", status="failed",
+                actor=authenticated_actor or system_actor, action="job.failed",
+                handler=handler, outcome="queue_error", retryable=True)
         except Exception:
             return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                 lease_token=lease_token, error_code="handler_error", status="failed",
                 actor=authenticated_actor or system_actor, action="job.failed",
-                handler=handler, outcome="handler_error")
+                handler=handler, outcome="handler_error", retryable=True)

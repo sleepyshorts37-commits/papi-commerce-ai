@@ -80,13 +80,17 @@ class ExecutionQueue:
             {"p_job_id": job_id, "p_worker_id": worker_id, "p_lease_token": lease_token, "p_result": result or {}})
         return response is True
 
-    def fail(self, *, job_id: str, worker_id: str, lease_token: str, error_code: str) -> str:
+    def fail(self, *, job_id: str, worker_id: str, lease_token: str,
+             error_code: str, retryable: bool = True) -> str:
         if not all(isinstance(x, str) and x.strip() for x in (job_id, worker_id, lease_token, error_code)):
             raise QueueError("Identifiants et code d'erreur obligatoires.")
         if not re.fullmatch(r"[a-z0-9_]{1,80}", error_code):
             raise QueueError("Code d'erreur invalide ou potentiellement sensible.")
+        if type(retryable) is not bool:
+            raise QueueError("Le caractère réessayable doit être booléen.")
         response = self.store._request("POST", "rpc/papi_fail_job",
-            {"p_job_id": job_id, "p_worker_id": worker_id, "p_lease_token": lease_token, "p_error_code": error_code})
+            {"p_job_id": job_id, "p_worker_id": worker_id, "p_lease_token": lease_token,
+             "p_error_code": error_code, "p_retryable": retryable})
         if response not in {"retry", "failed"}:
             raise QueueError("Réponse de reprise invalide.")
         return response
