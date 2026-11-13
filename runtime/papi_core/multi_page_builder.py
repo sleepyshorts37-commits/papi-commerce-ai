@@ -159,6 +159,16 @@ def generate_multi_page_project(
 .faq-section details p {{ color:var(--muted); }}
 .section-cta {{ padding:2rem; border:1px solid var(--line); border-radius:16px; background:var(--paper); }}
 .feature-index {{ color:var(--accent); font-weight:800; letter-spacing:.12em; }}
+.business-grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr)); gap:1rem; }}
+.product-card,.team-card,.testimonial-card,.service-card {{ min-width:0; padding:1.5rem; border:1px solid var(--line); border-radius:14px; background:#fff; }}
+.product-card h3,.team-card h3,.service-card h3 {{ margin-top:0; font-family:var(--font-display); }}
+.product-price,.team-role {{ color:var(--ink); font-weight:750; }}
+.testimonial-card {{ margin:0; }}
+.testimonial-card blockquote {{ margin:0 0 1.25rem; line-height:1.65; }}
+.testimonial-card figcaption {{ display:flex; flex-direction:column; gap:.2rem; }}
+.testimonial-card figcaption span,.content-disclaimer {{ color:var(--muted); font-size:.85rem; }}
+.content-disclaimer {{ padding:.7rem 1rem; border-left:3px solid var(--accent); background:var(--paper); }}
+
 .feature-card h3 {{ font-family:var(--font-display); font-size:1.2rem; }}
 .feature-card p,.content-panel p {{ color:var(--muted); }}
 .content-panel {{ max-width:850px; margin-block:2rem 5rem; }}
