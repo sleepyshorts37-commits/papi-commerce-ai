@@ -83,9 +83,8 @@ class PapiWorker:
             if not approval_required and approval_status not in (None, "not_required"):
                 raise HandlerPermissionError("État d'approbation incohérent.")
 
-            # Prévalidation générale du handler et de la politique avant authentification.
-            authorize_job(job, task, self.policy, self.registry)
-
+            # La validation générale de politique intervient après authentification
+            # pour attribuer tout refus au principal cryptographiquement vérifié.
             permission = PERMISSION_BY_CLASS.get(spec.action_class)
             if permission is None:
                 raise AccessDenied("Classe de permission non prise en charge.")
@@ -97,6 +96,7 @@ class PapiWorker:
                 public_registry=self.public_registry,
                 shared_identity_verifier=self.shared_identity_verifier,
             )
+            authorize_job(job, task, self.policy, self.registry)
             result = execute_authorized_job(
                 job, task, self.policy, self.registry,
                 context={
