@@ -6,10 +6,11 @@ Renforcer la qualité du générateur multi-pages sur quatre axes mesurables : c
 Ce cycle n'est pas une certification WCAG 2.2 AA, un audit Lighthouse complet, ni une autorisation de production.
 
 ## Jour 1 — Contraste des couleurs et tokens sectoriels
-- [ ] Mesurer le contraste WCAG des accents des six profils sur leurs surfaces réelles.
-- [ ] Corriger les accents utilisés pour du petit texte afin d'atteindre au moins 4,5:1 sur les surfaces prévues.
-- [ ] Ajouter un contrôle de contraste dans le rapport qualité multi-pages.
-- [ ] Ajouter des tests unitaires pour les six secteurs et une vérification Chromium du texte accentué.
+- [x] Mesurer le contraste WCAG des accents des six profils sur leurs surfaces réelles.
+- [x] Corriger les accents utilisés pour du petit texte afin d'atteindre au moins 4,5:1 sur les surfaces prévues.
+- [x] Ajouter un contrôle de contraste dans le rapport qualité multi-pages.
+- [x] Ajouter des tests unitaires pour les six secteurs et une vérification Chromium du texte accentué.
+- **Statut Jour 1 :** implémentation effectuée ; validation CI sur le nouveau commit en attente.
 - Livrable : tokens lisibles avec preuve automatisée, sans prétendre à un audit complet.
 
 ## Jour 2 — Sémantique et structure de toutes les pages
