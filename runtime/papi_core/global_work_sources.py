@@ -5,13 +5,16 @@ et normalise des enregistrements déjà obtenus par un canal autorisé.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from .global_work import validate_opportunity
 
 ALLOWED_KINDS = {"official_api", "rss", "manual_import"}
 ALLOWED_POLICIES = {"allowed", "owner_review", "prohibited"}
+SOURCE_REGISTRY_FILE = Path(__file__).resolve().parents[2] / "data" / "global-work-sources.json"
 SOURCE_FIELDS = {
     "id", "name", "kind", "access_policy", "enabled", "terms_url",
     "allowed_countries", "notes",
@@ -144,3 +147,15 @@ def ingest_records(
         "external_fetch_performed": False,
         "application_submitted": False,
     }
+
+
+def load_source_registry(path: Path = SOURCE_REGISTRY_FILE) -> dict[str, Any]:
+    """Charge et valide le registre local des sources."""
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise GlobalWorkSourceError("Impossible de lire le registre des sources GLOBAL WORK.") from exc
+    errors = validate_source_registry(data)
+    if errors:
+        raise GlobalWorkSourceError("; ".join(errors))
+    return data
