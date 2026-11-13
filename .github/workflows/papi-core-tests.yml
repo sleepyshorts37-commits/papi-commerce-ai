@@ -1,4 +1,4 @@
-name: PAPI core tests
+name: PAPI core tests — attempt audit
 
 on:
   push:
