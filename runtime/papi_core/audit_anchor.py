@@ -41,6 +41,9 @@ def publish_checkpoint(path: Any, backend: AuditAnchorBackend) -> bool:
     previous = backend.latest()
     if previous is not None:
         verify_checkpoint_transition(previous, checkpoint)
+        # Prove that the stored anchor is a prefix of this exact local chain;
+        # sequence monotonicity alone would permit a fork with an unrelated hash.
+        verify_checkpoint(path, previous)
         if previous == checkpoint:
             return False
     if not backend.compare_and_append(previous, checkpoint):
