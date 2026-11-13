@@ -82,14 +82,16 @@ def generate_multipage_site(workspace: str | Path, slug: str,
             raise MultiPageSiteError("Identifiant de page réservé ou dupliqué.")
         slugs.add(page_slug)
         title, summary, facts = item.get("title"), item.get("summary"), item.get("facts")
+        if not isinstance(summary, str) or not summary.strip() or len(summary) > 180:
+            raise MultiPageSiteError("Résumé de page invalide (1 à 180 caractères).")
+        if not isinstance(facts, list) or len(facts) > 7:
+            raise MultiPageSiteError("Chaque page accepte au maximum 7 faits, en plus du résumé.")
         content = generate_commercial_content({
             "content_type": "business_page", "sector": sector, "brand": brand,
             "offer": title, "audience": brief.get("audience", "notre clientèle"),
-            "facts": facts, "tone": brief.get("tone", "professional"),
+            "facts": [summary.strip(), *facts], "tone": brief.get("tone", "professional"),
             "cta": brief.get("cta", "Contactez-nous pour en savoir plus."),
         })
-        if not isinstance(summary, str) or not summary.strip() or len(summary) > 240:
-            raise MultiPageSiteError("Résumé de page invalide.")
         prepared.append({"slug": page_slug, "title": title, "summary": summary.strip(),
                          "facts": facts, "content": content})
 
