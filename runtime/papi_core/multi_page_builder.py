@@ -34,7 +34,10 @@ def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, 
     stylesheet = f"{prefix}styles.css"
     nav = []
     for item in pages:
-        href = ("" if item["slug"] == "home" else item["slug"] + "/") if slug == "home" else ("../" if item["slug"] == "home" else f"../{item['slug']}/")
+        if slug == "home":
+            href = "index.html" if item["slug"] == "home" else f"{item['slug']}/index.html"
+        else:
+            href = "../index.html" if item["slug"] == "home" else f"../{item['slug']}/index.html"
         active = item["slug"] == slug
         nav.append(
             f'<a href="{html.escape(href, quote=True)}"'
@@ -62,7 +65,7 @@ def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, 
     <nav aria-label="Navigation principale">{links}</nav>
   </div></header>
   <main id="main-content" class="shell">
-    <nav class="breadcrumbs" aria-label="Fil d’Ariane"><a href="{prefix}">Accueil</a><span aria-hidden="true"> / </span><span aria-current="page">{title}</span></nav>
+    <nav class="breadcrumbs" aria-label="Fil d’Ariane"><a href="{prefix}index.html">Accueil</a><span aria-hidden="true"> / </span><span aria-current="page">{title}</span></nav>
     <section class="hero-page" aria-labelledby="page-title">
       <p class="eyebrow"> {name} </p>
       <h1 id="page-title">{title}</h1>
