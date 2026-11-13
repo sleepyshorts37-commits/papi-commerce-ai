@@ -152,6 +152,7 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter des tests pour les séquences UTF-8 invalides, séparateurs Windows encodés et octets NUL encodés.
 - [x] Valider Jour 1 en CI : core, Chromium, documentation et registre PASS sur `e011dd4`.
 - [x] Implémenter Jour 2 : méthodes HTTP en lecture seule, GET/HEAD et en-têtes de sécurité ; core, Chromium, documentation et registre PASS sur `20b38de`.
-- [x] Implémenter Jour 3 : traversal doublement encodé, chemins absolus et symlink vers fichier extérieur ; tests ajoutés et quatre workflows PASS sur `c11d763`.
-- [x] Implémenter Jour 4 : fichiers absents, chemins de répertoire, noms Unicode, types MIME et stabilité après requêtes invalides ; tests ajoutés sur `0b7498a`.
-- **Statut :** 4/5 journées implémentées (80 %) ; jours 1 à 3 validés CI, jour 4 en attente CI. Aucune revue indépendante ou mise en production.
+- [x] Implémenter Jour 3 : traversal doublement encodé, chemins absolus et symlink vers fichier extérieur ; quatre workflows PASS sur `c11d763`.
+- [x] Implémenter Jour 4 : fichiers absents, chemins de répertoire, noms Unicode, types MIME et stabilité après requêtes invalides ; quatre workflows PASS sur `0b7498a`.
+- [x] Terminer Jour 5 : core, Chromium, registre et documentation PASS ; publier `docs/PAPI-PREVIEW-SERVER-SECURITY-REPORT.md`.
+- **Statut :** cycle de 5/5 journées terminé (100 %) ; les quatre workflows CI sont PASS sur le commit de tests `0b7498a`. Validation limitée aux scénarios documentés ; aucun audit indépendant, merge ou déploiement.
