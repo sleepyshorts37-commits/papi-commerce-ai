@@ -59,6 +59,15 @@ class AuditAnchorKeyringTests(unittest.TestCase):
         with self.assertRaises(AuditKeyError):
             self.keyring.rotate("audit-" + "0" * 32)
 
+
+    def test_registry_with_unhashable_status_fails_closed(self):
+        key_id = self.keyring.provision()
+        data = json.loads(self.keyring.registry_path.read_text(encoding="utf-8"))
+        data["keys"][key_id]["status"] = []
+        self.keyring.registry_path.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaises(AuditKeyError):
+            self.keyring.verify(key_id, b"x", "00" * 64)
+
     def test_private_key_permissions_are_restrictive(self):
         key_id = self.keyring.provision()
         private_path = self.root / "private" / (key_id + ".pem")
