@@ -103,7 +103,7 @@ def generate_multi_page_project(
         raise MultiPageBuilderError("Brief projet invalide : name, industry et tagline sont les seuls champs admis.")
     project_name = _text(spec["name"], "name", limit=100)
     industry = spec.get("industry", "corporate")
-    if industry not in SECTOR_DESIGNS:
+    if not isinstance(industry, str) or industry not in SECTOR_DESIGNS:
         raise MultiPageBuilderError("Secteur non pris en charge.")
     tagline = _text(spec.get("tagline", SECTOR_DESIGNS[industry]["label"]), "tagline", limit=100)
     architecture = build_site_architecture(architecture_brief)
