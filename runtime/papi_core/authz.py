@@ -23,7 +23,15 @@ LEGAL = {"accept_legal_commitments", "sign_contract", "accept_contract"}
 
 
 class AccessDenied(PermissionError):
-    """Accès refusé par la politique locale."""
+    """Accès refusé avant établissement d’un principal authentifié."""
+
+
+class AuthenticatedAuthorizationDenied(AccessDenied):
+    """Politique refusée après vérification cryptographique de l’agent."""
+
+    def __init__(self, principal: Any) -> None:
+        super().__init__("Autorisation métier refusée après authentification.")
+        self.principal = principal
 
 
 def load_policy(path: Path = POLICY_FILE) -> dict[str, Any]:
@@ -113,8 +121,15 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
             identity = verify_request(envelope, key_dir or DEFAULT_KEY_DIR, replay_db or DEFAULT_REPLAY_DB)
     except Exception as exc:
         raise AccessDenied("Authentification cryptographique refusée : accès fermé.") from exc
+    # À ce stade, la signature, le lien à la tâche et l’anti-rejeu sont vérifiés.
+    # Émettre le principal avant la politique permet d’attribuer correctement
+    # un refus métier à l’agent authentifié, sans jamais autoriser son handler.
+    principal = _issue_authenticated_agent_principal(agent_id)
     active_policy = policy if policy is not None else load_policy()
-    authorization = authorize_agent(agent_id, permission, agents_path, active_policy)
+    try:
+        authorization = authorize_agent(agent_id, permission, agents_path, active_policy)
+    except AccessDenied as exc:
+        raise AuthenticatedAuthorizationDenied(principal) from exc
     return {**authorization, "identity_authenticated": True,
             "identity_algorithm": identity["algorithm"], "replay_protected": True,
-            "principal": _issue_authenticated_agent_principal(agent_id)}
+            "principal": principal}
