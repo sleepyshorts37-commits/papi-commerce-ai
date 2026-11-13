@@ -54,19 +54,26 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/20261113_003_claim_attempt_ceiling_up.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'CLAIM_CONTRACT_SQL'
+          insert into public.papi_tasks(id, task, version)
+          values ('ci-claim-contract-task', '{}'::jsonb, 1);
+          insert into public.papi_jobs(
+            id, task_id, handler, payload, idempotency_key, status, max_attempts
+          ) values (
+            'ci-claim-contract-job', 'ci-claim-contract-task', 'test.noop',
+            '{}'::jsonb, 'ci-claim-contract-key', 'queued', 7
+          );
+          set role service_role;
           do $claimcheck$
           declare v_claim jsonb;
           begin
             v_claim := public.papi_claim_job('ci-contract-worker', gen_random_uuid(), 120);
-            if v_claim is not null then
-              raise exception 'Unexpected job claim in isolated contract check';
-            end if;
-            if pg_get_functiondef('public.papi_claim_job(text,uuid,integer)'::regprocedure)
-               not like '%max_attempts%' then
-              raise exception 'Claim RPC definition does not expose max_attempts';
+            if v_claim is null or (v_claim->>'max_attempts')::integer <> 7
+               or (v_claim->>'attempts')::integer <> 1 then
+              raise exception 'Claim RPC did not return durable attempt metadata';
             end if;
           end
           $claimcheck$;
+          reset role;
           CLAIM_CONTRACT_SQL
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/20261113_003_claim_attempt_ceiling_down.sql
