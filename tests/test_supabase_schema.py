@@ -73,7 +73,7 @@ class SupabaseSchemaTests(unittest.TestCase):
 
     def test_external_audit_anchor_uses_digest_validation_and_atomic_head_lock(self):
         match = re.search(
-            r"create or replace function public\\.papi_advance_audit_anchor\\(.*?\\n\\$\\$;",
+            r"create or replace function public\.papi_advance_audit_anchor\(.*?\n\$\$;",
             self.sql,
             flags=re.IGNORECASE | re.DOTALL,
         )
