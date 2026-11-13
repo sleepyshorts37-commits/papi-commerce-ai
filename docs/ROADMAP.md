@@ -59,7 +59,8 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Définir le périmètre et les critères de contrôle SEO local.
 - [x] Ajouter l'auditeur HTML en lecture seule : titre, description, langue, H1, liens internes, canonical et Open Graph.
 - [x] Vérifier le sitemap XML, robots.txt, les chemins et les liens symboliques.
-- [x] Ajouter six tests unitaires et le guide de correction SEO.
-- [ ] Exécuter les tests ciblés et la CI complète sur le commit final.
-- [ ] Publier le rapport final après vérification des workflows.
-- **Statut provisoire :** moteur et tests ajoutés sur `papi-web-builder-seo-audit-main-2026-11-13`. Aucun réseau, publication, merge ou déploiement ; la CI doit confirmer le cycle.
+- [x] Restaurer les dépendances WEB BUILDER absentes de main qui empêchaient la suite de tests existante de s'importer.
+- [x] Ajouter six tests SEO et guide de correction.
+- [x] Valider la suite complète : 175 tests core PASS, PostgreSQL jetable PASS, registre PASS et documentation PASS sur le commit de code `2adaf77`.
+- [x] Publier `docs/PAPI-WEB-BUILDER-SEO-REPORT.md`.
+- **Statut :** cycle terminé à 100 %. Chromium non déclenché ; aucune validation navigateur additionnelle revendiquée. PR #135 ouverte, aucun merge ni déploiement.
