@@ -44,3 +44,6 @@ jobs:
           assert isinstance(agents.get("agents"), list) and agents["agents"]
           print("PAPI registries are structurally valid.")
           PY
+
+      - name: Validate Supabase migration inventory (offline)
+        run: python scripts/validate_migration_manifest.py
