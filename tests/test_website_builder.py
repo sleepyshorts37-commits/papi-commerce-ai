@@ -33,6 +33,16 @@ class WebsiteBuilderTests(unittest.TestCase):
             self.assertIn('<html lang="fr">', html)
             self.assertIn('name="viewport"', html)
 
+    def test_professional_design_system_has_responsive_and_accessibility_basics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            generate_project(tmp, "studio", self.spec())
+            css = (Path(tmp) / "studio" / "styles.css").read_text()
+            self.assertIn("--accent:", css)
+            self.assertIn("@media (max-width: 800px)", css)
+            self.assertIn("@media (max-width: 520px)", css)
+            self.assertIn(":focus-visible", css)
+            self.assertIn("prefers-reduced-motion: reduce", css)
+
     def test_html_is_escaped(self):
         with tempfile.TemporaryDirectory() as tmp:
             malicious = self.spec()
