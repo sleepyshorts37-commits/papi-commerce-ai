@@ -11,6 +11,8 @@ import re
 from typing import Any
 from uuid import uuid4
 
+from papi_core.global_work_quality import GlobalWorkQualityError, canonicalize_url
+
 STATES = {"discovered", "awaiting_user", "user_confirmed", "resumed", "completed", "rejected"}
 SENSITIVE_TEXT = re.compile(r"\\b(?:otp|one[- ]time code|password|private key|seed phrase|recovery phrase|access token)\\s*[:=]", re.IGNORECASE)
 SENSITIVE_KEYS = {
@@ -64,8 +66,10 @@ def create_handoff(
         ("created_by_agent_id", created_by_agent_id),
     ):
         _actor(value, field)
-    if not official_url.startswith("https://"):
-        raise HumanHandoffError("Le lien officiel doit utiliser HTTPS.")
+    try:
+        official_url = canonicalize_url(official_url)
+    except GlobalWorkQualityError as exc:
+        raise HumanHandoffError("Le lien officiel public HTTPS est invalide.") from exc
     safe_context = context or {}
     if not isinstance(safe_context, dict):
         raise HumanHandoffError("context doit être un objet.")
