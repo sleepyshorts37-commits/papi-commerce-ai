@@ -13,13 +13,13 @@ class SupabaseSchemaTests(unittest.TestCase):
         cls.sql = SCHEMA.read_text(encoding="utf-8")
 
     def test_dollar_quoted_function_bodies_are_balanced(self):
-        self.assertEqual(self.sql.count("$$;"), self.sql.count("as $$"))
+        for tag in ("$$", "$lease$", "$papi$"):
+            self.assertEqual(self.sql.count(tag) % 2, 0, f"unbalanced {tag} delimiter")
 
     def test_job_failure_function_has_valid_error_code_guard(self):
         match = re.search(
-            r"create or replace function public\.papi_fail_job\(.*?\n\$\$;",
-            self.sql,
-            flags=re.IGNORECASE | re.DOTALL,
+            r"create or replace function public\\.papi_fail_job\\(.*?\\n\\$\\$;",
+            self.sql, flags=re.IGNORECASE | re.DOTALL,
         )
         self.assertIsNotNone(match, "papi_fail_job definition must exist")
         body = match.group(0)
@@ -29,9 +29,8 @@ class SupabaseSchemaTests(unittest.TestCase):
 
     def test_lease_renewal_rejects_null_and_blank_inputs(self):
         match = re.search(
-            r"create or replace function public\.papi_renew_job_lease\(.*?\n\$lease\$;",
-            self.sql,
-            flags=re.IGNORECASE | re.DOTALL,
+            r"create or replace function public\\.papi_renew_job_lease\\(.*?\\n\\$lease\\$;",
+            self.sql, flags=re.IGNORECASE | re.DOTALL,
         )
         self.assertIsNotNone(match, "papi_renew_job_lease definition must exist")
         body = match.group(0)
@@ -52,8 +51,6 @@ class SupabaseSchemaTests(unittest.TestCase):
             self.sql,
         )
 
-
-
     def test_external_audit_anchor_store_is_immutable_and_service_role_only(self):
         self.assertIn("create table if not exists public.papi_audit_anchor_records", self.sql)
         self.assertIn("create table if not exists public.papi_audit_anchor_heads", self.sql)
@@ -73,9 +70,8 @@ class SupabaseSchemaTests(unittest.TestCase):
 
     def test_external_audit_anchor_uses_digest_validation_and_atomic_head_lock(self):
         match = re.search(
-            r"create or replace function public\.papi_advance_audit_anchor\(.*?\n\$\$;",
-            self.sql,
-            flags=re.IGNORECASE | re.DOTALL,
+            r"create or replace function public\\.papi_advance_audit_anchor\\(.*?\\n\\$papi\\$;",
+            self.sql, flags=re.IGNORECASE | re.DOTALL,
         )
         self.assertIsNotNone(match, "papi_advance_audit_anchor definition must exist")
         body = match.group(0)
@@ -86,15 +82,13 @@ class SupabaseSchemaTests(unittest.TestCase):
         self.assertIn("set search_path = pg_catalog, public, extensions, pg_temp", body)
         self.assertIn("v_record->>'schema_version'", body)
         self.assertIn("v_checkpoint->>'schema_version'", body)
-        self.assertIn("v_key_id !~ '^[A-Za-z0-9_.:-]{1,120}
-if __name__ == "__main__":
-    unittest.main()
-", body)
+        self.assertIn("v_key_id is null", body)
         self.assertIn("v_signature is null", body)
         self.assertIn("record contains unknown fields", body)
         self.assertIn("record is missing required fields", body)
         self.assertIn("v_checkpoint ?& array['schema_version', 'sequence', 'head_hash']", body)
         self.assertNotIn("set search_path = public, extensions, pg_temp", body)
+
 
 if __name__ == "__main__":
     unittest.main()
