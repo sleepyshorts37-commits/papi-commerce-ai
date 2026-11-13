@@ -30,10 +30,11 @@ Renforcer la détection automatisée des régressions de mise en page sur les ro
 - Livrable : test Chromium de parcours et robustesse des contenus configurables.
 
 ## Jour 5 — CI et rapport
-- [ ] Exécuter core, Chromium, registre et documentation sur les changements finaux.
-- [ ] Corriger les défauts et publier un rapport PASS/FAIL avec limites.
-- [ ] Mettre à jour la roadmap.
-- Livrable : dossier de preuves reproductible.
+- [x] Analyser l'échec Chromium réel du Jour 3/4 : débordement horizontal du profil e-commerce à 390×844 px.
+- [x] Ajouter une protection CSS contre les largeurs intrinsèques des enfants de grille et les textes longs ; forcer une colonne fluide du hero sous 800 px (commit `b0d7b58`).
+- [ ] Relancer core, Chromium, registre et documentation sur le correctif final.
+- [ ] Publier le rapport PASS/FAIL avec les commits, les workflows et les limites ; mettre à jour la roadmap.
+- Livrable : dossier de preuves reproductible, avec correction validée ou défauts restants explicitement consignés.
 
 ## Garde-fous
 - Sites et contenus synthétiques uniquement ; Chromium local/CI.
