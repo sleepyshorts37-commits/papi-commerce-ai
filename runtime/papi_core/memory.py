@@ -67,7 +67,9 @@ def _journal_lock(path: Path, *, exclusive: bool):
     """Verrou interprocessus du journal ; les liens symboliques sont refusés."""
     lock_path = Path(path).with_name(Path(path).name + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+    # O_NONBLOCK prevents a malicious FIFO at the lock path from hanging the worker.
+    flags = (os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+             | getattr(os, "O_NONBLOCK", 0))
     descriptor = os.open(lock_path, flags, 0o600)
     try:
         if not stat.S_ISREG(os.fstat(descriptor).st_mode):
@@ -82,7 +84,9 @@ def _journal_lock(path: Path, *, exclusive: bool):
 
 
 def _read_events_unlocked(path: Path) -> list[dict[str, Any]]:
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    # Open non-blocking so fstat can reject FIFOs instead of waiting for a writer.
+    flags = (os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+             | getattr(os, "O_NONBLOCK", 0))
     try:
         descriptor = os.open(path, flags)
     except FileNotFoundError:
@@ -124,7 +128,9 @@ def _read_events(path: Path) -> list[dict[str, Any]]:
 def _append_unlocked(event: dict[str, Any], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+    # Open non-blocking so a FIFO cannot stall a memory append indefinitely.
+    flags = (os.O_WRONLY | os.O_CREAT | os.O_APPEND
+             | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     try:
         descriptor = os.open(path, flags, 0o600)
     except OSError as exc:
