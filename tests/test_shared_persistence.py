@@ -127,6 +127,26 @@ class SharedPersistenceAdapterTests(unittest.TestCase):
             self.chat.append_message(message)
         self.store.request.assert_not_called()
 
+    def test_chat_append_is_idempotent_for_identical_retry(self):
+        message = self.valid_chat_message()
+        self.store.request.side_effect = [[message], [], [message]]
+        self.chat.append_message(message)
+        self.chat.append_message(message)
+        self.assertEqual(self.store.request.call_count, 3)
+        self.assertEqual(
+            self.store.request.call_args_list[1].kwargs["prefer"],
+            "resolution=ignore-duplicates,return=representation",
+        )
+        self.assertIn("message_id=eq.", self.store.request.call_args_list[2].args[1])
+
+    def test_chat_append_rejects_conflicting_duplicate_id(self):
+        message = self.valid_chat_message()
+        conflicting = dict(message, body="Different body")
+        self.store.request.side_effect = [[message], [], [conflicting]]
+        self.chat.append_message(message)
+        with self.assertRaises(StoreError):
+            self.chat.append_message(message)
+
     def test_append_requires_confirmed_insert(self):
         self.store.request.return_value = []
         with self.assertRaises(StoreError):
