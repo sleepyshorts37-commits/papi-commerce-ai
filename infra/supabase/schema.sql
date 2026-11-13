@@ -230,7 +230,7 @@ create or replace function public.papi_renew_job(
 ) returns boolean
 language plpgsql security invoker
 set search_path = public, pg_temp
-as $
+as $$
 declare v_count integer;
 begin
     if p_job_id is null or length(trim(p_job_id)) = 0
@@ -248,7 +248,7 @@ begin
     get diagnostics v_count = row_count;
     return v_count = 1;
 end;
-$;
+$$;
 
 revoke all on function public.papi_renew_job(text, text, uuid, integer) from public, anon, authenticated;
 grant execute on function public.papi_renew_job(text, text, uuid, integer) to service_role;
