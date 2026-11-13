@@ -166,7 +166,7 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(audit["mainId"], "main-content", route)
             levels = audit["headingLevels"]
             self.assertTrue(all(current <= previous + 1 for previous, current in zip(levels, levels[1:])), f"Heading level jump: {route} {levels}")
-            self.assertIn(expected_label, await page.locator("h1").inner_text())
+            self.assertIn(expected_label, await page.title())
         await page.close()
 
     async def test_accessibility_landmarks_names_skip_link_and_keyboard_focus(self):
