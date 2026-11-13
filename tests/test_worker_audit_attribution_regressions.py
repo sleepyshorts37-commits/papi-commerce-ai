@@ -98,10 +98,10 @@ class WorkerAuditAttributionRegressionTests(unittest.TestCase):
             worker, queue, job, task = self._worker(directory)
             claim, get_task, fail = self._patch_inputs(queue, job, task)
             principal = SimpleNamespace(agent_id="agent-authenticated")
-            with claim, get_task, fail as fail_mock, \\
-                 patch("papi_core.worker.authorize_authenticated_agent",
-                       side_effect=AuthenticatedAuthorizationDenied(principal)):
-                result = worker.run_once()
+            with claim, get_task, fail as fail_mock:
+                with patch("papi_core.worker.authorize_authenticated_agent",
+                           side_effect=AuthenticatedAuthorizationDenied(principal)):
+                    result = worker.run_once()
 
             self.assertEqual(result["status"], "blocked")
             events = read_events(worker.audit_path)
