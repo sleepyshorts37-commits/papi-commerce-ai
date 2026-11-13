@@ -1,6 +1,6 @@
 import unittest
 
-from papi_core.global_work import GlobalWorkError, evaluate_opportunity, validate_opportunity
+from papi_core.global_work import (GlobalWorkError, evaluate_opportunity, validate_opportunity,\n                                   validate_global_work_registry)
 
 
 def opportunity(**overrides):
@@ -70,6 +70,25 @@ class GlobalWorkTests(unittest.TestCase):
     def test_invalid_input_raises(self):
         with self.assertRaises(GlobalWorkError):
             evaluate_opportunity({"id": "incomplete"})
+
+
+class GlobalWorkRegistryTests(unittest.TestCase):
+    def test_empty_registry_is_valid(self):
+        self.assertEqual(validate_global_work_registry({
+            "project": "PAPI COMMERCE AI", "schema_version": "1.0", "owner_country": "SN",
+            "priority_policy": "zero_upfront_cost", "opportunities": [], "note": "empty"
+        }), [])
+
+    def test_duplicate_opportunity_ids_are_rejected(self):
+        item = {
+            "id": "mission-001", "source_url": "https://example.org/task", "title": "Task",
+            "description": "Task description", "country_eligibility": "Worldwide",
+            "eligible_countries": ["SN"], "compensation_amount": 10, "currency": "USD",
+            "estimated_minutes": 30, "upfront_cost": 0, "automation_policy": "allowed",
+            "ai_policy": "allowed", "human_presence_required": False, "payout_methods": ["PayPal"]
+        }
+        data = {"project": "PAPI COMMERCE AI", "opportunities": [item, dict(item)]}
+        self.assertTrue(any("dupliqué" in error for error in validate_global_work_registry(data)))
 
 
 if __name__ == "__main__":
