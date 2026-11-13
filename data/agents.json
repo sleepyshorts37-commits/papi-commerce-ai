@@ -673,10 +673,10 @@
     },
     {
       "id": "papi-digitalisation-lead",
-      "name": "Aminata Sarr",
+      "name": "Responsable PAPI Digitalisation & IA",
       "role": "Responsable de département et chef de projet digitalisation",
       "department": "PAPI DIGITALISATION & IA",
-      "manager": "Marietou Diouf",
+      "manager": "marietou",
       "mission": "Piloter le cadrage, le planning, les livrables et la relation opérationnelle client; coordonner les spécialistes et escalader les décisions réservées au propriétaire.",
       "skills": [
         "gestion_projet",
@@ -720,7 +720,7 @@
     },
     {
       "id": "papi-digital-consultant",
-      "name": "Mamadou Ba",
+      "name": "Consultant Digitalisation",
       "role": "Consultant en transformation numérique",
       "department": "PAPI DIGITALISATION & IA",
       "manager": "papi-digitalisation-lead",
@@ -765,7 +765,7 @@
     },
     {
       "id": "papi-ai-architect",
-      "name": "Ibrahima Ndiaye",
+      "name": "Architecte Solutions IA",
       "role": "Architecte solutions IA",
       "department": "PAPI DIGITALISATION & IA",
       "manager": "papi-digitalisation-lead",
@@ -811,7 +811,7 @@
     },
     {
       "id": "papi-integration-specialist",
-      "name": "Ousmane Fall",
+      "name": "Spécialiste Intégration & Automatisation",
       "role": "Spécialiste intégration et automatisation",
       "department": "PAPI DIGITALISATION & IA",
       "manager": "papi-digitalisation-lead",
@@ -858,7 +858,7 @@
     },
     {
       "id": "papi-data-security",
-      "name": "Fatou Ndiaye",
+      "name": "Responsable Sécurité & Données",
       "role": "Responsable sécurité, confidentialité et données",
       "department": "PAPI DIGITALISATION & IA",
       "manager": "papi-digitalisation-lead",
@@ -905,7 +905,7 @@
     },
     {
       "id": "papi-training-adoption",
-      "name": "Sokhna Diop",
+      "name": "Responsable Formation & Adoption",
       "role": "Responsable formation et adoption",
       "department": "PAPI DIGITALISATION & IA",
       "manager": "papi-digitalisation-lead",
@@ -950,7 +950,7 @@
     },
     {
       "id": "papi-client-support",
-      "name": "Abdoulaye Sène",
+      "name": "Responsable Support Client",
       "role": "Support client et qualité opérationnelle",
       "department": "PAPI DIGITALISATION & IA",
       "manager": "papi-digitalisation-lead",
@@ -996,10 +996,10 @@
     },
     {
       "id": "papi-b2b-sales",
-      "name": "Moussa Diallo",
+      "name": "Commercial B2B PAPI Digitalisation & IA",
       "role": "Commercial B2B digitalisation & IA",
       "department": "PAPI DIGITALISATION & IA",
-      "manager": "Marietou Diouf",
+      "manager": "marietou",
       "mission": "Qualifier les entreprises, préparer les propositions et suivre les échanges commerciaux dans les limites approuvées.",
       "skills": [
         "qualification_b2b",
