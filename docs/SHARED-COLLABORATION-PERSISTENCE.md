@@ -36,3 +36,13 @@ Les adaptateurs appliquent désormais des contrôles avant tout appel réseau :
 - le filtre de catégorie est appliqué après la prise en compte des événements `supersede`, afin qu'une recherche catégorisée ne réaffiche pas une mémoire archivée.
 
 Les tests couvrent l'usurpation d'acteur, les identifiants et dates invalides, les entrées rejetées avant tout appel réseau, les recherches catégorisées et la confirmation d'insertion. La validation CI reste requise avant de déclarer cette journée terminée.
+
+
+## Idempotence — Phase 2, jour 4
+
+Les insertions mémoire et chat utilisent maintenant une stratégie idempotente basée sur leur clé primaire :
+- le premier envoi insère l'enregistrement ;
+- un nouvel envoi avec le même identifiant et exactement le même contenu est traité comme une répétition réussie ;
+- si le même identifiant est réutilisé avec un contenu différent, l'adaptateur signale une collision et ne masque pas le conflit.
+
+La stratégie utilise `resolution=ignore-duplicates` puis relit l'enregistrement existant pour comparer le contenu. Elle ne remplace jamais un enregistrement append-only. Les tests couvrent la répétition identique et la collision d'identifiant. La validation CI du commit courant est nécessaire avant de considérer ce jour terminé.
