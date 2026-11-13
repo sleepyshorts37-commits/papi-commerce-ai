@@ -7,7 +7,8 @@ Permettre au propriétaire de dialoguer oralement avec les IA responsables et pe
 ## État de livraison
 
 - Spécification Phase 2B, jour 1 : documentée.
-- Interfaces techniques Phase 2B, jour 2 : implémentées et soumises à la CI ; adaptateurs fournisseurs non connectés.
+- Interfaces techniques Phase 2B, jour 2 : implémentées ; validation CI à confirmer sur le dernier commit.
+- Autorisation et routage Phase 2B, jour 3 : implémentés avec tests simulés ; aucune destination réelle configurée.
 - Fournisseur de reconnaissance vocale (STT) : non choisi, non connecté.
 - Fournisseur de synthèse vocale (TTS) : non choisi, non connecté.
 - Fournisseur e-mail : non choisi, non connecté.
@@ -105,11 +106,25 @@ Le module `runtime/papi_core/communication_channels.py` définit des contrats Py
 
 Ces contrats ne constituent pas encore un routeur : ils ne vérifient pas l'identité cryptographique, l'allowlist réelle du propriétaire, les permissions d'un agent, l'idempotence persistante ou l'envoi effectif. Ces contrôles sont prévus au jour 3 et au jour 4. L'absence d'adaptateur injecté signifie qu'aucun canal n'est disponible.
 
+## Autorisation et routage — jour 3
+
+Le module `runtime/papi_core/communication_authorization.py` ajoute un routeur propriétaire avec les contrôles suivants :
+
+- L'agent doit exister dans les profils et cartes d'identité fournis par la couche de confiance.
+- L'identifiant de la carte doit correspondre à l'identifiant du profil et à l'agent de la notification.
+- Le statut doit être `active` dans le registre et dans la carte.
+- Les permissions de la carte et du registre doivent être identiques ; la permission requise doit être présente dans les deux.
+- `notify_owner_email` et `voice_session` sont contrôlées séparément.
+- La destination e-mail est une configuration serveur, marquée vérifiée, allowlistée et activée. L'agent ne peut fournir ni modifier l'adresse.
+- Toute vérification échouée bloque l'appel au fournisseur. Aucun destinataire alternatif ni fournisseur de secours n'est utilisé implicitement.
+
+Le routeur ne remplace pas une signature cryptographique de registre : l'intégrité de la source des profils et des cartes doit être garantie par la couche de composition qui les charge. L'adresse réelle et l'adaptateur e-mail doivent être configurés ensemble côté serveur avant toute activation. Les tests utilisent un expéditeur simulé et ne transmettent aucun e-mail réel.
+
 ## Plan de réalisation — bloc de cinq jours
 
 1. **Jour 1 — Contrats et gouvernance :** spécification des flux vocaux, de l'e-mail propriétaire, des permissions et des limites. (En cours de livraison dans ce commit.)
 2. **Jour 2 — Interfaces techniques :** protocoles STT/TTS/e-mail, erreurs typées, délais bornés, validation des contenus et tests simulés. (Livré dans `communication_channels.py` et `test_communication_channels.py`.)
-3. **Jour 3 — Autorisation et routage :** implémenter la destination propriétaire allowlistée, la séparation stricte des permissions et la politique de priorité.
+3. **Jour 3 — Autorisation et routage :** contrôles identité/statut/permissions, destination propriétaire vérifiée et allowlistée, séparation voix/e-mail. (Implémenté avec tests simulés ; politique de priorité et limites de fréquence à compléter au jour 4.)
 4. **Jour 4 — Résilience et audit :** idempotence, quotas, déduplication, reprise contrôlée, journalisation et mécanisme d'arrêt.
 5. **Jour 5 — Validation :** tests de sécurité, tests d'intégration simulés, documentation d'exploitation et revue de préparation.
 
