@@ -140,6 +140,53 @@ jobs:
           SQL
 
 
+
+      - name: Verify concurrent claims skip locked jobs
+        env:
+          PGPASSWORD: papi_test_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          insert into public.papi_tasks(id, task, version)
+          values
+            ('lease-race-task-1', '{"id":"lease-race-task-1"}'::jsonb, 1),
+            ('lease-race-task-2', '{"id":"lease-race-task-2"}'::jsonb, 1);
+          insert into public.papi_jobs(id, task_id, handler, payload, idempotency_key)
+          values
+            ('lease-race-job-1', 'lease-race-task-1', 'test.noop', '{}'::jsonb, 'lease-race-key-1'),
+            ('lease-race-job-2', 'lease-race-task-2', 'test.noop', '{}'::jsonb, 'lease-race-key-2');
+          SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -Atq -v ON_ERROR_STOP=1 > /tmp/claim-a.out <<'SQL' &
+          begin;
+          select public.papi_claim_job('race-worker-a', gen_random_uuid(), 120)->>'id';
+          select pg_sleep(2);
+          commit;
+          SQL
+          claim_a_pid=$!
+          sleep 0.3
+          claim_b=$(psql -h 127.0.0.1 -U postgres -d papi_test -Atq -v ON_ERROR_STOP=1 \
+            -c "select public.papi_claim_job('race-worker-b', gen_random_uuid(), 120)->>'id'")
+          wait "$claim_a_pid"
+          claim_a=$(grep '^lease-race-job-' /tmp/claim-a.out | head -n 1)
+          test "$claim_a" = "lease-race-job-1"
+          test "$claim_b" = "lease-race-job-2"
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          do $race$
+          declare
+            claimed_count integer;
+            distinct_jobs integer;
+          begin
+            select count(*), count(distinct job_id)
+              into claimed_count, distinct_jobs
+              from public.papi_job_attempts
+             where job_id in ('lease-race-job-1', 'lease-race-job-2');
+            if claimed_count <> 2 or distinct_jobs <> 2 then
+              raise exception 'concurrent workers did not claim two distinct jobs';
+            end if;
+          end;
+          $race$;
+          SQL
+
       - name: Verify crash recovery, idempotency and failure classification
         env:
           PGPASSWORD: papi_test_password

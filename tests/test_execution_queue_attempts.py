@@ -72,5 +72,36 @@ class ExecutionQueueFailurePolicyTests(unittest.TestCase):
         self.assertEqual(store.calls, [])
 
 
+class ExecutionQueueLeaseRenewalTests(unittest.TestCase):
+    def test_renew_sends_owner_token_and_duration(self):
+        store = FakeStore(True)
+        renewed = ExecutionQueue(store).renew(
+            job_id="job-1", worker_id="worker-1", lease_token="lease-1",
+            lease_seconds=90,
+        )
+        self.assertTrue(renewed)
+        method, path, payload = store.calls[0]
+        self.assertEqual((method, path), ("POST", "rpc/papi_renew_job"))
+        self.assertEqual(payload, {
+            "p_job_id": "job-1", "p_worker_id": "worker-1",
+            "p_lease_token": "lease-1", "p_lease_seconds": 90,
+        })
+
+    def test_renew_returns_false_when_database_rejects_lease(self):
+        store = FakeStore(False)
+        self.assertFalse(ExecutionQueue(store).renew(
+            job_id="job-1", worker_id="stale-worker", lease_token="old-lease",
+        ))
+
+    def test_renew_rejects_invalid_parameters_before_rpc(self):
+        store = FakeStore(True)
+        with self.assertRaises(QueueError):
+            ExecutionQueue(store).renew(
+                job_id="job-1", worker_id="worker-1", lease_token="lease-1",
+                lease_seconds=901,
+            )
+        self.assertEqual(store.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
