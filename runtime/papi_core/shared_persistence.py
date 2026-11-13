@@ -132,6 +132,19 @@ class SharedMemoryAdapter:
             reason = event.get("reason")
             if not isinstance(reason, str) or not reason.strip() or len(reason) > 240:
                 raise SharedPersistenceError("reason invalide.")
+            # Un agent ne peut archiver que sa propre mémoire privée ou une
+            # mémoire partagée. La vérification est faite côté serveur avant écriture.
+            visible = _rows(self._store.request(
+                "GET",
+                "papi_memory_events?select=memory_id,actor,scope"
+                f"&memory_id=eq.{quote(target, safe='')}&event_type=eq.remember&limit=100"
+            ))
+            if not any(
+                row.get("memory_id") == target
+                and (row.get("actor") == actor or row.get("scope") == "shared")
+                for row in visible
+            ):
+                raise PermissionError("Mémoire cible inexistante ou non accessible pour cet agent.")
             common = {
                 "event_id": event["event_id"], "memory_id": target,
                 "event_type": "supersede", "created_at": event["created_at"],
@@ -159,7 +172,7 @@ class SharedMemoryAdapter:
         terms = query.casefold().split()
         events: list[dict[str, Any]] = []
         offset = 0
-        superseded: set[str] = set()
+        supersede_events: list[dict[str, Any]] = []
         scanned = 0
         while True:
             page_size = min(100, MAX_MEMORY_SCAN - scanned)
@@ -174,7 +187,7 @@ class SharedMemoryAdapter:
             scanned += len(batch)
             for row in batch:
                 if row.get("event_type") == "supersede":
-                    superseded.add(str(row.get("target_memory_id")))
+                    supersede_events.append(row)
                 elif row.get("event_type") == "remember":
                     events.append(row)
             if len(batch) < page_size:
@@ -182,6 +195,18 @@ class SharedMemoryAdapter:
             if scanned >= MAX_MEMORY_SCAN:
                 raise StoreError("Recherche mémoire trop volumineuse ; réduire le périmètre avant de réessayer.")
             offset += len(batch)
+
+        # Un supersede ne peut masquer que la mémoire privée de son auteur
+        # ou une mémoire partagée visible par cet agent.
+        visible_shared_ids = {
+            str(row.get("memory_id")) for row in events if row.get("scope") == "shared"
+        }
+        superseded = {
+            str(item.get("target_memory_id"))
+            for item in supersede_events
+            if item.get("actor") == actor
+            or str(item.get("target_memory_id")) in visible_shared_ids
+        }
 
         results = []
         for row in reversed(events):
