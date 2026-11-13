@@ -367,6 +367,7 @@ class WorkerTests(unittest.TestCase):
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False}
              }), \
+             patch.object(worker.queue, "renew", return_value=True), \
              patch.object(worker.queue, "complete", return_value=True) as complete:
             result = worker.run_once()
         self.assertEqual(result["status"], "completed")
@@ -393,6 +394,7 @@ class WorkerTests(unittest.TestCase):
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False}
              }), \
+             patch.object(worker.queue, "renew", return_value=True), \
              patch.object(worker.queue, "complete", return_value=False):
             result = worker.run_once()
         self.assertEqual(result["status"], "lease_lost")
