@@ -153,11 +153,16 @@ def multi_page_quality_report(workspace: str | Path, slug: str) -> dict[str, Any
     files = manifest.get("generated_files")
     if not isinstance(files, list) or len(files) != len(set(files)):
         raise MultiPageBuilderError("Manifeste de fichiers invalide.")
-    page_files = [name for name in files if name.endswith("/index.html") or name == "index.html"]
+    expected_pages = [page["file"] for page in manifest["architecture"]["pages"]]
+    expected_files = sorted(expected_pages + ["styles.css", "sitemap.xml"])
+    if sorted(files) != expected_files:
+        raise MultiPageBuilderError("Le manifeste ne correspond pas aux fichiers attendus.")
+    page_files = expected_pages
     checks = {"page_count_matches_architecture": len(page_files) == len(manifest["architecture"]["pages"]), "shared_stylesheet": (root / "styles.css").is_file(), "sitemap_present": (root / "sitemap.xml").is_file(), "all_pages_exist": True, "all_internal_navigation_resolves": True, "no_script_execution": True}
     for name in files:
         path = root / name
-        if path.is_symlink() or not path.is_file() or Path(name).is_absolute() or ".." in Path(name).parts:
+        resolved = path.resolve()
+        if path.is_symlink() or not path.is_file() or Path(name).is_absolute() or ".." in Path(name).parts or root.resolve() not in resolved.parents:
             raise MultiPageBuilderError("Chemin de fichier du manifeste non sûr.")
     for name in page_files:
         document = (root / name).read_text(encoding="utf-8")
