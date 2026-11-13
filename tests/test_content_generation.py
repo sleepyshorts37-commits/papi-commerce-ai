@@ -38,6 +38,11 @@ class ContentGenerationTests(unittest.TestCase):
             with self.subTest(changes=changes), self.assertRaises(ContentGenerationError):
                 generate_commercial_content(self.brief(**changes))
 
+    def test_rejects_non_text_selectors_without_type_error(self):
+        for changes in ({"sector": []}, {"content_type": {}}, {"tone": []}):
+            with self.subTest(changes=changes), self.assertRaises(ContentGenerationError):
+                generate_commercial_content(self.brief(**changes))
+
     def test_rejects_bad_facts(self):
         for facts in ([], ["x"*181], ["<script>alert(1)</script>"], [f"Fait {i}" for i in range(9)]):
             with self.subTest(facts=facts), self.assertRaises(ContentGenerationError):
