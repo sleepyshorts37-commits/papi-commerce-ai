@@ -34,15 +34,62 @@ class AgentIdentityCardTests(unittest.TestCase):
             {"id": ""},
             {"permissions": ["read_reports", None]},
             {"status": "unknown"},
+            {"status": ["defined"]},
+            {"permissions": ["   "]},
             {"autonomy_level": "unlimited"},
         ):
             with self.subTest(changes=changes):
                 with self.assertRaises(IdentityCardError):
                     create_identity_card({**self.agent, **changes}, "2026-11-12")
 
+    def test_rejects_malformed_unhashable_status_without_type_error(self):
+        with self.assertRaises(IdentityCardError):
+            create_identity_card({**self.agent, "status": []}, "2026-11-12")
+
     def test_rejects_invalid_creation_date(self):
         with self.assertRaises(IdentityCardError):
             create_identity_card(self.agent, "tomorrow")
+
+    def test_rejects_self_manager_and_malformed_manager(self):
+        for manager in ("astou", "bad manager", ""):
+            with self.subTest(manager=manager):
+                with self.assertRaises(IdentityCardError):
+                    create_identity_card(self.agent, "2026-11-12", manager)
+
+    def test_rejects_duplicate_permissions_and_skills(self):
+        for changes in (
+            {"permissions": ["read_reports", "read_reports"]},
+            {"skills": ["analyse", "analyse"]},
+        ):
+            with self.subTest(changes=changes):
+                with self.assertRaises(IdentityCardError):
+                    create_identity_card({**self.agent, **changes}, "2026-11-12")
+
+    def test_validator_rejects_tampered_manager_skills_and_history(self):
+        card = create_identity_card(self.agent, "2026-11-12", "president")
+        for field, value in (
+            ("manager_agent_id", "astou"),
+            ("skills", ["analyse", None]),
+            ("employment_history", [{"role": "Direction", "status": "active", "date": "not-a-date"}]),
+            ("employment_history", ["promoted"]),
+        ):
+            altered = {**card, field: value}
+            with self.subTest(field=field, value=value):
+                with self.assertRaises(IdentityCardError):
+                    validate_identity_card(altered)
+
+    def test_accepts_structured_employment_history(self):
+        card = create_identity_card(self.agent, "2026-11-12", "president")
+        card["employment_history"] = [
+            {"role": "Analyste", "status": "planned", "date": "2026-11-12"}
+        ]
+        validate_identity_card(card)
+
+    def test_rejects_boolean_schema_version(self):
+        card = create_identity_card(self.agent, "2026-11-12")
+        card["schema_version"] = True
+        with self.assertRaises(IdentityCardError):
+            validate_identity_card(card)
 
     def test_validation_detects_tampered_employee_identifier(self):
         card = create_identity_card(self.agent, "2026-11-12")
