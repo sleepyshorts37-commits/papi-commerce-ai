@@ -79,10 +79,20 @@ class SupabaseSchemaTests(unittest.TestCase):
         )
         self.assertIsNotNone(match, "papi_advance_audit_anchor definition must exist")
         body = match.group(0)
-        self.assertIn("digest(convert_to(v_canonical, 'UTF8'), 'sha256')", body)
+        self.assertIn("extensions.digest(pg_catalog.convert_to(v_canonical, 'UTF8'), 'sha256')", body)
         self.assertIn("for update", body.lower())
         self.assertIn("v_current.latest_record_digest is distinct from p_expected_digest", body)
         self.assertIn("v_sequence <= v_current.sequence", body)
+        self.assertIn("set search_path = pg_catalog, public, extensions, pg_temp", body)
+        self.assertIn("v_record->>'schema_version'", body)
+        self.assertIn("v_checkpoint->>'schema_version'", body)
+        self.assertIn("v_key_id !~ '^[A-Za-z0-9_.:-]{1,120}
+if __name__ == "__main__":
+    unittest.main()
+", body)
+        self.assertIn("v_signature is null", body)
+        self.assertIn("record contains unknown fields", body)
+        self.assertNotIn("set search_path = public, extensions, pg_temp", body)
 
 if __name__ == "__main__":
     unittest.main()
