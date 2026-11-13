@@ -1,7 +1,6 @@
 """Autorisation et routage strict des canaux de communication PAPI."""
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Mapping
 
@@ -84,8 +83,14 @@ class OwnerCommunicationRouter:
             raise CommunicationAuthorizationError("Adresse propriétaire non vérifiée ou non autorisée.")
         if not destination.notifications_enabled:
             raise CommunicationAuthorizationError("Notifications propriétaire désactivées.")
-        if not isinstance(destination.email, str) or not re.fullmatch(
-            r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", destination.email
+        if (
+            not isinstance(destination.email, str)
+            or destination.email.count("@") != 1
+            or any(char.isspace() for char in destination.email)
+            or len(destination.email) > 254
+            or "." not in destination.email.rsplit("@", 1)[-1]
+            or destination.email.startswith("@")
+            or destination.email.endswith("@")
         ):
             raise CommunicationAuthorizationError("Configuration de destination invalide.")
         # L'adresse reste dans la configuration du sender injecté ; l'agent ne la fournit jamais.
