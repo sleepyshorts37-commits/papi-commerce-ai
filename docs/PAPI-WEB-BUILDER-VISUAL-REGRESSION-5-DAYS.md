@@ -11,9 +11,10 @@ Renforcer la détection automatisée des régressions de mise en page sur les ro
 - Livrable : assertions de géométrie responsive exécutées dans Chromium.
 
 ## Jour 2 — Cohérence des composants et du design system
-- [ ] Vérifier les tokens calculés, tailles typographiques clés, espacements et rayons des composants.
-- [ ] Contrôler l'ordre visuel et l'absence de chevauchement sur les routes.
-- Livrable : matrice de cohérence des composants.
+- [x] Vérifier dans Chromium les tokens calculés (ink/accent/surface), polices locales, taille/poids du H1, colonnes, gaps, padding, bordures et rayons des cartes.
+- [x] Contrôler l'ordre des cartes et l'absence de chevauchement hero/sections/cartes sur mobile, tablette et desktop.
+- **Statut Jour 2 :** test `test_component_design_tokens_spacing_and_non_overlap` ajouté ; validation CI en attente sur le commit de code.
+- Livrable : matrice de cohérence calculée des composants sur trois viewports.
 
 ## Jour 3 — Couverture des secteurs
 - [ ] Générer des projets synthétiques pour les six secteurs.
