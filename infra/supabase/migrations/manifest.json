@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "project": "papi-commerce-ai",
+  "policy": {
+    "execution_enabled": false,
+    "production_execution_allowed": false,
+    "require_human_approval": true,
+    "checksum_algorithm": "sha256",
+    "ordering": "ascending_version",
+    "rollback_requires_explicit_review": true
+  },
+  "migrations": [
+    {
+      "version": "20261113_001",
+      "name": "audit_anchor",
+      "up": "20261113_001_audit_anchor_up.sql",
+      "down": "20261113_001_audit_anchor_down.sql",
+      "rollback_policy": "refuse_if_audit_anchor_tables_contain_rows",
+      "status": "repository_only_not_applied"
+    }
+  ]
+}
