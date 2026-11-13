@@ -131,6 +131,44 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(contrast, 4.5, f"Accent text contrast below WCAG AA: {contrast:.2f}:1")
         await page.close()
 
+
+
+    async def test_semantic_structure_and_navigation_on_every_generated_route(self):
+        page = await self.browser.new_page()
+        routes = [("/", "Accueil"), ("/services/", "Services"), ("/contact/", "Contact")]
+        for route, expected_label in routes:
+            response = await page.goto(self.base_url + route, wait_until="networkidle")
+            self.assertIsNotNone(response)
+            self.assertEqual(response.status, 200, route)
+            audit = await page.evaluate("""() => {
+                const headings = [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')];
+                const levels = headings.map((heading) => Number(heading.tagName.slice(1)));
+                const links = [...document.querySelectorAll('a')];
+                const navs = [...document.querySelectorAll('nav')];
+                const current = [...document.querySelectorAll('nav a[aria-current="page"]')];
+                return {
+                    h1Count: document.querySelectorAll('h1').length,
+                    mainCount: document.querySelectorAll('main').length,
+                    navsNamed: navs.length > 0 && navs.every((nav) => (nav.getAttribute('aria-label') || nav.getAttribute('aria-labelledby') || '').trim().length > 0),
+                    linksNamed: links.every((link) => (link.innerText || '').trim() || (link.getAttribute('aria-label') || '').trim() || (link.getAttribute('aria-labelledby') || '').trim()),
+                    currentNavCount: current.length,
+                    headingLevels: levels,
+                    skipLink: Boolean(document.querySelector('a.skip-link[href="#main-content"]')),
+                    mainId: document.querySelector('main')?.id || null
+                };
+            }""")
+            self.assertEqual(audit["h1Count"], 1, route)
+            self.assertEqual(audit["mainCount"], 1, route)
+            self.assertTrue(audit["navsNamed"], f"Unlabelled navigation landmark: {route}")
+            self.assertTrue(audit["linksNamed"], f"Unnamed link: {route}")
+            self.assertEqual(audit["currentNavCount"], 1, route)
+            self.assertTrue(audit["skipLink"], route)
+            self.assertEqual(audit["mainId"], "main-content", route)
+            levels = audit["headingLevels"]
+            self.assertTrue(all(current <= previous + 1 for previous, current in zip(levels, levels[1:])), f"Heading level jump: {route} {levels}")
+            self.assertIn(expected_label, await page.locator("h1").inner_text())
+        await page.close()
+
     async def test_accessibility_landmarks_names_skip_link_and_keyboard_focus(self):
         page = await self.browser.new_page()
         response = await page.goto(self.base_url + "/", wait_until="networkidle")
