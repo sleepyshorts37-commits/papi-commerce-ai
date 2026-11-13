@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$")
-SECTION_TYPES = {"intro", "feature_grid", "stats", "faq", "cta"}
+SECTION_TYPES = {"intro", "feature_grid", "stats", "faq", "cta", "product_catalog", "team", "testimonials", "service_cards"}
 MAX_SECTIONS_PER_PAGE = 8
 
 
@@ -101,6 +101,54 @@ def render_page_sections(
                 questions.append(f"<details><summary>{question}</summary><p>{answer}</p></details>")
             body_html = f"<p>{body}</p>" if body else ""
             rendered.append(f'<section class="content-section faq-section" aria-labelledby="{heading_id}"><p class="eyebrow">{eyebrow}</p><h2 id="{heading_id}">{heading}</h2>{body_html}{"".join(questions)}</section>')
+
+        elif kind == "product_catalog":
+            allowed = {"id", "type", "eyebrow", "heading", "body", "items"}
+            if set(section) != allowed:
+                raise WebsiteSectionError("Section product_catalog : champs invalides.")
+            cards = []
+            for item in _items(section["items"], f"{identifier}.items", 1, 12):
+                if not isinstance(item, dict) or set(item) != {"name", "description", "price_label", "cta_label", "target_page"}:
+                    raise WebsiteSectionError("Fiche produit invalide.")
+                target = item["target_page"]
+                if not isinstance(target, str) or target not in page_slugs:
+                    raise WebsiteSectionError("La destination produit doit être une page interne existante.")
+                href = ("index.html" if target == "home" else f"{target}/index.html") if current_slug == "home" else ("../index.html" if target == "home" else f"../{target}/index.html")
+                cards.append(f'<article class="product-card"><h3>{html.escape(_text(item["name"], "product.name"))}</h3><p>{html.escape(_text(item["description"], "product.description", 500))}</p><p class="product-price">{html.escape(_text(item["price_label"], "product.price_label", 80))}</p><a class="primary-link" href="{href}">{html.escape(_text(item["cta_label"], "product.cta_label", 80))}</a></article>')
+            rendered.append(f'<section class="content-section product-catalog" aria-labelledby="{heading_id}"><p class="eyebrow">{eyebrow}</p><h2 id="{heading_id}">{heading}</h2>{f"<p>{body}</p>" if body else ""}<div class="business-grid">{"".join(cards)}</div></section>')
+
+        elif kind == "team":
+            allowed = {"id", "type", "eyebrow", "heading", "body", "items"}
+            if set(section) != allowed:
+                raise WebsiteSectionError("Section team : champs invalides.")
+            cards = []
+            for item in _items(section["items"], f"{identifier}.items", 1, 12):
+                if not isinstance(item, dict) or set(item) != {"name", "role", "bio"}:
+                    raise WebsiteSectionError("Fiche membre invalide.")
+                cards.append(f'<article class="team-card"><h3>{html.escape(_text(item["name"], "team.name"))}</h3><p class="team-role">{html.escape(_text(item["role"], "team.role", 100))}</p><p>{html.escape(_text(item["bio"], "team.bio", 500))}</p></article>')
+            rendered.append(f'<section class="content-section team-section" aria-labelledby="{heading_id}"><p class="eyebrow">{eyebrow}</p><h2 id="{heading_id}">{heading}</h2>{f"<p>{body}</p>" if body else ""}<div class="business-grid">{"".join(cards)}</div></section>')
+
+        elif kind == "testimonials":
+            allowed = {"id", "type", "eyebrow", "heading", "body", "items"}
+            if set(section) != allowed:
+                raise WebsiteSectionError("Section testimonials : champs invalides.")
+            cards = []
+            for item in _items(section["items"], f"{identifier}.items", 1, 8):
+                if not isinstance(item, dict) or set(item) != {"quote", "author", "role"}:
+                    raise WebsiteSectionError("Témoignage invalide.")
+                cards.append(f'<figure class="testimonial-card"><blockquote>{html.escape(_text(item["quote"], "testimonial.quote", 700))}</blockquote><figcaption><strong>{html.escape(_text(item["author"], "testimonial.author"))}</strong><span>{html.escape(_text(item["role"], "testimonial.role", 100))}</span></figcaption></figure>')
+            rendered.append(f'<section class="content-section testimonials-section" aria-labelledby="{heading_id}"><p class="eyebrow">{eyebrow}</p><h2 id="{heading_id}">{heading}</h2>{f"<p>{body}</p>" if body else ""}<p class="content-disclaimer">Témoignages fournis par le client ; leur authenticité n’a pas été vérifiée.</p><div class="business-grid">{"".join(cards)}</div></section>')
+
+        elif kind == "service_cards":
+            allowed = {"id", "type", "eyebrow", "heading", "body", "items"}
+            if set(section) != allowed:
+                raise WebsiteSectionError("Section service_cards : champs invalides.")
+            cards = []
+            for item in _items(section["items"], f"{identifier}.items", 1, 8):
+                if not isinstance(item, dict) or set(item) != {"title", "body"}:
+                    raise WebsiteSectionError("Carte de service invalide.")
+                cards.append(f'<article class="service-card"><h3>{html.escape(_text(item["title"], "service.title"))}</h3><p>{html.escape(_text(item["body"], "service.body", 500))}</p></article>')
+            rendered.append(f'<section class="content-section service-section" aria-labelledby="{heading_id}"><p class="eyebrow">{eyebrow}</p><h2 id="{heading_id}">{heading}</h2>{f"<p>{body}</p>" if body else ""}<div class="business-grid">{"".join(cards)}</div></section>')
 
         else:  # cta
             allowed = {"id", "type", "eyebrow", "heading", "body", "cta_label", "target_page"}
