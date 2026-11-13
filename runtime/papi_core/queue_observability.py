@@ -34,7 +34,11 @@ def evaluate_queue_snapshot(
     now: datetime | None = None,
     stale_running_seconds: int = 900,
 ) -> dict[str, Any]:
-    """Produit des compteurs et alertes synthétiques depuis un snapshot explicite."""
+    """Produit des compteurs et alertes synthétiques depuis un snapshot explicite.
+
+    Un bail running n'est signalé comme expiré qu'après le délai de grâce
+    stale_running_seconds suivant lease_until.
+    """
     current = now or datetime.now(timezone.utc)
     if current.tzinfo is None or current.utcoffset() is None:
         raise QueueObservabilityError("now doit inclure un fuseau horaire.")
@@ -80,7 +84,8 @@ def evaluate_queue_snapshot(
                 retry_delays.append(delay)
         if status == "running":
             lease_until = _timestamp(job.get("lease_until"), "lease_until")
-            if (current - lease_until.astimezone(current.tzinfo)).total_seconds() > 0:
+            overdue_seconds = (current - lease_until.astimezone(current.tzinfo)).total_seconds()
+            if overdue_seconds >= stale_running_seconds:
                 stale_running += 1
         if status in ("queued", "retry", "running") and attempts >= maximum:
             exhausted_active += 1
