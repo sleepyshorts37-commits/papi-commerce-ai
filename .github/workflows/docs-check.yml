@@ -28,6 +28,7 @@ jobs:
             docs/SALES-TOOLS.md
             docs/FINANCE-LEDGER.md
             docs/SECURITY-RELEASE.md
+            docs/PRODUCTION-READINESS-GATE.md
             agents/ASTOU.md
             agents/MARIETOU.md
             agents/IBRAHIMA.md
@@ -35,4 +36,4 @@ jobs:
           for file in "${required[@]}"; do
             test -s "$file" || { echo "Missing or empty: $file"; exit 1; }
           done
-          echo "PAPI foundation documents are present."
+          echo "PAPI foundation and production-gate documents are present."
