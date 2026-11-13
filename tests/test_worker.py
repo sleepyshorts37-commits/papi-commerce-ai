@@ -119,5 +119,52 @@ class WorkerSafetyTests(unittest.TestCase):
                 self.assertEqual(queue.fail_calls[0]["error_code"], "permission_denied")
 
 
+    def test_invalid_or_inconsistent_approval_status_is_rejected_before_authentication(self):
+        cases = (
+            (True, "pending"), (True, "rejected"), (True, None),
+            (True, "APPROVED"), (True, []),
+            (False, "approved"), (False, "pending"),
+            (False, "rejected"), (False, 0),
+        )
+        for approval_required, approval_status in cases:
+            with self.subTest(approval_required=approval_required, approval_status=approval_status):
+                job = {
+                    "id": "job-approval", "task_id": "task-approval",
+                    "handler": "report.preview", "payload": {},
+                    "lease_token": "lease-approval", "agent_identity": None,
+                }
+                task = {
+                    "id": "task-approval", "owner_agent": "agent-a",
+                    "status": "in_progress",
+                    "approval_required": approval_required,
+                    "approval_status": approval_status,
+                }
+                queue = QueueSpy(job)
+                queue.store = FakeStore(task)
+                registry = HandlerRegistry()
+                registry.register(
+                    "report.preview", "read_only",
+                    lambda payload, context: self.fail(
+                        "Un état d'approbation invalide ne doit jamais atteindre le handler."
+                    ),
+                )
+                policy = {
+                    "execution_enabled": True,
+                    "allowed_handlers": ["report.preview"],
+                    "action_permissions": {
+                        "read_only": {"enabled": True, "owner_approval": False}
+                    },
+                    "external_actions_enabled": False,
+                }
+                worker = PapiWorker(
+                    queue=queue, registry=registry, policy=policy,
+                    worker_id="worker-test",
+                )
+                result = worker.run_once()
+                self.assertEqual(result["status"], "blocked")
+                self.assertEqual(len(queue.fail_calls), 1)
+                self.assertEqual(queue.fail_calls[0]["error_code"], "permission_denied")
+
+
 if __name__ == "__main__":
     unittest.main()
