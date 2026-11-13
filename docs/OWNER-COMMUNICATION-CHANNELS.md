@@ -8,7 +8,7 @@ Permettre au propriétaire de dialoguer oralement avec les IA responsables et pe
 
 - Spécification Phase 2B, jour 1 : documentée.
 - Interfaces techniques Phase 2B, jour 2 : implémentées ; validation CI à confirmer sur le dernier commit.
-- Autorisation et routage Phase 2B, jour 3 : implémentés avec tests simulés ; aucune destination réelle configurée.
+- Autorisation et routage Phase 2B, jour 3 : implémentés avec tests simulés ; aucune destination réelle configurée.\n- Résilience et audit Phase 2B, jour 4 : garde-fou idempotence/quotas/audit intégré au routeur ; stockages simulés uniquement.
 - Fournisseur de reconnaissance vocale (STT) : non choisi, non connecté.
 - Fournisseur de synthèse vocale (TTS) : non choisi, non connecté.
 - Fournisseur e-mail : non choisi, non connecté.
@@ -120,12 +120,23 @@ Le module `runtime/papi_core/communication_authorization.py` ajoute un routeur p
 
 Le routeur ne remplace pas une signature cryptographique de registre : l'intégrité de la source des profils et des cartes doit être garantie par la couche de composition qui les charge. L'adresse réelle et l'adaptateur e-mail doivent être configurés ensemble côté serveur avant toute activation. Les tests utilisent un expéditeur simulé et ne transmettent aucun e-mail réel.
 
+## Résilience et audit — jour 4
+
+Le module `runtime/papi_core/communication_resilience.py` définit les contrats de garde-fou :
+- réservation atomique d'une clé d'idempotence avec durée de vie configurable ;
+- quotas atomiques par agent et par catégorie de notification, sur fenêtre horaire ;
+- audit minimal des métadonnées (agent, priorité, motif, résultat, corrélation, idempotence), sans corps du message ;
+- échec fermé si un stockage de contrôle ou le journal d'audit est indisponible ;
+- limites positives et bornées par configuration.
+
+Le routeur de communication exige désormais un `NotificationGuard` injecté et le consulte avant l'appel au fournisseur. Les tests utilisent des stockages simulés. Les adaptateurs de stockage durables, la reprise asynchrone après panne et la console d'arrêt globale restent à intégrer lors de la composition de production ; aucun envoi réel n'est possible dans cette phase.
+
 ## Plan de réalisation — bloc de cinq jours
 
 1. **Jour 1 — Contrats et gouvernance :** spécification des flux vocaux, de l'e-mail propriétaire, des permissions et des limites. (En cours de livraison dans ce commit.)
 2. **Jour 2 — Interfaces techniques :** protocoles STT/TTS/e-mail, erreurs typées, délais bornés, validation des contenus et tests simulés. (Livré dans `communication_channels.py` et `test_communication_channels.py`.)
 3. **Jour 3 — Autorisation et routage :** contrôles identité/statut/permissions, destination propriétaire vérifiée et allowlistée, séparation voix/e-mail. (Implémenté avec tests simulés ; politique de priorité et limites de fréquence à compléter au jour 4.)
-4. **Jour 4 — Résilience et audit :** idempotence, quotas, déduplication, reprise contrôlée, journalisation et mécanisme d'arrêt.
+4. **Jour 4 — Résilience et audit :** contrats d'idempotence, quotas, audit minimal et intégration obligatoire au routeur. (Implémentés avec tests simulés ; adaptateurs persistants et arrêt global restent à finaliser.)
 5. **Jour 5 — Validation :** tests de sécurité, tests d'intégration simulés, documentation d'exploitation et revue de préparation.
 
 ## Conditions d'activation
