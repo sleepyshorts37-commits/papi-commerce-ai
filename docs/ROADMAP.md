@@ -163,6 +163,6 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter un premier contrat Chromium de géométrie responsive : header, hero, visuel, titre, cartes et débordement horizontal sur mobile/tablette/desktop (2a1df36).
 - [x] Ajouter le contrat Chromium des composants : tokens calculés, polices, hiérarchie typographique, espacements, bordures/rayons, ordre et chevauchements sur trois viewports (Jour 2, CI en attente).
 - [x] Ajouter un test Chromium des six profils sectoriels sur 18 combinaisons viewport (mobile/tablette/desktop), tokens de marque, variantes hero, cartes, route Contact et overflow (Jour 3, commit `277a117`, CI en attente).
-- [ ] Vérifier les sections configurables et les états interactifs sur les routes secondaires.
+- [x] Ajouter le parcours Chromium des sections configurables sur /contact/ : FAQ interactive, CTA interne, focus clavier, contenus/libellés longs et contrôle d'overflow sur trois viewports (Jour 4, commit `b8a7788`, CI en attente).
 - [ ] Valider les captures et parcours visuels en CI ; aucune comparaison pixel-perfect n'est encore implémentée.
-- **Statut :** Jours 1 à 3 implémentés ; validation CI du Jour 3 en attente. Contrôle structurel et de styles calculés uniquement, pas une revue esthétique ou une certification WCAG.
+- **Statut :** Jours 1 à 4 implémentés ; validation CI du Jour 4 en attente. Contrôle structurel, styles calculés et interactions de base uniquement, pas une revue esthétique ou une certification WCAG.
