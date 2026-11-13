@@ -157,7 +157,7 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
                 action="job.claimed", actor="system:worker:worker-a",
                 handler="internal.echo", outcome="claimed",
             )
-            path.write_bytes(path.read_bytes().rstrip(b"\\n"))
+            path.write_bytes(path.read_bytes().rstrip(b"\n"))
             with self.assertRaises(AuditError):
                 read_events(path)
 
@@ -165,7 +165,7 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
         from papi_core.audit import AuditError
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "events.jsonl"
-            path.write_bytes(b"\\xff\\xfe\\n")
+            path.write_bytes(b"\xff\xfe\n")
             with self.assertRaises(AuditError):
                 read_events(path)
 
