@@ -47,3 +47,12 @@ Le test de rollback avec données produit volontairement une erreur SQL contrôl
 **Résultat : chaîne de tests CI réussie, mais système non autorisé pour la production.**
 
 Étapes restantes : revue de sécurité indépendante, intégration ordonnée des PR, validation d'un KMS/HSM, authentification workload, ledger/runner de migration approuvé, tests sandbox Supabase, politique de révocation et audit transactionnel, puis exercice de reprise et de réconciliation des effets externes.
+
+
+## Jour 1 de la phase suivante — vérification au niveau de l'adaptateur
+
+L'adaptateur Supabase exige désormais un callback `verify_signature` non optionnel à sa construction. Avant tout `put_record`, il valide les octets canoniques, le schéma, l'identifiant du journal et la signature. Avant le RPC CAS, il revalide le record et impose que `previous_record_digest` corresponde exactement au digest attendu. Une utilisation directe de l'adaptateur ne peut donc plus contourner la vérification faite par le service de publication.
+
+Le validateur partagé est exposé comme contrat public `validate_signed_checkpoint_record`. Les tests d'intégration injectent le vérificateur du keyring Ed25519 local. Les tests unitaires couvrent l'absence de vérificateur au constructeur, la signature falsifiée et le lien précédent incorrect.
+
+Limites : le callback doit être fiable et administré côté backend; le keyring local reste un mécanisme de référence, pas un KMS/HSM. La lecture des records reste disponible sans callback de vérification, mais les lectures ne constituent pas une preuve de confiance tant qu'elles ne passent pas par `verify_checkpoint_anchor`. Aucun service Supabase réel n'est appelé.
