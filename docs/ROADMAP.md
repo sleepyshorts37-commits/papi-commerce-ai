@@ -127,6 +127,7 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Corriger le routage de la racine `/` vers `index.html` dans le serveur de prévisualisation local après analyse d'un échec CI réel.
 - [x] Compléter les tests HTTP (GET, HEAD, ressources, chemins interdits) et valider la CI du correctif : 427 tests Python réussis sur `e2121acf4338da989e26550d43f86f842bc4feb6`.
 - [x] Ajouter Playwright épinglé dans `requirements-browser-test.txt`, un workflow Chromium dédié et des tests de rendu réels sur un site synthétique.
+- [x] Retirer l'appel Google Fonts externe et imposer des polices système locales ; le test navigateur vérifie désormais l'absence de requêtes tierces.
 - [ ] Confirmer le nouveau workflow Chromium sur son premier commit CI.
 - [ ] Vérifier mobile, tablette, desktop, navigation et captures d'écran CI.
 - [ ] Ajouter les contrôles d'accessibilité automatisés et documenter les limites de validation humaine.
