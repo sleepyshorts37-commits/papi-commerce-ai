@@ -56,5 +56,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Finances et comptabilité](docs/FINANCE-LEDGER.md)
 - [Sécurité et préparation au déploiement](docs/SECURITY-RELEASE.md)
 - [Préparation de l'environnement Supabase](docs/ENVIRONMENT-SETUP.md)
+- [Génération de contenus commerciaux](docs/PAPI-CONTENT-GENERATION-GUIDE.md)
+- [Rapport du cycle de génération de contenus](docs/PAPI-CONTENT-GENERATION-REPORT.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à déployer et tester.
