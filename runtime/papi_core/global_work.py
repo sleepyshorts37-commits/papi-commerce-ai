@@ -4,9 +4,13 @@ Aucun scraping, candidature, contact externe, paiement ou appel réseau n'est ef
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+ROOT = Path(__file__).resolve().parents[2]
+GLOBAL_WORK_FILE = ROOT / "data" / "global-work.json"
 ALLOWED_AUTOMATION_POLICIES = {"allowed", "human_submission_only", "prohibited", "unknown"}
 ALLOWED_AI_POLICIES = {"allowed", "restricted", "prohibited", "unknown"}
 REQUIRED_FIELDS = {
@@ -55,7 +59,8 @@ def validate_opportunity(opportunity: dict[str, Any]) -> list[str]:
     if not isinstance(opportunity.get("id"), str) or not opportunity.get("id", "").strip():
         errors.append("id est obligatoire.")
     for field in ("title", "description", "currency", "country_eligibility"):
-        if not isinstance(opportunity.get(field), str) or not opportunity.get(field, "").strip():
+        value = opportunity.get(field)
+        if not isinstance(value, str) or not value.strip():
             errors.append(f"{field} doit être un texte non vide.")
     countries = opportunity.get("eligible_countries")
     if not isinstance(countries, list) or any(not isinstance(x, str) or not x.strip() for x in countries):
@@ -73,9 +78,41 @@ def validate_opportunity(opportunity: dict[str, Any]) -> list[str]:
     if not isinstance(opportunity.get("human_presence_required"), bool):
         errors.append("human_presence_required doit être booléen.")
     methods = opportunity.get("payout_methods")
-    if not isinstance(methods, list) or any(not isinstance(x, str) or not x.strip() for x in methods):
-        errors.append("payout_methods doit être une liste de méthodes.")
+    if not isinstance(methods, list) or not methods or any(not isinstance(x, str) or not x.strip() for x in methods):
+        errors.append("payout_methods doit être une liste non vide de méthodes.")
     return errors
+
+
+def validate_global_work_registry(data: dict[str, Any]) -> list[str]:
+    if not isinstance(data, dict) or data.get("project") != "PAPI COMMERCE AI":
+        return ["Registre GLOBAL WORK invalide."]
+    if set(data) - {"project", "schema_version", "owner_country", "priority_policy", "opportunities", "note"}:
+        return ["Sections inconnues dans le registre GLOBAL WORK."]
+    opportunities = data.get("opportunities")
+    if not isinstance(opportunities, list):
+        return ["opportunities doit être une liste."]
+    errors: list[str] = []
+    seen: set[str] = set()
+    for index, opportunity in enumerate(opportunities):
+        errors.extend(f"opportunities[{index}]: {error}" for error in validate_opportunity(opportunity))
+        if isinstance(opportunity, dict):
+            opportunity_id = opportunity.get("id")
+            if isinstance(opportunity_id, str):
+                if opportunity_id in seen:
+                    errors.append(f"Identifiant d'opportunité dupliqué: {opportunity_id}.")
+                seen.add(opportunity_id)
+    return errors
+
+
+def load_global_work_registry(path: Path = GLOBAL_WORK_FILE) -> dict[str, Any]:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise GlobalWorkError("Impossible de lire le registre GLOBAL WORK.") from exc
+    errors = validate_global_work_registry(data)
+    if errors:
+        raise GlobalWorkError("; ".join(errors))
+    return data
 
 
 def evaluate_opportunity(
@@ -109,7 +146,9 @@ def evaluate_opportunity(
         reasons.append("La mission exige une présence ou une action humaine.")
     accepted = {method.casefold() for method in accepted_payout_methods}
     offered = {method.casefold() for method in opportunity["payout_methods"]}
-    if accepted and not accepted.intersection(offered):
+    if not accepted:
+        reasons.append("Les moyens de paiement acceptés par le propriétaire ne sont pas configurés.")
+    elif not accepted.intersection(offered):
         reasons.append("Aucun moyen de paiement compatible n'est confirmé.")
 
     hard_reject = (
