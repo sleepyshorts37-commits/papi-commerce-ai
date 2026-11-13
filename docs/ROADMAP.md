@@ -49,7 +49,7 @@
 - [x] Définir le catalogue : audit, conseil, intégration, accès employés, formation et support.
 - [x] Définir le parcours client, la facturation par livrable et les revenus récurrents.
 - [x] Documenter l'exemple de digitalisation d'une pharmacie et ses limites de sécurité.
-- [ ] Définir les forfaits, tarifs indicatifs, coûts directs et marges après étude du marché sénégalais.
+- [x] Préparer une première grille de forfaits et tarifs indicatifs à partir de repères publics sénégalais ; validation terrain et calcul des coûts réels encore requis.
 - [ ] Définir les modèles de devis, contrat, cahier des charges, procès-verbal de recette et support.
 - [ ] Concevoir les agents spécialisés et leurs fiches d'identité, permissions et responsables.
 - [ ] Construire une offre pilote avec démonstration sur données fictives et mesurer les résultats.
