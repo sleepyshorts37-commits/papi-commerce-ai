@@ -19,11 +19,12 @@ Renforcer par tests adversariaux le serveur HTTP local de prévisualisation, en 
 - [x] Vérifier qu'un fichier sentinelle hors racine n'est jamais exposé par HTTP.
 - Livrable : tests de confinement du répertoire.
 
-**Statut Jour 3 :** tests ajoutés dans `tests/test_preview_server.py` ; validation CI en attente sur `c11d763`.
+**Statut Jour 3 :** tests ajoutés dans `tests/test_preview_server.py` sur `c11d763` ; core PASS, Chromium en cours au dernier contrôle. La validation complète est en attente.
 
 ## Jour 4 — Robustesse des ressources
-- [ ] Tester fichiers absents, répertoires, noms Unicode et types MIME.
-- [ ] Vérifier la stabilité du serveur après requêtes invalides et les limites de comportement attendues.
+- [x] Tester fichiers absents, répertoires, noms Unicode et types MIME.
+- [x] Vérifier que le serveur reste disponible après des requêtes invalides et des ressources absentes.
+- **Statut Jour 4 :** tests ajoutés dans `tests/test_preview_server.py` ; validation CI en attente sur `0b7498a`.
 - Livrable : matrice de robustesse des ressources.
 
 ## Jour 5 — CI et rapport
