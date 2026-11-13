@@ -24,6 +24,7 @@ MAX_MEMORY_SCAN = 5000
 _UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$")
 _AGENT = re.compile(r"^[A-Za-z0-9_-]{1,100}$")
 _MESSAGE_ID = re.compile(r"^MSG-[A-F0-9]{32}$")
+_SECRET = re.compile(r"(?:gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{16,}|\\bBearer\\s+[A-Za-z0-9._~-]{12,}|\\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|otp|pin|cvv|authorization)\\s*[:=]\\s*\\S+)", re.I)
 
 
 def _rows(value: Any) -> list[dict[str, Any]]:
