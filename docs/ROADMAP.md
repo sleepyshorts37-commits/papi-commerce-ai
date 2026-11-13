@@ -141,8 +141,8 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter contrast_ratio et le contrôle sector_accent_wcag_aa au rapport qualité multi-pages.
 - [x] Ajouter un test unitaire sur les six profils et un test Chromium sur le texte accentué rendu.
 - [ ] Confirmer le passage CI sur le commit contenant ces changements.
-- [ ] Étendre l'audit sémantique à toutes les routes et contrôler les hiérarchies de titres.
-- [ ] Vérifier clavier, mouvement réduit et navigation responsive sur chaque page.
+- [x] Ajouter l'audit sémantique multi-pages (routes du fixture, landmarks, liens, titre courant et hiérarchie des titres) ; correction du chemin de test en cours de validation CI.
+- [x] Ajouter les tests clavier, focus visible, mouvement réduit et navigation responsive ; validation CI en attente.
 - [ ] Définir des budgets de poids, requêtes et DOM ; produire des mesures de laboratoire.
 - [ ] Publier le rapport final avec les preuves CI exactes.
 - **Statut :** Jour 1 implémenté ; CI en attente. Aucun audit WCAG 2.2 AA complet ou Core Web Vitals terrain revendiqué.
