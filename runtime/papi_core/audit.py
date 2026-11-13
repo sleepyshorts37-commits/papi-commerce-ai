@@ -89,7 +89,7 @@ def append_event(event: dict[str, Any], path: Path) -> bool:
                 break
             chunks.append(chunk)
         existing_bytes = b"".join(chunks)
-        if existing_bytes and not existing_bytes.endswith(b"\\n"):
+        if existing_bytes and not existing_bytes.endswith(b"\n"):
             raise AuditError("Journal incomplet : dernière ligne tronquée, écriture refusée.")
         seen = set()
         for line_number, line in enumerate(existing_bytes.decode("utf-8").splitlines(), start=1):
@@ -106,7 +106,7 @@ def append_event(event: dict[str, Any], path: Path) -> bool:
             seen.add(event_id)
         if event["event_id"] in seen:
             return False
-        payload = (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\\n").encode("utf-8")
+        payload = (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
         original_size = len(existing_bytes)
         try:
             view = memoryview(payload)
