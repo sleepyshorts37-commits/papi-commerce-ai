@@ -31,7 +31,7 @@ def _utc_timestamp(value: Any) -> datetime:
 def _safe_relative_path(value: Any) -> str:
     if not isinstance(value, str) or not value or len(value) > 240:
         raise BackupValidationError("Chemin d'artefact invalide.")
-    if value.startswith("/") or "\\\\" in value or ":" in value:
+    if value.startswith("/") or "\\" in value or ":" in value:
         raise BackupValidationError("Le chemin doit être relatif et portable.")
     parts = value.split("/")
     if any(part in {"", ".", ".."} for part in parts):
