@@ -121,3 +121,21 @@ Le niveau annoncé doit correspondre aux preuves. Le MVP actuel reste au palier 
 - Intégrations de production optionnelles, isolées et autorisées.
 
 Aucune connexion payante, aucun déploiement ni aucune publication n'est autorisé par cette spécification seule.
+
+## Itération suivante — direction artistique professionnelle
+
+Le rendu minimal a été remplacé par une première composition éditoriale premium : en-tête de marque, hero, appel à l'action, bande de confiance, contact et pied de page. Le CSS utilise des variables de design tokens, une hiérarchie typographique fluide, des points de rupture tablette/mobile, un focus clavier visible, une navigation d'évitement et la préférence de réduction des animations.
+
+Cette évolution améliore le socle visuel, mais ne prouve pas un niveau entreprise. Le générateur produit toujours une page statique depuis quatre champs de brief. Il ne dispose pas encore d'un sitemap multi-pages, d'un moteur IA, d'un backend, d'un navigateur de prévisualisation, de tests Playwright, de mesures Core Web Vitals ou d'un audit WCAG complet.
+
+### Portes de sortie entreprise
+
+1. Découverte métier et matrice exigences / pages / fonctionnalités / tests.
+2. Direction artistique spécifique à la marque, design system et bibliothèque de composants.
+3. Architecture multi-pages et choix de stack motivé par le cas d'usage.
+4. Responsive testé sur navigateurs et tailles cibles, parcours clavier et lecteurs d'écran.
+5. Tests unitaires, intégration, navigateur et régression visuelle.
+6. Audit WCAG 2.2 AA, SEO, Core Web Vitals, sécurité et dépendances.
+7. Documentation, code source, inventaire des intégrations, limites et procédure de transfert.
+
+Paliers de maturité : Prototype, MVP, Production professionnelle, Entreprise/critique. Le niveau annoncé devra correspondre à des preuves vérifiables et à une validation humaine. Aucun fournisseur payant, hébergement, DNS ou publication n'est activé.
