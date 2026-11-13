@@ -350,11 +350,20 @@ update public.papi_jobs j
    and a.attempt_number = j.attempts
    and j.current_attempt_id is null;
 
-alter table public.papi_jobs
-    add constraint papi_jobs_current_attempt_fk
-    foreign key (current_attempt_id)
-    references public.papi_job_attempts(attempt_id)
-    deferrable initially deferred;
+do $attempt_fk$
+begin
+    if not exists (
+        select 1 from pg_constraint where conname = 'papi_jobs_current_attempt_fk'
+          and conrelid = 'public.papi_jobs'::regclass
+    ) then
+        alter table public.papi_jobs
+            add constraint papi_jobs_current_attempt_fk
+            foreign key (current_attempt_id)
+            references public.papi_job_attempts(attempt_id)
+            deferrable initially deferred;
+    end if;
+end;
+$attempt_fk$;
 
 create index if not exists papi_job_attempts_job_started_idx
     on public.papi_job_attempts(job_id, started_at desc);
