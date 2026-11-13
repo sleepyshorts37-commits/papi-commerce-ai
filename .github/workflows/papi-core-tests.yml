@@ -154,24 +154,33 @@ jobs:
           values
             ('recovery-crash-task', '{"id":"recovery-crash-task"}'::jsonb, 1),
             ('recovery-retry-task', '{"id":"recovery-retry-task"}'::jsonb, 1),
-            ('recovery-terminal-task', '{"id":"recovery-terminal-task"}'::jsonb, 1);
+            ('recovery-terminal-task', '{"id":"recovery-terminal-task"}'::jsonb, 1),
+            ('recovery-exhaust-task', '{"id":"recovery-exhaust-task"}'::jsonb, 1);
           insert into public.papi_jobs(id, task_id, handler, payload, idempotency_key)
           values
             ('recovery-crash-job', 'recovery-crash-task', 'test.noop', '{}'::jsonb, 'recovery-crash-key'),
             ('recovery-retry-job', 'recovery-retry-task', 'test.noop', '{}'::jsonb, 'recovery-retry-key'),
-            ('recovery-terminal-job', 'recovery-terminal-task', 'test.noop', '{}'::jsonb, 'recovery-terminal-key');
+            ('recovery-terminal-job', 'recovery-terminal-task', 'test.noop', '{}'::jsonb, 'recovery-terminal-key'),
+            ('recovery-exhaust-job', 'recovery-exhaust-task', 'test.noop', '{}'::jsonb, 'recovery-exhaust-key');
           update public.papi_jobs set available_at = now() - interval '3 minutes'
            where id = 'recovery-crash-job';
           update public.papi_jobs set available_at = now() - interval '2 minutes'
            where id = 'recovery-retry-job';
           update public.papi_jobs set available_at = now() - interval '1 minute'
            where id = 'recovery-terminal-job';
+          update public.papi_jobs set max_attempts = 2
+           where id = 'recovery-retry-job';
+          update public.papi_jobs set max_attempts = 1,
+                                      available_at = now() + interval '10 minutes'
+           where id = 'recovery-exhaust-job';
           do $recovery$
           declare
             first_claim jsonb;
             second_claim jsonb;
             retry_claim jsonb;
+            retry_claim_second jsonb;
             terminal_claim jsonb;
+            exhausted_claim jsonb;
             effect_count integer;
             previous_attempt_status text;
             retry_status text;
@@ -235,6 +244,20 @@ jobs:
                (select status from public.papi_jobs where id = 'recovery-retry-job') <> 'retry' then
               raise exception 'transient failure was not scheduled for retry';
             end if;
+            update public.papi_jobs set available_at = now()
+             where id = 'recovery-retry-job';
+            retry_claim_second := public.papi_claim_job('worker-retry-2', gen_random_uuid(), 15);
+            if retry_claim_second->>'id' <> 'recovery-retry-job' then
+              raise exception 'second retry attempt was not claimable';
+            end if;
+            retry_status := public.papi_fail_job(
+              'recovery-retry-job', 'worker-retry-2',
+              (retry_claim_second->>'lease_token')::uuid, 'handler_error', true
+            );
+            if retry_status <> 'failed' or
+               (select status from public.papi_jobs where id = 'recovery-retry-job') <> 'failed' then
+              raise exception 'max_attempts did not stop further retries';
+            end if;
 
             terminal_claim := public.papi_claim_job('worker-terminal', gen_random_uuid(), 15);
             if terminal_claim->>'id' <> 'recovery-terminal-job' then
@@ -247,6 +270,21 @@ jobs:
             if terminal_status <> 'failed' or
                (select status from public.papi_jobs where id = 'recovery-terminal-job') <> 'failed' then
               raise exception 'non-retryable policy failure was not terminal';
+            end if;
+
+            exhausted_claim := public.papi_claim_job('worker-exhausted', gen_random_uuid(), 15);
+            if exhausted_claim->>'id' <> 'recovery-exhaust-job' then
+              raise exception 'unexpected max-attempts lease claim';
+            end if;
+            update public.papi_jobs set lease_until = now() - interval '1 second'
+             where id = 'recovery-exhaust-job';
+            if public.papi_claim_job('worker-after-exhaustion', gen_random_uuid(), 15) is not null then
+              raise exception 'expired final attempt was incorrectly reclaimed';
+            end if;
+            if (select status from public.papi_jobs where id = 'recovery-exhaust-job') <> 'failed'
+               or (select status from public.papi_job_attempts
+                    where attempt_id = (exhausted_claim->>'attempt_id')::uuid) <> 'failed' then
+              raise exception 'expired final attempt was not terminally recorded';
             end if;
           end;
           $recovery$;
@@ -269,6 +307,9 @@ jobs:
             end if;
             if to_regprocedure('public.papi_renew_job(text,text,uuid,integer)') is not null then
               raise exception 'lease renewal RPC remains after rollback';
+            end if;
+            if to_regprocedure('public.papi_fail_job(text,text,uuid,text,boolean)') is not null then
+              raise exception 'retryable failure RPC remains after rollback';
             end if;
           end;
           $rollback$;
