@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS_DIR = ROOT / "infra" / "supabase" / "migrations"
 MANIFEST = MIGRATIONS_DIR / "manifest.json"
-VERSION_RE = re.compile(r"^(\\d{8}_\\d{3})_([a-z0-9_]+)_(up|down)\\.sql$")
+VERSION_RE = re.compile(r"^(\d{8}_\d{3})_([a-z0-9_]+)_(up|down)\.sql$")
 
 
 def validate() -> list[str]:
@@ -40,7 +40,7 @@ def validate() -> list[str]:
             raise ValueError("each migration entry must be an object")
         version = item.get("version")
         name = item.get("name")
-        if not isinstance(version, str) or not re.fullmatch(r"\\d{8}_\\d{3}", version):
+        if not isinstance(version, str) or not re.fullmatch(r"\d{8}_\d{3}", version):
             raise ValueError(f"invalid migration version: {version!r}")
         if not isinstance(name, str) or not re.fullmatch(r"[a-z0-9_]+", name):
             raise ValueError(f"invalid migration name for {version}")
