@@ -23,3 +23,15 @@ Le module `runtime/papi_core/shared_persistence.py` fournit deux adaptateurs opt
 Les adaptateurs exigent un `SupabaseStore` injecté depuis le backend de confiance. Les lectures exigent un objet `AuthenticatedAgentPrincipal` émis par la frontière d'authentification interne ; une chaîne contenant un identifiant d'agent est refusée. Les filtres d'accès sont appliqués dans la requête PostgREST avant le retour des lignes.
 
 **Non-activation volontaire :** les fonctions publiques existantes de `memory.py` et `chat.py` restent locales et inchangées. Aucun appel distant n'est déclenché automatiquement. Le déploiement, les identifiants, la migration distante, la synchronisation et les workers restent désactivés. Les tests utilisent un magasin simulé et ne contactent aucun service externe.
+
+ 
+## Durcissement — Phase 2, jour 3
+
+Les adaptateurs appliquent désormais des contrôles avant tout appel réseau :
+- l'ajout d'un événement mémoire exige une identité agent authentifiée et vérifie que l'acteur déclaré correspond à cette identité ;
+- les UUID, dates avec fuseau horaire, catégories, portées, tailles de texte, tags et niveaux de confiance sont validés côté application avant insertion ;
+- les messages vérifient leur identifiant, leur date, leurs champs et leurs limites avant insertion ;
+- les recherches mémoire sont plafonnées à 5 000 événements par requête ; si ce plafond est atteint sans épuiser les résultats, l'adaptateur échoue explicitement au lieu de retourner un résultat potentiellement incomplet ;
+- le filtre de catégorie est appliqué après la prise en compte des événements `supersede`, afin qu'une recherche catégorisée ne réaffiche pas une mémoire archivée.
+
+Les tests couvrent l'usurpation d'acteur, les identifiants et dates invalides, les entrées rejetées avant tout appel réseau, les recherches catégorisées et la confirmation d'insertion. La validation CI reste requise avant de déclarer cette journée terminée.
