@@ -50,6 +50,39 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/20261113_002_retry_queue_integration_up.sql
 
+          # Upgrade and rollback the claim response contract on disposable PostgreSQL.
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_003_claim_attempt_ceiling_up.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'CLAIM_CONTRACT_SQL'
+          do $claimcheck$
+          declare v_claim jsonb;
+          begin
+            v_claim := public.papi_claim_job('ci-contract-worker', gen_random_uuid(), 120);
+            if v_claim is not null then
+              raise exception 'Unexpected job claim in isolated contract check';
+            end if;
+            if pg_get_functiondef('public.papi_claim_job(text,uuid,integer)'::regprocedure)
+               not like '%max_attempts%' then
+              raise exception 'Claim RPC definition does not expose max_attempts';
+            end if;
+          end
+          $claimcheck$;
+          CLAIM_CONTRACT_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_003_claim_attempt_ceiling_down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'CLAIM_CONTRACT_SQL'
+          do $claimcheck$
+          begin
+            if pg_get_functiondef('public.papi_claim_job(text,uuid,integer)'::regprocedure)
+               like '%max_attempts%' then
+              raise exception 'Claim RPC rollback did not restore prior response';
+            end if;
+          end
+          $claimcheck$;
+          CLAIM_CONTRACT_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_003_claim_attempt_ceiling_up.sql
+
           # Exercise retry/permanent/attempt-ceiling transitions under service_role.
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'RETRY_QUEUE_SQL'
           insert into public.papi_tasks(id, task, version)
