@@ -165,4 +165,6 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter un test Chromium des six profils sectoriels sur 18 combinaisons viewport (mobile/tablette/desktop), tokens de marque, variantes hero, cartes, route Contact et overflow (Jour 3, commit `277a117`, CI en attente).
 - [x] Ajouter le parcours Chromium des sections configurables sur /contact/ : FAQ interactive, CTA interne, focus clavier, contenus/libellés longs et contrôle d'overflow sur trois viewports (Jour 4, commit `b8a7788`, CI en attente).
 - [ ] Valider les captures et parcours visuels en CI ; aucune comparaison pixel-perfect n'est encore implémentée.
-- **Statut :** Jours 1 à 4 implémentés ; validation CI du Jour 4 en attente. Contrôle structurel, styles calculés et interactions de base uniquement, pas une revue esthétique ou une certification WCAG.
+- [x] Jour 5 : analyser l'échec Chromium réel (overflow e-commerce mobile) et corriger le dimensionnement intrinsèque des grilles/hero et le retour à la ligne des contenus (commit `b0d7b58`, validation CI en attente).
+- [ ] Valider les quatre workflows CI du correctif final et publier le rapport de cycle.
+- **Statut :** cinq journées de travail exécutées ; clôture technique conditionnée à la CI du correctif et au rapport final. Contrôle structurel, styles calculés et interactions de base uniquement, pas une revue esthétique ou une certification WCAG.
