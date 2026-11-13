@@ -125,8 +125,10 @@ def authorize_authenticated_agent(agent_id: str, permission: str, envelope: dict
     # Émettre le principal avant la politique permet d’attribuer correctement
     # un refus métier à l’agent authentifié, sans jamais autoriser son handler.
     principal = _issue_authenticated_agent_principal(agent_id)
-    active_policy = policy if policy is not None else load_policy()
+    # Le chargement de la politique fait partie de l'autorisation métier :
+    # toute erreur ici doit conserver l'attribution au principal vérifié.
     try:
+        active_policy = policy if policy is not None else load_policy()
         authorization = authorize_agent(agent_id, permission, agents_path, active_policy)
     except AccessDenied as exc:
         raise AuthenticatedAuthorizationDenied(principal) from exc
