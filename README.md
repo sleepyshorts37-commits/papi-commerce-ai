@@ -22,6 +22,10 @@ Groupe commercial numérique assisté par agents IA. **État : fondations techni
 ## Architecture
 Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architecture des agents), Cheikh Fall (fiabilité), Aminou (alternatives), PAPI CHAT (communication interne), PAPI COMMAND CENTER (suivi), mémoire partagée locale et planificateur déterministe.
 
+## PAPI WEB BUILDER — sites multi-pages
+- Générateur local de 2 à 6 pages avec navigation interne, manifeste et revue humaine : `papi_core.multipage_site.generate_multipage_site(...)`.
+- [Plan](docs/PAPI-MULTIPAGE-WEB-BUILDER-5-DAYS.md) · [Guide](docs/PAPI-MULTIPAGE-WEB-BUILDER-GUIDE.md) · [Rapport](docs/PAPI-MULTIPAGE-WEB-BUILDER-REPORT.md).
+
 ## PAPI WEB BUILDER — intégration commerciale
 - Génération locale de sites vitrines statiques depuis un brief commercial validé : `PYTHONPATH=runtime` puis `papi_core.commercial_site.generate_commercial_site(...)`.
 - Le contenu reste fondé sur les faits fournis, soumis à revue humaine et non publié automatiquement.
