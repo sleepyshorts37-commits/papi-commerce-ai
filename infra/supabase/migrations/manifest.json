@@ -25,6 +25,14 @@
       "down": "20261113_002_retry_queue_integration_down.sql",
       "rollback_policy": "remove_retry_rpc_overload_only_preserve_existing_queue_rows",
       "status": "repository_only_not_applied"
+    },
+    {
+      "version": "20261113_003",
+      "name": "claim_attempt_ceiling",
+      "up": "20261113_003_claim_attempt_ceiling_up.sql",
+      "down": "20261113_003_claim_attempt_ceiling_down.sql",
+      "rollback_policy": "restore_claim_response_shape_without_modifying_job_rows",
+      "status": "repository_only_not_applied"
     }
   ]
 }

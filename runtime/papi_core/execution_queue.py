@@ -43,7 +43,13 @@ class ExecutionQueue:
             {"p_worker_id": worker_id, "p_lease_token": str(uuid4()), "p_lease_seconds": lease_seconds})
         if result is None:
             return None
-        if not isinstance(result, dict) or not result.get("id") or not result.get("lease_token"):
+        if (not isinstance(result, dict) or not result.get("id")
+                or not result.get("lease_token")
+                or type(result.get("attempts")) is not int
+                or type(result.get("max_attempts")) is not int
+                or result["attempts"] < 1
+                or result["max_attempts"] < result["attempts"]
+                or result["max_attempts"] > 10):
             raise QueueError("Réponse de réservation invalide.")
         return result
 

@@ -40,6 +40,7 @@ class WorkerAuditLifecycleTests(unittest.TestCase):
                 "handler": "internal.echo",
                 "payload": {"safe": True},
                 "lease_token": "lease-token",
+                "attempts": 1, "max_attempts": 5,
             }
             with patch("papi_core.worker.authorize_authenticated_agent",
                        return_value={"principal": SimpleNamespace(agent_id="agent-test")}), \

@@ -10,7 +10,7 @@ Cette revue couvre les contrats du dépôt : registre de migrations offline, év
 | Migrations | Inventaire ordonné, empreintes et fichiers cohérents | Validateur offline + CI | Aucune migration appliquée à une base réelle |
 | Monitoring | États healthy/degraded/unavailable/unknown et fraîcheur | Tests unitaires sur snapshots injectés | Aucune sonde réseau ni alerte active |
 | Sauvegarde | Manifeste, empreintes, chemins sûrs, plan de restauration | Tests offline | Pas de sauvegarde réelle ni exercice de restauration |
-| Retry | Erreurs transitoires explicites, plafond, backoff et jitter injecté | Tests unitaires et contrat offline | Politique non raccordée au worker/à la RPC |
+| Retry | Erreurs transitoires typées, plafond durable, backoff et jitter injecté | Worker et RPC raccordés ; claim renvoie le plafond persisté ; tests Python et PostgreSQL jetable | Validation distante, observabilité retry et jitter runtime à compléter |
 | Queue | Clé d'idempotence, bail et transitions contrôlées | Tests du dépôt et PostgreSQL jetable | Aucun test contre un projet Supabase distant |
 | Worker | Authentification, approbation, renouvellement de bail, audit | Tests unitaires avec dépendances contrôlées | Pas de service permanent ni de test multi-worker en production |
 
@@ -22,7 +22,7 @@ Cette revue couvre les contrats du dépôt : registre de migrations offline, év
 - Aucun comportement de production n'est activé par cette PR.
 
 ## Points à résoudre avant toute mise en production
-1. Intégrer la politique retry dans la stratégie de transition de la file et définir une seule source de vérité pour le plafond de tentatives.
+1. Valider le comportement de reprise sur un projet Supabase isolé et ajouter métriques/alertes pour les tentatives, erreurs et épuisements de plafond.
 2. Tester les courses multi-workers, expiration de bail, fencing et reprise après crash avec PostgreSQL isolé.
 3. Exécuter un exercice de sauvegarde/restauration avec stockage et secrets gérés, puis mesurer RPO/RTO réels.
 4. Ajouter des sondes, alertes, métriques, rétention et astreinte opérationnelles.

@@ -158,7 +158,8 @@ begin
      returning * into v_job;
     return jsonb_build_object(
         'id', v_job.id, 'task_id', v_job.task_id, 'handler', v_job.handler,
-        'payload', v_job.payload, 'agent_identity', v_job.agent_identity, 'attempts', v_job.attempts,
+        'payload', v_job.payload, 'agent_identity', v_job.agent_identity,
+        'attempts', v_job.attempts, 'max_attempts', v_job.max_attempts,
         'lease_token', v_job.lease_token, 'lease_until', v_job.lease_until
     );
 end;

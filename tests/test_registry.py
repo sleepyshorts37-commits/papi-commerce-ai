@@ -287,7 +287,7 @@ class ExecutionQueueTests(unittest.TestCase):
         queue = ExecutionQueue(SupabaseStore())
         with patch.object(queue.store, "_request", return_value="retry"):
             self.assertEqual(queue.fail(job_id="JOB-1", worker_id="worker-01",
-                                        lease_token="lease", error_code="temporary_failure"), "retry")
+                                        lease_token="lease", error_code="service_timeout", attempt=1, max_attempts=5), "retry")
 
 
 if __name__ == "__main__":
@@ -404,7 +404,7 @@ class WorkerTests(unittest.TestCase):
     def test_worker_executes_one_authorized_job(self):
         worker = self.make_worker()
         job = {"id": "JOB-1", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {"a": 1}, "lease_token": "lease-1"}
+               "payload": {"a": 1}, "lease_token": "lease-1", "attempts": 1, "max_attempts": 5}
         with (
             patch.object(worker.queue, "claim", return_value=job),
             patch.object(worker.queue.store, "get_task", return_value={
@@ -422,7 +422,7 @@ class WorkerTests(unittest.TestCase):
     def test_worker_blocks_unknown_handler_and_releases_job_to_retry(self):
         worker = self.make_worker()
         job = {"id": "JOB-2", "task_id": "TASK-1", "handler": "not.registered",
-               "payload": {}, "lease_token": "lease-2"}
+               "payload": {}, "lease_token": "lease-2", "attempts": 1, "max_attempts": 5}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
@@ -436,7 +436,7 @@ class WorkerTests(unittest.TestCase):
         from papi_core.audit import read_events
         worker = self.make_worker()
         job = {"id": "JOB-LEASE-RENEW-FAIL", "task_id": "TASK-1",
-               "handler": "internal.echo", "payload": {}, "lease_token": "lease-renew"}
+               "handler": "internal.echo", "payload": {}, "lease_token": "lease-renew", "attempts": 1, "max_attempts": 5}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False,
@@ -454,7 +454,7 @@ class WorkerTests(unittest.TestCase):
     def test_worker_does_not_complete_if_lease_was_lost(self):
         worker = self.make_worker()
         job = {"id": "JOB-3", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {}, "lease_token": "lease-3"}
+               "payload": {}, "lease_token": "lease-3", "attempts": 1, "max_attempts": 5}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
@@ -471,7 +471,7 @@ class WorkerTests(unittest.TestCase):
             "id": "JOB-AUDIT-IDENTITY", "task_id": "TASK-1", "handler": "internal.echo",
             "payload": {"customer_email": "private@example.invalid", "note": "PRIVATE-PAYLOAD-MARKER"},
             "agent_identity": {"agent_id": "forged-agent"},
-            "actor": "forged-actor", "lease_token": "lease-private",
+            "actor": "forged-actor", "lease_token": "lease-private", "attempts": 1, "max_attempts": 5,
         }
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
@@ -496,7 +496,7 @@ class WorkerTests(unittest.TestCase):
         from papi_core.worker import AccessDenied
         worker = self.make_worker()
         job = {"id": "JOB-AUTH-FAIL", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {}, "lease_token": "lease-auth-fail"}
+               "payload": {}, "lease_token": "lease-auth-fail", "attempts": 1, "max_attempts": 5}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
@@ -516,7 +516,7 @@ class WorkerTests(unittest.TestCase):
         from papi_core.handler_registry import PermissionError as HandlerPermissionError
         worker = self.make_worker()
         job = {"id": "JOB-POLICY-BLOCK", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {}, "lease_token": "lease-policy-block"}
+               "payload": {}, "lease_token": "lease-policy-block", "attempts": 1, "max_attempts": 5}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
@@ -534,7 +534,7 @@ class WorkerTests(unittest.TestCase):
     def test_audit_failure_before_handler_fails_closed(self):
         worker = self.make_worker()
         job = {"id": "JOB-AUDIT-1", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {}, "lease_token": "lease-audit"}
+               "payload": {}, "lease_token": "lease-audit", "attempts": 1, "max_attempts": 5}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
@@ -550,7 +550,7 @@ class WorkerTests(unittest.TestCase):
     def test_terminal_audit_failure_does_not_undo_completion(self):
         worker = self.make_worker()
         job = {"id": "JOB-AUDIT-2", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {}, "lease_token": "lease-audit-2"}
+               "payload": {}, "lease_token": "lease-audit-2", "attempts": 1, "max_attempts": 5}
         original_audit = worker._audit
         def fail_terminal(job_id, action, actor, **kwargs):
             if action == "job.completed":
@@ -571,7 +571,7 @@ class WorkerTests(unittest.TestCase):
         from papi_core.audit import read_events
         worker = self.make_worker()
         job = {"id": "JOB-FAIL-TRANSITION", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {}, "lease_token": "lease-fail-transition"}
+               "payload": {}, "lease_token": "lease-fail-transition", "attempts": 1, "max_attempts": 5}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-test"}
@@ -601,7 +601,7 @@ class WorkerTests(unittest.TestCase):
         worker.registry.register("internal.guarded", "read_only", guarded_handler)
         worker.policy["allowed_handlers"] = ["internal.echo", "internal.guarded"]
         job = {"id": "JOB-GUARDED-LEASE", "task_id": "TASK-1",
-               "handler": "internal.guarded", "payload": {}, "lease_token": "lease-guarded"}
+               "handler": "internal.guarded", "payload": {}, "lease_token": "lease-guarded", "attempts": 1, "max_attempts": 5}
         with (
             patch.object(worker.queue, "claim", return_value=job),
             patch.object(worker.queue.store, "get_task", return_value={

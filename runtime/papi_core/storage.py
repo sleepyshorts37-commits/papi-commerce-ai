@@ -12,7 +12,14 @@ from .audit import validate_event
 
 
 class StoreError(RuntimeError):
-    """Erreur de configuration, de transport ou de cohérence du stockage."""
+    """Erreur de stockage avec code de reprise sûr, sans analyser le message."""
+    def __init__(self, message: str, *, retry_code: str | None = None):
+        super().__init__(message)
+        allowed = {None, "temporarily_unavailable", "rate_limited",
+                   "connection_reset", "service_timeout"}
+        if retry_code not in allowed:
+            raise ValueError("retry_code non autorisé")
+        self.retry_code = retry_code
 
 
 class SupabaseStore:
@@ -41,9 +48,24 @@ class SupabaseStore:
                 raw = response.read()
                 return json.loads(raw.decode("utf-8")) if raw else None
         except HTTPError as exc:
-            raise StoreError(f"Supabase a répondu HTTP {exc.code}.") from exc
-        except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
-            raise StoreError(f"Échec de communication avec Supabase ({type(exc).__name__}).") from exc
+            retry_code = (
+                "rate_limited" if exc.code == 429 else
+                "service_timeout" if exc.code in {408, 504} else
+                "temporarily_unavailable" if exc.code in {425, 500, 502, 503} else None
+            )
+            raise StoreError(f"Supabase a répondu HTTP {exc.code}.",
+                             retry_code=retry_code) from exc
+        except (URLError, TimeoutError, OSError) as exc:
+            reason = getattr(exc, "reason", exc)
+            retry_code = (
+                "service_timeout" if isinstance(reason, TimeoutError) else
+                "connection_reset" if isinstance(reason, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)) else
+                "temporarily_unavailable"
+            )
+            raise StoreError(f"Échec de communication avec Supabase ({type(exc).__name__}).",
+                             retry_code=retry_code) from exc
+        except json.JSONDecodeError as exc:
+            raise StoreError("Réponse JSON invalide du stockage.") from exc
 
     def request(self, method: str, path: str, payload: Any = None, prefer: str | None = None):
         """Interface publique stable pour les adaptateurs internes PostgREST.

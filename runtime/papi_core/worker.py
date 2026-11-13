@@ -93,15 +93,24 @@ class PapiWorker:
                   max_attempts: int = 5) -> dict[str, Any]:
         """Convertit aussi un échec de transition queue en résultat contrôlé."""
         try:
-            self.queue.fail(job_id=job_id, worker_id=self.worker_id,
-                            lease_token=lease_token, error_code=error_code,
-                            attempt=attempt, max_attempts=max_attempts)
+            transition = self.queue.fail(job_id=job_id, worker_id=self.worker_id,
+                                         lease_token=lease_token, error_code=error_code,
+                                         attempt=attempt, max_attempts=max_attempts)
         except Exception:
             self._audit_best_effort(job_id, "job.failure_transition_error", actor,
                                     handler=handler, outcome="queue_fail_error")
             return {"status": "failure_transition_error", "claimed": True, "job_id": job_id}
-        self._audit_best_effort(job_id, action, actor, handler=handler, outcome=outcome)
-        return {"status": status, "claimed": True, "job_id": job_id}
+        final_status = status
+        final_action = action
+        final_outcome = outcome
+        if status == "retry_scheduled" and transition == "failed":
+            final_status = "failed"
+            final_action = "job.failed"
+            final_outcome = "attempt_limit_reached"
+        elif status == "retry_scheduled" and transition != "retry":
+            return {"status": "failure_transition_error", "claimed": True, "job_id": job_id}
+        self._audit_best_effort(job_id, final_action, actor, handler=handler, outcome=final_outcome)
+        return {"status": final_status, "claimed": True, "job_id": job_id}
 
     def run_once(self) -> dict[str, Any]:
         """Traite au maximum un travail ; l'audit handler_started est fail-closed."""
@@ -186,8 +195,8 @@ class PapiWorker:
                 self._audit(job_id, "job.handler_started", authenticated_actor, handler=handler)
             except Exception:
                 return self._fail_job(job_id=job_id, lease_token=lease_token,
-                                      attempt=job.get("attempts", 1),
-                                      max_attempts=job.get("max_attempts", 5),
+                                      attempt=job["attempts"],
+                                      max_attempts=job["max_attempts"],
                                       error_code="audit_unavailable", status="audit_blocked",
                                       actor=authenticated_actor, action="job.failed",
                                       handler=handler, outcome="audit_unavailable")
@@ -218,8 +227,8 @@ class PapiWorker:
             return {"status": "lease_lost", "claimed": True, "job_id": job_id}
         except AccessDenied:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
-                attempt=job.get("attempts", 1),
-                max_attempts=job.get("max_attempts", 5),
+                attempt=job["attempts"],
+                max_attempts=job["max_attempts"],
                                   error_code="authentication_failed", status="blocked",
                                   actor=system_actor, action="job.authentication_blocked",
                                   handler=handler, outcome="blocked")
@@ -230,13 +239,22 @@ class PapiWorker:
                                   error_code="permission_denied", status="blocked",
                                   actor=authenticated_actor or system_actor, action="job.blocked",
                                   handler=handler, outcome="permission_denied")
-        except (WorkerError, StoreError, QueueError):
+        except StoreError as exc:
+            return self._fail_job(
+                job_id=job_id, lease_token=lease_token,
+                attempt=job["attempts"], max_attempts=job["max_attempts"],
+                error_code=exc.retry_code or "worker_validation_error",
+                status="retry_scheduled" if exc.retry_code else "failed",
+                actor=authenticated_actor or system_actor,
+                action="job.retry_scheduled" if exc.retry_code else "job.failed",
+                handler=handler, outcome="transient_storage_error" if exc.retry_code else "storage_error",
+            )
+        except (WorkerError, QueueError):
             return self._fail_job(job_id=job_id, lease_token=lease_token,
-                attempt=job.get("attempts", 1),
-                max_attempts=job.get("max_attempts", 5),
-                                  error_code="worker_validation_error", status="failed",
-                                  actor=authenticated_actor or system_actor, action="job.failed",
-                                  handler=handler, outcome="validation_error")
+                attempt=job["attempts"], max_attempts=job["max_attempts"],
+                error_code="worker_validation_error", status="failed",
+                actor=authenticated_actor or system_actor, action="job.failed",
+                handler=handler, outcome="validation_error")
         except Exception:
             return self._fail_job(job_id=job_id, lease_token=lease_token,
                 attempt=job.get("attempts", 1),
