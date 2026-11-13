@@ -17,6 +17,14 @@
       "down": "20261113_001_audit_anchor_down.sql",
       "rollback_policy": "refuse_if_audit_anchor_tables_contain_rows",
       "status": "repository_only_not_applied"
+    },
+    {
+      "version": "20261113_002",
+      "name": "retry_queue_integration",
+      "up": "20261113_002_retry_queue_integration_up.sql",
+      "down": "20261113_002_retry_queue_integration_down.sql",
+      "rollback_policy": "remove_retry_rpc_overload_only_preserve_existing_queue_rows",
+      "status": "repository_only_not_applied"
     }
   ]
 }
