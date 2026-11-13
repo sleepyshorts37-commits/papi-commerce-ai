@@ -60,6 +60,8 @@ def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, 
     design = SECTOR_DESIGNS[industry]
     hero_title, hero_copy = SECTOR_COPY[industry]
     is_home = slug == "home"
+    contact = next((p for p in pages if p["slug"] == "contact"), None)
+    contact_link = ("" if slug == "home" else "../") + ("contact/index.html" if contact else "index.html")
     hero = f'<section class="hero hero--{design["layout"]}" aria-labelledby="page-title"><div class="hero-copy"><p class="eyebrow">{html.escape(tagline or design["label"])}</p><h1 id="page-title">{title if not is_home else html.escape(hero_title)}</h1><p class="hero-description">{purpose if not is_home else html.escape(hero_copy)}</p><a class="primary-link" href="{contact_link}">Découvrir nos solutions <span aria-hidden="true">↗</span></a></div><div class="hero-visual" aria-hidden="true"><div class="visual-orbit"></div><div class="visual-core"></div><span class="visual-label">{html.escape(design["label"])}</span></div></section>'
     cards = [
         ("Une approche claire", "Des priorités définies et une expérience structurée."),
@@ -69,8 +71,6 @@ def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, 
     card_html = "".join(f'<article class="feature-card"><span class="feature-index">0{i}</span><h3>{html.escape(head)}</h3><p>{html.escape(body)}</p></article>' for i,(head,body) in enumerate(cards,1))
     feature_section = f'<section class="features" aria-labelledby="features-title"><div class="section-heading"><p class="eyebrow">Notre différence</p><h2 id="features-title">Une expérience conçue avec intention.</h2></div><div class="feature-grid">{card_html}</div></section>' if is_home else f'<section class="content-panel"><p class="eyebrow">{html.escape(design["label"])}</p><h2>{title}</h2><p>{purpose}</p></section>'
     links = "\n      ".join(nav)
-    contact = next((p for p in pages if p["slug"] == "contact"), None)
-    contact_link = ("" if slug == "home" else "../") + ("contact/index.html" if contact else "index.html")
     return f"""<!doctype html>
 <html lang="fr">
 <head>
