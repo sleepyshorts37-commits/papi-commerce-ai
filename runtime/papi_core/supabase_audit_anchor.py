@@ -50,7 +50,10 @@ class SupabaseCheckpointStore(CheckpointStore):
         canonical = rows[0].get("canonical_record")
         if not isinstance(canonical, str):
             raise StoreError("Enregistrement d'audit externe invalide.")
-        return canonical.encode("utf-8")
+        encoded = canonical.encode("utf-8")
+        if hashlib.sha256(encoded).hexdigest() != record_digest:
+            raise StoreError("Digest de l'enregistrement récupéré incorrect.")
+        return encoded
 
     def put_record(self, record_digest: str, canonical_record: bytes) -> None:
         if not isinstance(record_digest, str) or hashlib.sha256(canonical_record).hexdigest() != record_digest:
