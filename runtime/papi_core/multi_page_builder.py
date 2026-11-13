@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape as xml_escape
@@ -255,7 +256,6 @@ def multi_page_quality_report(workspace: str | Path, slug: str) -> dict[str, Any
         resolved = path.resolve()
         if path.is_symlink() or not path.is_file() or Path(name).is_absolute() or ".." in Path(name).parts or root.resolve() not in resolved.parents:
             raise MultiPageBuilderError("Chemin de fichier du manifeste non sûr.")
-    import re
     for name in expected_pages:
         document = (root / name).read_text(encoding="utf-8")
         checks["all_pages_exist"] &= "<!doctype html>" in document and 'name="viewport"' in document
