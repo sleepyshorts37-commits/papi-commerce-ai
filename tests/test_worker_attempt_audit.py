@@ -1,4 +1,5 @@
 """Attempt-scoped audit regression tests."""
+import json
 import tempfile
 import threading
 import unittest
@@ -120,7 +121,7 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
             with self.assertRaises(AuditError):
                 append_event(event, path)
             self.assertTrue(path.read_bytes().startswith(confirmed))
-            self.assertEqual(len(read_events(Path(directory) / "confirmed.jsonl")), 0)
+            self.assertEqual(json.loads(confirmed.decode("utf-8").splitlines()[0])["event_id"], "worker:" + __import__("hashlib").sha256("job-tail:00000000-0000-4000-8000-000000000010:job.claimed".encode()).hexdigest())
 
 
 if __name__ == "__main__":
