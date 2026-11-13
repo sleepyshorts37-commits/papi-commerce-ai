@@ -53,6 +53,19 @@ class PreviewServerTests(unittest.TestCase):
             with self.assertRaises(HTTPError):
                 urlopen(self.base + path)
 
+
+    def test_rejects_malformed_encoded_paths_and_ambiguous_separators(self):
+        cases = (
+            ("/%E0%A4%A", 400),       # invalid UTF-8 after URL decoding
+            ("/folder%5c..%5csecret", 400),  # encoded Windows separators
+            ("/folder%00secret", 400),       # encoded NUL byte
+        )
+        for path, expected_status in cases:
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(self.base + path)
+                self.assertEqual(caught.exception.code, expected_status)
+
     def test_rejects_symlink_even_when_target_is_inside_root(self):
         outside = self.root / "styles.css"
         link = self.root / "linked.css"
