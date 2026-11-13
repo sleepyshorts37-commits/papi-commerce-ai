@@ -15,6 +15,7 @@ class SharedPersistenceAdapterTests(unittest.TestCase):
         self.memory = SharedMemoryAdapter(self.store)
         self.chat = SharedChatAdapter(self.store)
         self.astou = _issue_authenticated_agent_principal("astou")
+        self.sokhna = _issue_authenticated_agent_principal("sokhna")
 
     def valid_memory_event(self):
         return {
@@ -67,6 +68,31 @@ class SharedPersistenceAdapterTests(unittest.TestCase):
             self.memory.append_event(event, principal=self.astou)
         self.store.request.assert_not_called()
 
+    def test_supersede_rejects_private_memory_owned_by_another_agent(self):
+        event = {
+            "event_id": "33333333-3333-4333-8333-333333333333",
+            "event_type": "supersede", "target_memory_id": "22222222-2222-4222-8222-222222222222",
+            "created_at": "2026-01-02T00:00:00Z", "actor": "astou", "reason": "archive",
+        }
+        self.store.request.return_value = [{
+            "memory_id": event["target_memory_id"], "actor": "sokhna", "scope": "agent",
+        }]
+        with self.assertRaises(PermissionError):
+            self.memory.append_event(event, principal=self.astou)
+
+    def test_supersede_can_archive_visible_shared_memory(self):
+        event = {
+            "event_id": "33333333-3333-4333-8333-333333333333",
+            "event_type": "supersede", "target_memory_id": "22222222-2222-4222-8222-222222222222",
+            "created_at": "2026-01-02T00:00:00Z", "actor": "astou", "reason": "archive",
+        }
+        self.store.request.side_effect = [
+            [{"memory_id": event["target_memory_id"], "actor": "sokhna", "scope": "shared"}],
+            [{"event_id": event["event_id"]}],
+        ]
+        self.memory.append_event(event, principal=self.astou)
+        self.assertEqual(self.store.request.call_count, 2)
+
     def test_memory_search_requires_authenticated_principal(self):
         with self.assertRaises(PermissionError):
             self.memory.search(principal="astou")
@@ -93,6 +119,20 @@ class SharedPersistenceAdapterTests(unittest.TestCase):
         self.assertIn("scope.eq.agent,actor.eq.astou", query)
         self.assertIn("event_type.eq.supersede", query)
         self.assertNotIn("category=eq.fact", query)
+
+    def test_other_agent_cannot_hide_private_memory_with_supersede(self):
+        rows = [
+            {"event_type": "remember", "memory_id": "m3", "event_id": "e3",
+             "created_at": "2026-01-03", "actor": "astou", "category": "fact",
+             "title": "Private", "content": "private fact", "source_type": "task",
+             "source_id": "T3", "confidence": 0.9, "scope": "agent",
+             "tags": [], "sensitivity": "normal"},
+            {"event_type": "supersede", "memory_id": "m3", "target_memory_id": "m3",
+             "event_id": "e4", "created_at": "2026-01-04", "actor": "sokhna"},
+        ]
+        self.store.request.return_value = rows
+        result = self.memory.search(principal=self.astou)
+        self.assertEqual([item["memory_id"] for item in result], ["m3"])
 
     def test_memory_search_rejects_invalid_limit(self):
         with self.assertRaises(SharedPersistenceError):
