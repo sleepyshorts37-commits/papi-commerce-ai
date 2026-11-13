@@ -12,6 +12,7 @@ class QueueSpy:
         self.claim_result = claim_result
         self.claim_calls = 0
         self.fail_calls = []
+        self.fail_response = "failed"
 
     def claim(self, *, worker_id):
         self.claim_calls += 1
@@ -19,7 +20,7 @@ class QueueSpy:
 
     def fail(self, **kwargs):
         self.fail_calls.append(kwargs)
-        return "failed"
+        return self.fail_response
 
     def complete(self, **kwargs):
         raise AssertionError("Un job non authentifié ne doit jamais être complété.")
@@ -181,6 +182,7 @@ class WorkerSafetyTests(unittest.TestCase):
                 StoreError("temporary outage", retry_code="service_timeout")
             )
         })()
+        queue.fail_response = "retry"
         worker = PapiWorker(queue=queue, registry=HandlerRegistry(),
             policy={"execution_enabled": True}, worker_id="worker-test")
         result = worker.run_once()
