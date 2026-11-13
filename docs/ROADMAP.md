@@ -41,15 +41,26 @@
 - [ ] Effectuer la revue de sécurité et les tests avant activation.
 - [ ] Connecter un fournisseur uniquement après choix et autorisation explicites du propriétaire.
 
-## Phase 3 — Première activité commerciale
+## Phase 3 — PAPI DIGITALISATION & IA (nouveau département B2B)
+- [x] Définir le catalogue : audit, conseil, intégration, accès employés, formation et support.
+- [x] Définir le parcours client, la facturation par livrable et les revenus récurrents.
+- [x] Documenter l'exemple de digitalisation d'une pharmacie et ses limites de sécurité.
+- [ ] Définir les forfaits, tarifs indicatifs, coûts directs et marges après étude du marché sénégalais.
+- [ ] Définir les modèles de devis, contrat, cahier des charges, procès-verbal de recette et support.
+- [ ] Concevoir les agents spécialisés et leurs fiches d'identité, permissions et responsables.
+- [ ] Construire une offre pilote avec démonstration sur données fictives et mesurer les résultats.
+- [ ] Obtenir validation du propriétaire avant toute prospection, dépense ou engagement client.
+- [ ] Réaliser un premier projet pilote autorisé et mesurer les revenus réellement encaissés.
+
+## Phase 4 — Première activité commerciale
 - [ ] Comparer les opportunités sans frais initiaux.
 - [ ] Vérifier éligibilité au Sénégal et moyens de paiement.
-- [ ] Choisir une offre et un segment client.
+- [ ] Choisir les offres et segments clients prioritaires.
 - [ ] Préparer messages, livrables et suivi.
 - [ ] Obtenir validation avant les premiers contacts externes.
 - [ ] Mesurer les revenus réellement encaissés.
 
-## Phase 4 — Extension
+## Phase 5 — Extension
 - [ ] PAPI BUSINESS PARTNERS.
 - [ ] PAPI SERVICES et PAPI FREELANCE.
 - [ ] PAPI AFFILIATION.
