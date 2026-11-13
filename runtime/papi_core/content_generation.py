@@ -56,6 +56,8 @@ def _validate_brief(brief: Any) -> dict[str, Any]:
     if not required.issubset(brief):
         raise ContentGenerationError("Brief incomplet : content_type, sector, brand, offer et facts sont requis.")
     content_type, sector, tone = brief["content_type"], brief["sector"], brief.get("tone", "professional")
+    if not all(isinstance(value, str) for value in (content_type, sector, tone)):
+        raise ContentGenerationError("content_type, sector et tone doivent être des textes.")
     if content_type not in CONTENT_TYPES:
         raise ContentGenerationError("Type de contenu non pris en charge.")
     if sector not in SECTORS:
