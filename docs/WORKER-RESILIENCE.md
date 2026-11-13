@@ -20,10 +20,15 @@ les simulations restent déterministes.
 
 ## Intégration et garanties
 
-L'intégration à la file persistante est maintenant fournie par
+L'intégration à la file persistante est fournie par
 `ExecutionQueue.fail` et la surcharge SQL `papi_fail_job(..., boolean, integer)`.
-Le client calcule un délai borné puis transmet la décision ; l'ancienne surcharge RPC n'est plus exécutable par `service_role` après migration. PostgreSQL
-revérifie le bail, la liste blanche de codes et le plafond durable de tentatives.
+Le claim retourne `attempts` et `max_attempts` persistés ; le client refuse
+les métadonnées absentes ou incohérentes. Seules les erreurs de transport
+Supabase explicitement classées sont transitoires ; les erreurs d'authentification,
+de validation et les erreurs métier restent permanentes. Le worker reflète le
+statut terminal réellement renvoyé par PostgreSQL. L'ancienne surcharge RPC
+n'est plus exécutable par `service_role` après migration. PostgreSQL revérifie
+le bail, la liste blanche de codes et le plafond durable de tentatives.
 Voir `RETRY-QUEUE-INTEGRATION.md` pour le contrat et ses limites.
 
 Les baux et jetons de fencing restent indispensables. Une reprise après
