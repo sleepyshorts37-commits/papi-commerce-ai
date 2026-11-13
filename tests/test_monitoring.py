@@ -23,7 +23,9 @@ class MonitoringTests(unittest.TestCase):
         result = evaluate_health_snapshot([self.signal(status="unavailable")], now=self.now)
         self.assertEqual(result["overall_status"], "unavailable")
         self.assertEqual(result["incidents"][0]["check_id"], "api")
-        self.assertNotIn("detail", str(result))
+        self.assertNotIn("detail", result["checks"][0])
+        self.assertNotIn("detail", result["incidents"][0])
+        self.assertNotIn("must not be copied to output", repr(result))
 
     def test_stale_signal_becomes_unknown(self):
         old = self.now - timedelta(seconds=301)
