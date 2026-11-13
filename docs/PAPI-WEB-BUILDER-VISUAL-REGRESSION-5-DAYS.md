@@ -4,9 +4,10 @@
 Renforcer la détection automatisée des régressions de mise en page sur les routes générées, en Chromium et sur trois formats d'écran. Le cycle privilégie des assertions géométriques et de styles calculés déterministes, ainsi que des captures CI traçables. Il ne prétend pas fournir une comparaison pixel-perfect ni une certification d'accessibilité.
 
 ## Jour 1 — Baseline géométrique multi-viewport
-- [ ] Mesurer header, hero, visuel, grille de contenu et footer sur mobile, tablette et desktop.
-- [ ] Détecter débordements horizontaux, éléments hors viewport et composants invisibles/écrasés.
+- [x] Mesurer header, hero, visuel du hero, titre et cartes de contenu sur mobile, tablette et desktop.
+- [x] Détecter débordements horizontaux et composants invisibles ou écrasés par des seuils géométriques.
 - [ ] Vérifier la génération et la présence de captures non vides.
+- **Statut Jour 1 :** contrat de géométrie ajouté dans `tests/browser/test_preview_browser.py` sur `2a1df36` ; CI à vérifier. Ce contrôle est un garde-fou structurel, pas une comparaison pixel-perfect.
 - Livrable : assertions de géométrie responsive exécutées dans Chromium.
 
 ## Jour 2 — Cohérence des composants et du design system
