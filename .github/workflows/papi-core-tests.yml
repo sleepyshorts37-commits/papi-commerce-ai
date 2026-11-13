@@ -81,7 +81,7 @@ jobs:
           do $claimcheck$
           begin
             if pg_get_functiondef('public.papi_claim_job(text,uuid,integer)'::regprocedure)
-               like '%max_attempts%' then
+               like '%''max_attempts'', v_job.max_attempts%' then
               raise exception 'Claim RPC rollback did not restore prior response';
             end if;
           end
