@@ -44,6 +44,7 @@
 ## Phase 3 — PAPI DIGITALISATION & IA (nouveau département B2B)
 - [x] Définir l'agent PAPI WEB BUILDER pour créer et modifier des sites web à partir d'un prompt, sans compétences en programmation.
 - [ ] Concevoir son moteur de génération, aperçu isolé, modification itérative et export de code source.
+  - Socle partiel ajouté : génération statique déterministe, mises à jour structurées, contrôles locaux et export ZIP allowlisté ; aperçu navigateur isolé et moteur IA non implémentés (voir `docs/PAPI-WEB-BUILDER-MVP.md`).
 - [ ] Ajouter des tests de qualité web, sécurité, responsive et critères d'acceptation.
 - [ ] Définir les intégrations hébergement/domaine et leur approbation avant toute publication.
 - [x] Définir le catalogue : audit, conseil, intégration, accès employés, formation et support.
