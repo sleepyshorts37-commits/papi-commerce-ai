@@ -10,6 +10,7 @@ import json
 import os
 import re
 import secrets
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -178,14 +179,25 @@ class LocalAuditKeyring:
         if not isinstance(entry, dict) or entry.get("status") != "active":
             raise AuditKeyError("La clé de signature n'est pas active.")
         path = self.private_dir / (key_id + ".pem")
+        descriptor = None
         try:
-            info = path.stat()
-            if (not path.is_file() or info.st_mode & 0o077
+            nofollow = getattr(os, "O_NOFOLLOW", None)
+            if nofollow is None:
+                raise AuditKeyError("La plateforme ne permet pas de refuser les liens symboliques.")
+            descriptor = os.open(path, os.O_RDONLY | nofollow | getattr(os, "O_NONBLOCK", 0))
+            info = os.fstat(descriptor)
+            if (not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077
                     or (hasattr(os, "geteuid") and info.st_uid != os.geteuid())):
                 raise AuditKeyError("Permissions ou propriétaire de clé privée invalides.")
-            key = serialization.load_pem_private_key(path.read_bytes(), password=None)
+            with os.fdopen(descriptor, "rb") as handle:
+                descriptor = None
+                private_bytes = handle.read()
+            key = serialization.load_pem_private_key(private_bytes, password=None)
         except (OSError, ValueError, TypeError) as exc:
             raise AuditKeyError("Clé privée absente ou invalide.") from exc
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
         if not isinstance(key, Ed25519PrivateKey):
             raise AuditKeyError("Type de clé privée incorrect.")
         if not isinstance(message, bytes):
