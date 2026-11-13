@@ -15,6 +15,29 @@ class RegistryTests(unittest.TestCase):
     def test_committed_registries_are_valid(self):
         self.assertEqual(validate_registries(), [])
 
+    def test_registry_rejects_unknown_hierarchical_manager(self):
+        with tempfile.TemporaryDirectory() as directory:
+            agents_path = Path(directory) / "agents.json"
+            tasks_path = Path(directory) / "tasks.json"
+            agents_path.write_text(json.dumps({"agents": [
+                {"id": "agent-a", "name": "Agent A", "manager_agent_id": "missing-manager"}
+            ]}), encoding="utf-8")
+            tasks_path.write_text(json.dumps({"tasks": []}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "Responsable inconnu"):
+                validate_registries(agents_path, tasks_path)
+
+    def test_registry_rejects_case_insensitive_duplicate_agent_ids(self):
+        with tempfile.TemporaryDirectory() as directory:
+            agents_path = Path(directory) / "agents.json"
+            tasks_path = Path(directory) / "tasks.json"
+            agents_path.write_text(json.dumps({"agents": [
+                {"id": "agent-a", "name": "Agent A"},
+                {"id": "AGENT-A", "name": "Agent A duplicate"}
+            ]}), encoding="utf-8")
+            tasks_path.write_text(json.dumps({"tasks": []}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "dupliqué ou réservé"):
+                validate_registries(agents_path, tasks_path)
+
     def test_unknown_agent_is_rejected(self):
         task = {
             "id": "PAPI-TEST-001", "title": "Test", "department": "Test",
