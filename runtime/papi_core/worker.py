@@ -110,6 +110,26 @@ class PapiWorker:
             if not isinstance(stored, dict) or not isinstance(stored.get("task"), dict):
                 raise WorkerError("task_missing")
             task = stored["task"]
+
+            # Fail closed avant l'authentification : ce contrôle local reste
+            # effectif même si le durcissement global de authorize_job n'est
+            # pas encore intégré à main.
+            approval_required = task.get("approval_required")
+            approval_status = task.get("approval_status")
+            if not isinstance(approval_required, bool):
+                raise HandlerPermissionError("approval_required invalide.")
+            if approval_status is not None and (
+                not isinstance(approval_status, str)
+                or approval_status not in {"not_required", "pending", "approved", "rejected"}
+            ):
+                raise HandlerPermissionError("approval_status invalide.")
+            if approval_required and approval_status != "approved":
+                raise HandlerPermissionError("Approbation requise.")
+            if not approval_required and approval_status not in (None, "not_required"):
+                raise HandlerPermissionError("État d'approbation incohérent.")
+
+            # Politique et handler sont prévalidés avant le contrôle cryptographique.
+            authorize_job(job, task, self.policy, self.registry)
             spec = self.registry.get(handler)
             permission = PERMISSION_BY_CLASS.get(spec.action_class)
             if permission is None:
@@ -126,8 +146,6 @@ class PapiWorker:
             authenticated_actor = getattr(principal, "agent_id", None)
             if not isinstance(authenticated_actor, str) or authenticated_actor != agent_id:
                 raise AccessDenied("Principal authentifié invalide.")
-            authorize_job(job, task, self.policy, self.registry)
-
             # Fencing: ne jamais démarrer le handler avec un bail expiré ou perdu.
             if not self.queue.renew(job_id=job_id, worker_id=self.worker_id,
                                     lease_token=lease_token, lease_seconds=900):
