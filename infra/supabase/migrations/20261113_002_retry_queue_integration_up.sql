@@ -55,6 +55,8 @@ $retry$;
 
 revoke all on function public.papi_fail_job(text, text, uuid, text, boolean, integer)
     from public, anon, authenticated;
+revoke execute on function public.papi_fail_job(text, text, uuid, text)
+    from service_role;
 grant execute on function public.papi_fail_job(text, text, uuid, text, boolean, integer)
     to service_role;
 
