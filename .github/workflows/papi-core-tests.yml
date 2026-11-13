@@ -46,6 +46,32 @@ jobs:
             -c "create role anon; create role authenticated; create role service_role bypassrls;"
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/schema.sql
+          # Exercise the retry-aware queue RPC migration on disposable PostgreSQL.
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_002_retry_queue_integration_up.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'RETRY_MIGRATION_SQL'
+          do $retrycheck$
+          begin
+            if to_regprocedure('public.papi_fail_job(text,text,uuid,text,boolean,integer)') is null then
+              raise exception 'Retry-aware queue RPC missing after migration';
+            end if;
+          end
+          $retrycheck$;
+          RETRY_MIGRATION_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_002_retry_queue_integration_down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'RETRY_MIGRATION_SQL'
+          do $retrycheck$
+          begin
+            if to_regprocedure('public.papi_fail_job(text,text,uuid,text,boolean,integer)') is not null then
+              raise exception 'Retry-aware queue RPC remained after rollback';
+            end if;
+          end
+          $retrycheck$;
+          RETRY_MIGRATION_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/20261113_002_retry_queue_integration_up.sql
+
 
           # Exercise the versioned migration lifecycle in a second disposable database.
           createdb -h 127.0.0.1 -U postgres papi_migration_test
