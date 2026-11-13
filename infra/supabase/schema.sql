@@ -275,7 +275,7 @@ revoke all on function public.papi_fail_job(text, text, uuid, text, boolean, int
 grant execute on function public.papi_claim_job(text, uuid, integer) to service_role;
 grant execute on function public.papi_renew_job_lease(text, text, uuid, integer) to service_role;
 grant execute on function public.papi_complete_job(text, text, uuid, jsonb) to service_role;
-grant execute on function public.papi_fail_job(text, text, uuid, text) to service_role;
+revoke execute on function public.papi_fail_job(text, text, uuid, text) from service_role;
 grant execute on function public.papi_fail_job(text, text, uuid, text, boolean, integer) to service_role;
 
 -- Identités Ed25519 partagées entre workers (migration additive).
