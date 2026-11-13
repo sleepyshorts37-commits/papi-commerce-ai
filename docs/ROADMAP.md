@@ -52,7 +52,7 @@
 - [x] Préparer une première grille de forfaits et tarifs indicatifs à partir de repères publics sénégalais ; validation terrain et calcul des coûts réels encore requis.
 - [x] Définir les modèles de devis, contrat, cahier des charges, procès-verbal de recette et support.
 - [x] Formaliser les portes de validation commerciale, les responsabilités et le dossier de preuve.
-- [ ] Concevoir les agents spécialisés et leurs fiches d'identité, permissions et responsables.
+- [x] Concevoir les agents spécialisés et leurs fiches d'identité, permissions et responsables (registre et fiches documentaires ; instances non activées).
 - [ ] Construire une offre pilote avec démonstration sur données fictives et mesurer les résultats.
 - [ ] Obtenir validation du propriétaire avant toute prospection, dépense ou engagement client.
 - [ ] Réaliser un premier projet pilote autorisé et mesurer les revenus réellement encaissés.
