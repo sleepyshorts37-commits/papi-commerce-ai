@@ -45,6 +45,17 @@ class ReadOnlyFeedAdapterTests(unittest.TestCase):
         with self.assertRaises(GlobalWorkAdapterError):
             parse_json_api_payload("{not-json", source_id="bad")
 
+    def test_rejects_local_and_non_public_ip_urls(self):
+        for url in ("https://localhost/task", "https://127.0.0.1/task",
+                    "https://10.0.0.5/task", "https://[::1]/task",
+                    "https://service.internal/task"):
+            with self.subTest(url=url), self.assertRaises(GlobalWorkAdapterError):
+                parse_json_api_payload(json.dumps([{"title": "Task", "url": url}]), source_id="bad")
+
+    def test_rejects_malformed_port(self):
+        with self.assertRaises(GlobalWorkAdapterError):
+            parse_json_api_payload('[{"title":"Task","url":"https://example.org:bad/task"}]', source_id="bad")
+
     def test_payload_size_is_bounded(self):
         with self.assertRaises(GlobalWorkAdapterError):
             parse_json_api_payload(" " * 1_000_001, source_id="large")
