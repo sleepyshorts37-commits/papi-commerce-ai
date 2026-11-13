@@ -59,6 +59,7 @@
 ## PAPI GLOBAL WORK
 - [x] Définir le modèle de qualification des missions internationales, l'éligibilité pays, les politiques IA/automatisation et la priorité zéro coût initial.
 - [x] Ajouter un évaluateur local qui ne soumet aucune candidature.
+- [x] Ajouter le registre gouverné des sources, le contrat d’ingestion pré-collectée, la provenance et le dédoublonnage (Mission 17, Jour 1).
 - [ ] Ajouter des connecteurs de recherche autorisés et tester les règles des plateformes.
 - [ ] Vérifier concrètement l'éligibilité depuis le Sénégal et les moyens de paiement par plateforme.
 - [ ] Développer le workflow de candidature avec autorisations explicites et preuve d'envoi.
@@ -87,4 +88,4 @@
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 
 ## Statut
-Fondations de code et documentation présentes. Les modules GLOBAL WORK et VIDEO TASKS de cette mission constituent des validateurs et structures locales ; ils ne recherchent pas sur Internet, ne postulent pas, ne lisent pas automatiquement les vidéos et ne déclenchent aucune action externe. Les agents SOCIAL GROWTH et les dix analystes vidéo sont définis comme planifiés, pas déployés. Le worker reste désactivé par défaut ; aucun agent autonome, scheduler permanent, compte social connecté, modèle IA externe ou paiement automatisé n'est actif.
+Fondations de code et documentation présentes. GLOBAL WORK dispose de validateurs et d’un contrat d’ingestion locale pré-collectée ; aucune collecte réseau ni candidature n’est encore active. VIDEO TASKS valide les liens et prépare une file, sans visionnage automatique. Les agents SOCIAL GROWTH et les dix analystes vidéo sont définis comme planifiés, pas déployés. Les agents SOCIAL GROWTH et les dix analystes vidéo sont définis comme planifiés, pas déployés. Le worker reste désactivé par défaut ; aucun agent autonome, scheduler permanent, compte social connecté, modèle IA externe ou paiement automatisé n'est actif.
