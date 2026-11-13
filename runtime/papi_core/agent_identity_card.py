@@ -40,13 +40,13 @@ def create_identity_card(agent: dict[str, Any], created_at: str,
         raise IdentityCardError("Identifiant agent invalide.")
     if not _valid_date(created_at):
         raise IdentityCardError("La date doit être au format ISO YYYY-MM-DD.")
-    if agent["status"] not in VALID_STATUSES:
+    if not isinstance(agent["status"], str) or agent["status"] not in VALID_STATUSES:
         raise IdentityCardError("Statut agent invalide.")
     if any(not isinstance(agent[field], str) or not agent[field].strip()
            for field in ("name", "role", "department")):
         raise IdentityCardError("Nom, fonction et service doivent être renseignés.")
     permissions = agent["permissions"]
-    if any(not isinstance(item, str) or not item for item in permissions):
+    if any(not isinstance(item, str) or not item.strip() for item in permissions):
         raise IdentityCardError("Permissions agent invalides.")
     if len(set(permissions)) != len(permissions):
         raise IdentityCardError("Permissions agent dupliquées.")
@@ -102,7 +102,7 @@ def validate_identity_card(card: dict[str, Any]) -> None:
             or not isinstance(autonomy, str) or autonomy not in VALID_AUTONOMY_LEVELS):
         raise IdentityCardError("Statut ou autonomie invalide.")
     permissions = card.get("permissions")
-    if not isinstance(permissions, list) or any(not isinstance(p, str) or not p for p in permissions):
+    if not isinstance(permissions, list) or any(not isinstance(p, str) or not p.strip() for p in permissions):
         raise IdentityCardError("Permissions de carte invalides.")
     if len(set(permissions)) != len(permissions):
         raise IdentityCardError("Permissions de carte dupliquées.")
