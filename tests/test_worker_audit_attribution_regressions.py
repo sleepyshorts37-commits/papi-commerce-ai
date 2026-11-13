@@ -108,7 +108,7 @@ class WorkerAuditAttributionRegressionTests(unittest.TestCase):
                     raise OSError("audit storage unavailable")
                 return real_append(event, path)
 
-            with claim, get_task, fail, \
+            with claim, get_task, fail as fail_mock, \
                  patch.object(queue, "renew", return_value=True), \
                  patch("papi_core.worker.authorize_authenticated_agent",
                        return_value={"principal": principal}), \
