@@ -18,18 +18,18 @@ class SupabaseSchemaTests(unittest.TestCase):
 
     def test_job_failure_function_has_valid_error_code_guard(self):
         match = re.search(
-            r"create or replace function public\\.papi_fail_job\\(.*?\\n\\$\\$;",
+            r"create or replace function public\.papi_fail_job\(.*?\n\$\$;",
             self.sql, flags=re.IGNORECASE | re.DOTALL,
         )
         self.assertIsNotNone(match, "papi_fail_job definition must exist")
         body = match.group(0)
         self.assertIn("p_error_code !~ '^[a-z0-9_]{1,80}$' then", body)
         self.assertEqual(body.count("raise exception 'Invalid error code'"), 1)
-        self.assertNotIn("\\n        raise exception", body)
+        self.assertNotIn("\n        raise exception", body)
 
     def test_lease_renewal_rejects_null_and_blank_inputs(self):
         match = re.search(
-            r"create or replace function public\\.papi_renew_job_lease\\(.*?\\n\\$lease\\$;",
+            r"create or replace function public\.papi_renew_job_lease\(.*?\n\$lease\$;",
             self.sql, flags=re.IGNORECASE | re.DOTALL,
         )
         self.assertIsNotNone(match, "papi_renew_job_lease definition must exist")
@@ -70,7 +70,7 @@ class SupabaseSchemaTests(unittest.TestCase):
 
     def test_external_audit_anchor_uses_digest_validation_and_atomic_head_lock(self):
         match = re.search(
-            r"create or replace function public\\.papi_advance_audit_anchor\\(.*?\\n\\$papi\\$;",
+            r"create or replace function public\.papi_advance_audit_anchor\(.*?\n\$papi\$;",
             self.sql, flags=re.IGNORECASE | re.DOTALL,
         )
         self.assertIsNotNone(match, "papi_advance_audit_anchor definition must exist")
