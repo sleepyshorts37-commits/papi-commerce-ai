@@ -1,6 +1,8 @@
 import unittest
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from papi_core.handler_registry import HandlerRegistry
 from papi_core.worker import PapiWorker, WorkerError
@@ -88,6 +90,42 @@ class WorkerSafetyTests(unittest.TestCase):
             self.assertEqual(result["status"], "blocked")
             self.assertEqual(len(queue.fail_calls), 1)
             self.assertEqual(queue.fail_calls[0]["error_code"], "authentication_failed")
+
+    def test_general_policy_authorization_runs_after_agent_authentication(self):
+        job = {
+            "id": "job-policy-order", "task_id": "task-1",
+            "handler": "report.preview", "payload": {},
+            "lease_token": "lease-policy-order", "agent_identity": {"signed": True},
+        }
+        queue = QueueSpy(job)
+        queue.store = FakeStore()
+        registry = HandlerRegistry()
+        registry.register("report.preview", "read_only", lambda payload, context: {"ok": True})
+        policy = {
+            "execution_enabled": True,
+            "allowed_handlers": ["report.preview"],
+            "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
+            "external_actions_enabled": False,
+        }
+        worker = PapiWorker(queue=queue, registry=registry, policy=policy, worker_id="worker-test")
+        call_order = []
+
+        def authenticate(*args, **kwargs):
+            call_order.append("authenticate")
+            return {"principal": SimpleNamespace(agent_id="agent-a")}
+
+        def deny_policy(*args, **kwargs):
+            call_order.append("authorize_policy")
+            from papi_core.handler_registry import PermissionError
+            raise PermissionError("policy_denied")
+
+        with patch("papi_core.worker.authorize_authenticated_agent", side_effect=authenticate), \\
+             patch("papi_core.worker.authorize_job", side_effect=deny_policy):
+            result = worker.run_once()
+
+        self.assertEqual(call_order, ["authenticate", "authorize_policy"])
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(queue.fail_calls[0]["error_code"], "permission_denied")
 
     def test_malformed_approval_is_rejected_before_identity_authentication(self):
         for approval_required in ("false", 0, None):
