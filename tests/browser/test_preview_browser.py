@@ -99,10 +99,10 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
             self.assertLessEqual(dimensions['content'], dimensions['viewport'] + 1, f'Horizontal overflow at {label}: {dimensions}')
             contact_link = page.locator('a[href*="contact"]').first
             self.assertTrue(await contact_link.is_visible(), f'Contact navigation missing at {label}')
-            await contact_link.click()
-            self.assertEqual(page.url.rstrip('/').split('/')[-1], 'contact')
-            self.assertTrue(await page.locator('h1').is_visible())
             await page.screenshot(path=str(artifact_dir / f'preview-{label}.png'), full_page=True)
+            await contact_link.click()
+            self.assertTrue(page.url.rstrip('/').endswith('/contact/index.html'), page.url)
+            self.assertTrue(await page.locator('h1').is_visible())
         await page.close()
 
 if __name__ == "__main__":
