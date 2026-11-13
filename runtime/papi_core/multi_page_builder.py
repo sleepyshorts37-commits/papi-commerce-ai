@@ -60,7 +60,7 @@ def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, 
     design = SECTOR_DESIGNS[industry]
     hero_title, hero_copy = SECTOR_COPY[industry]
     is_home = slug == "home"
-    hero = f'<section class="hero hero--{design["layout"]}" aria-labelledby="page-title"><div class="hero-copy"><p class="eyebrow">{html.escape(tagline or design["label"])}</p><h1 id="page-title">{title if not is_home else html.escape(hero_title)}</h1><p class="hero-description">{purpose if not is_home else html.escape(hero_copy)}</p><a class="primary-link" href="{prefix}contact/index.html">Découvrir nos solutions <span aria-hidden="true">↗</span></a></div><div class="hero-visual" aria-hidden="true"><div class="visual-orbit"></div><div class="visual-core"></div><span class="visual-label">{html.escape(design["label"])}</span></div></section>'
+    hero = f'<section class="hero hero--{design["layout"]}" aria-labelledby="page-title"><div class="hero-copy"><p class="eyebrow">{html.escape(tagline or design["label"])}</p><h1 id="page-title">{title if not is_home else html.escape(hero_title)}</h1><p class="hero-description">{purpose if not is_home else html.escape(hero_copy)}</p><a class="primary-link" href="{contact_link}">Découvrir nos solutions <span aria-hidden="true">↗</span></a></div><div class="hero-visual" aria-hidden="true"><div class="visual-orbit"></div><div class="visual-core"></div><span class="visual-label">{html.escape(design["label"])}</span></div></section>'
     cards = [
         ("Une approche claire", "Des priorités définies et une expérience structurée."),
         ("Un service attentif", "Des réponses adaptées à vos besoins et à votre contexte."),
@@ -68,7 +68,7 @@ def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, 
     ]
     card_html = "".join(f'<article class="feature-card"><span class="feature-index">0{i}</span><h3>{html.escape(head)}</h3><p>{html.escape(body)}</p></article>' for i,(head,body) in enumerate(cards,1))
     feature_section = f'<section class="features" aria-labelledby="features-title"><div class="section-heading"><p class="eyebrow">Notre différence</p><h2 id="features-title">Une expérience conçue avec intention.</h2></div><div class="feature-grid">{card_html}</div></section>' if is_home else f'<section class="content-panel"><p class="eyebrow">{html.escape(design["label"])}</p><h2>{title}</h2><p>{purpose}</p></section>'
-    links = "\\n      ".join(nav)
+    links = "\n      ".join(nav)
     contact = next((p for p in pages if p["slug"] == "contact"), None)
     contact_link = ("" if slug == "home" else "../") + ("contact/index.html" if contact else "index.html")
     return f"""<!doctype html>
@@ -154,11 +154,11 @@ def generate_multi_page_project(
 .hero { padding-block:4rem; }
 @media(max-width:800px) { .header-inner { align-items:flex-start; flex-direction:column; gap:.8rem; padding-block:1rem; } }
 """, encoding="utf-8")
-        sitemap = '<?xml version="1.0" encoding="UTF-8"?>\\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\\n'
+        sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         for page in pages:
             loc = "/" if page["slug"] == "home" else f"/{page['slug']}/"
-            sitemap += f"  <url><loc>{xml_escape(loc)}</loc></url>\\n"
-        sitemap += "</urlset>\\n"
+            sitemap += f"  <url><loc>{xml_escape(loc)}</loc></url>\n"
+        sitemap += "</urlset>\n"
         (root / "sitemap.xml").write_text(sitemap, encoding="utf-8")
         manifest = {
             "slug": slug, "project_name": project_name, "industry": industry, "tagline": tagline,
@@ -167,7 +167,7 @@ def generate_multi_page_project(
             "generated_files": sorted(generated + ["styles.css", "sitemap.xml"]),
             "published": False,
         }
-        (root / "project.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+        (root / "project.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     except Exception:
         import shutil
         shutil.rmtree(root, ignore_errors=True)
