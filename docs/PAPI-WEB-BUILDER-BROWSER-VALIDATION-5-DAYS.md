@@ -16,11 +16,14 @@ Ce cycle ne constitue ni une certification WCAG, ni une validation de production
 
 ## Jour 2 — Installer une base de tests navigateur isolée
 
-- [ ] Vérifier les dépendances et la disponibilité Playwright dans l'environnement CI.
-- [ ] Ajouter une configuration Playwright minimale, avec navigateur Chromium épinglé.
-- [ ] Construire un site multi-pages synthétique dans un répertoire temporaire.
-- [ ] Démarrer et arrêter le serveur de prévisualisation dans le cycle de test, sans écoute réseau externe.
-- Livrable : premier test navigateur reproductible, sans données client ni service distant.
+- [x] Vérifier la structure CI et séparer les dépendances navigateur des dépendances runtime.
+- [x] Ajouter Playwright épinglé dans `requirements-browser-test.txt`.
+- [x] Ajouter un workflow GitHub Actions dédié qui installe Chromium et lance les tests.
+- [x] Générer un site multi-pages synthétique dans un répertoire temporaire.
+- [x] Démarrer et arrêter le serveur de prévisualisation loopback dans les tests.
+- [x] Ajouter les premiers tests Chromium sur la page d'accueil, la page secondaire et la feuille CSS.
+- [ ] Confirmer l'exécution effective du nouveau workflow sur le commit courant.
+- Livrable : base de tests navigateur implémentée ; validation CI en attente.
 
 ## Jour 3 — Couverture responsive et navigation
 
