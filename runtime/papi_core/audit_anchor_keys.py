@@ -54,6 +54,7 @@ class LocalAuditKeyring:
             if (not isinstance(entry, dict)
                     or set(entry) - {"public_key", "status", "created_at", "retired_at", "revoked_at"}
                     or not {"public_key", "status", "created_at"} <= set(entry)
+                    or not isinstance(entry["status"], str)
                     or entry["status"] not in {"active", "retired", "revoked"}):
                 raise AuditKeyError("Entrée de clé invalide dans le registre.")
             try:
