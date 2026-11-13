@@ -73,7 +73,7 @@ jobs:
           insert into public.papi_audit_anchor_records(journal_id, record_digest, canonical_record)
           values ('ci-anchor', current_setting('papi.ci_anchor_digest'), current_setting('papi.ci_anchor_record'));
           set role service_role;
-          do $$
+          do $
           declare
             v_digest text := current_setting('papi.ci_anchor_digest');
             v_result boolean;
@@ -95,7 +95,8 @@ jobs:
               raise exception 'Audit anchor head does not match published record';
             end if;
           end
-          $$;
+          $;
+          reset role;
           do $ci$
           declare
             v_record jsonb;
@@ -121,16 +122,21 @@ jobs:
             insert into public.papi_audit_anchor_records(
               journal_id, record_digest, canonical_record
             ) values ('ci-invalid-anchor', v_digest, v_canonical);
+            perform set_config('papi.ci_invalid_anchor_digest', v_digest, false);
 
-            begin
-              perform public.papi_advance_audit_anchor(
-                'ci-invalid-anchor', null, v_digest
-              );
-              raise exception 'Unsupported audit record schema was accepted';
-            exception when sqlstate '22023' then
-              null;
-            end;
-
+          end
+          $ci$;
+          set role service_role;
+          do $ci$
+          begin
+            perform public.papi_advance_audit_anchor(
+              'ci-invalid-anchor',
+              null,
+              current_setting('papi.ci_invalid_anchor_digest', true)
+            );
+            raise exception 'Unsupported audit record schema was accepted';
+          exception when sqlstate '22023' then
+            null;
           end
           $ci$;
           reset role;
