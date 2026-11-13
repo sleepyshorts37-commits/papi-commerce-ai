@@ -50,7 +50,8 @@ jobs:
           # Exercise the versioned migration lifecycle in a second disposable database.
           createdb -h 127.0.0.1 -U postgres papi_migration_test
           psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 \
-            -c "create role anon; create role authenticated; create role service_role bypassrls;" || true
+            -f infra/supabase/migrations/20261113_001_audit_anchor_up.sql
+          # Re-application must be idempotent.
           psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/20261113_001_audit_anchor_up.sql
           psql -h 127.0.0.1 -U postgres -d papi_migration_test -v ON_ERROR_STOP=1 \
