@@ -359,11 +359,11 @@ create or replace function public.papi_reject_audit_anchor_record_mutation()
 returns trigger
 language plpgsql
 set search_path = pg_catalog, public, pg_temp
-as $
+as $papi$
 begin
     raise exception 'Audit anchor records are immutable' using errcode = '55000';
 end;
-$;
+$papi$;
 
 drop trigger if exists papi_audit_anchor_records_immutable
     on public.papi_audit_anchor_records;
@@ -381,7 +381,7 @@ create or replace function public.papi_advance_audit_anchor(
 language plpgsql
 security definer
 set search_path = pg_catalog, public, extensions, pg_temp
-as $
+as $papi$
 declare
     v_canonical text;
     v_record jsonb;
@@ -420,6 +420,9 @@ begin
         if pg_catalog.jsonb_typeof(v_record) <> 'object' then
             raise exception 'record must be an object';
         end if;
+        if not (v_record ?& array['schema_version', 'journal_id', 'checkpoint', 'previous_record_digest', 'key_id', 'signature']) then
+            raise exception 'record is missing required fields';
+        end if;
         if (v_record - array[
             'schema_version', 'journal_id', 'checkpoint',
             'previous_record_digest', 'key_id', 'signature'
@@ -436,6 +439,7 @@ begin
 
         v_checkpoint := v_record->'checkpoint';
         if pg_catalog.jsonb_typeof(v_checkpoint) <> 'object'
+           or not (v_checkpoint ?& array['schema_version', 'sequence', 'head_hash'])
            or (v_checkpoint - array['schema_version', 'sequence', 'head_hash']) <> '{}'::jsonb
            or pg_catalog.jsonb_typeof(v_checkpoint->'schema_version') <> 'number'
            or (v_checkpoint->>'schema_version')::integer <> 1
@@ -503,7 +507,7 @@ begin
      where journal_id = p_journal_id;
     return true;
 end;
-$;
+$papi$;
 
 revoke all on function public.papi_reject_audit_anchor_record_mutation() from public, anon, authenticated;
 revoke all on function public.papi_advance_audit_anchor(text, text, text) from public, anon, authenticated;
