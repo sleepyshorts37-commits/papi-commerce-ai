@@ -43,6 +43,17 @@ class WebsiteBuilderTests(unittest.TestCase):
             self.assertIn(":focus-visible", css)
             self.assertIn("prefers-reduced-motion: reduce", css)
 
+    def test_generated_site_uses_local_system_fonts_without_third_party_requests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            generate_project(tmp, "self-contained", self.spec())
+            project = Path(tmp) / "self-contained"
+            html = (project / "index.html").read_text()
+            css = (project / "styles.css").read_text()
+            self.assertNotIn("fonts.googleapis.com", html + css)
+            self.assertNotIn("@import url('https://", css)
+            self.assertIn("--font-body: system-ui", css)
+            self.assertIn("--font-display: system-ui", css)
+
     def test_html_is_escaped(self):
         with tempfile.TemporaryDirectory() as tmp:
             malicious = self.spec()
