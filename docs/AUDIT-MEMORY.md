@@ -43,11 +43,11 @@ Brique logicielle créée ; aucune mémoire persistante d'agents n'est déployé
 
 ## Contrat de publication externe — prêt pour adaptateur, fournisseur non connecté
 
-`runtime/papi_core/audit_anchor.py` définit un protocole de stockage externe pour des enregistrements de checkpoint signés :
+`runtime/papi_core/audit_anchor.py` définit le protocole signé ; `runtime/papi_core/supabase_audit_anchor.py` fournit son adaptateur Supabase et `infra/supabase/schema.sql` ajoute les tables et le RPC d'ancrage :
 
 - Chaque enregistrement lie l'identifiant du journal, le checkpoint (séquence et hash de tête), le digest de l'enregistrement précédent, l'identifiant de clé et la signature.
 - Le stockage doit conserver les enregistrements de manière immuable et avancer le pointeur `latest` avec un compare-and-swap atomique.
 - Le code vérifie les signatures, les octets canoniques, la chaîne des digests, la progression des séquences et la présence du préfixe local déjà ancré.
 - Les tests utilisent un stockage en mémoire et des signatures HMAC de test uniquement. Elles ne représentent pas une gestion de clés de production.
 
-**Limite de livraison :** aucun fournisseur externe ni backend distant n'est encore connecté. Le protocole et ses tests sont présents, mais aucune publication externe réelle n'a été effectuée. Une intégration de production doit conserver les clés de signature hors du worker, utiliser un stockage indépendant avec contrôle d'accès séparé et vérifier la restauration ainsi que les conflits de publication.
+**Limite de livraison :** l'adaptateur et le schéma Supabase sont implémentés et testés sur PostgreSQL jetable, mais aucun projet Supabase réel ni identifiant de service n'est configuré et aucune publication distante n'a été effectuée. Les tests de l'adaptateur mockent le transport. Une mise en service doit conserver les clés de signature hors du worker, utiliser un stockage indépendant avec contrôle d'accès séparé et vérifier la restauration ainsi que les conflits de publication.
