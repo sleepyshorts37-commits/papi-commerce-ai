@@ -375,9 +375,11 @@ class WorkerTests(unittest.TestCase):
                  "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-a"}
              }), \
              patch.object(worker.queue, "renew", return_value=True), \
+             patch.object(worker.queue, "fail", return_value="retry") as fail, \
              patch.object(worker.queue, "complete", return_value=True) as complete:
             result = worker.run_once()
-        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["status"], "completed", fail.call_args)
+        fail.assert_not_called()
         complete.assert_called_once()
 
     def test_worker_blocks_unknown_handler_and_releases_job_to_retry(self):
@@ -402,9 +404,11 @@ class WorkerTests(unittest.TestCase):
                  "task": {"status": "in_progress", "approval_required": False}
              }), \
              patch.object(worker.queue, "renew", return_value=True), \
+             patch.object(worker.queue, "fail", return_value="retry") as fail, \
              patch.object(worker.queue, "complete", return_value=False):
             result = worker.run_once()
-        self.assertEqual(result["status"], "lease_lost")
+        self.assertEqual(result["status"], "lease_lost", fail.call_args)
+        fail.assert_not_called()
 
 
 class DoctorTests(unittest.TestCase):
