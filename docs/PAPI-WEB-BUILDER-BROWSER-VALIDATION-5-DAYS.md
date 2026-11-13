@@ -10,8 +10,8 @@ Ce cycle ne constitue ni une certification WCAG, ni une validation de production
 
 - [x] Lire les résultats CI du commit précédent et identifier l'échec exact.
 - [x] Corriger la résolution de la route racine `/` vers `index.html` sans double concaténation.
-- [ ] Ajouter/compléter les tests HTTP de racine, sous-répertoire et méthode HEAD.
-- [ ] Vérifier la CI sur le commit correctif.
+- [x] Ajouter/compléter les tests HTTP de racine, sous-répertoire et méthode HEAD.
+- [x] Vérifier la CI sur le commit correctif (suite cœur, registre et documentation verte).
 - Livrable : serveur local cohérent et tests HTTP verts.
 
 ## Jour 2 — Installer une base de tests navigateur isolée
@@ -23,19 +23,18 @@ Ce cycle ne constitue ni une certification WCAG, ni une validation de production
 - [x] Démarrer et arrêter le serveur de prévisualisation loopback dans les tests.
 - [x] Ajouter les premiers tests Chromium sur la page d'accueil, la page secondaire et la feuille CSS.
 - [x] Supprimer la dépendance Google Fonts distante du générateur et utiliser des polices système locales ; ajouter un test unitaire et une assertion navigateur interdisant les requêtes tierces.
-- [ ] Confirmer l'exécution effective du nouveau workflow sur le commit courant.
-- Livrable : base de tests navigateur implémentée ; validation CI en attente.
+- [x] Confirmer l'exécution effective du workflow sur le commit de base : tests Chromium d'accueil, route secondaire et CSS verts. Le test responsive ajouté ensuite a révélé une assertion de route à corriger.
 
 ## Jour 3 — Couverture responsive et navigation
 
-Implémentation ajoutée : tests Playwright multi-viewport, contrôle du débordement horizontal, navigation vers Contact et captures PNG CI. Validation CI du commit contenant ces changements encore requise.
+Implémentation et workflow CI présents. Le premier passage CI a détecté une assertion incorrecte : la route générée se termine par `/contact/index.html`. Correctif appliqué ; la validation de ce correctif est en attente.
 
-
-- [x] Tester les vues mobile (390×844), tablette (768×1024) et desktop (1440×900).
-- [x] Vérifier l'absence de débordement horizontal, la visibilité des titres et des liens de navigation.
+- [x] Ajouter les vues mobile (390×844), tablette (768×1024) et desktop (1440×900).
+- [x] Vérifier le débordement horizontal, la visibilité des titres et des liens de navigation.
 - [x] Vérifier la navigation vers la page secondaire depuis chaque viewport.
-- [x] Produire des captures PNG par viewport comme artefacts CI (rétention 7 jours).
-- Livrable : matrice viewport documentée et tests de navigation.
+- [x] Configurer les captures PNG par viewport comme artefacts CI (rétention 7 jours).
+- [ ] Confirmer les trois tests navigateur et la présence des artefacts sur le commit corrigé.
+- Livrable : matrice viewport implémentée ; validation CI finale en attente.
 
 ## Jour 4 — Contrôles d'accessibilité automatisables
 
