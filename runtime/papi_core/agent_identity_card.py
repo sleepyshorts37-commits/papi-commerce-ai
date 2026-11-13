@@ -22,10 +22,9 @@ def _valid_date(value: Any) -> bool:
     if not isinstance(value, str):
         return False
     try:
-        date.fromisoformat(value)
+        return date.fromisoformat(value).isoformat() == value
     except ValueError:
         return False
-    return True
 
 
 def create_identity_card(agent: dict[str, Any], created_at: str,
@@ -52,7 +51,7 @@ def create_identity_card(agent: dict[str, Any], created_at: str,
     if len(set(permissions)) != len(permissions):
         raise IdentityCardError("Permissions agent dupliquées.")
     autonomy = agent.get("autonomy_level", "bounded")
-    if autonomy not in VALID_AUTONOMY_LEVELS:
+    if not isinstance(autonomy, str) or autonomy not in VALID_AUTONOMY_LEVELS:
         raise IdentityCardError("Niveau d'autonomie invalide.")
     skills = agent.get("skills", [])
     if not isinstance(skills, list) or any(not isinstance(item, str) or not item.strip() for item in skills):
@@ -83,7 +82,7 @@ def create_identity_card(agent: dict[str, Any], created_at: str,
 
 
 def validate_identity_card(card: dict[str, Any]) -> None:
-    """Lève IdentityCardError si la carte respecte pas le schéma professionnel."""
+    """Lève IdentityCardError si la carte ne respecte pas le schéma professionnel."""
     if not isinstance(card, dict) or card.get("schema_version") != CARD_SCHEMA_VERSION:
         raise IdentityCardError("Version ou structure de carte invalide.")
     required_text = ("agent_id", "name", "position", "department", "mission")
@@ -97,7 +96,10 @@ def validate_identity_card(card: dict[str, Any]) -> None:
     manager = card.get("manager_agent_id")
     if manager is not None and (not _valid_id(manager) or manager == agent_id):
         raise IdentityCardError("Responsable hiérarchique invalide.")
-    if card.get("status") not in VALID_STATUSES or card.get("autonomy_level") not in VALID_AUTONOMY_LEVELS:
+    status = card.get("status")
+    autonomy = card.get("autonomy_level")
+    if (not isinstance(status, str) or status not in VALID_STATUSES
+            or not isinstance(autonomy, str) or autonomy not in VALID_AUTONOMY_LEVELS):
         raise IdentityCardError("Statut ou autonomie invalide.")
     permissions = card.get("permissions")
     if not isinstance(permissions, list) or any(not isinstance(p, str) or not p for p in permissions):
@@ -118,5 +120,6 @@ def validate_identity_card(card: dict[str, Any]) -> None:
         if not isinstance(entry, dict) or set(entry) - {"role", "status", "date"}:
             raise IdentityCardError("Entrée d'historique invalide.")
         if (not isinstance(entry.get("role"), str) or not entry["role"].strip()
-                or entry.get("status") not in VALID_STATUSES or not _valid_date(entry.get("date"))):
+                or not isinstance(entry.get("status"), str)
+                or entry["status"] not in VALID_STATUSES or not _valid_date(entry.get("date"))):
             raise IdentityCardError("Entrée d'historique invalide.")
