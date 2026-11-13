@@ -17,12 +17,12 @@ from papi_core.website_sections import render_page_sections, WebsiteSectionError
 MAX_PAGE_BYTES = 256_000
 
 SECTOR_DESIGNS = {
-    "corporate": {"label": "Entreprise", "primary": "#14283f", "accent": "#bd925d", "surface": "#f3f6f8", "layout": "editorial"},
-    "ecommerce": {"label": "Commerce", "primary": "#172d27", "accent": "#d58a45", "surface": "#f7f5f0", "layout": "commerce"},
-    "hospitality": {"label": "Hôtellerie", "primary": "#26364a", "accent": "#c49b69", "surface": "#f5f1eb", "layout": "hospitality"},
-    "professional_services": {"label": "Services professionnels", "primary": "#202a46", "accent": "#8b9bc8", "surface": "#f4f5fa", "layout": "editorial"},
-    "education": {"label": "Éducation", "primary": "#183c46", "accent": "#d49a48", "surface": "#f1f7f6", "layout": "learning"},
-    "health": {"label": "Santé", "primary": "#17423d", "accent": "#63a99a", "surface": "#f1f7f5", "layout": "care"},
+    "corporate": {"label": "Entreprise", "primary": "#14283f", "accent": "#805b35", "surface": "#f3f6f8", "layout": "editorial"},
+    "ecommerce": {"label": "Commerce", "primary": "#172d27", "accent": "#8a4f1d", "surface": "#f7f5f0", "layout": "commerce"},
+    "hospitality": {"label": "Hôtellerie", "primary": "#26364a", "accent": "#79582f", "surface": "#f5f1eb", "layout": "hospitality"},
+    "professional_services": {"label": "Services professionnels", "primary": "#202a46", "accent": "#53638b", "surface": "#f4f5fa", "layout": "editorial"},
+    "education": {"label": "Éducation", "primary": "#183c46", "accent": "#80571b", "surface": "#f1f7f6", "layout": "learning"},
+    "health": {"label": "Santé", "primary": "#17423d", "accent": "#28685f", "surface": "#f1f7f5", "layout": "care"},
 }
 SECTOR_COPY = {
     "corporate": ("Une vision claire. Des résultats durables.", "Découvrez notre approche et nos engagements."),
@@ -32,6 +32,21 @@ SECTOR_COPY = {
     "education": ("Apprendre, progresser, réussir.", "Un environnement stimulant pour développer chaque potentiel."),
     "health": ("Votre santé mérite toute notre attention.", "Une prise en charge attentive, claire et centrée sur vous."),
 }
+
+
+def _relative_luminance(color: str) -> float:
+    """Return WCAG relative luminance for a validated #RRGGBB color."""
+    if not isinstance(color, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+        raise MultiPageBuilderError("Couleur invalide pour le calcul de contraste.")
+    channels = [int(color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4 for value in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def contrast_ratio(foreground: str, background: str) -> float:
+    """Calculate WCAG contrast ratio between two opaque sRGB colors."""
+    first, second = sorted((_relative_luminance(foreground), _relative_luminance(background)), reverse=True)
+    return (first + 0.05) / (second + 0.05)
 
 
 class MultiPageBuilderError(ValueError):
@@ -223,9 +238,18 @@ def multi_page_quality_report(workspace: str | Path, slug: str) -> dict[str, Any
         "shared_stylesheet": (root / "styles.css").is_file(),
         "sitemap_present": (root / "sitemap.xml").is_file(),
         "sector_design_tokens": manifest.get("industry") in SECTOR_DESIGNS,
+        "sector_accent_wcag_aa": False,
         "all_pages_exist": True, "all_internal_navigation_resolves": True,
         "no_script_execution": True, "semantic_headings": True,
     }
+    stylesheet = (root / "styles.css").read_text(encoding="utf-8")
+    accent_values = re.findall(r"--accent:\s*(#[0-9a-fA-F]{6})", stylesheet)
+    paper_values = re.findall(r"--paper:\s*(#[0-9a-fA-F]{6})", stylesheet)
+    if accent_values and paper_values:
+        checks["sector_accent_wcag_aa"] = (
+            contrast_ratio(accent_values[-1], "#ffffff") >= 4.5
+            and contrast_ratio(accent_values[-1], paper_values[-1]) >= 4.5
+        )
     for name in files:
         path = root / name
         resolved = path.resolve()
