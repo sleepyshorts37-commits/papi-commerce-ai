@@ -58,3 +58,10 @@ Brique logicielle créée ; aucune mémoire persistante d'agents n'est déployé
 Les adaptateurs backend utilisent désormais `SupabaseStore.request(...)`, interface publique stable qui encapsule le transport PostgREST. Ils ne doivent pas dépendre de la méthode privée `_request`. Cette interface reste strictement côté backend de confiance : elle ne doit jamais être exposée aux agents, aux outils utilisateur ou à un processus non fiable, et la clé service-role ne doit jamais quitter le backend.
 
 Cette évolution réduit le couplage interne mais ne constitue pas une isolation de sécurité ni un mécanisme de délégation de credentials. Les contrôles RLS, les permissions minimales et la séparation des processus restent obligatoires.
+
+
+## Durcissement SQL de l'ancrage externe — Jour 2
+
+La RPC `papi_advance_audit_anchor` utilise désormais un `search_path` explicite avec `pg_catalog` en tête et un appel qualifié à `extensions.digest`. Les enveloppes de checkpoint et d'enregistrement sont contrôlées avant toute modification du pointeur : versions de schéma, objets et champs autorisés, séquence entière non négative, hash, lien précédent, identifiant de clé au format borné et signature non vide de taille limitée.
+
+Ces contrôles SQL vérifient la cohérence structurelle et l'intégrité par digest. Ils **ne vérifient toujours pas cryptographiquement la signature** : cette responsabilité reste au vérificateur cryptographique indépendant prévu au Jour 3. Les tests d'intégration doivent utiliser exclusivement un PostgreSQL jetable.
