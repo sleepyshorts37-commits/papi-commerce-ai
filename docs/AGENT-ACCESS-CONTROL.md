@@ -28,3 +28,23 @@ Exemple de payload signé :
 ```
 
 Une enveloppe destinée à une autre audience ou à un autre service est refusée. L'ancienne fonction `authorize_authenticated_agent` conserve sa compatibilité pour les flux locaux existants ; pour les frontières interservices, les appelants doivent utiliser `authorize_service_agent`. Cette étape fournit le contrat d'autorisation et ses tests, pas un transport réseau, un fournisseur d'identité workload, ni une intégration de production.
+
+
+## Application à la frontière du worker
+
+Le worker peut maintenant imposer le binding d'audience pour un service donné. Pour l'activer, sa politique doit contenir `"require_service_audience": true` et son initialisation doit fournir ensemble `service_id` et `service_audience`. Une configuration absente, partielle ou incohérente fait échouer l'initialisation. Dans ce mode, le worker appelle `authorize_service_agent` avant l'autorisation métier et avant tout handler.
+
+Exemple de configuration (valeurs d'identité publiques, sans secret) :
+
+```python
+worker = PapiWorker(
+    queue=queue,
+    registry=registry,
+    policy={**policy, "require_service_audience": True},
+    worker_id="worker-reporting",
+    service_id="reporting-api",
+    service_audience="papi-reporting",
+)
+```
+
+Le mode historique reste disponible si `require_service_audience` est absent ou faux, afin de préserver les workers locaux existants pendant la migration. **Il ne doit pas être utilisé pour exposer un worker comme frontière interservice.** Chaque déploiement interservice doit activer explicitement l'option stricte et fournir des enveloppes signées contenant la même audience et le même service. Aucun déploiement ni changement de politique de production n'est effectué par cette PR.
