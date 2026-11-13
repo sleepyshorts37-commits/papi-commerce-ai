@@ -129,7 +129,20 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter Playwright épinglé dans `requirements-browser-test.txt`, un workflow Chromium dédié et des tests de rendu réels sur un site synthétique.
 - [x] Retirer l'appel Google Fonts externe et imposer des polices système locales ; le test navigateur vérifie désormais l'absence de requêtes tierces.
 - [x] Confirmer le workflow Chromium sur `13acb342fcdf377f3f0b39fd30ddee5c66cc3b8b` : core tests, registre, documentation et Chromium tous réussis.
-- [x] Ajouter tests mobile, tablette, desktop, navigation inter-pages, débordement horizontal et captures d'écran CI (validation du commit à venir).
+- [x] Ajouter et valider en CI les tests mobile, tablette, desktop, navigation inter-pages, débordement horizontal et captures d'écran CI.
 - [x] Ajouter les contrôles d'accessibilité automatisés de base et documenter les limites de validation humaine (Chromium CI réussi ; aucune certification WCAG).
 - [x] Exécuter la suite finale et publier le rapport de recette technique (`docs/PAPI-WEB-BUILDER-BROWSER-VALIDATION-REPORT.md`) : core 428 tests, registre, documentation et Chromium (4 tests) réussis sur `e704667230d21f5cb3561bd5647642f55fe467ce`.
-- **Statut :** Jours 1 et 2 validés en CI sur `13acb342fcdf377f3f0b39fd30ddee5c66cc3b8b` ; tests responsive Jour 3 ajoutés, CI à confirmer. Aucun audit WCAG complet revendiqué.
+- **Statut :** cycle terminé et CI verte sur le commit final `82c017c884a85cbfb6c58d1e0cb1e9736ebdfecb`. Aucun audit WCAG complet revendiqué.
+
+
+### PAPI WEB BUILDER — qualité avancée (cycle 5 jours)
+- [x] Définir le plan de travail de cinq jours (docs/PAPI-WEB-BUILDER-ADVANCED-QUALITY-5-DAYS.md).
+- [x] Mesurer et corriger les six accents sectoriels utilisés sur du petit texte : ratios calculés supérieurs à 4,5:1 sur blanc et sur la surface de chaque secteur.
+- [x] Ajouter contrast_ratio et le contrôle sector_accent_wcag_aa au rapport qualité multi-pages.
+- [x] Ajouter un test unitaire sur les six profils et un test Chromium sur le texte accentué rendu.
+- [ ] Confirmer le passage CI sur le commit contenant ces changements.
+- [ ] Étendre l'audit sémantique à toutes les routes et contrôler les hiérarchies de titres.
+- [ ] Vérifier clavier, mouvement réduit et navigation responsive sur chaque page.
+- [ ] Définir des budgets de poids, requêtes et DOM ; produire des mesures de laboratoire.
+- [ ] Publier le rapport final avec les preuves CI exactes.
+- **Statut :** Jour 1 implémenté ; CI en attente. Aucun audit WCAG 2.2 AA complet ou Core Web Vitals terrain revendiqué.
