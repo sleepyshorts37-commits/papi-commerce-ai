@@ -362,7 +362,7 @@ class WorkerTests(unittest.TestCase):
     def test_worker_executes_one_authorized_job(self):
         worker = self.make_worker()
         job = {"id": "JOB-1", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {"a": 1}, "lease_token": "lease-1"}
+               "payload": {"a": 1}, "lease_token": "lease-1", "attempt_id": "00000000-0000-4000-8000-000000000001"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False}
@@ -375,7 +375,7 @@ class WorkerTests(unittest.TestCase):
     def test_worker_blocks_unknown_handler_and_releases_job_to_retry(self):
         worker = self.make_worker()
         job = {"id": "JOB-2", "task_id": "TASK-1", "handler": "not.registered",
-               "payload": {}, "lease_token": "lease-2"}
+               "payload": {}, "lease_token": "lease-2", "attempt_id": "00000000-0000-4000-8000-000000000002"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False}
@@ -388,7 +388,7 @@ class WorkerTests(unittest.TestCase):
     def test_worker_does_not_complete_if_lease_was_lost(self):
         worker = self.make_worker()
         job = {"id": "JOB-3", "task_id": "TASK-1", "handler": "internal.echo",
-               "payload": {}, "lease_token": "lease-3"}
+               "payload": {}, "lease_token": "lease-3", "attempt_id": "00000000-0000-4000-8000-000000000003"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
                  "task": {"status": "in_progress", "approval_required": False}
