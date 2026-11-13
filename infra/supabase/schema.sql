@@ -393,12 +393,9 @@ declare
     v_signature text;
     v_current public.papi_audit_anchor_heads%rowtype;
 begin
-    if p_journal_id is null or p_journal_id !~ '^[A-Za-z0-9_.:-]{1,120}
-
-       or p_new_digest is null or p_new_digest !~ '^[0-9a-f]{64}
-
-       or (p_expected_digest is not null and p_expected_digest !~ '^[0-9a-f]{64}
-) then
+    if p_journal_id is null or p_journal_id !~ '^[A-Za-z0-9_.:-]{1,120}[$]'
+       or p_new_digest is null or p_new_digest !~ '^[0-9a-f]{64}[$]'
+       or (p_expected_digest is not null and p_expected_digest !~ '^[0-9a-f]{64}[$]') then
         raise exception 'Invalid audit anchor pointer' using errcode = '22023';
     end if;
 
@@ -444,7 +441,7 @@ begin
            or pg_catalog.jsonb_typeof(v_checkpoint->'schema_version') <> 'number'
            or (v_checkpoint->>'schema_version')::integer <> 1
            or pg_catalog.jsonb_typeof(v_checkpoint->'sequence') <> 'number'
-           or (v_checkpoint->>'sequence') !~ '^(0|[1-9][0-9]*)
+           or (v_checkpoint->>'sequence') !~ '^(0|[1-9][0-9]*)[$]'
  then
             raise exception 'invalid checkpoint envelope';
         end if;
@@ -458,12 +455,10 @@ begin
     end;
 
     if v_sequence < 0
-       or v_head_hash is null or v_head_hash !~ '^[0-9a-f]{64}
-
-       or (v_previous_digest is not null and v_previous_digest !~ '^[0-9a-f]{64}
-)
+       or v_head_hash is null or v_head_hash !~ '^[0-9a-f]{64}[$]'
+       or (v_previous_digest is not null and v_previous_digest !~ '^[0-9a-f]{64}[$]')
        or v_previous_digest is distinct from p_expected_digest
-       or v_key_id is null or v_key_id !~ '^[A-Za-z0-9_.:-]{1,120}
+       or v_key_id is null or v_key_id !~ '^[A-Za-z0-9_.:-]{1,120}[$]'
 
        or v_signature is null or pg_catalog.length(v_signature) = 0
        or pg_catalog.length(v_signature) > 2048 then
