@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any
 from urllib.parse import quote
 
 from .audit_anchor import CheckpointStore
@@ -23,7 +22,7 @@ class SupabaseCheckpointStore(CheckpointStore):
         self.store = store
 
     def get_latest(self, journal_id: str) -> str | None:
-        rows = self.store._request(
+        rows = self.store.request(
             "GET",
             "papi_audit_anchor_heads"
             f"?journal_id=eq.{quote(journal_id, safe='')}&select=latest_record_digest",
@@ -38,7 +37,7 @@ class SupabaseCheckpointStore(CheckpointStore):
         return digest
 
     def get_record(self, record_digest: str) -> bytes | None:
-        rows = self.store._request(
+        rows = self.store.request(
             "GET",
             "papi_audit_anchor_records"
             f"?record_digest=eq.{quote(record_digest, safe='')}&select=canonical_record",
@@ -65,7 +64,7 @@ class SupabaseCheckpointStore(CheckpointStore):
         journal_id = record.get("journal_id") if isinstance(record, dict) else None
         if not isinstance(journal_id, str) or not journal_id:
             raise StoreError("Identifiant de journal absent de l'enregistrement.")
-        self.store._request(
+        self.store.request(
             "POST",
             "papi_audit_anchor_records?on_conflict=journal_id,record_digest",
             {
@@ -91,7 +90,7 @@ class SupabaseCheckpointStore(CheckpointStore):
                 raise ValueError("journal mismatch")
         except (UnicodeDecodeError, json.JSONDecodeError, AttributeError, ValueError) as exc:
             raise StoreError("Enregistrement d'audit externe incohérent.") from exc
-        result = self.store._request(
+        result = self.store.request(
             "POST",
             "rpc/papi_advance_audit_anchor",
             {
