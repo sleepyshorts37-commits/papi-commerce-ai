@@ -65,5 +65,20 @@ class VideoTaskTests(unittest.TestCase):
         self.assertEqual(report["report_status"], "ready_for_consolidation")
 
 
+class VideoTaskRegistryTests(unittest.TestCase):
+    def test_empty_registry_is_valid(self):
+        self.assertEqual(validate_video_task_registry({
+            "project": "PAPI COMMERCE AI", "schema_version": "1.0", "tasks": [], "note": "empty"
+        }), [])
+
+    def test_duplicate_video_task_ids_are_rejected(self):
+        task = create_video_task(
+            task_id="video-001", url="https://youtu.be/abcdefghijk",
+            submitted_by="owner", created_at="2026-11-13T22:00:00Z"
+        )
+        data = {"project": "PAPI COMMERCE AI", "tasks": [task, dict(task)]}
+        self.assertTrue(any("dupliqué" in error for error in validate_video_task_registry(data)))
+
+
 if __name__ == "__main__":
     unittest.main()
