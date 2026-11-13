@@ -22,6 +22,7 @@ Ce cycle ne constitue ni une certification WCAG, ni une validation de production
 - [x] Générer un site multi-pages synthétique dans un répertoire temporaire.
 - [x] Démarrer et arrêter le serveur de prévisualisation loopback dans les tests.
 - [x] Ajouter les premiers tests Chromium sur la page d'accueil, la page secondaire et la feuille CSS.
+- [x] Supprimer la dépendance Google Fonts distante du générateur et utiliser des polices système locales ; ajouter un test unitaire et une assertion navigateur interdisant les requêtes tierces.
 - [ ] Confirmer l'exécution effective du nouveau workflow sur le commit courant.
 - Livrable : base de tests navigateur implémentée ; validation CI en attente.
 
