@@ -364,5 +364,65 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(all(card["width"] > 0 and card["height"] > 0 for card in metrics["cards"]), f"{label}: invisible feature card")
         await page.close()
 
+
+    async def test_component_design_tokens_spacing_and_non_overlap(self):
+        """Check computed component styles, hierarchy and layout ordering at three widths."""
+        page = await self.browser.new_page()
+        viewports = (("mobile", 390, 844, 1), ("tablet", 768, 1024, 1), ("desktop", 1440, 900, 3))
+        for label, width, height, expected_columns in viewports:
+            await page.set_viewport_size({"width": width, "height": height})
+            response = await page.goto(self.base_url + "/", wait_until="networkidle")
+            self.assertIsNotNone(response)
+            self.assertEqual(response.status, 200, label)
+            audit = await page.evaluate("""() => {
+                const style = (selector) => getComputedStyle(document.querySelector(selector));
+                const box = (element) => {
+                    const r = element.getBoundingClientRect();
+                    return {left:r.left, top:r.top, right:r.right, bottom:r.bottom, width:r.width, height:r.height};
+                };
+                const grid = document.querySelector(".feature-grid");
+                const cards = [...document.querySelectorAll(".feature-card")];
+                const heading = document.querySelector(".hero h1");
+                const cardStyle = getComputedStyle(cards[0]);
+                return {
+                    ink: style("body").getPropertyValue("--ink").trim(),
+                    accent: style("body").getPropertyValue("--accent").trim(),
+                    paper: style("body").getPropertyValue("--paper").trim(),
+                    bodyFont: style("body").fontFamily,
+                    headingFont: getComputedStyle(heading).fontFamily,
+                    headingSize: parseFloat(getComputedStyle(heading).fontSize),
+                    headingWeight: Number(getComputedStyle(heading).fontWeight),
+                    gridColumns: getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+                    gridGap: parseFloat(getComputedStyle(grid).columnGap),
+                    cardPadding: parseFloat(cardStyle.paddingTop),
+                    cardRadius: parseFloat(cardStyle.borderTopLeftRadius),
+                    cardBorder: parseFloat(cardStyle.borderTopWidth),
+                    cards: cards.map(box),
+                    hero: box(document.querySelector(".hero")),
+                    features: box(document.querySelector(".features"))
+                };
+            }""")
+            self.assertRegex(audit["ink"], r"^#[0-9a-fA-F]{6}$", f"{label}: missing ink token")
+            self.assertRegex(audit["accent"], r"^#[0-9a-fA-F]{6}$", f"{label}: missing accent token")
+            self.assertRegex(audit["paper"], r"^#[0-9a-fA-F]{6}$", f"{label}: missing surface token")
+            self.assertTrue(audit["bodyFont"] and audit["headingFont"], f"{label}: missing local font stack")
+            self.assertGreaterEqual(audit["headingSize"], 24, f"{label}: heading hierarchy collapsed")
+            self.assertGreaterEqual(audit["headingWeight"], 600, f"{label}: heading weight too light")
+            self.assertEqual(audit["gridColumns"], expected_columns, f"{label}: unexpected feature grid columns")
+            self.assertGreater(audit["gridGap"], 0, f"{label}: missing grid spacing")
+            self.assertGreaterEqual(audit["cardPadding"], 16, f"{label}: card padding too small")
+            self.assertGreaterEqual(audit["cardRadius"], 8, f"{label}: card radius missing")
+            self.assertGreater(audit["cardBorder"], 0, f"{label}: card boundary missing")
+            self.assertEqual(len(audit["cards"]), 3, f"{label}: expected three cards")
+            for first, second in zip(audit["cards"], audit["cards"][1:]):
+                overlaps = first["left"] < second["right"] and first["right"] > second["left"] and first["top"] < second["bottom"] and first["bottom"] > second["top"]
+                self.assertFalse(overlaps, f"{label}: adjacent cards overlap: {first}, {second}")
+                if expected_columns == 3:
+                    self.assertLess(first["left"], second["left"], f"{label}: desktop card order changed")
+                else:
+                    self.assertLess(first["top"], second["top"], f"{label}: mobile/tablet card order changed")
+            self.assertGreaterEqual(audit["features"]["top"], audit["hero"]["bottom"] - 1, f"{label}: feature section overlaps hero")
+        await page.close()
+
 if __name__ == "__main__":
     unittest.main()
