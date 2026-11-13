@@ -1,63 +1,53 @@
 # PAPI WEB BUILDER — Cycle de validation navigateur sur 5 jours
 
-## Objectif du cycle
-
-Faire passer la prévisualisation statique locale d'un service HTTP sécurisé à une chaîne de validation reproductible en navigateur réel, avec couverture des principaux formats d'écran et contrôles d'accessibilité automatisables.
-
-Ce cycle ne constitue ni une certification WCAG, ni une validation de production. Les contrôles automatisés doivent être complétés par une revue humaine avant toute mise en service.
+## Objectif
+Valider de manière reproductible l'aperçu statique local dans Chromium, les viewports usuels, quelques contrôles d'accessibilité automatisables et l'intégration CI. Ce cycle ne constitue ni une certification WCAG, ni une recette de production.
 
 ## Jour 1 — Fiabiliser le serveur de prévisualisation
+- [x] Corriger la résolution de la route racine vers `index.html`.
+- [x] Compléter les tests HTTP GET/HEAD, ressources et chemins interdits.
+- [x] Valider la CI du correctif.
+- **Résultat :** serveur loopback en lecture seule et tests HTTP couverts.
 
-- [x] Lire les résultats CI du commit précédent et identifier l'échec exact.
-- [x] Corriger la résolution de la route racine `/` vers `index.html` sans double concaténation.
-- [x] Ajouter/compléter les tests HTTP de racine, sous-répertoire et méthode HEAD.
-- [x] Vérifier la CI sur le commit correctif (suite cœur, registre et documentation verte).
-- Livrable : serveur local cohérent et tests HTTP verts.
+## Jour 2 — Base navigateur isolée
+- [x] Épingler Playwright dans `requirements-browser-test.txt`, hors dépendances runtime.
+- [x] Ajouter un workflow GitHub Actions qui installe Chromium.
+- [x] Générer un site synthétique temporaire et tester accueil, route secondaire et CSS.
+- [x] Retirer les requêtes Google Fonts externes et tester l'usage de polices système.
+- **Résultat :** tests Chromium exécutés en CI.
 
-## Jour 2 — Installer une base de tests navigateur isolée
+## Jour 3 — Responsive et navigation
+- [x] Viewports mobile 390×844, tablette 768×1024 et desktop 1440×900.
+- [x] Vérifier visibilité, débordement horizontal et navigation inter-pages.
+- [x] Captures PNG téléversées en artefact CI, rétention 7 jours.
+- **Résultat :** validé sur le commit `e704667230d21f5cb3561bd5647642f55fe467ce`.
 
-- [x] Vérifier la structure CI et séparer les dépendances navigateur des dépendances runtime.
-- [x] Ajouter Playwright épinglé dans `requirements-browser-test.txt`.
-- [x] Ajouter un workflow GitHub Actions dédié qui installe Chromium et lance les tests.
-- [x] Générer un site multi-pages synthétique dans un répertoire temporaire.
-- [x] Démarrer et arrêter le serveur de prévisualisation loopback dans les tests.
-- [x] Ajouter les premiers tests Chromium sur la page d'accueil, la page secondaire et la feuille CSS.
-- [x] Supprimer la dépendance Google Fonts distante du générateur et utiliser des polices système locales ; ajouter un test unitaire et une assertion navigateur interdisant les requêtes tierces.
-- [x] Confirmer l'exécution effective du workflow sur le commit de base : tests Chromium d'accueil, route secondaire et CSS verts. Le test responsive ajouté ensuite a révélé une assertion de route à corriger.
+## Jour 4 — Accessibilité automatisable
+- [x] Landmarks main/nav, H1 unique et lien d'évitement.
+- [x] Noms accessibles des liens et focus clavier visible.
+- [x] Aucun script tiers requis pour ces contrôles.
+- [x] Documenter les limites et la revue humaine nécessaire.
+- **Résultat :** test Chromium dédié exécuté avec succès. Pas de revendication WCAG.
 
-## Jour 3 — Couverture responsive et navigation
+## Jour 5 — CI et recette
+- [x] Workflow navigateur isolé et exécution sur le commit final.
+- [x] Critères d'acceptation et garde-fous consignés.
+- [x] Suite cœur, registre, documentation et Chromium réussis.
+- [x] Artefact de captures confirmé.
+- [x] Rapport final créé : `docs/PAPI-WEB-BUILDER-BROWSER-VALIDATION-REPORT.md`.
+- **Résultat :** recette automatisée PASS pour le périmètre défini ; pas de go-live.
 
-Implémentation et workflow CI présents. Le premier passage CI a détecté une assertion incorrecte : la route générée se termine par `/contact/index.html`. Correctif appliqué ; la validation de ce correctif est en attente.
+## Preuves CI
+Commit : `e704667230d21f5cb3561bd5647642f55fe467ce`.
+- Core : [43484766818](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/43484766818) — 428 tests réussis.
+- Registry : [43484766821](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/43484766821) — réussi.
+- Docs : [43484766876](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/43484766876) — réussi.
+- Chromium : [43484767063](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/43484767063) — 4 tests réussis.
+- Captures : artefact `papi-browser-responsive-screenshots`, 549 050 octets, rétention 7 jours.
 
-- [x] Ajouter les vues mobile (390×844), tablette (768×1024) et desktop (1440×900).
-- [x] Vérifier le débordement horizontal, la visibilité des titres et des liens de navigation.
-- [x] Vérifier la navigation vers la page secondaire depuis chaque viewport.
-- [x] Configurer les captures PNG par viewport comme artefacts CI (rétention 7 jours).
-- [ ] Confirmer les trois tests navigateur et la présence des artefacts sur le commit corrigé.
-- Livrable : matrice viewport implémentée ; validation CI finale en attente.
-
-## Jour 4 — Contrôles d'accessibilité automatisables
-
-- [x] Ajouter un test Chromium sur les landmarks `main` et `nav`, l'unicité du H1 et le lien d'évitement.
-- [x] Vérifier que les liens ont un nom accessible via leur texte ou leurs attributs ARIA.
-- [x] Vérifier au clavier que le premier arrêt est visible et possède un indicateur de focus calculé.
-- [x] Garder les contrôles autonomes et sans chargement de script tiers ; axe-core n'est pas ajouté à cette étape afin de préserver le mode sans requêtes externes.
-- [x] Documenter les limites : contraste, lecteur d'écran, clavier complet et WCAG 2.2 AA nécessitent aussi une revue humaine.
-- [ ] Confirmer le nouveau test dans GitHub Actions.
-- Livrable : contrôles automatisés structurels et clavier de base, sans revendication de conformité certifiée.
-
-## Jour 5 — Intégration CI et critères d'acceptation
-
-- [ ] Intégrer les tests navigateur à une étape CI dédiée et isolée.
-- [ ] Définir les critères bloquants, les artefacts conservés et la gestion des échecs.
-- [ ] Exécuter la suite complète sur le commit final et corriger les régressions observées.
-- [ ] Mettre à jour la roadmap et le rapport de validation avec les résultats réels.
-- Livrable : chaîne de validation navigateur documentée, reproductible et non déployée.
-
-## Garde-fous
-
-- Le serveur de prévisualisation reste lié à loopback et en lecture seule.
-- Les tests utilisent uniquement des contenus synthétiques.
-- Aucun accès Supabase distant, secret de production, paiement, formulaire connecté ou donnée client.
-- Aucune publication, fusion de PR ou mise en production sans autorisation explicite.
-- Un résultat axe-core ou une capture d'écran ne vaut pas certification WCAG ni recette humaine.
+## Garde-fous et limites
+- Aperçu local loopback, lecture seule ; contenu de test synthétique.
+- Aucun projet Supabase distant, secret, paiement, formulaire connecté ou donnée client.
+- Aucun merge, déploiement ou publication sans autorisation.
+- Contraste, lecteur d'écran, clavier complet, WCAG 2.2 AA, Core Web Vitals et revue sécurité restent à valider manuellement/ultérieurement.
+- La PR #131 reste ouverte en brouillon ; son intitulé/description ne reflètent pas clairement les changements Web Builder et doivent être clarifiés avant fusion.
