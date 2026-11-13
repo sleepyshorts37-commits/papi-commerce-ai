@@ -501,5 +501,87 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
                     thread.join(timeout=2)
         await page.close()
 
+
+    async def test_custom_sections_interactions_long_content_and_internal_cta(self):
+        """Exercise configurable secondary-page sections, keyboard focus and long copy."""
+        workspace = Path(self.workspace.name) / "journey"
+        long_heading = "Un accompagnement complet et progressif pour chaque étape de votre projet numérique"
+        long_body = ("Notre équipe vous accompagne avec une méthode claire, des étapes documentées "
+                     "et des échanges réguliers afin de rendre chaque décision compréhensible. ") * 5
+        architecture = {
+            "project_name": "Parcours configurable",
+            "requirements": [
+                {"id": "brand", "description": "Présenter la marque", "priority": "must"},
+                {"id": "contact", "description": "Afficher le contact", "priority": "must"},
+            ],
+            "pages": [
+                {"slug": "home", "title": "Accueil", "purpose": "Découvrir le service", "requirements": ["brand"]},
+                {"slug": "contact", "title": "Contact", "purpose": "Contacter l'équipe", "requirements": ["contact"]},
+            ],
+        }
+        sections = {
+            "contact": [
+                {"id": "intro-long", "type": "intro", "eyebrow": "Notre accompagnement",
+                 "heading": long_heading, "body": long_body},
+                {"id": "faq-interactive", "type": "faq", "eyebrow": "Questions",
+                 "heading": "Questions fréquentes", "body": "Réponses pratiques.",
+                 "items": [{"question": "Comment démarrer ?", "answer": long_body}]},
+                {"id": "cta-internal", "type": "cta", "eyebrow": "Étape suivante",
+                 "heading": "Découvrir notre accueil", "body": "Consultez la présentation.",
+                 "cta_label": "Revenir à la présentation complète du projet et de nos solutions",
+                 "target_page": "home"},
+            ]
+        }
+        generate_multi_page_project(
+            workspace, "configurable",
+            {"name": "Parcours configurable", "industry": "corporate", "tagline": "Un parcours clair", "sections": sections},
+            architecture,
+        )
+        server = create_preview_server(workspace / "configurable")
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        url = f"http://127.0.0.1:{server.server_port}"
+        page = await self.browser.new_page()
+        try:
+            for label, width, height in (("mobile", 390, 844), ("tablet", 768, 1024), ("desktop", 1440, 900)):
+                await page.set_viewport_size({"width": width, "height": height})
+                response = await page.goto(url + "/contact/", wait_until="networkidle")
+                self.assertIsNotNone(response)
+                self.assertEqual(response.status, 200, label)
+                self.assertTrue(await page.get_by_role("heading", name=long_heading).is_visible(), label)
+                self.assertTrue(await page.locator(".content-intro").is_visible(), label)
+                self.assertTrue(await page.locator(".faq-section").is_visible(), label)
+                self.assertTrue(await page.locator(".section-cta").is_visible(), label)
+                dimensions = await page.evaluate("() => ({viewport:document.documentElement.clientWidth, content:document.documentElement.scrollWidth})")
+                self.assertLessEqual(dimensions["content"], dimensions["viewport"] + 1, f"{label}: long content overflow {dimensions}")
+                cta = page.locator(".section-cta a.primary-link")
+                self.assertTrue(await cta.is_visible(), label)
+                self.assertEqual(await cta.get_attribute("href"), "../index.html")
+                summary = page.locator(".faq-section summary")
+                await summary.click()
+                self.assertTrue(await page.locator(".faq-section details").evaluate("(el) => el.open"), label)
+                answer = page.locator(".faq-section details p")
+                self.assertTrue(await answer.is_visible(), label)
+                await page.keyboard.press("Tab")
+                focus = await page.evaluate("""() => {
+                    const el = document.activeElement;
+                    const rect = el.getBoundingClientRect();
+                    const style = getComputedStyle(el);
+                    return {href:el.getAttribute("href"), visible:rect.width>0 && rect.height>0,
+                            outline:style.outlineStyle, outlineWidth:style.outlineWidth, shadow:style.boxShadow};
+                }""")
+                if focus["href"] == "../index.html":
+                    self.assertTrue(focus["visible"], f"{label}: CTA focus target hidden")
+            await page.goto(url + "/contact/", wait_until="networkidle")
+            cta = page.locator(".section-cta a.primary-link")
+            await cta.click()
+            self.assertTrue(page.url.endswith("/index.html"), page.url)
+            self.assertTrue(await page.locator("h1").is_visible())
+        finally:
+            await page.close()
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
 if __name__ == "__main__":
     unittest.main()
