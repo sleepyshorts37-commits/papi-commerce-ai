@@ -17,7 +17,7 @@ class RetryQueueFinalIntegrationTests(unittest.TestCase):
             jitter_fraction=0, jitter_sample=0.5,
         )
         self.assertTrue(decision.retry)
-        self.assertEqual(decision.delay_seconds, 60)
+        self.assertEqual(decision.delay_seconds, 30)
 
         recovered = assess_lease_recovery({
             "status": "running", "attempts": 2, "max_attempts": 5,
