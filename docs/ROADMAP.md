@@ -136,13 +136,12 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 
 
 ### PAPI WEB BUILDER — qualité avancée (cycle 5 jours)
-- [x] Définir le plan de travail de cinq jours (docs/PAPI-WEB-BUILDER-ADVANCED-QUALITY-5-DAYS.md).
-- [x] Mesurer et corriger les six accents sectoriels utilisés sur du petit texte : ratios calculés supérieurs à 4,5:1 sur blanc et sur la surface de chaque secteur.
-- [x] Ajouter contrast_ratio et le contrôle sector_accent_wcag_aa au rapport qualité multi-pages.
-- [x] Ajouter un test unitaire sur les six profils et un test Chromium sur le texte accentué rendu.
-- [ ] Confirmer le passage CI sur le commit contenant ces changements.
-- [x] Ajouter l'audit sémantique multi-pages (routes du fixture, landmarks, liens, titre courant et hiérarchie des titres) ; correction du chemin de test en cours de validation CI.
-- [x] Ajouter les tests clavier, focus visible, mouvement réduit et navigation responsive ; validation CI en attente.
-- [ ] Définir des budgets de poids, requêtes et DOM ; produire des mesures de laboratoire.
-- [ ] Publier le rapport final avec les preuves CI exactes.
-- **Statut :** Jour 1 implémenté ; CI en attente. Aucun audit WCAG 2.2 AA complet ou Core Web Vitals terrain revendiqué.
+- [x] Définir le plan de travail de cinq jours (`docs/PAPI-WEB-BUILDER-ADVANCED-QUALITY-5-DAYS.md`).
+- [x] Mesurer et corriger les six accents sectoriels utilisés sur du petit texte ; ratios supérieurs à 4,5:1 sur les surfaces contrôlées.
+- [x] Ajouter le contrôle de contraste au rapport qualité et les tests unitaires/Chromium.
+- [x] Ajouter les contrôles sémantiques multi-pages : landmarks, titres, liens accessibles et navigation courante.
+- [x] Ajouter les tests clavier, focus visible, mouvement réduit et navigation responsive.
+- [x] Ajouter les budgets de laboratoire HTML/CSS, requêtes, DOM et absence de requêtes tierces/échouées.
+- [x] Valider les workflows core (429 tests), Chromium (9 tests), documentation et registre sur le commit testé `83092e61fd39612fa5ea448569d93c12a1070b96`.
+- [x] Publier le rapport `docs/PAPI-WEB-BUILDER-ADVANCED-QUALITY-REPORT.md` et conserver les captures CI (artefact 14067852956).
+- **Statut :** cycle de qualité avancée terminé, critères automatisés testés PASS. Cette validation ne constitue ni une certification WCAG 2.2 AA, ni un audit sécurité, ni des Core Web Vitals terrain. Aucun merge ni déploiement.
