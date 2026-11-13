@@ -96,8 +96,54 @@ jobs:
             end if;
           end
           $$;
+          do $ci$
+          declare
+            v_record jsonb;
+            v_canonical text;
+            v_digest text;
+          begin
+            -- The SECURITY DEFINER RPC must reject unsupported envelope versions.
+            v_record := jsonb_build_object(
+              'schema_version', 99,
+              'journal_id', 'ci-invalid-anchor',
+              'checkpoint', jsonb_build_object(
+                'schema_version', 1, 'sequence', 1,
+                'head_hash', repeat('b', 64)
+              ),
+              'previous_record_digest', null,
+              'key_id', 'ci-test-key',
+              'signature', 'test-only'
+            );
+            v_canonical := v_record::text;
+            v_digest := encode(
+              extensions.digest(convert_to(v_canonical, 'UTF8'), 'sha256'), 'hex'
+            );
+            insert into public.papi_audit_anchor_records(
+              journal_id, record_digest, canonical_record
+            ) values ('ci-invalid-anchor', v_digest, v_canonical);
+
+            begin
+              perform public.papi_advance_audit_anchor(
+                'ci-invalid-anchor', null, v_digest
+              );
+              raise exception 'Unsupported audit record schema was accepted';
+            exception when sqlstate '22023' then
+              null;
+            end;
+
+            -- UPDATE and DELETE remain blocked even for the privileged API role.
+            begin
+              update public.papi_audit_anchor_records
+                 set canonical_record = canonical_record
+               where journal_id = 'ci-anchor';
+              raise exception 'Immutable audit record UPDATE was accepted';
+            exception when sqlstate '55000' then
+              null;
+            end;
+          end
+          $ci$;
           reset role;
-          do $$
+          do $
           begin
             if has_table_privilege('anon', 'public.papi_audit_anchor_records', 'select')
                or has_table_privilege('authenticated', 'public.papi_audit_anchor_records', 'select')
