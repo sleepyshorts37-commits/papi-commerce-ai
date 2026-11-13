@@ -37,6 +37,10 @@ class PreviewServerTests(unittest.TestCase):
             self.assertEqual(response.headers["Cache-Control"], "no-store")
         with urlopen(self.base + "/contact/") as response:
             self.assertIn("Contact", response.read().decode())
+        with urlopen(Request(self.base + "/", method="HEAD")) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers["Content-Length"], str(len((self.root / "index.html").read_bytes())))
+            self.assertEqual(response.read(), b"")
         with urlopen(self.base + "/styles.css") as response:
             self.assertEqual(response.headers.get_content_type(), "text/css")
 
