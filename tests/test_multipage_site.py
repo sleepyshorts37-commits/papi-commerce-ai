@@ -74,6 +74,14 @@ class MultiPageSiteTests(unittest.TestCase):
             self.assertFalse((Path(directory) / "unsafe-site").exists())
             self.assertFalse((Path(directory) / "pharmacy-site").exists())
 
+    def test_validates_summary_claims_too(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pages = self.brief()["pages"]
+            pages[0]["summary"] = "Résultat garanti pour tous"
+            with self.assertRaises(ValueError):
+                generate_multipage_site(directory, "claim-site", self.brief(pages=pages))
+            self.assertFalse((Path(directory) / "claim-site").exists())
+
     def test_refuses_existing_project(self):
         with tempfile.TemporaryDirectory() as directory:
             generate_multipage_site(directory, "existing-site", self.brief())
