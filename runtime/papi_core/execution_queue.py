@@ -78,7 +78,7 @@ class ExecutionQueue:
         return response is True
 
     def fail(self, *, job_id: str, worker_id: str, lease_token: str, error_code: str,
-             attempt: int, max_attempts: int, jitter_sample: float = 0.5) -> str:
+             attempt: int = 1, max_attempts: int = 5, jitter_sample: float = 0.5) -> str:
         if not all(isinstance(x, str) and x.strip() for x in (job_id, worker_id, lease_token, error_code)):
             raise QueueError("Identifiants et code d'erreur obligatoires.")
         if not re.fullmatch(r"[a-z0-9_]{1,80}", error_code):
