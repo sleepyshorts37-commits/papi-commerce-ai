@@ -24,13 +24,14 @@ Ce cycle n'est pas une certification WCAG 2.2 AA, un audit Lighthouse complet, n
 - [x] Tester le lien d'évitement, son activation clavier et l'indicateur de focus sur toutes les routes générées.
 - [x] Vérifier le respect de `prefers-reduced-motion` dans les styles calculés.
 - [x] Renforcer les assertions de visibilité de la navigation et de ses liens sur mobile, tablette et desktop.
-- **Statut Jour 3 :** tests Chromium ajoutés ; validation CI en attente.
+- **Statut Jour 3 :** les contrôles clavier et mouvement réduit ont été ajoutés. Le premier run a révélé une assertion trop stricte sur le focus après activation du lien d'évitement ; corrigée pour vérifier le fragment `#main-content` et la visibilité de la cible. Validation CI du correctif en attente.
 - Livrable : contrôles navigateur sur interaction et mouvement.
 
 ## Jour 4 — Budgets de performance et réseau
-- [ ] Définir des budgets explicites pour HTML/CSS, nombre de requêtes et taille du DOM sur le site synthétique.
-- [ ] Vérifier l'absence de requêtes tierces et de ressources bloquées.
-- [ ] Mesurer les métriques navigateur disponibles sans transformer une mesure locale en Core Web Vitals terrain.
+- [x] Définir des budgets explicites : HTML ≤ 100 Ko, CSS ≤ 100 Ko, maximum 4 requêtes navigateur et 500 nœuds DOM.
+- [x] Vérifier l'absence de requêtes tierces et de requêtes échouées.
+- [x] Mesurer les tailles encodées, le nombre de ressources et les nœuds DOM via les APIs Performance du navigateur.
+- **Statut Jour 4 :** test Chromium `test_local_performance_budgets_and_network_isolation` ajouté sur les routes générées ; CI en attente. Ces budgets sont des seuils de laboratoire, pas des Core Web Vitals terrain.
 - Livrable : budget de performance de laboratoire et limites clairement documentées.
 
 ## Jour 5 — CI, recette et rapport
