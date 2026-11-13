@@ -51,3 +51,10 @@ Brique logicielle créée ; aucune mémoire persistante d'agents n'est déployé
 - Les tests utilisent un stockage en mémoire et des signatures HMAC de test uniquement. Elles ne représentent pas une gestion de clés de production.
 
 **Limite de livraison :** l'adaptateur et le schéma Supabase sont implémentés et testés sur PostgreSQL jetable, mais aucun projet Supabase réel ni identifiant de service n'est configuré et aucune publication distante n'a été effectuée. Les tests de l'adaptateur mockent le transport. Une mise en service doit conserver les clés de signature hors du worker, utiliser un stockage indépendant avec contrôle d'accès séparé et vérifier la restauration ainsi que les conflits de publication.
+
+
+## Interface de transport Supabase pour les adaptateurs
+
+Les adaptateurs backend utilisent désormais `SupabaseStore.request(...)`, interface publique stable qui encapsule le transport PostgREST. Ils ne doivent pas dépendre de la méthode privée `_request`. Cette interface reste strictement côté backend de confiance : elle ne doit jamais être exposée aux agents, aux outils utilisateur ou à un processus non fiable, et la clé service-role ne doit jamais quitter le backend.
+
+Cette évolution réduit le couplage interne mais ne constitue pas une isolation de sécurité ni un mécanisme de délégation de credentials. Les contrôles RLS, les permissions minimales et la séparation des processus restent obligatoires.
