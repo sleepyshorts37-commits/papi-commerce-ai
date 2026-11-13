@@ -68,6 +68,17 @@ class SharedPersistenceAdapterTests(unittest.TestCase):
             self.memory.append_event(event, principal=self.astou)
         self.store.request.assert_not_called()
 
+    def test_supersede_rejects_secret_like_reason(self):
+        event = {
+            "event_id": "33333333-3333-4333-8333-333333333333",
+            "event_type": "supersede", "target_memory_id": "22222222-2222-4222-8222-222222222222",
+            "created_at": "2026-01-02T00:00:00Z", "actor": "astou",
+            "reason": "password=do-not-store-this",
+        }
+        with self.assertRaises(SharedPersistenceError):
+            self.memory.append_event(event, principal=self.astou)
+        self.store.request.assert_not_called()
+
     def test_supersede_rejects_private_memory_owned_by_another_agent(self):
         event = {
             "event_id": "33333333-3333-4333-8333-333333333333",
