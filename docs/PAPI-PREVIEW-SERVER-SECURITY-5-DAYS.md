@@ -24,14 +24,16 @@ Renforcer par tests adversariaux le serveur HTTP local de prévisualisation, en 
 ## Jour 4 — Robustesse des ressources
 - [x] Tester fichiers absents, répertoires, noms Unicode et types MIME.
 - [x] Vérifier que le serveur reste disponible après des requêtes invalides et des ressources absentes.
-- **Statut Jour 4 :** tests ajoutés dans `tests/test_preview_server.py` ; validation CI en attente sur `0b7498a`.
+- **Statut Jour 4 :** core, Chromium, registre et documentation : PASS sur `0b7498a`.
 - Livrable : matrice de robustesse des ressources.
 
 ## Jour 5 — CI et rapport
-- [ ] Exécuter core, registry, docs et Chromium sur le commit final.
-- [ ] Corriger les régressions révélées par CI.
-- [ ] Publier le rapport PASS/FAIL et mettre à jour la roadmap.
+- [x] Exécuter core, registry, docs et Chromium sur le commit de tests `0b7498a` : quatre workflows PASS.
+- [x] Aucune régression CI détectée sur les scénarios exécutés.
+- [x] Publier le rapport `docs/PAPI-PREVIEW-SERVER-SECURITY-REPORT.md` et mettre à jour la roadmap.
 - Livrable : preuve automatisée limitée aux scénarios effectivement testés.
+
+**Statut Jour 5 :** terminé ; résultats et limites consignés dans le rapport technique.
 
 ## Garde-fous
 - Tests sur fichiers synthétiques uniquement.
