@@ -33,6 +33,9 @@
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
 ## PAPI WEB BUILDER — production de sites commerciaux
+- [x] Générateur multi-pages local (2 à 6 pages) avec navigation et validation du contenu par page.
+- [ ] Valider CI et intégrer la PR dépendante.
+
 - [x] Relier le générateur de contenus validés au constructeur de sites statiques.
 - [x] Générer un site vitrine local avec rapport qualité et revue humaine obligatoire.
 - [ ] Valider les workflows CI et intégrer les PR ouvertes.
