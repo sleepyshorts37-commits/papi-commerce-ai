@@ -85,7 +85,7 @@ class OwnerCommunicationRouter:
         if not destination.notifications_enabled:
             raise CommunicationAuthorizationError("Notifications propriétaire désactivées.")
         if not isinstance(destination.email, str) or not re.fullmatch(
-            r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", destination.email
+            r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", destination.email
         ):
             raise CommunicationAuthorizationError("Configuration de destination invalide.")
         # L'adresse reste dans la configuration du sender injecté ; l'agent ne la fournit jamais.
