@@ -50,8 +50,14 @@ utilise uniquement des données synthétiques et une panne simulée.
 PYTHONPATH=runtime python -m unittest discover -s tests -p 'test_langgraph_demo.py' -v
 ```
 
-Les tests sont ignorés si LangGraph n'est pas installé. Ils ne valident pas
-l'intégration à un service distant.
+Le workflow GitHub Actions `LangGraph isolated prototype tests` installe
+`langgraph==0.2.76` dans un job isolé et exécute les quatre tests. Le noyau
+principal conserve sa dépendance optionnelle et peut ignorer ces tests si
+LangGraph n'est pas installé localement. Le test de reprise réinjecte
+explicitement l'historique retourné dans l'état suivant : le checkpointer
+conserve l'état du thread, mais le prototype ne prétend pas fusionner
+automatiquement des champs absents du nouvel état d'entrée. Ces tests ne
+valident pas l'intégration à un service distant.
 
 ## Barrières non négociables
 
