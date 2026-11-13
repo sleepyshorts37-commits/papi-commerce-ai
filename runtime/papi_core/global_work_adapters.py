@@ -5,6 +5,7 @@ approved fetch mechanism; this module only parses and normalizes them.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -22,12 +23,26 @@ class GlobalWorkAdapterError(ValueError):
 def _validate_public_https_url(value: Any, field: str) -> str:
     if not isinstance(value, str):
         raise GlobalWorkAdapterError(f"{field}: URL texte requise.")
-    parsed = urlparse(value)
-    if (parsed.scheme != "https" or not parsed.hostname or parsed.username
-            or parsed.password or parsed.port not in (None, 443)):
+    try:
+        parsed = urlparse(value)
+        host = parsed.hostname
+        port = parsed.port
+    except ValueError as exc:
+        raise GlobalWorkAdapterError(f"{field}: URL ou port invalide.") from exc
+    if (parsed.scheme.lower() != "https" or not host or parsed.username
+            or parsed.password or port not in (None, 443)):
         raise GlobalWorkAdapterError(f"{field}: URL HTTPS publique requise.")
     if any(ord(char) < 32 for char in value):
         raise GlobalWorkAdapterError(f"{field}: caractères de contrôle interdits.")
+    host = host.lower().rstrip(".")
+    if not host or host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
+        raise GlobalWorkAdapterError(f"{field}: hôte local ou privé interdit.")
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    if address is not None and not address.is_global:
+        raise GlobalWorkAdapterError(f"{field}: adresse IP non publique interdite.")
     return value
 
 
