@@ -11,7 +11,8 @@ Le module `papi_core.profitability` estime la rentabilité unitaire d'une missio
 - `platform_fee` et `payout_fee` : commissions et frais de retrait/paiement.
 - `infrastructure_cost` et `other_cost` : coûts opérationnels.
 - `estimated_hours` : temps de travail estimé, strictement positif.
-- `target_hourly_rate` : valorisation du temps de travail.
+- `labor_hourly_rate` : valorisation du temps de travail.
+- `minimum_net_hourly_rate` : seuil facultatif de revenu net horaire souhaité, par défaut zéro.
 - `minimum_margin_percent` : seuil facultatif, par défaut zéro.
 
 Tous les montants doivent être exprimés dans la même devise. Aucun taux de change n'est inventé ni appliqué.
