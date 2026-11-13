@@ -7,6 +7,7 @@ Permettre au propriétaire de dialoguer oralement avec les IA responsables et pe
 ## État de livraison
 
 - Spécification Phase 2B, jour 1 : documentée.
+- Interfaces techniques Phase 2B, jour 2 : implémentées et soumises à la CI ; adaptateurs fournisseurs non connectés.
 - Fournisseur de reconnaissance vocale (STT) : non choisi, non connecté.
 - Fournisseur de synthèse vocale (TTS) : non choisi, non connecté.
 - Fournisseur e-mail : non choisi, non connecté.
@@ -92,10 +93,22 @@ Chaque notification doit contenir au minimum :
 
 L'adresse e-mail réelle ne doit pas être librement choisie par l'agent : le routeur la résout depuis la configuration serveur vérifiée.
 
+## Interfaces techniques — jour 2
+
+Le module `runtime/papi_core/communication_channels.py` définit des contrats Python injectables sans implémentation réseau :
+- `SpeechToText` reçoit un audio explicitement fourni et retourne une transcription structurée.
+- `TextToSpeech` reçoit un texte et un identifiant de profil vocal, puis retourne un contenu audio.
+- `OwnerEmailSender` reçoit une notification propriétaire structurée ; il ne reçoit pas d'adresse libre choisie par l'agent et doit résoudre la destination depuis une configuration serveur vérifiée.
+- Les objets de requête/réponse sont immuables. Les tailles, formats, profils vocaux, priorités et contenus sont bornés ; les contenus ressemblant à des secrets sont rejetés.
+- `call_provider` borne les appels asynchrones et normalise les délais dépassés et erreurs fournisseurs en exceptions typées.
+- Les tests utilisent uniquement des données synthétiques et des coroutines simulées. Aucun fournisseur réel, compte, secret ou réseau n'est nécessaire.
+
+Ces contrats ne constituent pas encore un routeur : ils ne vérifient pas l'identité cryptographique, l'allowlist réelle du propriétaire, les permissions d'un agent, l'idempotence persistante ou l'envoi effectif. Ces contrôles sont prévus au jour 3 et au jour 4. L'absence d'adaptateur injecté signifie qu'aucun canal n'est disponible.
+
 ## Plan de réalisation — bloc de cinq jours
 
 1. **Jour 1 — Contrats et gouvernance :** spécification des flux vocaux, de l'e-mail propriétaire, des permissions et des limites. (En cours de livraison dans ce commit.)
-2. **Jour 2 — Interfaces techniques :** définir les protocoles STT/TTS/e-mail, les erreurs typées, les timeouts, les tests simulés et l'injection des fournisseurs.
+2. **Jour 2 — Interfaces techniques :** protocoles STT/TTS/e-mail, erreurs typées, délais bornés, validation des contenus et tests simulés. (Livré dans `communication_channels.py` et `test_communication_channels.py`.)
 3. **Jour 3 — Autorisation et routage :** implémenter la destination propriétaire allowlistée, la séparation stricte des permissions et la politique de priorité.
 4. **Jour 4 — Résilience et audit :** idempotence, quotas, déduplication, reprise contrôlée, journalisation et mécanisme d'arrêt.
 5. **Jour 5 — Validation :** tests de sécurité, tests d'intégration simulés, documentation d'exploitation et revue de préparation.
