@@ -91,8 +91,7 @@ jobs:
           SHARED_COLLAB_SQL
           # Verify guarded clean rollback and re-application in an isolated disposable database.
           createdb -h 127.0.0.1 -U postgres papi_shared_migration_test
-          psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
-            -c "create role anon; create role authenticated; create role service_role bypassrls;"
+          # PostgreSQL roles are cluster-wide; reuse the roles created for papi_test.
           psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/004_shared_collaboration.sql
           psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
