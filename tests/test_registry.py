@@ -348,7 +348,12 @@ class WorkerTests(unittest.TestCase):
             "allowed_handlers": ["internal.echo"],
             "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
         }
-        return PapiWorker(queue=queue, registry=registry, policy=effective_policy, worker_id="worker-test")
+        audit_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(audit_dir.cleanup)
+        return PapiWorker(
+            queue=queue, registry=registry, policy=effective_policy,
+            worker_id="worker-test", audit_path=Path(audit_dir.name) / "events.jsonl",
+        )
 
     def test_disabled_worker_does_not_claim(self):
         worker = self.make_worker(policy={"execution_enabled": False})
