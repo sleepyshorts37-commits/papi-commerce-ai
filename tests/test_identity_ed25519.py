@@ -143,7 +143,7 @@ class Ed25519IdentityTests(unittest.TestCase):
             return real_replace(source, destination)
 
         with patch.object(identity_ed25519, "_write_registry",
-                          side_effect=OSError("simulated registry failure")), \\
+                          side_effect=OSError("simulated registry failure")), \
              patch.object(identity_ed25519.os, "replace",
                           side_effect=fail_rollback_replace):
             with self.assertRaises(Ed25519IdentityError) as raised:
