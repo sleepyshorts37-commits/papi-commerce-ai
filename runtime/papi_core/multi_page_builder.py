@@ -12,6 +12,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 from papi_core.site_architecture import build_site_architecture
 from papi_core.website_builder import CSS, WebsiteBuilderError, _text
+from papi_core.website_sections import render_page_sections, WebsiteSectionError
 
 MAX_PAGE_BYTES = 256_000
 
@@ -45,7 +46,7 @@ def _safe_root(workspace: str | Path, slug: str) -> Path:
         raise MultiPageBuilderError(str(exc)) from exc
 
 
-def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, Any]], industry: str, tagline: str) -> str:
+def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, Any]], industry: str, tagline: str, custom_sections: str) -> str:
     slug = page["slug"]
     prefix = "" if slug == "home" else "../"
     stylesheet = f"{prefix}styles.css"
@@ -69,7 +70,7 @@ def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, 
         ("Un engagement durable", "Des solutions conçues pour évoluer avec vous."),
     ]
     card_html = "".join(f'<article class="feature-card"><span class="feature-index">0{i}</span><h3>{html.escape(head)}</h3><p>{html.escape(body)}</p></article>' for i,(head,body) in enumerate(cards,1))
-    feature_section = f'<section class="features" aria-labelledby="features-title"><div class="section-heading"><p class="eyebrow">Notre différence</p><h2 id="features-title">Une expérience conçue avec intention.</h2></div><div class="feature-grid">{card_html}</div></section>' if is_home else f'<section class="content-panel"><p class="eyebrow">{html.escape(design["label"])}</p><h2>{title}</h2><p>{purpose}</p></section>'
+    feature_section = custom_sections or f'<section class="features" aria-labelledby="features-title"><div class="section-heading"><p class="eyebrow">Notre différence</p><h2 id="features-title">Une expérience conçue avec intention.</h2></div><div class="feature-grid">{card_html}</div></section>' if is_home else f'<section class="content-panel"><p class="eyebrow">{html.escape(design["label"])}</p><h2>{title}</h2><p>{purpose}</p></section>'
     links = "\n      ".join(nav)
     return f"""<!doctype html>
 <html lang="fr">
@@ -99,7 +100,7 @@ def generate_multi_page_project(
     root = _safe_root(workspace, slug)
     if root.exists():
         raise MultiPageBuilderError("Le projet existe déjà.")
-    if not isinstance(spec, dict) or set(spec) - {"name", "industry", "tagline"} or "name" not in spec:
+    if not isinstance(spec, dict) or set(spec) - {"name", "industry", "tagline", "sections"} or "name" not in spec:
         raise MultiPageBuilderError("Brief projet invalide : name, industry et tagline sont les seuls champs admis.")
     project_name = _text(spec["name"], "name", limit=100)
     industry = spec.get("industry", "corporate")
@@ -110,6 +111,10 @@ def generate_multi_page_project(
     if architecture["project_name"] != project_name:
         raise MultiPageBuilderError("Le nom du projet doit correspondre au sitemap.")
     pages = architecture["pages"]
+    page_slugs = {page["slug"] for page in pages}
+    page_sections = spec.get("sections", {})
+    if not isinstance(page_sections, dict) or set(page_sections) - page_slugs:
+        raise MultiPageBuilderError("Les sections doivent être associées à des pages existantes.")
     root.mkdir(parents=True, exist_ok=False)
     generated: list[str] = []
     try:
@@ -117,7 +122,11 @@ def generate_multi_page_project(
             relative = Path(page["file"])
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            rendered = _render_page(project_name, page, pages, industry, tagline)
+            try:
+                custom_sections = render_page_sections(page_sections.get(page["slug"], []), page["slug"], page_slugs)
+            except WebsiteSectionError as exc:
+                raise MultiPageBuilderError(str(exc)) from exc
+            rendered = _render_page(project_name, page, pages, industry, tagline, custom_sections)
             if len(rendered.encode("utf-8")) > MAX_PAGE_BYTES:
                 raise MultiPageBuilderError("Page trop volumineuse.")
             destination.write_text(rendered, encoding="utf-8")
@@ -138,12 +147,23 @@ def generate_multi_page_project(
 .section-heading h2,.closing-cta h2 {{ font-size:clamp(2rem,4vw,3.4rem); margin:.5rem 0; }}
 .feature-grid {{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }}
 .feature-card,.content-panel {{ padding:2rem; border:1px solid var(--line); border-radius:12px; background:#fff; }}
+.content-section {{ padding-block:3rem; }}
+.content-intro {{ max-width:850px; }}
+.content-section h2 {{ max-width:760px; }}
+.stats-grid {{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; }}
+.stat-card {{ padding:1.5rem; border:1px solid var(--line); background:#fff; border-radius:12px; display:flex; flex-direction:column; gap:.5rem; }}
+.stat-card strong {{ font:800 clamp(1.8rem,4vw,3rem) var(--font-display); color:var(--ink); }}
+.stat-card span {{ color:var(--muted); }}
+.faq-section details {{ padding:1rem 0; border-bottom:1px solid var(--line); }}
+.faq-section summary {{ cursor:pointer; font-weight:700; }}
+.faq-section details p {{ color:var(--muted); }}
+.section-cta {{ padding:2rem; border:1px solid var(--line); border-radius:16px; background:var(--paper); }}
 .feature-index {{ color:var(--accent); font-weight:800; letter-spacing:.12em; }}
 .feature-card h3 {{ font-family:var(--font-display); font-size:1.2rem; }}
 .feature-card p,.content-panel p {{ color:var(--muted); }}
 .content-panel {{ max-width:850px; margin-block:2rem 5rem; }}
 .closing-cta {{ display:flex; justify-content:space-between; align-items:center; gap:2rem; padding:3rem; margin-block:2rem 5rem; border-radius:16px; background:var(--white); border:1px solid var(--line); }}
-@media(max-width:800px) {{ .feature-grid {{ grid-template-columns:1fr; }} .closing-cta {{ align-items:flex-start; flex-direction:column; padding:2rem; }} .hero-visual {{ min-height:260px; }} }}
+@media(max-width:800px) {{ .feature-grid,.stats-grid {{ grid-template-columns:1fr; }} .closing-cta {{ align-items:flex-start; flex-direction:column; padding:2rem; }} .hero-visual {{ min-height:260px; }} }}
 """
         (root / "styles.css").write_text(CSS + sector_css + """
 .site-header nav { display:flex; flex-wrap:wrap; gap:1.1rem; align-items:center; }
