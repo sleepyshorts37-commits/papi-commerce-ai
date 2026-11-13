@@ -168,5 +168,44 @@ class WorkerSafetyTests(unittest.TestCase):
         self.assertEqual(queue.fail_calls[0]["error_code"], "permission_denied")
 
 
+    def test_worker_requires_service_identity_when_policy_enables_audience_binding(self):
+        with self.assertRaises(WorkerError):
+            PapiWorker(queue=QueueSpy(), registry=HandlerRegistry(),
+                policy={"execution_enabled": True, "require_service_audience": True},
+                worker_id="worker-test")
+
+    def test_worker_uses_service_bound_authorizer_when_configured(self):
+        job = {"id": "job-service", "task_id": "task-1", "handler": "report.preview",
+               "payload": {}, "lease_token": "lease-service",
+               "agent_identity": {"signed": "service-bound"}}
+        queue = QueueSpy(job)
+        queue.store = FakeStore()
+        registry = HandlerRegistry()
+        registry.register("report.preview", "read_only", lambda payload, context: {"ok": True})
+        policy = {"execution_enabled": True, "require_service_audience": True,
+                  "allowed_handlers": ["report.preview"],
+                  "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
+                  "external_actions_enabled": False}
+        worker = PapiWorker(queue=queue, registry=registry, policy=policy,
+            worker_id="worker-reporting", service_id="reporting-api",
+            service_audience="papi-reporting")
+        from papi_core.authz import AccessDenied
+        with patch("papi_core.worker.authorize_service_agent",
+                   side_effect=AccessDenied("wrong audience")) as authorize_service:
+            result = worker.run_once()
+        self.assertEqual(result["status"], "blocked")
+        authorize_service.assert_called_once()
+        self.assertEqual(authorize_service.call_args.kwargs["service_id"], "reporting-api")
+        self.assertEqual(authorize_service.call_args.kwargs["audience"], "papi-reporting")
+        self.assertEqual(queue.fail_calls[0]["error_code"], "authentication_failed")
+
+    def test_worker_rejects_partial_service_configuration(self):
+        with self.assertRaises(WorkerError):
+            PapiWorker(queue=QueueSpy(), registry=HandlerRegistry(),
+                policy={"execution_enabled": True, "require_service_audience": True},
+                worker_id="worker-test", service_id="reporting-api")
+
+
+
 if __name__ == "__main__":
     unittest.main()
