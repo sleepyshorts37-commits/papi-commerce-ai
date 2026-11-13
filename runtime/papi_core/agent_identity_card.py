@@ -7,10 +7,25 @@ from typing import Any
 CARD_SCHEMA_VERSION = 1
 VALID_STATUSES = {"defined", "planned", "active", "suspended", "revoked"}
 VALID_AUTONOMY_LEVELS = {"restricted", "bounded", "elevated"}
+_ALLOWED_ID = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
 
 
 class IdentityCardError(ValueError):
     """Carte d'identité absente, incohérente ou invalide."""
+
+
+def _valid_id(value: Any) -> bool:
+    return isinstance(value, str) and bool(value) and all(char in _ALLOWED_ID for char in value)
+
+
+def _valid_date(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
 
 
 def create_identity_card(agent: dict[str, Any], created_at: str,
@@ -22,16 +37,15 @@ def create_identity_card(agent: dict[str, Any], created_at: str,
         if not isinstance(agent.get(field), str if field != "permissions" else list):
             raise IdentityCardError(f"Champ agent invalide ou absent : {field}.")
     agent_id = agent["id"]
-    if not agent_id or any(char not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for char in agent_id):
+    if not _valid_id(agent_id):
         raise IdentityCardError("Identifiant agent invalide.")
-    if not isinstance(created_at, str):
-        raise IdentityCardError("Date de création invalide.")
-    try:
-        date.fromisoformat(created_at)
-    except ValueError as exc:
-        raise IdentityCardError("La date doit être au format ISO YYYY-MM-DD.") from exc
+    if not _valid_date(created_at):
+        raise IdentityCardError("La date doit être au format ISO YYYY-MM-DD.")
     if agent["status"] not in VALID_STATUSES:
         raise IdentityCardError("Statut agent invalide.")
+    if any(not isinstance(agent[field], str) or not agent[field].strip()
+           for field in ("name", "role", "department")):
+        raise IdentityCardError("Nom, fonction et service doivent être renseignés.")
     permissions = agent["permissions"]
     if any(not isinstance(item, str) or not item for item in permissions):
         raise IdentityCardError("Permissions agent invalides.")
@@ -41,10 +55,15 @@ def create_identity_card(agent: dict[str, Any], created_at: str,
     if autonomy not in VALID_AUTONOMY_LEVELS:
         raise IdentityCardError("Niveau d'autonomie invalide.")
     skills = agent.get("skills", [])
-    if not isinstance(skills, list) or any(not isinstance(item, str) or not item for item in skills):
+    if not isinstance(skills, list) or any(not isinstance(item, str) or not item.strip() for item in skills):
         raise IdentityCardError("Compétences agent invalides.")
-    if manager_agent_id is not None and (not isinstance(manager_agent_id, str) or not manager_agent_id):
+    if len(set(skills)) != len(skills):
+        raise IdentityCardError("Compétences agent dupliquées.")
+    if manager_agent_id is not None and (not _valid_id(manager_agent_id) or manager_agent_id == agent_id):
         raise IdentityCardError("Responsable hiérarchique invalide.")
+    mission = agent.get("mission", agent["role"])
+    if not isinstance(mission, str) or not mission.strip():
+        raise IdentityCardError("Mission agent invalide.")
     return {
         "schema_version": CARD_SCHEMA_VERSION,
         "employee_id": f"PAPI-AG-{agent_id.upper()}",
@@ -53,7 +72,7 @@ def create_identity_card(agent: dict[str, Any], created_at: str,
         "position": agent["role"],
         "department": agent["department"],
         "manager_agent_id": manager_agent_id,
-        "mission": agent.get("mission", agent["role"]),
+        "mission": mission,
         "skills": list(skills),
         "autonomy_level": autonomy,
         "permissions": list(permissions),
@@ -64,23 +83,40 @@ def create_identity_card(agent: dict[str, Any], created_at: str,
 
 
 def validate_identity_card(card: dict[str, Any]) -> None:
-    """Lève IdentityCardError si la carte ne respecte pas le schéma minimal."""
+    """Lève IdentityCardError si la carte respecte pas le schéma professionnel."""
     if not isinstance(card, dict) or card.get("schema_version") != CARD_SCHEMA_VERSION:
         raise IdentityCardError("Version ou structure de carte invalide.")
-    required = ("employee_id", "agent_id", "name", "position", "department",
-                "mission", "autonomy_level", "permissions", "status",
-                "created_at", "employment_history")
-    if any(not isinstance(card.get(field), str) or not card[field] for field in required[:6]):
+    required_text = ("agent_id", "name", "position", "department", "mission")
+    if any(not isinstance(card.get(field), str) or not card[field].strip() for field in required_text):
         raise IdentityCardError("Identité professionnelle incomplète.")
-    if card["employee_id"] != f"PAPI-AG-{card['agent_id'].upper()}":
+    agent_id = card["agent_id"]
+    if not _valid_id(agent_id):
+        raise IdentityCardError("Identifiant agent invalide.")
+    if card.get("employee_id") != f"PAPI-AG-{agent_id.upper()}":
         raise IdentityCardError("Identifiant employé incohérent.")
-    if card["status"] not in VALID_STATUSES or card["autonomy_level"] not in VALID_AUTONOMY_LEVELS:
+    manager = card.get("manager_agent_id")
+    if manager is not None and (not _valid_id(manager) or manager == agent_id):
+        raise IdentityCardError("Responsable hiérarchique invalide.")
+    if card.get("status") not in VALID_STATUSES or card.get("autonomy_level") not in VALID_AUTONOMY_LEVELS:
         raise IdentityCardError("Statut ou autonomie invalide.")
-    if not isinstance(card["permissions"], list) or any(not isinstance(p, str) or not p for p in card["permissions"]):
+    permissions = card.get("permissions")
+    if not isinstance(permissions, list) or any(not isinstance(p, str) or not p for p in permissions):
         raise IdentityCardError("Permissions de carte invalides.")
-    if not isinstance(card["employment_history"], list):
+    if len(set(permissions)) != len(permissions):
+        raise IdentityCardError("Permissions de carte dupliquées.")
+    skills = card.get("skills")
+    if not isinstance(skills, list) or any(not isinstance(skill, str) or not skill.strip() for skill in skills):
+        raise IdentityCardError("Compétences de carte invalides.")
+    if len(set(skills)) != len(skills):
+        raise IdentityCardError("Compétences de carte dupliquées.")
+    if not _valid_date(card.get("created_at")):
+        raise IdentityCardError("Date de création invalide.")
+    history = card.get("employment_history")
+    if not isinstance(history, list):
         raise IdentityCardError("Historique professionnel invalide.")
-    try:
-        date.fromisoformat(card["created_at"])
-    except (TypeError, ValueError) as exc:
-        raise IdentityCardError("Date de création invalide.") from exc
+    for entry in history:
+        if not isinstance(entry, dict) or set(entry) - {"role", "status", "date"}:
+            raise IdentityCardError("Entrée d'historique invalide.")
+        if (not isinstance(entry.get("role"), str) or not entry["role"].strip()
+                or entry.get("status") not in VALID_STATUSES or not _valid_date(entry.get("date"))):
+            raise IdentityCardError("Entrée d'historique invalide.")
