@@ -17,7 +17,7 @@ MAX_EMAIL_SUBJECT_CHARS = 160
 MAX_EMAIL_BODY_CHARS = 8_000
 DEFAULT_PROVIDER_TIMEOUT_SECONDS = 20.0
 SECRET_PATTERN = re.compile(
-    r"(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
+    r"(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|token|password|passwd|secret|"
     r"otp|pin|cvv|authorization)\s*[:=]\s*\S+|"
     r"\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\b"
 )
