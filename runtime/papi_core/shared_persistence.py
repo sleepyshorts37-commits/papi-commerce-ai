@@ -145,6 +145,8 @@ class SharedMemoryAdapter:
             reason = event.get("reason")
             if not isinstance(reason, str) or not reason.strip() or len(reason) > 240:
                 raise SharedPersistenceError("reason invalide.")
+            if _SECRET.search(reason):
+                raise SharedPersistenceError("Un secret d’authentification est interdit dans reason.")
             # Un agent ne peut archiver que sa propre mémoire privée ou une
             # mémoire partagée. La vérification est faite côté serveur avant écriture.
             visible = _rows(self._store.request(
