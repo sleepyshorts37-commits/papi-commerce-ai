@@ -45,11 +45,11 @@
 - [x] Définir l'agent PAPI WEB BUILDER pour créer et modifier des sites web à partir d'un prompt, sans compétences en programmation.
 - [ ] Concevoir son moteur de génération, aperçu isolé, modification itérative et export de code source.\n  - [x] Ajouter un serveur de prévisualisation statique local, loopback-only, lecture seule, avec contrôles de chemins et en-têtes CSP ; tests HTTP automatisés.\n  - [ ] Ajouter des tests de rendu navigateur réel, captures responsive et régressions visuelles (le serveur local seul ne constitue pas cette preuve).\n  - Contrat d'architecture multi-pages ajouté : sitemap déterministe, routes sûres et traçabilité exigences → pages ; génération multi-pages et aperçu toujours à faire.
   - Socle partiel ajouté : génération statique déterministe, mises à jour structurées, contrôles locaux et export ZIP allowlisté ; aperçu navigateur isolé et moteur IA non implémentés (voir `docs/PAPI-WEB-BUILDER-MVP.md`).
-- [ ] Ajouter des tests de qualité web, sécurité, responsive et critères d'acceptation.
+- [ ] Ajouter des tests de qualité web, sécurité, responsive et critères d'acceptation.\n  - [x] Ajouter des tests Chromium responsive (390×844, 768×1024, 1440×900), navigation et captures CI ; validation du dernier correctif CI en attente.\n  - [x] Ajouter des contrôles Chromium d'accessibilité structurelle et clavier (landmarks, H1, skip-link, noms des liens, focus visible) ; exécution CI en attente.
 - [ ] Atteindre le standard de création web agence/grande entreprise : direction artistique par projet, design system, architecture multi-pages, fonctionnalités réellement intégrées, responsive multi-écrans.
   - Première base visuelle premium ajoutée (composition éditoriale, tokens CSS, responsive tablette/mobile et fondamentaux clavier) ; ne constitue pas une livraison entreprise.
 - [ ] Ajouter une chaîne de preuves qualité : tests navigateur, régression visuelle, accessibilité cible WCAG 2.2 AA, SEO, Core Web Vitals, sécurité et documentation de livraison.
-  - Contrôles statiques de base ajoutés ; tests navigateur, audit WCAG réel, Core Web Vitals et revue de sécurité restent à construire.
+  - Contrôles statiques de base et tests Chromium responsive/accessibilité structurelle ajoutés ; audit WCAG réel, revue lecteur d'écran, Core Web Vitals et revue de sécurité restent à construire.
 - [ ] Définir les paliers Prototype / MVP / Production professionnelle / Entreprise-critique et bloquer toute déclaration de niveau sans preuves.
 - [ ] Développer l'orchestration IA multi-spécialistes (design, frontend, backend, SEO, accessibilité, performance, sécurité, QA) avec contrôleur indépendant.
 
