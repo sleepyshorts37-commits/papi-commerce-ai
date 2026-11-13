@@ -43,6 +43,7 @@ class WorkerAuditAttributionRegressionTests(unittest.TestCase):
             "handler": "internal.echo",
             "payload": {},
             "lease_token": "lease-attribution",
+            "attempts": 1, "max_attempts": 5,
             "agent_identity": {"signed": "placeholder"},
         }
         task = {
