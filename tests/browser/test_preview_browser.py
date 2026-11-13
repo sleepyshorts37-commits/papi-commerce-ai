@@ -105,5 +105,62 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(await page.locator('h1').is_visible())
         await page.close()
 
+
+    async def test_accessibility_landmarks_names_skip_link_and_keyboard_focus(self):
+        page = await self.browser.new_page()
+        response = await page.goto(self.base_url + "/", wait_until="networkidle")
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status, 200)
+
+        structure = await page.evaluate("""() => {
+            const main = document.querySelector('main');
+            const nav = document.querySelector('nav');
+            const h1 = document.querySelectorAll('h1');
+            const skip = [...document.querySelectorAll('a[href="#main-content"]')];
+            const links = [...document.querySelectorAll('a')];
+            const unnamedLinks = links.filter((link) =>
+                !(link.innerText || '').trim() &&
+                !link.getAttribute('aria-label') &&
+                !link.getAttribute('aria-labelledby')
+            );
+            return {
+                main: Boolean(main),
+                nav: Boolean(nav),
+                h1Count: h1.length,
+                skipLinkCount: skip.length,
+                unnamedLinks: unnamedLinks.length,
+                mainId: main && main.id
+            };
+        }""")
+        self.assertTrue(structure["main"], "Missing main landmark")
+        self.assertTrue(structure["nav"], "Missing navigation landmark")
+        self.assertEqual(structure["h1Count"], 1, "Expected exactly one H1")
+        self.assertEqual(structure["mainId"], "main-content")
+        self.assertGreater(structure["skipLinkCount"], 0, "Missing skip link to main content")
+        self.assertEqual(structure["unnamedLinks"], 0, "Found links without accessible names")
+
+        await page.keyboard.press("Tab")
+        first_focus = await page.evaluate("""() => {
+            const el = document.activeElement;
+            const style = getComputedStyle(el);
+            const rect = el.getBoundingClientRect();
+            return {
+                tag: el.tagName,
+                href: el.getAttribute('href'),
+                visible: rect.width > 0 && rect.height > 0,
+                outlineStyle: style.outlineStyle,
+                outlineWidth: style.outlineWidth,
+                boxShadow: style.boxShadow
+            };
+        }""")
+        self.assertEqual(first_focus["tag"], "A", "First keyboard stop should be a link")
+        self.assertTrue(first_focus["visible"], "Keyboard focus target is not visible")
+        has_focus_indicator = (
+            first_focus["outlineStyle"] not in ("none", "") and
+            first_focus["outlineWidth"] not in ("0px", "")
+        ) or first_focus["boxShadow"] != "none"
+        self.assertTrue(has_focus_indicator, f"No visible focus indicator: {first_focus}")
+        await page.close()
+
 if __name__ == "__main__":
     unittest.main()
