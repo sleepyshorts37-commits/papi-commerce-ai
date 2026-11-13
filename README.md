@@ -6,9 +6,11 @@ Groupe commercial numérique assisté par agents IA. **État : fondations techni
 1. **PAPI MARKET** — vente de produits finis.
 2. **PAPI DROPSHIPPING** — vente avec expédition par fournisseur.
 3. **PAPI AFFILIATION** — affiliation et parrainages autorisés.
-4. **PAPI FREELANCE** — missions réalisables et autorisées pour des agents IA.
+4. **PAPI FREELANCE / GLOBAL WORK** — missions internationales accessibles et réalisables dans le respect des règles des plateformes.
 5. **PAPI SERVICES** — services numériques aux entreprises.
 6. **PAPI BUSINESS PARTNERS** — apport d'affaires rémunéré à la commission.
+7. **PAPI SOCIAL GROWTH** — publications, croissance d'audience réelle, prospection, recherche de missions et ventes sur les pages officielles.
+8. **PAPI VIDEO TASKS** — soumission de liens YouTube par le propriétaire et analyse de contenu par une équipe spécialisée.
 
 ## Principes
 - Objectif initial : 0 FCFA. Aucune dépense, souscription, publicité payante ou crédit API sans autorisation explicite.
@@ -22,9 +24,15 @@ Groupe commercial numérique assisté par agents IA. **État : fondations techni
 ## Architecture
 Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architecture des agents), Cheikh Fall (fiabilité), Aminou (alternatives), PAPI CHAT (communication interne), PAPI COMMAND CENTER (suivi), mémoire partagée locale et planificateur déterministe.
 
+## Capacités préparées dans cette branche
+- [PAPI GLOBAL WORK](docs/PAPI-GLOBAL-WORK-VIDEO-SOCIAL-GUIDE.md#1-papi-global-work) — évaluation locale de missions, pays, coûts, règles IA et automatisation.
+- [PAPI SOCIAL GROWTH](docs/PAPI-GLOBAL-WORK-VIDEO-SOCIAL-GUIDE.md#2-papi-social-growth) — responsabilités combinées de publication, audience, prospection, missions et ventes.
+- [PAPI VIDEO TASKS](docs/PAPI-GLOBAL-WORK-VIDEO-SOCIAL-GUIDE.md#3-papi-video-tasks) — validation d'un lien YouTube et création de dix tâches d'analyse.
+- [Plan de mission 16](docs/PAPI-GLOBAL-WORK-VIDEO-SOCIAL-5-DAYS.md) et [rapport](docs/PAPI-GLOBAL-WORK-VIDEO-SOCIAL-REPORT.md).
+
 ## Commandes locales
 Depuis la racine du dépôt :
-- `PYTHONPATH=runtime python -m papi_core validate` — valider les registres.
+- `PYTHONPATH=runtime python -m papi_core validate` — valider les registres agents et tâches.
 - `PYTHONPATH=runtime python -m papi_core doctor` — vérifier la présence des variables Supabase sans afficher leurs valeurs ni effectuer de connexion réseau.
 - `PYTHONPATH=runtime python -m papi_core dashboard` — afficher le tableau de bord en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core schedule-preview` — calculer les échéances récurrentes à examiner, sans exécuter de tâche.
