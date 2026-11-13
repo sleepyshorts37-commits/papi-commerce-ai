@@ -196,5 +196,125 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
             self.assertEqual(json.loads(confirmed.decode("utf-8").splitlines()[0])["event_id"], "worker:" + __import__("hashlib").sha256("job-tail:00000000-0000-4000-8000-000000000010:job.claimed".encode()).hexdigest())
 
 
+
+    def test_failure_result_exposes_actual_queue_retry_state(self):
+        class RetryQueue:
+            def __init__(self):
+                self.kwargs = None
+
+            def fail(self, **kwargs):
+                self.kwargs = kwargs
+                return "retry"
+
+        with tempfile.TemporaryDirectory() as directory:
+            queue = RetryQueue()
+            worker = PapiWorker(
+                queue=queue, registry=object(),
+                policy={"execution_enabled": False}, worker_id="worker-recovery",
+                audit_path=Path(directory) / "events.jsonl",
+            )
+            result = worker._fail_job(
+                job_id="job-retry", task_id="task-retry",
+                attempt_id="00000000-0000-4000-8000-000000000021",
+                lease_token="lease-1", error_code="storage_unavailable",
+                status="failed", actor="system:worker:worker-recovery",
+                action="job.failed", handler="internal.echo",
+                outcome="storage_error", retryable=True,
+            )
+            self.assertEqual(result["queue_status"], "retry")
+            self.assertTrue(queue.kwargs["retryable"])
+
+    def test_terminal_worker_failure_is_sent_as_non_retryable(self):
+        class TerminalQueue:
+            def __init__(self):
+                self.kwargs = None
+
+            def fail(self, **kwargs):
+                self.kwargs = kwargs
+                return "failed"
+
+        with tempfile.TemporaryDirectory() as directory:
+            queue = TerminalQueue()
+            worker = PapiWorker(
+                queue=queue, registry=object(),
+                policy={"execution_enabled": False}, worker_id="worker-recovery",
+                audit_path=Path(directory) / "events.jsonl",
+            )
+            result = worker._fail_job(
+                job_id="job-denied", task_id="task-denied",
+                attempt_id="00000000-0000-4000-8000-000000000022",
+                lease_token="lease-2", error_code="permission_denied",
+                status="blocked", actor="system:worker:worker-recovery",
+                action="job.blocked", handler="internal.echo",
+                outcome="permission_denied", retryable=False,
+            )
+            self.assertEqual(result["queue_status"], "failed")
+            self.assertFalse(queue.kwargs["retryable"])
+
+    def test_process_level_crash_does_not_mark_attempt_failed(self):
+        from types import SimpleNamespace
+        from papi_core.handler_registry import HandlerRegistry
+
+        class CrashQueue:
+            def __init__(self, job):
+                self.job = job
+                self.store = SimpleNamespace(get_task=lambda task_id: {"task": {
+                    "id": task_id, "owner_agent": "agent-crash",
+                    "approval_required": False,
+                }})
+                self.fail_calls = []
+                self.complete_calls = []
+
+            def claim(self, *, worker_id):
+                return self.job
+
+            def renew(self, **kwargs):
+                return True
+
+            def fail(self, **kwargs):
+                self.fail_calls.append(kwargs)
+                return "retry"
+
+            def complete(self, **kwargs):
+                self.complete_calls.append(kwargs)
+                return True
+
+        with tempfile.TemporaryDirectory() as directory:
+            job = {
+                "id": "job-crash", "task_id": "task-crash",
+                "handler": "internal.echo", "payload": {},
+                "lease_token": "lease-crash",
+                "attempt_id": "00000000-0000-4000-8000-000000000023",
+                "agent_identity": {"signed": "test"},
+            }
+            queue = CrashQueue(job)
+            registry = HandlerRegistry()
+            registry.register("internal.echo", "read_only", lambda payload, context: {"ok": True})
+            worker = PapiWorker(
+                queue=queue, registry=registry,
+                policy={
+                    "execution_enabled": True, "external_actions_enabled": False,
+                    "allowed_handlers": ["internal.echo"],
+                    "action_permissions": {
+                        "read_only": {"enabled": True, "owner_approval": False}
+                    },
+                },
+                worker_id="worker-crash",
+                audit_path=Path(directory) / "events.jsonl",
+            )
+            with patch(
+                "papi_core.worker.authorize_authenticated_agent",
+                return_value={"principal": SimpleNamespace(agent_id="agent-crash")},
+            ), patch(
+                "papi_core.worker.authorize_job",
+            ), patch(
+                "papi_core.worker.execute_authorized_job",
+                side_effect=SystemExit("simulated process termination"),
+            ):
+                with self.assertRaises(SystemExit):
+                    worker.run_once()
+            self.assertEqual(queue.fail_calls, [])
+            self.assertEqual(queue.complete_calls, [])
+
 if __name__ == "__main__":
     unittest.main()
