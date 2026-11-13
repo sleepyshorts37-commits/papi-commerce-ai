@@ -657,37 +657,6 @@ revoke all on public.papi_agent_used_nonces from public, anon, authenticated;
 grant select, insert, update on public.papi_agent_public_keys to service_role;
 grant select, insert, delete on public.papi_agent_used_nonces to service_role;
 
--- L'insertion atomique garantit qu'un nonce ne peut être consommé que par un worker.
-create or replace function public.papi_consume_agent_nonce(
-    p_agent_id text, p_nonce text, p_expires_at timestamptz
-) returns boolean
-language plpgsql
-security invoker
-set search_path = public, pg_temp
-as $$
-declare v_inserted integer;
-begin
-    if p_agent_id is null or p_agent_id !~ '^[A-Za-z0-9_-]{1,100}$'
-       or p_nonce is null or length(p_nonce) < 16 or length(p_nonce) > 128
-       or p_expires_at is null or p_expires_at <= now()
-       or p_expires_at > now() + interval '10 minutes' then
-        raise exception 'Invalid agent nonce' using errcode = '22023';
-    end if;
-
-    delete from public.papi_agent_used_nonces where expires_at < now();
-
-    insert into public.papi_agent_used_nonces(agent_id, nonce, expires_at)
-    values (p_agent_id, p_nonce, p_expires_at)
-    on conflict (agent_id, nonce) do nothing;
-
-    get diagnostics v_inserted = row_count;
-    return v_inserted = 1;
-end;
-$$;
-revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
-    from public, anon, authenticated;
-grant execute on function public.papi_consume_agent_nonce(text, text, timestamptz)
-    to service_role;
 
 
 -- Durable attempt history (kept in sync with migrations).
