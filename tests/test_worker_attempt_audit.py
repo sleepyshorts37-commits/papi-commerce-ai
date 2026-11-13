@@ -44,6 +44,7 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
                 self.assertEqual(event["details"]["task_id"], "task-42")
                 self.assertEqual(event["details"]["worker_id"], "worker-a")
                 self.assertEqual(event["actor"], "agent-verified")
+                self.assertEqual(event["details"]["agent_id"], "agent-verified")
                 self.assertEqual(event["details"]["dedupe_id"], event["event_id"].removeprefix("worker:"))
             self.assertNotEqual(events[0]["event_id"], events[1]["event_id"])
 
