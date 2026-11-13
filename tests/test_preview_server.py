@@ -112,6 +112,29 @@ class PreviewServerTests(unittest.TestCase):
             self.assertEqual(caught.exception.code, 404)
             self.assertNotIn(sentinel, caught.exception.read().decode("utf-8", errors="replace"))
 
+
+    def test_resource_robustness_missing_directories_unicode_and_mime(self):
+        (self.root / "café.txt").write_text("Contenu Unicode", encoding="utf-8")
+        with urlopen(self.base + "/caf%C3%A9.txt") as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get_content_type(), "text/plain")
+            self.assertEqual(response.read().decode("utf-8"), "Contenu Unicode")
+        for path in ("/does-not-exist.txt", "/contact"):
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(self.base + path)
+                self.assertEqual(caught.exception.code, 404)
+
+    def test_server_remains_available_after_invalid_and_missing_requests(self):
+        for path, expected_status in (("/%E0%A4%A", 400), ("/not-found.txt", 404)):
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as caught:
+                    urlopen(self.base + path)
+                self.assertEqual(caught.exception.code, expected_status)
+        with urlopen(self.base + "/") as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn("Preview", response.read().decode("utf-8"))
+
     def test_server_refuses_non_loopback_and_invalid_ports(self):
         with self.assertRaises(PreviewServerError):
             create_preview_server(self.root, host="0.0.0.0")
