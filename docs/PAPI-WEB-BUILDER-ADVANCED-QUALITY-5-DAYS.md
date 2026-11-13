@@ -10,13 +10,14 @@ Ce cycle n'est pas une certification WCAG 2.2 AA, un audit Lighthouse complet, n
 - [x] Corriger les accents utilisés pour du petit texte afin d'atteindre au moins 4,5:1 sur les surfaces prévues.
 - [x] Ajouter un contrôle de contraste dans le rapport qualité multi-pages.
 - [x] Ajouter des tests unitaires pour les six secteurs et une vérification Chromium du texte accentué.
-- **Statut Jour 1 :** implémentation effectuée ; validation CI sur le nouveau commit en attente.
+- **Statut Jour 1 :** premier run CI a révélé un défaut d'import (`re` local/global) ; correction appliquée dans `824692a337172c92ef17ae149d9d423899ef7fd0`, validation du rerun en attente.
 - Livrable : tokens lisibles avec preuve automatisée, sans prétendre à un audit complet.
 
 ## Jour 2 — Sémantique et structure de toutes les pages
-- [ ] Vérifier les landmarks, noms de navigation, titres uniques et hiérarchie des titres.
-- [ ] Vérifier les noms accessibles des liens et les attributs des liens de navigation courante.
-- [ ] Contrôler toutes les routes d'un site synthétique, pas seulement l'accueil.
+- [x] Ajouter le contrôle Chromium des landmarks, noms de navigation, titres uniques et hiérarchie des titres.
+- [x] Vérifier les noms accessibles des liens et l'unicité du lien courant dans la navigation.
+- [x] Contrôler les routes accueil, services et contact d'un site synthétique.
+- **Statut Jour 2 :** tests ajoutés dans `tests/browser/test_preview_browser.py` ; validation CI en attente.
 - Livrable : rapport de structure sémantique reproductible.
 
 ## Jour 3 — Clavier, mouvement réduit et comportement responsive
