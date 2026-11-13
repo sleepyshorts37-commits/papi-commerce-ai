@@ -67,8 +67,23 @@ class PapiWorker:
             handler = job.get("handler")
             spec = self.registry.get(handler)
 
-            # Refuse tôt les tâches malformées : aucun contrôle d'identité ni handler
-            # ne doit être engagé pour une tâche dont l'approbation/politique est invalide.
+            # Validation stricte locale : cette branche reste sûre même si la
+            # PR séparée durcissant authorize_job n'est pas encore intégrée à main.
+            approval_required = task.get("approval_required")
+            approval_status = task.get("approval_status")
+            if not isinstance(approval_required, bool):
+                raise HandlerPermissionError("approval_required invalide.")
+            if approval_status is not None and (
+                not isinstance(approval_status, str)
+                or approval_status not in {"not_required", "pending", "approved", "rejected"}
+            ):
+                raise HandlerPermissionError("approval_status invalide.")
+            if approval_required and approval_status != "approved":
+                raise HandlerPermissionError("Approbation requise.")
+            if not approval_required and approval_status not in (None, "not_required"):
+                raise HandlerPermissionError("État d'approbation incohérent.")
+
+            # Prévalidation générale du handler et de la politique avant authentification.
             authorize_job(job, task, self.policy, self.registry)
 
             permission = PERMISSION_BY_CLASS.get(spec.action_class)
