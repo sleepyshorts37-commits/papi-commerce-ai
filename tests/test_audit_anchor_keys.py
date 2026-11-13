@@ -108,6 +108,17 @@ class AuditAnchorKeyringTests(unittest.TestCase):
         with self.assertRaises(AuditKeyError):
             self.keyring.sign(key_id, b"x")
 
+
+    def test_compromised_revoked_key_can_be_replaced_without_reactivating_it(self):
+        compromised = self.keyring.provision()
+        old_signature = self.keyring.sign(compromised, b"old")
+        self.keyring.revoke(compromised)
+        replacement = self.keyring.rotate(compromised)
+        self.assertFalse(self.keyring.verify(compromised, b"old", old_signature))
+        self.assertTrue(self.keyring.verify(
+            replacement, b"new", self.keyring.sign(replacement, b"new")
+        ))
+
     def test_rotation_requires_current_active_key(self):
         key_id = self.keyring.provision()
         self.keyring.rotate(key_id)
