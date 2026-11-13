@@ -11,6 +11,7 @@ import os
 import re
 import secrets
 import stat
+import time
 from pathlib import Path
 from typing import Any
 
@@ -119,7 +120,7 @@ class LocalAuditKeyring:
         )
         try:
             self._save_registry({"schema_version": 1, "keys": {
-                key_id: {"public_key": public.hex(), "status": "active", "created_at": __import__("time").time_ns()}
+                key_id: {"public_key": public.hex(), "status": "active", "created_at": time.time_ns()}
             }})
         except Exception:
             private_path.unlink(missing_ok=True)
@@ -130,8 +131,13 @@ class LocalAuditKeyring:
         """Retire the active key and create a new key; retain old public material."""
         data = self._load_registry()
         current = data["keys"].get(current_key_id)
-        if not isinstance(current, dict) or current.get("status") != "active":
-            raise AuditKeyError("La clé à remplacer n'est pas active.")
+        if not isinstance(current, dict) or current.get("status") not in {"active", "revoked"}:
+            raise AuditKeyError("La clé à remplacer doit être active ou révoquée.")
+        if any(
+            key_id != current_key_id and entry.get("status") == "active"
+            for key_id, entry in data["keys"].items()
+        ):
+            raise AuditKeyError("Une autre clé est déjà active.")
         new_id = "audit-" + secrets.token_hex(16)
         key = Ed25519PrivateKey.generate()
         self.private_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -151,11 +157,12 @@ class LocalAuditKeyring:
             public = key.public_key().public_bytes(
                 serialization.Encoding.Raw, serialization.PublicFormat.Raw
             )
-            current["status"] = "retired"
-            current["retired_at"] = __import__("time").time_ns()
+            if current["status"] == "active":
+                current["status"] = "retired"
+                current["retired_at"] = time.time_ns()
             data["keys"][new_id] = {
                 "public_key": public.hex(), "status": "active",
-                "created_at": __import__("time").time_ns(),
+                "created_at": time.time_ns(),
             }
             self._save_registry(data)
         except Exception:
@@ -170,7 +177,7 @@ class LocalAuditKeyring:
         if not isinstance(entry, dict) or entry.get("status") == "revoked":
             raise AuditKeyError("Clé inconnue ou déjà révoquée.")
         entry["status"] = "revoked"
-        entry["revoked_at"] = __import__("time").time_ns()
+        entry["revoked_at"] = time.time_ns()
         self._save_registry(data)
 
     def sign(self, key_id: str, message: bytes) -> str:
