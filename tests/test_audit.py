@@ -1,0 +1,285 @@
+import json
+import math
+import os
+import tempfile
+import threading
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from runtime.papi_core.audit import AuditError, append_event, new_event, read_events, _journal_lock
+from runtime.papi_core.audit_checkpoint import build_checkpoint, verify_checkpoint, verify_checkpoint_transition
+
+
+class AuditHashChainTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = Path(self.temp_dir.name) / "audit.jsonl"
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def event(self, event_id, action="task.updated"):
+        return new_event(
+            event_id=event_id, actor="agent-01", action=action,
+            entity_type="task", entity_id="task-01",
+            details={"status": "review"},
+        )
+
+    def test_appends_and_verifies_linked_events(self):
+        self.assertTrue(append_event(self.event("evt-1"), self.path))
+        self.assertTrue(append_event(self.event("evt-2"), self.path))
+        events = read_events(self.path)
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[1]["previous_hash"], events[0]["event_hash"])
+
+    def test_duplicate_event_id_is_idempotent(self):
+        event = self.event("evt-1")
+        self.assertTrue(append_event(event, self.path))
+        self.assertFalse(append_event(event, self.path))
+        self.assertEqual(len(read_events(self.path)), 1)
+
+    def test_modified_event_is_detected(self):
+        append_event(self.event("evt-1"), self.path)
+        record = json.loads(self.path.read_text(encoding="utf-8"))
+        record["details"]["status"] = "tampered"
+        self.path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+
+    def test_interrupted_partial_write_fails_closed(self):
+        original_write = __import__("os").write
+        calls = 0
+
+        def interrupted_write(descriptor, payload):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return original_write(descriptor, payload[:12])
+            raise OSError("simulated disk write failure")
+
+        with patch("runtime.papi_core.audit.os.write", side_effect=interrupted_write):
+            with self.assertRaises(OSError):
+                append_event(self.event("evt-partial"), self.path)
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+        with self.assertRaises(AuditError):
+            append_event(self.event("evt-after-partial"), self.path)
+
+    @unittest.skipUnless(hasattr(__import__("os"), "O_NOFOLLOW"), "O_NOFOLLOW unavailable")
+    def test_journal_symlink_is_rejected(self):
+        target = Path(self.temp_dir.name) / "target.jsonl"
+        target.write_text("", encoding="utf-8")
+        self.path.symlink_to(target)
+        with self.assertRaises(OSError):
+            append_event(self.event("evt-symlink"), self.path)
+        with self.assertRaises(OSError):
+            read_events(self.path)
+        self.assertEqual(target.read_text(encoding="utf-8"), "")
+
+    @unittest.skipUnless(hasattr(__import__("os"), "mkfifo"), "FIFO unavailable")
+    def test_non_regular_journal_path_is_rejected(self):
+        fifo_path = Path(self.temp_dir.name) / "audit.fifo"
+        __import__("os").mkfifo(fifo_path)
+        with self.assertRaises(AuditError):
+            read_events(fifo_path)
+
+    @unittest.skipUnless(hasattr(__import__("os"), "O_NOFOLLOW"), "O_NOFOLLOW unavailable")
+    def test_lock_symlink_is_rejected(self):
+        lock_target = Path(self.temp_dir.name) / "lock-target"
+        lock_target.write_text("", encoding="utf-8")
+        lock_path = self.path.with_name(self.path.name + ".lock")
+        lock_path.symlink_to(lock_target)
+        with self.assertRaises(OSError):
+            read_events(self.path)
+        self.assertEqual(lock_target.read_text(encoding="utf-8"), "")
+
+    def test_foreign_owned_journal_is_rejected(self):
+        append_event(self.event("evt-owner"), self.path)
+        with patch("runtime.papi_core.audit.os.geteuid", return_value=os.geteuid() + 1):
+            with self.assertRaises(AuditError):
+                read_events(self.path)
+
+    def test_world_readable_journal_is_rejected(self):
+        append_event(self.event("evt-private"), self.path)
+        os.chmod(self.path, 0o644)
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+
+    def test_world_readable_lock_is_rejected(self):
+        read_events(self.path)
+        lock_path = self.path.with_name(self.path.name + ".lock")
+        os.chmod(lock_path, 0o644)
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+
+    def test_checkpoint_for_empty_journal_uses_genesis_hash(self):
+        checkpoint = build_checkpoint(self.path)
+        self.assertEqual(checkpoint["schema_version"], 1)
+        self.assertEqual(checkpoint["sequence"], 0)
+        self.assertEqual(verify_checkpoint(self.path, checkpoint), 0)
+
+    def test_checkpoint_verifies_prefix_and_reports_unanchored_suffix(self):
+        append_event(self.event("evt-1"), self.path)
+        checkpoint = build_checkpoint(self.path)
+        append_event(self.event("evt-2"), self.path)
+        self.assertEqual(verify_checkpoint(self.path, checkpoint), 1)
+
+    def test_checkpoint_detects_local_rollback_or_rewrite(self):
+        append_event(self.event("evt-1"), self.path)
+        checkpoint = build_checkpoint(self.path)
+        append_event(self.event("evt-2"), self.path)
+        records = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
+        self.path.write_text(json.dumps(records[0]) + "\n", encoding="utf-8")
+        self.assertEqual(verify_checkpoint(self.path, checkpoint), 0)
+        self.path.write_text("", encoding="utf-8")
+        with self.assertRaises(AuditError):
+            verify_checkpoint(self.path, checkpoint)
+
+    def test_checkpoint_rejects_malformed_or_future_sequence(self):
+        append_event(self.event("evt-1"), self.path)
+        checkpoint = build_checkpoint(self.path)
+        malformed = {**checkpoint, "sequence": True}
+        with self.assertRaises(AuditError):
+            verify_checkpoint(self.path, malformed)
+        future = {**checkpoint, "sequence": 2}
+        with self.assertRaises(AuditError):
+            verify_checkpoint(self.path, future)
+
+    def test_checkpoint_transition_accepts_monotonic_progress(self):
+        append_event(self.event("evt-1"), self.path)
+        first = build_checkpoint(self.path)
+        append_event(self.event("evt-2"), self.path)
+        second = build_checkpoint(self.path)
+        self.assertIsNone(verify_checkpoint_transition(first, second))
+
+    def test_checkpoint_transition_rejects_rollback(self):
+        append_event(self.event("evt-1"), self.path)
+        first = build_checkpoint(self.path)
+        append_event(self.event("evt-2"), self.path)
+        second = build_checkpoint(self.path)
+        with self.assertRaises(AuditError):
+            verify_checkpoint_transition(second, first)
+
+    def test_checkpoint_transition_rejects_same_sequence_equivocation(self):
+        append_event(self.event("evt-1"), self.path)
+        first = build_checkpoint(self.path)
+        conflicting = {**first, "head_hash": "f" * 64}
+        with self.assertRaises(AuditError):
+            verify_checkpoint_transition(first, conflicting)
+
+    def test_checkpoint_transition_rejects_malformed_input(self):
+        with self.assertRaises(AuditError):
+            verify_checkpoint_transition({}, {})
+
+    def test_checkpoint_transition_rejects_non_genesis_empty_checkpoint(self):
+        empty = build_checkpoint(self.path)
+        forged = {**empty, "head_hash": "f" * 64}
+        with self.assertRaises(AuditError):
+            verify_checkpoint_transition(empty, forged)
+
+    def test_zero_length_write_fails_instead_of_looping(self):
+        with patch("runtime.papi_core.audit.os.write", return_value=0):
+            with self.assertRaises(OSError):
+                append_event(self.event("evt-zero-write"), self.path)
+
+    def test_truncated_final_record_fails_closed(self):
+        append_event(self.event("evt-1"), self.path)
+        with self.path.open("ab") as journal:
+            journal.write(b'{"event_id":"partial')
+            journal.flush()
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+        with self.assertRaises(AuditError):
+            append_event(self.event("evt-2"), self.path)
+
+    def test_removed_middle_event_is_detected(self):
+        append_event(self.event("evt-1"), self.path)
+        append_event(self.event("evt-2"), self.path)
+        append_event(self.event("evt-3"), self.path)
+        records = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
+        self.path.write_text(
+            json.dumps(records[0]) + "\n" + json.dumps(records[2]) + "\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+
+    def test_oversized_or_deep_audit_details_are_rejected(self):
+        oversized_list = self.event("oversized-list")
+        oversized_list["details"]["items"] = list(range(101))
+        with self.assertRaises(AuditError):
+            append_event(oversized_list, self.path)
+
+        oversized_integer = self.event("oversized-integer")
+        oversized_integer["details"]["amount"] = 1 << 63
+        with self.assertRaises(AuditError):
+            append_event(oversized_integer, self.path)
+
+        deeply_nested = self.event("deeply-nested")
+        value = "leaf"
+        for _ in range(10):
+            value = {"nested": value}
+        deeply_nested["details"]["value"] = value
+        with self.assertRaises(AuditError):
+            append_event(deeply_nested, self.path)
+
+        oversized_text = self.event("oversized-event")
+        oversized_text["details"]["payload"] = "x" * 500
+        oversized_text["details"]["other"] = "y" * 500
+        oversized_text["details"]["third"] = "z" * 500
+        # Individual field limits and total serialized size are both enforced.
+        oversized_text["details"]["extra"] = [["a" * 500 for _ in range(100)] for _ in range(2)]
+        with self.assertRaises(AuditError):
+            append_event(oversized_text, self.path)
+
+    def test_non_finite_numbers_are_rejected(self):
+        for value in (math.nan, math.inf, -math.inf):
+            with self.subTest(value=value):
+                event = self.event("non-finite")
+                event["details"]["amount"] = value
+                with self.assertRaises(AuditError):
+                    append_event(event, self.path)
+
+    def test_naive_timestamp_is_rejected(self):
+        event = self.event("naive-time")
+        event["occurred_at"] = "2026-11-12T10:30:00"
+        with self.assertRaises(AuditError):
+            append_event(event, self.path)
+
+    def test_timezone_aware_timestamp_is_accepted(self):
+        event = self.event("aware-time")
+        event["occurred_at"] = "2026-11-12T10:30:00+00:00"
+        self.assertTrue(append_event(event, self.path))
+        self.assertEqual(len(read_events(self.path)), 1)
+
+    def test_read_waits_for_an_active_append_lock(self):
+        append_event(self.event("evt-1"), self.path)
+        started = threading.Event()
+        finished = threading.Event()
+
+        def reader():
+            started.set()
+            read_events(self.path)
+            finished.set()
+
+        with _journal_lock(self.path):
+            thread = threading.Thread(target=reader)
+            thread.start()
+            self.assertTrue(started.wait(timeout=2))
+            self.assertFalse(finished.wait(timeout=0.1))
+
+        thread.join(timeout=2)
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(finished.is_set())
+
+    def test_legacy_unlinked_journal_fails_closed(self):
+        self.path.write_text(json.dumps(self.event("legacy")) + "\n", encoding="utf-8")
+        with self.assertRaises(AuditError):
+            read_events(self.path)
+        with self.assertRaises(AuditError):
+            append_event(self.event("new"), self.path)
+
+
+if __name__ == "__main__":
+    unittest.main()
