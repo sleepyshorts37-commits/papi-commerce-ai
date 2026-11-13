@@ -53,3 +53,13 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+
+
+### PAPI WEB BUILDER — niveaux de qualité et portes de livraison (cycle 5 jours)
+- [x] Définir les quatre niveaux cumulatifs et les critères de preuve (docs/PAPI-WEB-BUILDER-QUALITY-POLICY.md).
+- [x] Implémenter le moteur fail-closed : preuves PASS, référence, horodatage avec fuseau et réviseur obligatoires.
+- [x] Ajouter les tests d'absence de preuves, de critères manquants, de statut pending, de date sans fuseau, de niveaux cumulés et d'entrée invalide.
+- [x] Garantir qu'aucun niveau ne donne automatiquement l'autorisation de publier ou déployer.
+- [ ] Exécuter et valider les tests ciblés et la CI complète sur le commit final.
+- [ ] Publier le rapport de recette et clore le cycle après résultats CI vérifiés.
+- **Statut provisoire :** moteur, tests et documentation ajoutés sur la branche papi-web-builder-quality-gates-clean-2026-11-13. CI non encore confirmée ; aucun merge, déploiement ou publication.
