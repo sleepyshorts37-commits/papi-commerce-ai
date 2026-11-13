@@ -67,8 +67,18 @@ def authorize_job(
         raise PermissionError("Exécution désactivée par défaut.")
     if task.get("status") != "in_progress":
         raise PermissionError("La tâche doit être au statut in_progress.")
-    if task.get("approval_required") is True and task.get("approval_status") != "approved":
+    approval_required = task.get("approval_required")
+    approval_status = task.get("approval_status")
+    if not isinstance(approval_required, bool):
+        raise PermissionError("Indicateur approval_required invalide : accès fermé.")
+    if approval_status is not None and approval_status not in {
+        "not_required", "pending", "approved", "rejected"
+    }:
+        raise PermissionError("Statut d'approbation invalide : accès fermé.")
+    if approval_required and approval_status != "approved":
         raise PermissionError("Approbation du propriétaire requise.")
+    if not approval_required and approval_status not in (None, "not_required"):
+        raise PermissionError("État d'approbation incohérent : accès fermé.")
     permissions = policy.get("action_permissions", {})
     rule = permissions.get(spec.action_class, {}) if isinstance(permissions, dict) else {}
     if not isinstance(rule, dict) or rule.get("enabled") is not True:
