@@ -29,9 +29,9 @@ Définir des niveaux de maturité vérifiables et empêcher toute déclaration d
 - Livrable : registre de critères et guide de preuve.
 
 ## Jour 5 — CI, rapport et roadmap
-- [ ] Exécuter les tests ciblés et la suite CI complète.
-- [ ] Corriger toute régression.
-- [ ] Publier le rapport final et mettre à jour la roadmap avec les commits et résultats vérifiés.
+- [x] Exécuter les tests ciblés : 8/8 tests quality_gates PASS ; suite core globale bloquée par un import manquant de papi_core.site_architecture sur la base main initiale (run 43497400577).
+- [ ] Corriger ou contourner le problème de base CI et relancer la suite complète.
+- [x] Publier un rapport intermédiaire précis (docs/PAPI-WEB-BUILDER-QUALITY-GATES-REPORT.md) ; clôture finale et mise à jour de roadmap restent conditionnées à la CI complète.
 - Livrable : dossier de preuves reproductible.
 
 ## Matrice cumulative des critères
