@@ -73,7 +73,7 @@ jobs:
           insert into public.papi_audit_anchor_records(journal_id, record_digest, canonical_record)
           values ('ci-anchor', current_setting('papi.ci_anchor_digest'), current_setting('papi.ci_anchor_record'));
           set role service_role;
-          do $
+          do $anchorcheck$
           declare
             v_digest text := current_setting('papi.ci_anchor_digest');
             v_result boolean;
@@ -95,7 +95,7 @@ jobs:
               raise exception 'Audit anchor head does not match published record';
             end if;
           end
-          $;
+          $anchorcheck$;
           reset role;
           do $ci$
           declare
