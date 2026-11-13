@@ -17,10 +17,11 @@ Renforcer la détection automatisée des régressions de mise en page sur les ro
 - Livrable : matrice de cohérence calculée des composants sur trois viewports.
 
 ## Jour 3 — Couverture des secteurs
-- [ ] Générer des projets synthétiques pour les six secteurs.
-- [ ] Vérifier les variantes de hero, couleurs calculées et structure des composants.
-- [ ] Contrôler le responsive sur les viewports ciblés.
-- Livrable : tests navigateur multi-secteurs.
+- [x] Générer dans le test Chromium un projet synthétique distinct pour chacun des six secteurs supportés.
+- [x] Vérifier les tokens primary/accent/surface, la classe de secteur, la variante de hero, le visuel, les trois cartes et la route Contact.
+- [x] Contrôler chaque profil sur mobile (390×844), tablette (768×1024) et desktop (1440×900), y compris l'absence de débordement horizontal.
+- **Statut Jour 3 :** `test_all_six_sector_profiles_render_responsively` ajouté ; CI en attente sur le commit `277a117`.
+- Livrable : test Chromium multi-secteurs sur 18 combinaisons secteur/viewport.
 
 ## Jour 4 — Régression des interactions et états
 - [ ] Vérifier navigation, CTA, focus, hover/focus-visible et états de menu disponibles.
