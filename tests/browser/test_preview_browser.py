@@ -106,6 +106,31 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
         await page.close()
 
 
+
+    async def test_sector_accent_text_meets_wcag_aa_contrast(self):
+        page = await self.browser.new_page()
+        response = await page.goto(self.base_url + "/", wait_until="networkidle")
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status, 200)
+        contrast = await page.evaluate("""() => {
+            const element = document.querySelector('.feature-index');
+            const foreground = getComputedStyle(element).color;
+            const background = getComputedStyle(element.parentElement).backgroundColor;
+            const rgb = (value) => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+            const luminance = (value) => {
+                const channels = rgb(value).map((part) => {
+                    const c = part / 255;
+                    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+                });
+                return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+            };
+            const first = luminance(foreground);
+            const second = luminance(background);
+            return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+        }""")
+        self.assertGreaterEqual(contrast, 4.5, f"Accent text contrast below WCAG AA: {contrast:.2f}:1")
+        await page.close()
+
     async def test_accessibility_landmarks_names_skip_link_and_keyboard_focus(self):
         page = await self.browser.new_page()
         response = await page.goto(self.base_url + "/", wait_until="networkidle")
