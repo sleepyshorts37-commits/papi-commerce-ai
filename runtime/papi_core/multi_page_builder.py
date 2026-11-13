@@ -54,7 +54,7 @@ def _render_page(project_name: str, page: dict[str, Any], pages: list[dict[str, 
         href = ("index.html" if item["slug"] == "home" else f"{item['slug']}/index.html") if slug == "home" else ("../index.html" if item["slug"] == "home" else f"../{item['slug']}/index.html")
         active = item["slug"] == slug
         nav.append(f'<a href="{html.escape(href, quote=True)}"' + (' aria-current="page"' if active else "") + f'>{html.escape(item["title"])}</a>')
-    title, name, purpose = (html.escape(page[key]) for key in ("title",))
+    title = html.escape(page["title"])
     name = html.escape(project_name)
     purpose = html.escape(page["purpose"])
     design = SECTOR_DESIGNS[industry]
