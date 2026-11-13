@@ -32,6 +32,12 @@
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
+## PAPI WEB BUILDER — production de sites commerciaux
+- [x] Relier le générateur de contenus validés au constructeur de sites statiques.
+- [x] Générer un site vitrine local avec rapport qualité et revue humaine obligatoire.
+- [ ] Valider les workflows CI et intégrer les PR ouvertes.
+- [ ] Ajouter la génération multi-pages et les modèles sectoriels après validation du socle.
+
 ## Phase 3 — Première activité commerciale
 - [ ] Comparer les opportunités sans frais initiaux.
 - [ ] Vérifier éligibilité au Sénégal et moyens de paiement.
