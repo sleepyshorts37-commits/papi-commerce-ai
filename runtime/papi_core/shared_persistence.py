@@ -7,7 +7,7 @@ authentifiée pour toute lecture ou écriture mémoire.
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
@@ -33,6 +33,15 @@ def _rows(value: Any) -> list[dict[str, Any]]:
     return value
 
 
+def _comparison_value(field: str, value: Any) -> Any:
+    if field in {"created_at", "sent_at"} and isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+        except ValueError:
+            return value
+    return value
+
+
 def _append_idempotently(store: SupabaseStore, table: str, payload: dict[str, Any], key: str) -> None:
     """Insère une fois ; une répétition identique est un succès, une collision échoue."""
     rows = store.request(
@@ -49,7 +58,11 @@ def _append_idempotently(store: SupabaseStore, table: str, payload: dict[str, An
     existing = _rows(store.request(
         "GET", f"{table}?select=*&{key}=eq.{identity}&limit=1"
     ))
-    if len(existing) != 1 or existing[0] != payload:
+    if len(existing) != 1 or any(
+        _comparison_value(field, existing[0].get(field))
+        != _comparison_value(field, value)
+        for field, value in payload.items()
+    ):
         raise StoreError("Collision d'identifiant : l'enregistrement existant diffère du nouvel envoi.")
 
 
