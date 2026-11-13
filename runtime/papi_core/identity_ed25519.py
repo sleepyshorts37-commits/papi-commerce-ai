@@ -111,27 +111,43 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
     current = registry["agents"].get(agent_id)
     if not isinstance(current, dict) or current.get("status") != "active":
         raise Ed25519IdentityError("Identité active inconnue.")
-    private_path = private_dir / (agent_id + ".ed25519.pem")
-    if not private_path.is_file():
+    private_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(private_dir, 0o700)
+    old_private_path = private_dir / (agent_id + ".ed25519.pem")
+    if not old_private_path.is_file():
         raise Ed25519IdentityError("Clé privée locale absente.")
+    current_version = current.get("key_version")
+    if not isinstance(current_version, int) or isinstance(current_version, bool) or current_version < 1:
+        raise Ed25519IdentityError("Version de clé active invalide.")
+    next_version = current_version + 1
+    # Keep the current private key untouched until the public registry commit succeeds.
+    # Versioned filenames make a failed registry update harmless: it leaves only an
+    # unused candidate key, while the old key and registry remain mutually consistent.
+    private_path = private_dir / (agent_id + ".v" + str(next_version) + ".ed25519.pem")
+    if private_path.exists():
+        raise Ed25519IdentityError("Fichier de clé de destination déjà présent.")
     key = Ed25519PrivateKey.generate()
     private_bytes = key.private_bytes(serialization.Encoding.PEM,
         serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
-    temp = private_dir / ("." + agent_id + "." + secrets.token_hex(8) + ".tmp")
-    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    fd = os.open(private_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(private_bytes)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temp, private_path)
-    finally:
-        temp.unlink(missing_ok=True)
+    except Exception:
+        private_path.unlink(missing_ok=True)
+        raise
     public_bytes = key.public_key().public_bytes(serialization.Encoding.Raw,
                                                   serialization.PublicFormat.Raw)
     registry["agents"][agent_id] = {"status": "active",
-        "key_version": int(current["key_version"]) + 1, "public_key": public_bytes.hex()}
-    _write_registry(registry_path, registry)
+        "key_version": next_version, "public_key": public_bytes.hex()}
+    try:
+        _write_registry(registry_path, registry)
+    except Exception:
+        # Candidate private key is not active unless the registry points to it.
+        private_path.unlink(missing_ok=True)
+        raise
     return private_path
 
 
