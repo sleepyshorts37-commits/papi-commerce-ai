@@ -151,4 +151,6 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Définir le plan de tests adversariaux (`docs/PAPI-PREVIEW-SERVER-SECURITY-5-DAYS.md`).
 - [x] Ajouter des tests pour les séquences UTF-8 invalides, séparateurs Windows encodés et octets NUL encodés.
 - [x] Valider Jour 1 en CI : core, Chromium, documentation et registre PASS sur `e011dd4`.
-- **Statut :** Jour 1 implémenté ; validation CI en attente. Aucune revue indépendante ou mise en production.
+- [x] Implémenter Jour 2 : méthodes HTTP en lecture seule, GET/HEAD et en-têtes de sécurité ; core, Chromium, documentation et registre PASS sur `20b38de`.
+- [x] Implémenter Jour 3 : traversal doublement encodé, chemins absolus et symlink vers fichier extérieur ; tests ajoutés sur `c11d763`.
+- **Statut :** 3/5 journées implémentées (60 %) ; jours 1 et 2 validés CI, jour 3 en attente CI. Aucune revue indépendante ou mise en production.
