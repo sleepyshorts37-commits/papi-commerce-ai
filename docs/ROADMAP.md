@@ -46,6 +46,11 @@
 - [ ] Concevoir son moteur de génération, aperçu isolé, modification itérative et export de code source.
   - Socle partiel ajouté : génération statique déterministe, mises à jour structurées, contrôles locaux et export ZIP allowlisté ; aperçu navigateur isolé et moteur IA non implémentés (voir `docs/PAPI-WEB-BUILDER-MVP.md`).
 - [ ] Ajouter des tests de qualité web, sécurité, responsive et critères d'acceptation.
+- [ ] Atteindre le standard de création web agence/grande entreprise : direction artistique par projet, design system, architecture multi-pages, fonctionnalités réellement intégrées, responsive multi-écrans.
+- [ ] Ajouter une chaîne de preuves qualité : tests navigateur, régression visuelle, accessibilité cible WCAG 2.2 AA, SEO, Core Web Vitals, sécurité et documentation de livraison.
+- [ ] Définir les paliers Prototype / MVP / Production professionnelle / Entreprise-critique et bloquer toute déclaration de niveau sans preuves.
+- [ ] Développer l'orchestration IA multi-spécialistes (design, frontend, backend, SEO, accessibilité, performance, sécurité, QA) avec contrôleur indépendant.
+
 - [ ] Définir les intégrations hébergement/domaine et leur approbation avant toute publication.
 - [x] Définir le catalogue : audit, conseil, intégration, accès employés, formation et support.
 - [x] Définir le parcours client, la facturation par livrable et les revenus récurrents.
