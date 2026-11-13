@@ -166,12 +166,12 @@ jobs:
            where id = 'recovery-crash-job';
           update public.papi_jobs set available_at = now() - interval '2 minutes'
            where id = 'recovery-retry-job';
-          update public.papi_jobs set available_at = now() - interval '1 minute'
+          update public.papi_jobs set available_at = now() + interval '20 minutes'
            where id = 'recovery-terminal-job';
           update public.papi_jobs set max_attempts = 2
            where id = 'recovery-retry-job';
           update public.papi_jobs set max_attempts = 1,
-                                      available_at = now() + interval '10 minutes'
+                                      available_at = now() + interval '30 minutes'
            where id = 'recovery-exhaust-job';
           do $recovery$
           declare
