@@ -29,4 +29,15 @@ jobs:
       - name: Run real-browser preview smoke tests
         env:
           PYTHONPATH: runtime
-        run: python -m unittest discover -s tests/browser -v
+          PAPI_BROWSER_ARTIFACT_DIR: artifacts/browser
+        run: |
+          mkdir -p artifacts/browser
+          python -m unittest discover -s tests/browser -v
+      - name: Upload responsive browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: papi-browser-responsive-screenshots
+          path: artifacts/browser/*.png
+          if-no-files-found: warn
+          retention-days: 7
