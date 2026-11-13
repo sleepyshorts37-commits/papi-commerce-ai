@@ -37,6 +37,9 @@ Depuis la racine du dépôt :
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
 ## Documents
+- [Audit SEO automatisé PAPI WEB BUILDER](docs/PAPI-WEB-BUILDER-SEO-GUIDE.md)
+- [Rapport final de validation SEO](docs/PAPI-WEB-BUILDER-SEO-REPORT.md)
+- [Plan de travail — audit SEO sur cinq jours](docs/PAPI-WEB-BUILDER-SEO-AUDIT-5-DAYS.md)
 - [Organisation](docs/ORGANISATION.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)

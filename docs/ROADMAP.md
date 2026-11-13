@@ -53,3 +53,14 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+
+
+### PAPI WEB BUILDER — audit SEO statique (cycle 5 jours)
+- [x] Définir le périmètre et les critères de contrôle SEO local.
+- [x] Ajouter l'auditeur HTML en lecture seule : titre, description, langue, H1, liens internes, canonical et Open Graph.
+- [x] Vérifier le sitemap XML, robots.txt, les chemins et les liens symboliques.
+- [x] Restaurer les dépendances WEB BUILDER absentes de main qui empêchaient la suite de tests existante de s'importer.
+- [x] Ajouter six tests SEO et guide de correction.
+- [x] Valider la suite complète : 175 tests core PASS, PostgreSQL jetable PASS, registre PASS et documentation PASS sur le commit de code `2adaf77`.
+- [x] Publier `docs/PAPI-WEB-BUILDER-SEO-REPORT.md`.
+- **Statut :** cycle terminé à 100 %. Chromium non déclenché ; aucune validation navigateur additionnelle revendiquée. PR #135 ouverte, aucun merge ni déploiement.
