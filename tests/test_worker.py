@@ -56,7 +56,7 @@ class WorkerSafetyTests(unittest.TestCase):
     def test_worker_blocks_job_without_signed_agent_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
             job = {"id": "job-1", "task_id": "task-1", "handler": "report.preview",
-                   "payload": {}, "lease_token": "lease-1", "agent_identity": None}
+                   "payload": {}, "lease_token": "lease-1", "attempts": 1, "max_attempts": 5, "agent_identity": None}
             queue = QueueSpy(job)
             queue.store = FakeStore()
             registry = HandlerRegistry()
@@ -89,7 +89,7 @@ class WorkerSafetyTests(unittest.TestCase):
                     job = {
                         "id": "job-approval", "task_id": "task-approval",
                         "handler": "report.preview", "payload": {},
-                        "lease_token": "lease-approval", "agent_identity": None,
+                        "lease_token": "lease-approval", "attempts": 1, "max_attempts": 5, "agent_identity": None,
                     }
                     queue = QueueSpy(job)
                     queue.store = type("Store", (), {
@@ -135,7 +135,7 @@ class WorkerSafetyTests(unittest.TestCase):
         job = {
             "id": "job-policy-order", "task_id": "task-1",
             "handler": "report.preview", "payload": {},
-            "lease_token": "lease-policy-order", "agent_identity": {"signed": True},
+            "lease_token": "lease-policy-order", "attempts": 1, "max_attempts": 5, "agent_identity": {"signed": True},
         }
         queue = QueueSpy(job)
         queue.store = FakeStore()
@@ -168,6 +168,46 @@ class WorkerSafetyTests(unittest.TestCase):
         self.assertEqual(queue.fail_calls[0]["error_code"], "permission_denied")
 
 
+
+    def test_transient_storage_error_is_scheduled_with_durable_attempt_metadata(self):
+        from papi_core.storage import StoreError
+        job = {"id": "job-transient", "task_id": "task-transient",
+               "handler": "report.preview", "payload": {},
+               "lease_token": "lease-transient", "attempts": 3,
+               "max_attempts": 7, "agent_identity": None}
+        queue = QueueSpy(job)
+        queue.store = type("Store", (), {
+            "get_task": lambda self, task_id: (_ for _ in ()).throw(
+                StoreError("temporary outage", retry_code="service_timeout")
+            )
+        })()
+        worker = PapiWorker(queue=queue, registry=HandlerRegistry(),
+            policy={"execution_enabled": True}, worker_id="worker-test")
+        result = worker.run_once()
+        self.assertEqual(result["status"], "retry_scheduled")
+        self.assertEqual(queue.fail_calls[0]["error_code"], "service_timeout")
+        self.assertEqual(queue.fail_calls[0]["attempt"], 3)
+        self.assertEqual(queue.fail_calls[0]["max_attempts"], 7)
+
+    def test_unclassified_storage_error_is_permanent(self):
+        from papi_core.storage import StoreError
+        job = {"id": "job-storage", "task_id": "task-storage",
+               "handler": "report.preview", "payload": {},
+               "lease_token": "lease-storage", "attempts": 2,
+               "max_attempts": 6, "agent_identity": None}
+        queue = QueueSpy(job)
+        queue.store = type("Store", (), {
+            "get_task": lambda self, task_id: (_ for _ in ()).throw(
+                StoreError("validation or permission issue")
+            )
+        })()
+        worker = PapiWorker(queue=queue, registry=HandlerRegistry(),
+            policy={"execution_enabled": True}, worker_id="worker-test")
+        result = worker.run_once()
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(queue.fail_calls[0]["error_code"], "worker_validation_error")
+        self.assertEqual(queue.fail_calls[0]["max_attempts"], 6)
+
     def test_worker_requires_service_identity_when_policy_enables_audience_binding(self):
         with self.assertRaises(WorkerError):
             PapiWorker(queue=QueueSpy(), registry=HandlerRegistry(),
@@ -176,7 +216,7 @@ class WorkerSafetyTests(unittest.TestCase):
 
     def test_worker_uses_service_bound_authorizer_when_configured(self):
         job = {"id": "job-service", "task_id": "task-1", "handler": "report.preview",
-               "payload": {}, "lease_token": "lease-service",
+               "payload": {}, "lease_token": "lease-service", "attempts": 1, "max_attempts": 5,
                "agent_identity": {"signed": "service-bound"}}
         queue = QueueSpy(job)
         queue.store = FakeStore()
