@@ -1,7 +1,7 @@
 # Outils commerciaux PAPI
 
 ## Périmètre
-Le registre local organise prospects, opportunités, offres, pipeline et interactions. Il ne prospecte pas, ne contacte personne, ne publie rien et ne crée aucune commande.
+Le registre local organise prospects, opportunités, offres, pipeline et interactions, notamment pour PAPI DIGITALISATION & IA (audit, conseil, intégration, formation et support B2B). Il ne prospecte pas, ne contacte personne, ne publie rien et ne crée aucune commande.
 
 ## Données
 - Prospect : identifiant interne, nom professionnel, source publique vérifiable, segment, pays, statut, priorité, dernière vérification, opposition et notes non sensibles.
@@ -22,3 +22,10 @@ PYTHONPATH=runtime python -m papi_core sales-validate
 PYTHONPATH=runtime python -m papi_core sales-report
 
 Le rapport est local et en lecture seule. Le registre initial est vide. Les exemples éventuels doivent être fictifs.
+
+
+## Offres PAPI DIGITALISATION & IA
+
+Une offre peut référencer séparément l'audit, le conseil, la conception, l'intégration, le déploiement par employé, la formation et le support récurrent. Les licences et coûts de fournisseurs tiers doivent être isolés des honoraires PAPI. Un devis doit préciser le périmètre, les exclusions, les jalons, les coûts récurrents, les critères d'acceptation et les responsabilités du client. Les tarifs ne sont pas prédéfinis : ils doivent être calculés à partir du coût direct, du temps de travail, du risque et de la valeur livrée, puis approuvés.
+
+Les prestations de santé exigent un examen renforcé des données et des limites d'usage. Aucune IA ne doit diagnostiquer, prescrire ou décider de la délivrance d'un médicament.
