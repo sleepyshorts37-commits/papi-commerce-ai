@@ -80,7 +80,7 @@ class SharedMemoryAdapter:
 
         # Le filtrage d'accès est fait côté PostgreSQL avant pagination.
         actor_q = quote(actor, safe="")
-        access = f"or=(scope.eq.shared,and(scope.eq.agent,actor.eq.{actor_q}))"
+        access = f"or=(scope.eq.shared,and(scope.eq.agent,actor.eq.{actor_q}),event_type.eq.supersede)"
         terms = query.casefold().split()
         events: list[dict[str, Any]] = []
         offset = 0
