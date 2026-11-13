@@ -34,9 +34,15 @@ class SupabaseSchemaTests(unittest.TestCase):
             self.sql,
         )
         self.assertIn(
-            "grant execute on function public.papi_consume_agent_nonce(text, text, timestamptz)",
+            "create or replace function public.papi_consume_agent_nonce(\n    p_agent_id text,\n    p_key_version integer,\n    p_nonce text,\n    p_expires_at timestamptz",
             self.sql,
         )
+        self.assertIn(
+            "grant execute on function public.papi_consume_agent_nonce(text, integer, text, timestamptz)",
+            self.sql,
+        )
+        self.assertIn("and key_version = p_key_version", self.sql)
+        self.assertIn("for share;", self.sql)
 
 
 if __name__ == "__main__":
