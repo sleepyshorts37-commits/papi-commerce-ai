@@ -125,9 +125,10 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 ### PAPI WEB BUILDER — validation navigateur (cycle 5 jours)
 - [x] Définir le programme de validation navigateur sur cinq jours (`docs/PAPI-WEB-BUILDER-BROWSER-VALIDATION-5-DAYS.md`).
 - [x] Corriger le routage de la racine `/` vers `index.html` dans le serveur de prévisualisation local après analyse d'un échec CI réel.
-- [ ] Compléter les tests HTTP et valider la CI du correctif.
-- [ ] Installer et intégrer les tests Playwright sur Chromium dans un environnement isolé.
+- [x] Compléter les tests HTTP (GET, HEAD, ressources, chemins interdits) et valider la CI du correctif : 427 tests Python réussis sur `e2121acf4338da989e26550d43f86f842bc4feb6`.
+- [x] Ajouter Playwright épinglé dans `requirements-browser-test.txt`, un workflow Chromium dédié et des tests de rendu réels sur un site synthétique.
+- [ ] Confirmer le nouveau workflow Chromium sur son premier commit CI.
 - [ ] Vérifier mobile, tablette, desktop, navigation et captures d'écran CI.
 - [ ] Ajouter les contrôles d'accessibilité automatisés et documenter les limites de validation humaine.
 - [ ] Exécuter la suite finale et publier un rapport de recette technique.
-- **Statut :** cycle planifié ; Jour 1 en cours. Aucun test navigateur réel ni audit WCAG complet revendiqué.
+- **Statut :** Jour 1 terminé ; socle Jour 2 implémenté, exécution CI Chromium en attente. Aucun audit WCAG complet revendiqué.
