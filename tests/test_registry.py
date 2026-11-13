@@ -333,7 +333,8 @@ class HandlerPermissionTests(unittest.TestCase):
 
 class WorkerTests(unittest.TestCase):
     def make_worker(self, policy=None, job=None, task=None):
-        identity_patch = patch('papi_core.worker.authorize_authenticated_agent')
+        import papi_core.worker as worker_module
+        identity_patch = patch.object(worker_module, "authorize_authenticated_agent")
         identity_patch.start()
         identity_patch.return_value = {"principal": SimpleNamespace(agent_id="agent-a")}
         self.addCleanup(identity_patch.stop)
@@ -401,7 +402,7 @@ class WorkerTests(unittest.TestCase):
                "payload": {}, "lease_token": "lease-3", "attempt_id": "00000000-0000-4000-8000-000000000003"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-a"}
              }), \
              patch.object(worker.queue, "renew", return_value=True), \
              patch.object(worker.queue, "fail", return_value="retry") as fail, \
