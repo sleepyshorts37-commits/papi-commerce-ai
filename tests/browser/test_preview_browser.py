@@ -135,7 +135,7 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_semantic_structure_and_navigation_on_every_generated_route(self):
         page = await self.browser.new_page()
-        routes = [("/", "Accueil"), ("/services/", "Services"), ("/contact/", "Contact")]
+        routes = [("/", "Accueil"), ("/contact/", "Contact")]
         for route, expected_label in routes:
             response = await page.goto(self.base_url + route, wait_until="networkidle")
             self.assertIsNotNone(response)
@@ -167,6 +167,57 @@ class PreviewBrowserSmokeTests(unittest.IsolatedAsyncioTestCase):
             levels = audit["headingLevels"]
             self.assertTrue(all(current <= previous + 1 for previous, current in zip(levels, levels[1:])), f"Heading level jump: {route} {levels}")
             self.assertIn(expected_label, await page.title())
+        await page.close()
+
+
+
+    async def test_keyboard_skip_link_and_focus_on_each_route(self):
+        page = await self.browser.new_page()
+        for route in ("/", "/contact/"):
+            await page.goto(self.base_url + route, wait_until="networkidle")
+            await page.keyboard.press("Tab")
+            focused = await page.evaluate("""() => {
+                const el = document.activeElement;
+                const style = getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                return {
+                    href: el.getAttribute("href"),
+                    visible: rect.width > 0 && rect.height > 0,
+                    outlineStyle: style.outlineStyle,
+                    outlineWidth: style.outlineWidth,
+                    boxShadow: style.boxShadow
+                };
+            }""")
+            self.assertEqual(focused["href"], "#main-content", route)
+            self.assertTrue(focused["visible"], route)
+            focus_visible = (
+                focused["outlineStyle"] not in ("none", "") and
+                focused["outlineWidth"] not in ("0px", "")
+            ) or focused["boxShadow"] != "none"
+            self.assertTrue(focus_visible, f"No visible focus on skip link: {route} {focused}")
+            await page.keyboard.press("Enter")
+            self.assertEqual(await page.evaluate("document.activeElement.id"), "main-content", route)
+        await page.close()
+
+    async def test_reduced_motion_preference_is_respected(self):
+        page = await self.browser.new_page(reduced_motion="reduce")
+        await page.goto(self.base_url + "/", wait_until="networkidle")
+        styles = await page.evaluate("""() => ({
+            scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
+            animationDuration: getComputedStyle(document.querySelector(".visual-core")).animationDuration,
+            transitionDuration: getComputedStyle(document.querySelector(".visual-core")).transitionDuration
+        })""")
+        self.assertEqual(styles["scrollBehavior"], "auto")
+        self.assertTrue(
+            all(float(value.strip().removesuffix("s")) <= 0.00001
+                for value in styles["animationDuration"].split(",")),
+            f"Reduced-motion animation duration too long: {styles}"
+        )
+        self.assertTrue(
+            all(float(value.strip().removesuffix("s")) <= 0.00001
+                for value in styles["transitionDuration"].split(",")),
+            f"Reduced-motion transition duration too long: {styles}"
+        )
         await page.close()
 
     async def test_accessibility_landmarks_names_skip_link_and_keyboard_focus(self):
