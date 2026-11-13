@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID
 
 from .audit import append_event, new_event
-from .authz import AccessDenied, AuthenticatedAuthorizationDenied, authorize_authenticated_agent
+from .authz import AccessDenied, authorize_authenticated_agent
 from .execution_queue import ExecutionQueue, QueueError
 from .handler_registry import HandlerRegistry, PermissionError as HandlerPermissionError, authorize_job, execute_authorized_job
 from .identity import DEFAULT_KEY_DIR, DEFAULT_REPLAY_DB
@@ -205,12 +205,6 @@ class PapiWorker:
                 action="job.lease_lost", actor=system_actor, handler=handler, outcome="lease_lost_during_handler")
             return {"status": "lease_lost", "claimed": True, "job_id": job_id,
                     "attempt_id": attempt_id}
-        except AuthenticatedAuthorizationDenied as exc:
-            denied_actor = getattr(exc.principal, "agent_id", None)
-            return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
-                lease_token=lease_token, error_code="permission_denied", status="blocked",
-                actor=denied_actor if isinstance(denied_actor, str) else system_actor,
-                action="job.blocked", handler=handler, outcome="authenticated_agent_permission_denied")
         except AccessDenied:
             return self._fail_job(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                 lease_token=lease_token, error_code="authentication_failed", status="blocked",
