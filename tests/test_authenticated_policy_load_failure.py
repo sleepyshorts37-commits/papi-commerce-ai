@@ -23,11 +23,11 @@ class AuthenticatedPolicyLoadFailureTests(unittest.TestCase):
                 encoding="utf-8",
             )
             keys = root / "keys"
-            provision_agent_key("agent-a", keys)
+            key_path = provision_agent_key("agent-a", keys)
             envelope = sign_request(
                 "agent-a",
                 {"permission":"read_reports","task_id":"task-1","handler":"report.preview"},
-                keys,
+                key_path,
                 nonce="policy-load-failure-0001",
             )
             with patch("papi_core.authz.load_policy",
