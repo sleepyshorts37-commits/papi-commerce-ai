@@ -130,9 +130,16 @@ def read_events(path: Path) -> list[dict[str, Any]]:
     path = Path(path)
     if not path.exists():
         return []
+    raw = path.read_bytes()
+    if raw and not raw.endswith(b"\\n"):
+        raise AuditError("Journal incomplet : dernière ligne tronquée.")
+    try:
+        content = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise AuditError("Journal invalide : encodage UTF-8 incorrect.") from exc
     events = []
     seen = set()
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for line_number, line in enumerate(content.splitlines(), start=1):
         if not line.strip():
             continue
         try:
