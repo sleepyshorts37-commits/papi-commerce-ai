@@ -92,6 +92,8 @@ if __name__ == "__main__":
 ", body)
         self.assertIn("v_signature is null", body)
         self.assertIn("record contains unknown fields", body)
+        self.assertIn("record is missing required fields", body)
+        self.assertIn("v_checkpoint ?& array['schema_version', 'sequence', 'head_hash']", body)
         self.assertNotIn("set search_path = public, extensions, pg_temp", body)
 
 if __name__ == "__main__":
