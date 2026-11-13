@@ -67,6 +67,7 @@ class SupabaseIdentityVerifier:
 
         consumed = self.store._request("POST", "rpc/papi_consume_agent_nonce", {
             "p_agent_id": agent_id,
+            "p_key_version": version,
             "p_nonce": nonce,
             "p_expires_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(timestamp + self.clock_skew_seconds)),
         })

@@ -41,23 +41,23 @@ create or replace function public.papi_commit_task_change(
 ) returns bigint
 language plpgsql
 security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
     v_new_version bigint;
 begin
     if p_task_id is null or length(trim(p_task_id)) = 0
-       or jsonb_typeof(p_task) <> 'object'
+       or jsonb_typeof(p_task) is distinct from 'object'
        or p_task->>'id' is distinct from p_task_id
-       or jsonb_typeof(p_event) <> 'object'
+       or jsonb_typeof(p_event) is distinct from 'object'
        or p_event->>'entity_type' is distinct from 'task'
        or p_event->>'entity_id' is distinct from p_task_id
        or p_event->>'event_id' is null
        or p_event->>'occurred_at' is null
        or p_event->>'actor' is null
        or p_event->>'action' is null
-       or jsonb_typeof(p_event->'details') <> 'object'
-       or p_expected_version < 1 then
+       or jsonb_typeof(p_event->'details') is distinct from 'object'
+       or p_expected_version is null or p_expected_version < 1 then
         raise exception 'Invalid task change payload' using errcode = '22023';
     end if;
 
@@ -112,7 +112,10 @@ create table if not exists public.papi_jobs (
     result jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    check ((status = 'running') = (lease_owner is not null and lease_token is not null and lease_until is not null))
+    check (
+        (status = 'running' and lease_owner is not null and lease_token is not null and lease_until is not null)
+        or (status <> 'running' and lease_owner is null and lease_token is null and lease_until is null)
+    )
 );
 alter table public.papi_jobs add column if not exists agent_identity jsonb check (agent_identity is null or jsonb_typeof(agent_identity) = 'object');
 create index if not exists papi_jobs_ready_idx on public.papi_jobs(status, available_at, created_at);
@@ -124,20 +127,21 @@ create or replace function public.papi_claim_job(
     p_worker_id text, p_lease_token uuid, p_lease_seconds integer default 120
 ) returns jsonb
 language plpgsql security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare v_job public.papi_jobs%rowtype;
 begin
+    if p_worker_id is null or length(trim(p_worker_id)) = 0 or length(p_worker_id) > 120
+       or p_lease_token is null or p_lease_seconds is null
+       or p_lease_seconds < 15 or p_lease_seconds > 900 then
+        raise exception 'Invalid worker lease request' using errcode = '22023';
+    end if;
+
     -- Une réservation qui expire à sa dernière tentative est terminale : ne pas la laisser bloquée.
     update public.papi_jobs
        set status = 'failed', last_error_code = 'lease_expired_max_attempts',
            updated_at = now(), lease_owner = null, lease_token = null, lease_until = null
      where status = 'running' and lease_until < now() and attempts >= max_attempts;
-
-    if p_worker_id is null or length(trim(p_worker_id)) = 0 or length(p_worker_id) > 120
-       or p_lease_token is null or p_lease_seconds < 15 or p_lease_seconds > 900 then
-        raise exception 'Invalid worker lease request' using errcode = '22023';
-    end if;
     select * into v_job
       from public.papi_jobs
      where attempts < max_attempts
@@ -168,11 +172,11 @@ create or replace function public.papi_complete_job(
     p_job_id text, p_worker_id text, p_lease_token uuid, p_result jsonb default '{}'::jsonb
 ) returns boolean
 language plpgsql security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare v_count integer;
 begin
-    if jsonb_typeof(p_result) <> 'object' then
+    if p_result is null or jsonb_typeof(p_result) <> 'object' then
         raise exception 'Invalid result object' using errcode = '22023';
     end if;
     update public.papi_jobs
@@ -190,7 +194,7 @@ create or replace function public.papi_fail_job(
     p_job_id text, p_worker_id text, p_lease_token uuid, p_error_code text
 ) returns text
 language plpgsql security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
     v_job public.papi_jobs%rowtype;
@@ -264,21 +268,48 @@ revoke all on public.papi_agent_used_nonces from public, anon, authenticated;
 grant select, insert, update on public.papi_agent_public_keys to service_role;
 grant select, insert, delete on public.papi_agent_used_nonces to service_role;
 
--- L'insertion atomique garantit qu'un nonce ne peut être consommé que par un worker.
+-- L'insertion atomique lie le nonce à une version de clé Ed25519 active.
+do $nonce_cleanup$
+begin
+    if to_regprocedure('public.papi_consume_agent_nonce(text,text,timestamp with time zone)') is not null then
+        execute 'revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz) from public, anon, authenticated, service_role';
+        execute 'drop function public.papi_consume_agent_nonce(text, text, timestamptz)';
+    end if;
+end;
+$nonce_cleanup$;
+
 create or replace function public.papi_consume_agent_nonce(
-    p_agent_id text, p_nonce text, p_expires_at timestamptz
+    p_agent_id text,
+    p_key_version integer,
+    p_nonce text,
+    p_expires_at timestamptz
 ) returns boolean
 language plpgsql
 security invoker
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $$
-declare v_inserted integer;
+declare
+    v_inserted integer;
 begin
     if p_agent_id is null or p_agent_id !~ '^[A-Za-z0-9_-]{1,100}$'
+       or p_key_version is null or p_key_version < 1
        or p_nonce is null or length(p_nonce) < 16 or length(p_nonce) > 128
        or p_expires_at is null or p_expires_at <= now()
        or p_expires_at > now() + interval '10 minutes' then
         raise exception 'Invalid agent nonce' using errcode = '22023';
+    end if;
+
+    -- Keep the active key row locked until this transaction commits.
+    -- A concurrent rotation/revocation must wait; an already revoked key is denied.
+    perform 1
+      from public.papi_agent_public_keys
+     where agent_id = p_agent_id
+       and key_version = p_key_version
+       and status = 'active'
+     for share;
+
+    if not found then
+        return false;
     end if;
 
     delete from public.papi_agent_used_nonces where expires_at < now();
@@ -291,7 +322,7 @@ begin
     return v_inserted = 1;
 end;
 $$;
-revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
+revoke all on function public.papi_consume_agent_nonce(text, integer, text, timestamptz)
     from public, anon, authenticated;
-grant execute on function public.papi_consume_agent_nonce(text, text, timestamptz)
+grant execute on function public.papi_consume_agent_nonce(text, integer, text, timestamptz)
     to service_role;
