@@ -51,5 +51,38 @@ class WebsiteSectionTests(unittest.TestCase):
             render_page_sections([section] * 9, "home", {"home"})
 
 
+    def test_renders_business_components_with_provenance_and_internal_product_routes(self):
+        sections = [
+            {"id": "products", "type": "product_catalog", "eyebrow": "Boutique", "heading": "Nos produits", "body": "Sélection.", "items": [
+                {"name": "Café", "description": "Café local.", "price_label": "3 000 FCFA", "cta_label": "Détails", "target_page": "contact"},
+            ]},
+            {"id": "team", "type": "team", "eyebrow": "Équipe", "heading": "Notre équipe", "body": "", "items": [
+                {"name": "Awa", "role": "Conseillère", "bio": "Accompagne les clients."},
+            ]},
+            {"id": "reviews", "type": "testimonials", "eyebrow": "Avis", "heading": "Ils en parlent", "body": "", "items": [
+                {"quote": "Service apprécié.", "author": "Client A", "role": "Client"},
+            ]},
+            {"id": "services", "type": "service_cards", "eyebrow": "Offres", "heading": "Nos services", "body": "", "items": [
+                {"title": "Livraison", "body": "Livraison sur demande."},
+            ]},
+        ]
+        rendered = render_page_sections(sections, "home", {"home", "contact"})
+        self.assertIn('href="contact/index.html"', rendered)
+        self.assertIn("Café", rendered)
+        self.assertIn("Awa", rendered)
+        self.assertIn("authenticité n’a pas été vérifiée", rendered)
+        self.assertIn("service-card", rendered)
+
+    def test_rejects_external_product_target_and_extra_team_fields(self):
+        with self.assertRaises(WebsiteSectionError):
+            render_page_sections([{"id": "products", "type": "product_catalog", "eyebrow": "x", "heading": "x", "body": "", "items": [
+                {"name": "Item", "description": "Texte", "price_label": "1 XOF", "cta_label": "Acheter", "target_page": "https://example.com"},
+            ]}], "home", {"home"})
+        with self.assertRaises(WebsiteSectionError):
+            render_page_sections([{"id": "team", "type": "team", "eyebrow": "x", "heading": "x", "body": "", "items": [
+                {"name": "Awa", "role": "CEO", "bio": "Bio", "photo_url": "https://example.com/a.jpg"},
+            ]}], "home", {"home"})
+
+
 if __name__ == "__main__":
     unittest.main()
