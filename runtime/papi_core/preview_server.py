@@ -39,13 +39,18 @@ class _PreviewHandler(BaseHTTPRequestHandler):
         if "\\" in decoded or "\x00" in decoded:
             self.send_error(400, "Invalid path")
             return
-        relative = decoded.lstrip("/") or "index.html"
-        candidate = Path(relative)
+        # Treat the site root as its index exactly once; nested trailing
+        # slashes resolve to that directory's index.html.
+        if decoded in ("", "/"):
+            candidate = Path("index.html")
+        else:
+            relative = decoded.lstrip("/")
+            candidate = Path(relative)
+            if decoded.endswith("/"):
+                candidate = candidate / "index.html"
         if candidate.is_absolute() or any(part in {"", ".", ".."} for part in candidate.parts):
             self.send_error(403, "Path not allowed")
             return
-        if decoded.endswith("/"):
-            candidate = candidate / "index.html"
         root: Path = self.server.preview_root  # type: ignore[attr-defined]
         target = root / candidate
         try:
