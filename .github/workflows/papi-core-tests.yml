@@ -62,7 +62,7 @@ jobs:
           \endif
           SQL
 
-      - name: Verify durable attempts and fenced lease renewal
+      - name: Verify durable job attempt history
         env:
           PGPASSWORD: papi_test_password
         run: |
