@@ -51,6 +51,21 @@ class Ed25519IdentityTests(unittest.TestCase):
                                    key_version=2, timestamp=1000, nonce="e" * 16)
         self.assertTrue(verify_ed25519_request(new, self.registry, self.replay, now=1000)["authenticated"])
 
+    def test_rotation_restores_old_private_key_if_registry_write_fails(self):
+        from unittest.mock import patch
+        from papi_core import identity_ed25519
+
+        old = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
+                                   timestamp=1000, nonce="rollback-nonce-0001")
+        with patch.object(identity_ed25519, "_write_registry",
+                          side_effect=OSError("simulated registry failure")):
+            with self.assertRaises(OSError):
+                rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+
+        # The unchanged registry must still match the restored private key.
+        self.assertTrue(verify_ed25519_request(
+            old, self.registry, self.replay, now=1000)["authenticated"])
+
     def test_revocation_rejected(self):
         revoke_ed25519_agent("agent-a", self.registry)
         envelope = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
