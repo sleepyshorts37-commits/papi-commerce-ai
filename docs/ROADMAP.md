@@ -54,6 +54,7 @@
 - [x] Formaliser les portes de validation commerciale, les responsabilités et le dossier de preuve.
 - [x] Concevoir les agents spécialisés et leurs fiches d'identité, permissions et responsables (registre et fiches documentaires ; instances non activées).
 - [x] Construire une offre pilote avec démonstration sur données fictives et protocole de mesure (livrable documentaire ; aucun résultat réel mesuré).
+- [x] Réaliser une revue de préparation commerciale, juridique, technique et sécurité ; documenter les blocages et le statut sans autoriser le lancement.
 - [ ] Obtenir validation du propriétaire avant toute prospection, dépense ou engagement client.
 - [ ] Réaliser un premier projet pilote autorisé et mesurer les revenus réellement encaissés.
 
