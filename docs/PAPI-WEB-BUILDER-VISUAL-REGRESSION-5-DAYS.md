@@ -24,9 +24,10 @@ Renforcer la détection automatisée des régressions de mise en page sur les ro
 - Livrable : test Chromium multi-secteurs sur 18 combinaisons secteur/viewport.
 
 ## Jour 4 — Régression des interactions et états
-- [ ] Vérifier navigation, CTA, focus, hover/focus-visible et états de menu disponibles.
-- [ ] Vérifier que les contenus longs et libellés ne créent pas de débordement.
-- Livrable : tests de parcours et robustesse visuelle.
+- [x] Tester sur la page secondaire une section FAQ interactive (ouverture native details/summary), un CTA interne, la navigation de retour et la visibilité du focus clavier.
+- [x] Vérifier les sections configurables intro/FAQ/CTA, un titre et un contenu longs ainsi qu'un libellé CTA long sur mobile, tablette et desktop ; absence de débordement horizontal.
+- **Statut Jour 4 :** `test_custom_sections_interactions_long_content_and_internal_cta` ajouté ; CI en attente sur le commit `b8a7788`.
+- Livrable : test Chromium de parcours et robustesse des contenus configurables.
 
 ## Jour 5 — CI et rapport
 - [ ] Exécuter core, Chromium, registre et documentation sur les changements finaux.
