@@ -17,7 +17,7 @@ La surcharge `papi_fail_job(..., boolean, integer)` :
 - applique le plafond durable `attempts < max_attempts` avant d'inscrire `retry` ;
 - libère le bail dans la même transaction.
 
-L'ancienne surcharge à quatre arguments est conservée pour compatibilité avec les anciens clients. Le nouveau client utilise exclusivement la surcharge à six arguments. La migration 20261113_002 est enregistrée comme non appliquée et son exécution reste désactivée par politique.
+L'ancienne surcharge à quatre arguments est conservée dans le schéma mais son droit d'exécution est retiré à `service_role` afin d'empêcher le contournement de la politique. Les anciens clients échouent donc de manière fermée après application de la migration. Le rollback restaure explicitement ce droit. La migration 20261113_002 est enregistrée comme non appliquée et son exécution reste désactivée par politique.
 
 ## Limites
 
