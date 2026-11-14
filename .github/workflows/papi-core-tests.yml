@@ -172,6 +172,8 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/test_worker_sync.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_worker_event_validation.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/test_execution_queue.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/test_execution_queue_idempotency.sql
