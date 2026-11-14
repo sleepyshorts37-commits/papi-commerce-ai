@@ -64,6 +64,12 @@ class HumanHandoffTests(unittest.TestCase):
         with self.assertRaises(HumanHandoffError):
             confirm_user_action(item, user_actor="owner", confirmation="OTP: 123456")
 
+    def test_sensitive_confirmation_text_is_rejected(self):
+        item = handoff()
+        for phrase in ("OTP: 123456", "access token: secret", "refresh token=secret"):
+            with self.subTest(phrase=phrase), self.assertRaises(HumanHandoffError):
+                confirm_user_action(item, user_actor="owner", confirmation=phrase)
+
     def test_non_https_registration_url_is_rejected(self):
         with self.assertRaises(HumanHandoffError):
             handoff(official_url="http://example.org/register")
