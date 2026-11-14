@@ -50,7 +50,8 @@
 - [x] Ajouter un journal transactionnel durable pour la rotation Ed25519, récupération fail-closed des états interrompus et reprise avant signature/nouvelle rotation (Mission 64 ; tests de panne simulée, sans réseau ni activation).
 - [x] Ajouter un gestionnaire transactionnel central du cycle de vie des identités : provision, rotation, permissions et révocation, avec approbation explicite, idempotence, contrôle de révision, journal append-only et chaîne SHA-256 (Mission 65 ; CI verte sur le SHA final, aucune activation réelle).
 - [x] Ajouter un moteur de rapprochement en lecture seule entre registre canonique et journal transactionnel : détection des identités orphelines, activations non autorisées, écarts d'état/permissions, révisions et versions de clés invalides ; rapport déterministe SHA-256 et recommandation fail-closed (Mission 66 ; CI verte sur le SHA final, aucune correction automatique ni activation).
-- [ ] Ajouter des adaptateurs locaux read-only pour extraire le registre JSON canonique et le ledger SQLite, valider les schémas, refuser les sources ambiguës et alimenter directement le moteur de rapprochement (Mission 67 ; aucune écriture, aucun accès réseau).
+- [x] Ajouter des adaptateurs locaux read-only pour extraire le registre JSON canonique et le ledger SQLite, valider les schémas, refuser les sources ambiguës et alimenter directement le moteur de rapprochement (Mission 67 ; CI verte sur le SHA final, aucune écriture, aucun accès réseau).
+- [ ] Durcir les adaptateurs de snapshots : ouverture par descripteur sans suivi de lien symbolique, limites de taille, détection des clés JSON dupliquées et validation stricte du ledger SQLite (Mission 68 ; aucune mutation ni accès réseau).
 - [x] Rendre atomiques la réservation du nonce Ed25519 anti-rejeu et l'archivage du reçu de transport dans une seule transaction SQLite `BEGIN IMMEDIATE` / `COMMIT`, avec rollback conjoint et idempotence des doublons exacts (Mission 59 ; aucun réseau ni import).
 
 ## Phase 3 — Première activité commerciale
@@ -81,4 +82,5 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 ## État des missions récentes
 - Mission 65 : CI confirmée verte sur le SHA final ; PR #227 toujours en brouillon, non fusionnée.
 - Mission 66 : CI confirmée verte sur le SHA final `641627a86825e48e9aeba03b51b85a3186aea4cb` ; PR #228 toujours en brouillon, non fusionnée.
-- Mission 67 : adaptateurs d'extraction locale en lecture seule ; validation CI sur le SHA final requise.
+- Mission 67 : adaptateurs d'extraction locale en lecture seule ; CI verte sur le SHA final cb0ad31e1c46e4c9503ab70184f66c824da58188 ; PR #229 toujours en brouillon, non fusionnée.
+- Mission 68 : durcissement des entrées de snapshots JSON/SQLite ; CI sur le SHA final à vérifier ; PR en brouillon.
