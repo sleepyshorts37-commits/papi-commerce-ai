@@ -29,6 +29,6 @@ CI GitHub à vérifier sur le SHA exact de tête de la PR. Aucun résultat de te
 
 ## Avancement
 - Ordre de vingt journées : 100 %.
-- Implémentation et tests : soumis à la CI.
-- Avancement technique provisoire : 90 % avant validation CI.
+- Implémentation et tests : CI verte sur le SHA indiqué ci-dessus.
+- Avancement technique : 100 % des critères de cette mission validés par la CI.
 - Aucun agent activé, aucune source modifiée, aucune transaction, fusion ou mise en production.
