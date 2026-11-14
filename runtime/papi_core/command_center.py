@@ -6,11 +6,11 @@ from .astou import build_director_brief
 from .registry import AGENTS_FILE, TASKS_FILE, load_agents, load_json
 from .doctor import diagnose_environment
 from .workers_report import build_workers_report
-from .workers_inputs import build_workers_inputs
+from .workers_inputs import build_workers_inputs\nfrom .worker_store import SupabaseWorkerStore
 
 def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_path=None, environ=None, *,
                          platform_candidates=None, handoffs=None, profitability_results=None,
-                         platform_discovery_batch=None, handoff_records=None, profitability_batch=None) -> dict[str, Any]:
+                         platform_discovery_batch=None, handoff_records=None, profitability_batch=None,\n                         worker_store=None) -> dict[str, Any]:
     """Aggregate local registries and explicit worker outputs without side effects."""
     agents = load_agents(agents_path)
     tasks_data = load_json(tasks_path)
@@ -23,7 +23,7 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
     brief = build_director_brief(tasks_path, agents_path, policy_path) if policy_path else build_director_brief(tasks_path, agents_path)
     doctor = diagnose_environment(environ)
 
-    raw_values = (platform_candidates, handoffs, profitability_results)
+    if worker_store is not None and any(value is not None for value in (platform_candidates, handoffs, profitability_results, platform_discovery_batch, handoff_records, profitability_batch)):\n        raise ValueError("Le stockage central ne peut pas être combiné avec des entrées worker explicites.")\n\n    raw_values = (platform_candidates, handoffs, profitability_results)
     source_values = (platform_discovery_batch, handoff_records, profitability_batch)
     if any(raw is not None and source is not None for raw, source in zip(raw_values, source_values)):
         raise ValueError("Fournir une seule forme de données par source.")
@@ -37,7 +37,7 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
     )
     return {
         "product": "PAPI COMMAND CENTER",
-        "mode": "read_only_local",
+        "mode": "read_only_supabase" if worker_store is not None else "read_only_local",
         "dashboard": {
             "agents_total": len(agents),
             "agents_by_status": dict(sorted(agent_statuses.items())),
@@ -49,10 +49,10 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
         },
         "astou_brief": brief,
         "ai_workers": workers,
-        "ai_workers_sources": adapted["sources"],
+        "ai_workers_sources": ({**adapted["sources"], "persistent_storage_read": True, "network_access_performed": True, "central_store_read": True, "automatic_collection_performed": False} if worker_store is not None else adapted["sources"]),
         "environment": {"status": doctor["status"], "checks": doctor["checks"],
                         "network_test_performed": False, "secrets_displayed": False},
-        "controls": {"writes_performed": False, "worker_started": False,
+        "controls": {"writes_performed": False, "storage_reads_performed": worker_store is not None, "worker_started": False,
                      "external_actions_enabled": False, "financial_actions_enabled": False,
                      "notifications_sent": False},
     }
