@@ -79,6 +79,22 @@ class SyncTransportReceiptCheckpointArchiveTests(unittest.TestCase):
         self.assertEqual(result["records_audited"], 1)
         self.assertTrue(result["signatures_verified"])
 
+    def test_archive_remains_auditable_after_signing_key_rotation(self):
+        self.archive_checkpoint()
+        from papi_core.identity_ed25519 import rotate_ed25519_agent
+        rotate_ed25519_agent("archive-owner", self.root / "keys", self.registry)
+        result = self.audit()
+        self.assertEqual(result["records_audited"], 1)
+        self.assertTrue(result["signatures_verified"])
+
+    def test_archive_remains_auditable_after_signing_key_revocation(self):
+        self.archive_checkpoint()
+        from papi_core.identity_ed25519 import revoke_ed25519_agent
+        revoke_ed25519_agent("archive-owner", self.registry)
+        result = self.audit()
+        self.assertEqual(result["records_audited"], 1)
+        self.assertTrue(result["signatures_verified"])
+
     def test_exact_duplicate_is_idempotent(self):
         self.assertEqual(self.archive_checkpoint()["status"], "archived")
         duplicate = self.archive_checkpoint()
