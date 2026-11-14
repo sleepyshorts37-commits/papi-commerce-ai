@@ -113,7 +113,7 @@ def encrypt_sqlite_backup(backup_path: Path, key_path: Path,
                     "plaintext_size": len(plaintext)}
         _exclusive_bytes(encrypted_path, ciphertext)
         try:
-            _exclusive_bytes(Path(manifest_path), _canonical(manifest) + b"\\n")
+            _exclusive_bytes(Path(manifest_path), _canonical(manifest) + b"\n")
         except Exception:
             encrypted_path.unlink(missing_ok=True)
             raise
