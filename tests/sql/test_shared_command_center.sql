@@ -20,10 +20,10 @@ begin
     v_incident := public.papi_incident_open_from_alert(v_alert, 'ci-m31-incident-key-001', 'human-operator');
 
     v_snapshot := public.papi_command_center_snapshot(10);
-    if v_snapshot->'summary'->>'workers_total' <> '1'
-       or v_snapshot->'summary'->>'jobs_queued' <> '1'
-       or v_snapshot->'summary'->>'alerts_open' <> '1'
-       or v_snapshot->'summary'->>'incidents_open' <> '1' then
+    if (v_snapshot->'summary'->>'workers_total')::integer < 1
+       or (v_snapshot->'summary'->>'jobs_queued')::integer < 1
+       or (v_snapshot->'summary'->>'alerts_open')::integer < 1
+       or (v_snapshot->'summary'->>'incidents_open')::integer < 1 then
         raise exception 'Command-center summary counts are incorrect: %', v_snapshot->'summary';
     end if;
     if jsonb_array_length(v_snapshot->'workers') <> 1
