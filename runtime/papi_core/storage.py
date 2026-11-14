@@ -23,7 +23,7 @@ class SupabaseStore:
         self.key = key or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_KEY", "")
         self.timeout = timeout
         if not self.url.startswith("https://") or not self.key:
-            raise StoreError("Configurer SUPABASE_URL (HTTPS) et SUPABASE_KEY dans l'environnement.")
+            raise StoreError("Configurer SUPABASE_URL (HTTPS) et SUPABASE_SERVICE_ROLE_KEY dans l'environnement serveur.")
 
     def _request(self, method: str, path: str, payload: Any = None, prefer: str | None = None):
         body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
