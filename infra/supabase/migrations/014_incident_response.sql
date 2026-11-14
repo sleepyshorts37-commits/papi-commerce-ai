@@ -122,7 +122,7 @@ begin
  end if;
  select * into v_incident from public.papi_incidents where incident_id=p_incident_id for update;
  if not found then raise exception 'Incident not found' using errcode='23503'; end if;
- v_event_type:=case p_action when 'qualify' then 'qualified' when 'investigate' then 'investigating' when 'mitigate' then 'mitigated' when 'escalate' then 'escalated' when 'reopen' then 'reopened' when 'add_evidence' then 'evidence_added' else p_action end;
+ v_event_type:=case p_action when 'qualify' then 'qualified' when 'investigate' then 'investigating' when 'mitigate' then 'mitigated' when 'escalate' then 'escalated' when 'reopen' then 'reopened' when 'resolve' then 'resolved' when 'close' then 'closed' when 'add_evidence' then 'evidence_added' else p_action end;
  v_expected_owner:=case when p_action='assign' then p_owner else null end;
  if p_event_key is not null then
   select * into v_existing_event from public.papi_incident_events where event_key=p_event_key;
