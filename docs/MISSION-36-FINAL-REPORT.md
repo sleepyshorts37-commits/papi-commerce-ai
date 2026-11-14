@@ -19,7 +19,11 @@ Renforcement de l'intégrité du journal mémoire local et de la validation des 
 - La validation stricte peut bloquer la lecture d'un ancien journal malformé ; sauvegarder avant toute maintenance et restaurer de manière contrôlée.
 
 ## Validation
-La CI a exécuté **367 tests Python** avec succès sur le commit de code avant les dernières mises à jour documentaires. Les deux jobs de workflow ont réussi sur ce commit. Une vérification finale de CI sur le SHA de tête incluant ce rapport est requise avant de déclarer la mission clôturée.
+GitHub Actions run #1181 / ID `43613239271`, succès sur le SHA `c05cb649d7e934ec26d13275ab407809a549513c` :
+- Job `tests` : SUCCESS — **367 tests Python réussis**.
+- Job `local-postgrest-integration` : SUCCESS.
+- Le rapport et les documents de mission sont inclus dans ce SHA.
+- Une dernière exécution CI sera vérifiée après l'enregistrement de ce rapport.
 
 ## PR
 PR #196 : ouverte en brouillon, non fusionnée.
