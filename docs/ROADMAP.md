@@ -47,6 +47,7 @@
 - [x] Ajouter un checkpoint local du registre des reçus, signé Ed25519, liant le nombre d'enregistrements à une empreinte SHA-256 déterministe et détectant toute divergence ultérieure (Mission 61 ; vérification sans consommation de nonce ni mutation du registre).
 - [x] Archiver durablement les checkpoints Ed25519 dans une base SQLite distincte, append-only, idempotente et auditable en lecture seule, avec vérification historique des signatures (Mission 62 ; sans réseau ni modification du registre métier).
 - [x] Conserver les anciennes clés publiques versionnées lors des rotations et permettre la vérification cryptographique des archives après rotation/révocation, sans autorisation d’action ni consommation de nonce (Mission 63 ; audit uniquement).
+- [x] Ajouter un journal transactionnel durable pour la rotation Ed25519, récupération fail-closed des états interrompus et reprise avant signature/nouvelle rotation (Mission 64 ; tests de panne simulée, sans réseau ni activation).
 - [x] Rendre atomiques la réservation du nonce Ed25519 anti-rejeu et l'archivage du reçu de transport dans une seule transaction SQLite `BEGIN IMMEDIATE` / `COMMIT`, avec rollback conjoint et idempotence des doublons exacts (Mission 59 ; aucun réseau ni import).
 
 ## Phase 3 — Première activité commerciale
