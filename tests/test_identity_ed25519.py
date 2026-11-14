@@ -51,6 +51,30 @@ class Ed25519IdentityTests(unittest.TestCase):
                                    key_version=2, timestamp=1000, nonce="e" * 16)
         self.assertTrue(verify_ed25519_request(new, self.registry, self.replay, now=1000)["authenticated"])
 
+    def test_rotation_preserves_old_public_key_for_historical_audit_only(self):
+        old = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
+                                   timestamp=1000, nonce="l" * 16)
+        rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+        from papi_core.identity_ed25519 import verify_ed25519_archived_signature
+        result = verify_ed25519_archived_signature(old, self.registry)
+        self.assertTrue(result["signature_verified"])
+        self.assertTrue(result["historical_key"])
+        self.assertFalse(result["authorization_granted"])
+        self.assertFalse(result["nonce_consumed"])
+        with self.assertRaises(Ed25519IdentityError):
+            verify_ed25519_request(old, self.registry, self.replay, now=1000)
+
+    def test_revoked_key_remains_verifiable_for_historical_audit_only(self):
+        old = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
+                                   timestamp=1000, nonce="m" * 16)
+        revoke_ed25519_agent("agent-a", self.registry)
+        from papi_core.identity_ed25519 import verify_ed25519_archived_signature
+        result = verify_ed25519_archived_signature(old, self.registry)
+        self.assertTrue(result["signature_verified"])
+        self.assertFalse(result["authorization_granted"])
+        with self.assertRaises(Ed25519IdentityError):
+            verify_ed25519_request(old, self.registry, self.replay, now=1000)
+
     def test_revocation_rejected(self):
         revoke_ed25519_agent("agent-a", self.registry)
         envelope = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
