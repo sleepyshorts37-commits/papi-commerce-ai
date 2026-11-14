@@ -39,6 +39,7 @@
 - [x] Authentifier les métadonnées du manifeste AES-GCM v2, valider strictement son schéma et préserver la lecture v1 (Mission 52 ; 469 tests et CI réussis sur le SHA final).
 - [x] Préparer un manifeste de transfert local déterministe liant paquet .papisync et charge utile .papidata, avec digests, destination, limites et validation stricte ; aucun réseau ni import (Mission 53).
 - [x] Vérifier les fichiers réels contre le manifeste de transfert, refuser les fichiers absents/modifiés/symboliques et appliquer des contrôles stricts de types et tailles (Mission 54 ; vérification locale uniquement).
+- [x] Ajouter un précontrôle local complet du transfert : fichiers, charge utile, destination et signature Ed25519 du propriétaire, sans écrire de reçu ni consommer le nonce (Mission 55).
 
 ## Phase 3 — Première activité commerciale
 - [ ] Comparer les opportunités sans frais initiaux.
