@@ -15,6 +15,7 @@ from .authz import AccessDenied, authorize_agent
 from .supabase_preflight import run_supabase_preflight, require_supabase_configuration
 from .sync_receiver import receive_sync_package
 from .sync_import import import_approved_sync_content
+from .jsonl_migration import migrate_jsonl_to_sqlite, MigrationError
 
 
 def main() -> int:
@@ -50,7 +51,7 @@ def main() -> int:
     importer.add_argument("--ledger", required=True, help="Base SQLite locale de reçus et contenus importés")
     importer.add_argument("--destination", required=True, help="Identifiant exact de cette instance")
     importer.add_argument("--agents", required=True, help="Registre local des agents")
-    preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
+    migrate = sub.add_parser("migrate-jsonl", help="Sauvegarder puis migrer un journal JSONL local vers SQLite")\n    migrate.add_argument("--kind", choices=("memory", "message"), required=True)\n    migrate.add_argument("--source", required=True)\n    migrate.add_argument("--database", required=True)\n    migrate.add_argument("--backup-dir", required=True)\n    migrate.add_argument("--agents", default="data/agents.json")\n    preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
     preflight.add_argument("--require-configured", action="store_true", help="Exiger URL et clé serveur configurées")
     args = parser.parse_args()
     try:
@@ -104,7 +105,7 @@ def main() -> int:
             )
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0
-        if args.command == "supabase-preflight":
+        if args.command == "migrate-jsonl":\n            report = migrate_jsonl_to_sqlite(\n                kind=args.kind, source_path=args.source, database_path=args.database,\n                backup_dir=args.backup_dir, agents_path=args.agents,\n            )\n            print(json.dumps(report, ensure_ascii=False, indent=2))\n            return 0\n        if args.command == "supabase-preflight":
             report = run_supabase_preflight()
             print(json.dumps(report, ensure_ascii=False, indent=2))
             if args.require_configured:
@@ -122,7 +123,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, MigrationError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
