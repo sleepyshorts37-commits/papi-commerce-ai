@@ -55,3 +55,16 @@ Les tests unitaires utilisent un faux store sans réseau ni projet Supabase héb
 - Les tests unitaires couvrent répétition, collision de clé, pagination et validation des curseurs. Le workflow applique les migrations 004/005 deux fois et vérifie l'unicité dans PostgreSQL éphémère.
 
 Le curseur est un jeton de position opaque, pas une preuve d'autorisation : chaque page réauthentifie le principal et réapplique les filtres d'accès. Aucune synchronisation automatique ou opération sur un projet Supabase hébergé n'est activée.
+
+
+## Jour 4/5 : aperçu de réconciliation contrôlée
+
+Le module `runtime/papi_core/reconciliation.py` compare deux instantanés fournis explicitement (local et distant) pour la mémoire partagée et PAPI CHAT.
+
+- Classe les enregistrements en `local_only`, `remote_only`, `identical` ou `conflicts`, à partir d'identifiants stables et de champs sémantiques.
+- Exclut les mémoires privées, owner ou restreintes ; filtre les messages sur les destinataires `all` et l'agent authentifié.
+- Refuse les identifiants dupliqués et les contenus ressemblant à des secrets.
+- Le rapport ne contient que les types et identifiants des enregistrements, jamais leur contenu.
+- Le résultat indique explicitement `preview_only` et `writes_performed: false`. Toute différence ou collision exige une revue humaine.
+
+Cette étape n'effectue aucun transfert, aucune fusion, aucun écrasement et aucun effacement. Les snapshots et le principal sont injectés par l'appelant ; aucun client réseau ou projet Supabase hébergé n'est créé.
