@@ -47,6 +47,19 @@ def _visible_memory(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return visible
 
 
+def _normalise_memory_sources(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Mappe la source JSONL locale vers les colonnes SQL distantes."""
+    normalised = []
+    for row in records:
+        item = dict(row)
+        source = item.get("source")
+        if isinstance(source, dict):
+            item.setdefault("source_type", source.get("type"))
+            item.setdefault("source_id", source.get("id"))
+        normalised.append(item)
+    return normalised
+
+
 def _visible_messages(records: list[dict[str, Any]], actor: str) -> list[dict[str, Any]]:
     if not isinstance(records, list):
         raise ReconciliationError("Les messages doivent être fournis sous forme de liste.")
@@ -109,7 +122,8 @@ def build_reconciliation_preview(
     """Compare explicit snapshots. Ne crée aucun client et n'effectue aucune écriture."""
     actor = require_authenticated_agent_principal(principal).agent_id
     memories = _compare(
-        _visible_memory(local_memory), _visible_memory(remote_memory),
+        _normalise_memory_sources(_visible_memory(local_memory)),
+        _normalise_memory_sources(_visible_memory(remote_memory)),
         id_field="memory_id",
         semantic_fields=("category", "title", "content", "source_type", "source_id",
                          "confidence", "scope", "tags", "sensitivity"),
