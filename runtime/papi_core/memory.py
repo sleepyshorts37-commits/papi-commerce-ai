@@ -157,6 +157,7 @@ def remember_fact(
     source_type: str, source_id: str, confidence: float = 0.8,
     scope: str = "shared", tags: list[str] | None = None,
     sensitivity: str = "normal", path: Path = DEFAULT_PATH,
+    sqlite_db: Path | None = None,
 ) -> dict[str, Any]:
     """Ajoute un fait traçable ; ne modifie jamais une entrée existante."""
     authenticated = require_authenticated_agent_principal(principal)
@@ -186,14 +187,21 @@ def remember_fact(
         "confidence": float(confidence), "scope": scope,
         "tags": clean_tags, "sensitivity": sensitivity,
     }
-    _append(event, Path(path))
+    if sqlite_db is None:
+        _append(event, Path(path))
+    else:
+        try:
+            append_local_record(sqlite_db, kind="memory", record_id=event["memory_id"],
+                                event_id=event["event_id"], created_at=event["created_at"], record=event)
+        except LocalStoreError as exc:
+            raise MemoryError(f"Écriture SQLite mémoire refusée: {exc}") from exc
     return {key: value for key, value in event.items() if key != "event_type"}
 
 
 def search_memory(
     *, principal: object, query: str = "", category: str | None = None,
     scope: str | None = None, limit: int = 20, path: Path = DEFAULT_PATH,
-    import_db: Path | None = None,
+    import_db: Path | None = None, sqlite_db: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Recherche locale ; les entrées privées ne sont visibles que dans leur portée."""
     authenticated = require_authenticated_agent_principal(principal)
@@ -208,11 +216,23 @@ def search_memory(
         raise MemoryError("Portée invalide.")
     events = _read_events(Path(path))
     try:
+        operational = load_local_records(sqlite_db, "memory")
         imported = load_imported_records(import_db, "memory")
     except SyncStoreError as exc:
         raise MemoryError(f"Magasin de mémoire synchronisée invalide: {exc}") from exc
+    except LocalStoreError as exc:
+        raise MemoryError(f"Magasin SQLite mémoire invalide: {exc}") from exc
     known_events = {event["event_id"]: event for event in events}
     known_memories = {event.get("memory_id"): event for event in events if event.get("event_type") == "remember"}
+    for event in operational:
+        _validate_event(event, 0)
+        prior = known_events.get(event["event_id"])
+        if prior is not None:
+            if prior != event:
+                raise MemoryError("Collision entre mémoire JSONL et mémoire SQLite.")
+            continue
+        known_events[event["event_id"]] = event
+        events.append(event)
     for event in imported:
         _validate_event(event, 0)
         if (event.get("event_type") != "remember" or event.get("scope") != "shared"
@@ -250,6 +270,7 @@ def search_memory(
 
 def supersede_memory(
     *, memory_id: str, principal: object, reason: str, path: Path = DEFAULT_PATH,
+    sqlite_db: Path | None = None,
 ) -> bool:
     """Archive logiquement une entrée par événement ; l'historique reste intact."""
     memory_id = _safe_text(memory_id, "memory_id", 120)
@@ -257,6 +278,10 @@ def supersede_memory(
     actor = authenticated.agent_id
     reason = _safe_text(reason, "reason", 240)
     events = _read_events(Path(path))
+    try:
+        events.extend(load_local_records(sqlite_db, "memory"))
+    except LocalStoreError as exc:
+        raise MemoryError(f"Magasin SQLite mémoire invalide: {exc}") from exc
     target = next((e for e in events if e["event_type"] == "remember" and e["memory_id"] == memory_id), None)
     if target is None:
         raise MemoryError("Entrée mémoire introuvable.")
@@ -266,9 +291,17 @@ def supersede_memory(
         raise MemoryError("Un agent ne peut pas archiver la mémoire privée d’un autre agent.")
     if any(e.get("target_memory_id") == memory_id for e in events if e["event_type"] == "supersede"):
         return False
-    _append({
+    event = {
         "event_id": str(uuid.uuid4()), "event_type": "supersede",
         "target_memory_id": memory_id, "created_at": _timestamp(),
         "actor": actor, "reason": reason,
-    }, Path(path))
+    }
+    if sqlite_db is None:
+        _append(event, Path(path))
+    else:
+        try:
+            append_local_record(sqlite_db, kind="memory", record_id=event["event_id"],
+                                event_id=event["event_id"], created_at=event["created_at"], record=event)
+        except LocalStoreError as exc:
+            raise MemoryError(f"Archivage SQLite mémoire refusé: {exc}") from exc
     return True
