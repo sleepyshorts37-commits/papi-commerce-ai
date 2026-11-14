@@ -16,6 +16,7 @@ from .supabase_preflight import run_supabase_preflight, require_supabase_configu
 from .sync_receiver import receive_sync_package
 from .sync_import import import_approved_sync_content
 from .jsonl_migration import migrate_jsonl_to_sqlite, MigrationError
+from .sqlite_backup import create_sqlite_backup, verify_sqlite_backup, restore_sqlite_backup, BackupRestoreError
 
 
 def main() -> int:
@@ -57,6 +58,14 @@ def main() -> int:
     migrate.add_argument("--database", required=True)
     migrate.add_argument("--backup-dir", required=True)
     migrate.add_argument("--agents", default="data/agents.json")
+    backup = sub.add_parser("sqlite-backup", help="Créer une sauvegarde cohérente et vérifiée d'une base SQLite locale")
+    backup.add_argument("--database", required=True)
+    backup.add_argument("--backup-dir", required=True)
+    verify_backup = sub.add_parser("sqlite-backup-verify", help="Vérifier une sauvegarde SQLite via son manifeste")
+    verify_backup.add_argument("--manifest", required=True)
+    restore = sub.add_parser("sqlite-restore", help="Restaurer une sauvegarde vers un nouveau chemin sans écrasement")
+    restore.add_argument("--manifest", required=True)
+    restore.add_argument("--destination", required=True)
     preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
     preflight.add_argument("--require-configured", action="store_true", help="Exiger URL et clé serveur configurées")
     args = parser.parse_args()
@@ -118,6 +127,18 @@ def main() -> int:
             )
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0
+        if args.command == "sqlite-backup":
+            report = create_sqlite_backup(args.database, args.backup_dir)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "sqlite-backup-verify":
+            report = verify_sqlite_backup(args.manifest)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "sqlite-restore":
+            report = restore_sqlite_backup(args.manifest, args.destination)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
         if args.command == "supabase-preflight":
             report = run_supabase_preflight()
             print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -136,7 +157,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, MigrationError, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, MigrationError, BackupRestoreError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
