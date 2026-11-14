@@ -43,6 +43,9 @@
 - [x] Construire localement une requête de transport HTTPS canonique, allowlistée et idempotente, avec fichiers encodés et contrôles anti-SSRF initiaux, sans émission réseau (Mission 56).
 - [x] Définir et vérifier localement le reçu de transport signé Ed25519, lié au digest exact de la requête et à la livraison, avec anti-rejeu du nonce destinataire ; aucune connexion réseau ni import (Mission 57).
 - [x] Archiver les reçus de transport vérifiés dans un registre SQLite local idempotent et protégé contre les collisions (Mission 58 ; atomicité nonce/reçu renforcée en Mission 59).
+- [x] Imposer l'append-only du registre local des reçus par triggers SQLite et ajouter un audit en lecture seule des digests SHA-256, du JSON canonique et des identifiants liés (Mission 60 ; intégrité locale, sans prétention d'inviolabilité).
+- [x] Ajouter un checkpoint local du registre des reçus, signé Ed25519, liant le nombre d'enregistrements à une empreinte SHA-256 déterministe et détectant toute divergence ultérieure (Mission 61 ; vérification sans consommation de nonce ni mutation du registre).
+- [x] Archiver durablement les checkpoints Ed25519 dans une base SQLite distincte, append-only, idempotente et auditable en lecture seule, avec vérification historique des signatures (Mission 62 ; sans réseau ni modification du registre métier).
 - [x] Rendre atomiques la réservation du nonce Ed25519 anti-rejeu et l'archivage du reçu de transport dans une seule transaction SQLite `BEGIN IMMEDIATE` / `COMMIT`, avec rollback conjoint et idempotence des doublons exacts (Mission 59 ; aucun réseau ni import).
 
 ## Phase 3 — Première activité commerciale
@@ -58,6 +61,7 @@
 - [ ] PAPI SERVICES et PAPI FREELANCE.
 - [ ] PAPI AFFILIATION.
 - [ ] PAPI MARKET et PAPI DROPSHIPPING.
+- [ ] PAPI SOCIAL GROWTH : équipes distinctes par réseau, publication autorisée, audience réelle, prospection, opportunités rémunérées et suivi des conversions ; équipe de 10 agents d'analyse vidéo.
 - [ ] Intégrer les prestataires de paiement après validation de l'éligibilité, des frais, des permissions et des conditions.
 - [ ] Mettre en place sauvegardes, rapprochement périodique et séparation des rôles comptables.
 
@@ -67,6 +71,3 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
 
-- [x] Imposer l'append-only du registre local des reçus par triggers SQLite et ajouter un audit en lecture seule des digests SHA-256, du JSON canonique et des identifiants liés (Mission 60 ; intégrité locale, sans prétention d'inviolabilité).
-- [x] Ajouter un checkpoint local du registre des reçus, signé Ed25519, liant le nombre d'enregistrements à une empreinte SHA-256 déterministe et détectant toute divergence ultérieure (Mission 61 ; vérification sans consommation de nonce ni mutation du registre).
-- [x] Archiver durablement les checkpoints Ed25519 dans une base SQLite distincte, append-only, idempotente et auditable en lecture seule, avec vérification historique des signatures (Mission 62 ; sans réseau ni modification du registre métier).

@@ -30,6 +30,11 @@ Prestations numériques : visuels, rédaction, traduction, fiches produits, rech
 ### PAPI BUSINESS PARTNERS
 Apport d'affaires pour hôtels, restaurants, immobilier, automobile, écoles, commerces, fournisseurs et services. Commission fixe ou pourcentage convenu par écrit avant l'apport de clients.
 
+### PAPI SOCIAL GROWTH
+Une équipe distincte est prévue pour chaque réseau (TikTok, Instagram, Facebook, YouTube et autres plateformes retenues). Chaque agent gère uniquement la page officielle créée et autorisée par le propriétaire : calendrier et publication régulière, développement d'une audience réelle, veille des prospects et missions rémunérées, contribution aux ventes et suivi des conversions. Respect strict des règles de chaque plateforme, des permissions accordées et des limites anti-spam ; aucune publication ou prise de contact externe sans autorisation requise.
+
+Une équipe complémentaire de **10 agents d'analyse vidéo** est prévue. Le propriétaire transmet un lien YouTube ; l'équipe répartit l'analyse, vérifie les éléments importants et produit une synthèse structurée. Les dix identités individuelles doivent être créées dans le registre canonique avant toute activation ; leur définition documentaire ne vaut pas déploiement.
+
 ## Prospection multicanale
 - Cheikh : e-mail.
 - Sokhna : Instagram.

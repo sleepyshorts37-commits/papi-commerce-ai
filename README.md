@@ -9,6 +9,7 @@ Groupe commercial numérique assisté par agents IA. **État : fondations techni
 4. **PAPI FREELANCE** — missions réalisables et autorisées pour des agents IA.
 5. **PAPI SERVICES** — services numériques aux entreprises.
 6. **PAPI BUSINESS PARTNERS** — apport d'affaires rémunéré à la commission.
+7. **PAPI SOCIAL GROWTH** — gestion des pages officielles, développement d'audience réelle, prospection, opportunités rémunérées et suivi des conversions.
 
 ## Principes
 - Objectif initial : 0 FCFA. Aucune dépense, souscription, publicité payante ou crédit API sans autorisation explicite.
@@ -37,9 +38,15 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core supabase-preflight` — vérifier localement l'inventaire des migrations et la configuration Supabase sans réseau.
 - `PYTHONPATH=runtime python -m papi_core sqlite-backup --database data/local-journals.sqlite3 --backup-dir backups/sqlite` — créer un snapshot SQLite cohérent avec manifeste SHA-256.
 - `PYTHONPATH=runtime python -m papi_core sqlite-backup-verify --manifest backups/sqlite/<fichier>.manifest.json` — vérifier une sauvegarde sans la modifier.
-- `PYTHONPATH=runtime python -m papi_core sqlite-restore --manifest backups/sqlite/<fichier>.manifest.json --destination data/restore-check.sqlite3` — restaurer vers un chemin neuf, sans écrasement.\n- `PYTHONPATH=runtime python -m papi_core migrate-jsonl --kind memory --source data/memory/events.jsonl --database data/local-journals.sqlite3 --backup-dir backups/mission-49 --agents data/agents.json` — sauvegarder et migrer le journal mémoire local sans modifier la source.\n- `PYTHONPATH=runtime python -m papi_core migrate-jsonl --kind message --source data/chat/messages.jsonl --database data/local-journals.sqlite3 --backup-dir backups/mission-49 --agents data/agents.json` — sauvegarder et migrer PAPI CHAT après contrôle du premier journal.
+- `PYTHONPATH=runtime python -m papi_core sqlite-restore --manifest backups/sqlite/<fichier>.manifest.json --destination data/restore-check.sqlite3` — restaurer vers un chemin neuf, sans écrasement.
+- `PYTHONPATH=runtime python -m papi_core migrate-jsonl --kind memory --source data/memory/events.jsonl --database data/local-journals.sqlite3 --backup-dir backups/mission-49 --agents data/agents.json` — sauvegarder et migrer le journal mémoire local sans modifier la source.
+- `PYTHONPATH=runtime python -m papi_core migrate-jsonl --kind message --source data/chat/messages.jsonl --database data/local-journals.sqlite3 --backup-dir backups/mission-49 --agents data/agents.json` — sauvegarder et migrer PAPI CHAT après contrôle du premier journal.
 
-- `PYTHONPATH=runtime python -m papi_core import-sync-content --package ./incoming/export.papisync --payload ./incoming/export.papidata --owner-id OWNER_ID --registry ./keys/public.json --ledger ./data/sync-imports.sqlite3 --destination INSTANCE_ID --agents ./data/agents.json` — vérifier et importer atomiquement les contenus approuvés dans SQLite local.\n\nLe mode SQLite local append-only pour mémoire et PAPI CHAT est facultatif ; JSONL reste le mode par défaut (Mission 48).\n\nLe worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
+- `PYTHONPATH=runtime python -m papi_core import-sync-content --package ./incoming/export.papisync --payload ./incoming/export.papidata --owner-id OWNER_ID --registry ./keys/public.json --ledger ./data/sync-imports.sqlite3 --destination INSTANCE_ID --agents ./data/agents.json` — vérifier et importer atomiquement les contenus approuvés dans SQLite local.
+
+Le mode SQLite local append-only pour mémoire et PAPI CHAT est facultatif ; JSONL reste le mode par défaut (Mission 48).
+
+Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
 
 - `PYTHONPATH=runtime python -m papi_core sqlite-keygen --key-file "$HOME/.config/papi/keys/backup.key"` — créer une clé AES-256 locale, sans l'afficher.
@@ -49,12 +56,14 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core sqlite-backup-rotate-key --manifest backups/encrypted/backup.manifest.json --old-key-file "$HOME/.config/papi/keys/backup.key" --new-key-file "$HOME/.config/papi/keys/backup-next.key" --new-manifest backups/encrypted/backup-next.manifest.json` — ré-encrypter avec une nouvelle clé.
 
 ## Documents
-- [Journaux SQLite locaux mémoire et PAPI CHAT](docs/LOCAL-SQLITE-JOURNALS.md)\n- [Migration contrôlée JSONL vers SQLite](docs/JSONL-SQLITE-MIGRATION.md)
+- [Journaux SQLite locaux mémoire et PAPI CHAT](docs/LOCAL-SQLITE-JOURNALS.md)
+- [Migration contrôlée JSONL vers SQLite](docs/JSONL-SQLITE-MIGRATION.md)
 - [Sauvegarde, vérification et restauration SQLite](docs/SQLITE-BACKUP-RESTORE.md)
 - [Chiffrement AES-256-GCM et gestion des clés SQLite](docs/SQLITE-BACKUP-ENCRYPTION.md)
 - [Échange hors ligne des paquets de synchronisation](docs/SYNC-OFFLINE-SPOOL.md)
 - [Réception locale authentifiée des paquets](docs/SYNC-LOCAL-RECEIVER.md)
-- [Charges utiles de synchronisation contrôlées](docs/SYNC-CONTENT-PAYLOAD.md)\n- [Import atomique des contenus mémoire et PAPI CHAT](docs/SYNC-ATOMIC-CONTENT-IMPORT.md)
+- [Charges utiles de synchronisation contrôlées](docs/SYNC-CONTENT-PAYLOAD.md)
+- [Import atomique des contenus mémoire et PAPI CHAT](docs/SYNC-ATOMIC-CONTENT-IMPORT.md)
 - [Consommation atomique des approbations et reçus sync](docs/SYNC-ATOMIC-RECEIPTS.md)
 - [Registre local des reçus de synchronisation](docs/SYNC-RECEIPT-LEDGER.md)
 - [Organisation](docs/ORGANISATION.md)

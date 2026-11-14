@@ -173,7 +173,7 @@ def audit_sync_transport_receipt_checkpoint_archive(
                 )
             verify_ed25519_request(
                 envelope, registry_path=Path(registry_path), replay_db=Path("."),
-                now=now, consume_nonce=False,
+                now=now, consume_nonce=False, allow_expired=True,
             )
         except (ValueError, TypeError, KeyError, Ed25519IdentityError) as exc:
             if isinstance(exc, SyncTransportReceiptCheckpointArchiveError):

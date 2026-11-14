@@ -70,6 +70,15 @@ class SyncTransportReceiptCheckpointArchiveTests(unittest.TestCase):
         self.assertTrue(self.audit()["signatures_verified"])
         self.assertEqual(self.audit()["records_audited"], 1)
 
+    def test_archived_signature_remains_auditable_after_clock_window(self):
+        self.archive_checkpoint()
+        result = audit_sync_transport_receipt_checkpoint_archive(
+            archive_db=self.archive, registry_path=self.registry,
+            now=1794657600 + 86400,
+        )
+        self.assertEqual(result["records_audited"], 1)
+        self.assertTrue(result["signatures_verified"])
+
     def test_exact_duplicate_is_idempotent(self):
         self.assertEqual(self.archive_checkpoint()["status"], "archived")
         duplicate = self.archive_checkpoint()
