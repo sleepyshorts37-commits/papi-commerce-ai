@@ -64,7 +64,7 @@ def build_sync_bundle(*, source_instance_id: str, destination_instance_id: str,
         raise SyncBundleError("created_at doit être ISO-8601 avec fuseau.")
     if (isinstance(cursor_start, bool) or not isinstance(cursor_start, int)
             or isinstance(cursor_end, bool) or not isinstance(cursor_end, int)
-            or cursor_start < 0 or cursor_end < cursor_start):
+            or cursor_start < 0 or cursor_end < cursor_start - 1):
         raise SyncBundleError("Bornes de curseur invalides.")
     if not isinstance(events, list) or len(events) > MAX_EVENTS:
         raise SyncBundleError("Liste d'événements invalide ou hors limites.")
@@ -73,7 +73,7 @@ def build_sync_bundle(*, source_instance_id: str, destination_instance_id: str,
     previous = cursor_start - 1
     for event in events:
         previous = _validate_event(event, previous)
-        if not cursor_start <= previous <= cursor_end:
+        if previous != (cursor_start - 1 if not normalized else normalized[-1]["sequence"]) + 1 or not cursor_start <= previous <= cursor_end:
             raise SyncBundleError("Séquence hors de la plage du paquet.")
         if event["event_id"] in seen_events:
             raise SyncBundleError("Identifiant d'événement dupliqué.")
@@ -86,7 +86,7 @@ def build_sync_bundle(*, source_instance_id: str, destination_instance_id: str,
     if normalized and (normalized[0]["sequence"] != cursor_start
                        or normalized[-1]["sequence"] != cursor_end):
         raise SyncBundleError("Les événements ne couvrent pas exactement les curseurs déclarés.")
-    if not normalized and cursor_start <= cursor_end:
+    if not normalized and cursor_start != cursor_end + 1:
         raise SyncBundleError("Un paquet vide doit utiliser une plage vide (cursor_start > cursor_end).")
     bundle = {
         "protocol_version": PROTOCOL_VERSION,
