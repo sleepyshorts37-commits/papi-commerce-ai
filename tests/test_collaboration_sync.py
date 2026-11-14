@@ -67,7 +67,8 @@ class CollaborationSyncTests(unittest.TestCase):
         self.store._request.reset_mock()
         self.store._request.return_value = []
         self.store.page_memory_events(principal=self.principal, limit=2, cursor=page["next_cursor"])
-        self.assertIn("event_id.lt.e2", self.store._request.call_args.args[1])
+        self.assertEqual(self.store._request.call_args.args[1], "rpc/papi_list_memory_events")
+        self.assertEqual(self.store._request.call_args.args[2]["p_before_event_id"], "e2")
 
     def test_keyset_chat_page_and_invalid_cursor(self):
         self.store._request.return_value = [
@@ -83,7 +84,8 @@ class CollaborationSyncTests(unittest.TestCase):
     def test_list_scope_filters_use_authenticated_actor(self):
         self.store._request.return_value = []
         self.store.list_memory_events(principal=self.principal)
-        self.assertIn("actor.eq.astou", self.store._request.call_args.args[1])
+        self.assertEqual(self.store._request.call_args.args[1], "rpc/papi_list_memory_events")
+        self.assertEqual(self.store._request.call_args.args[2]["p_actor"], "astou")
         self.store._request.reset_mock()
         self.store.list_chat_messages(principal=self.principal)
         self.assertIn("recipient.eq.astou", self.store._request.call_args.args[1])
