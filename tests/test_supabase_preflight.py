@@ -65,6 +65,16 @@ class SupabasePreflightTests(unittest.TestCase):
             with self.assertRaises(SupabasePreflightError):
                 require_supabase_configuration(report)
 
+    def test_malformed_url_port_is_rejected_without_exception(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._repo(root)
+            report = run_supabase_preflight(root, {
+                "SUPABASE_URL": "https://project-ref.supabase.co:not-a-port",
+                "SUPABASE_SERVICE_ROLE_KEY": "secret",
+            })
+            self.assertFalse(report["supabase_url_valid"])
+
     def test_missing_migration_version_is_blocked(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
