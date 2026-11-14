@@ -106,7 +106,7 @@ class ImportedReaderTests(unittest.TestCase):
             load_imported_records(self.db, "memory")
 
     def test_identical_memory_in_local_and_imported_sources_is_deduplicated(self):
-        self.memory_file.write_text(json.dumps(self.memory, ensure_ascii=False) + "\\n",
+        self.memory_file.write_text(json.dumps(self.memory, ensure_ascii=False) + "\n",
                                     encoding="utf-8")
         result = search_memory(principal=self.principal, path=self.memory_file, import_db=self.db)
         self.assertEqual(len(result), 1)
@@ -114,7 +114,7 @@ class ImportedReaderTests(unittest.TestCase):
 
     def test_conflicting_memory_id_with_local_journal_fails_closed(self):
         conflicting = {**self.memory, "content": "Une règle divergente."}
-        self.memory_file.write_text(json.dumps(conflicting, ensure_ascii=False) + "\\n",
+        self.memory_file.write_text(json.dumps(conflicting, ensure_ascii=False) + "\n",
                                     encoding="utf-8")
         with self.assertRaises(ValueError):
             search_memory(principal=self.principal, path=self.memory_file, import_db=self.db)
