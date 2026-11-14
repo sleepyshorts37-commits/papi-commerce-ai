@@ -5,7 +5,7 @@
 
 Branche : `mission-34-supabase-preflight`  
 PR : [#194](https://github.com/sleepyshorts37-commits/papi-commerce-ai/pull/194) — ouverte, draft, non fusionnée.  
-SHA final validé : `c16910d797e91f0120ebe0b43b7bb9cca721ff61`.
+SHA final : le HEAD exact de la branche PR est celui associé au run CI final vérifié.
 
 ## Livrables
 - `runtime/papi_core/supabase_preflight.py` : inventaire déterministe des migrations, contrôle des versions, SHA-256, taille et disponibilité des rollbacks.
@@ -16,7 +16,7 @@ SHA final validé : `c16910d797e91f0120ebe0b43b7bb9cca721ff61`.
 - Documentation d'exploitation, plan, prompt détaillé et intégration dans le workflow CI.
 
 ## Preuves
-- GitHub Actions run #1143 / ID `43611713339` : **success** sur le SHA final exact.
+- GitHub Actions run #1143 / ID `43611713339` : **success** sur le commit de code `c16910d797e91f0120ebe0b43b7bb9cca721ff61`. La mise à jour documentaire finale doit également être validée sur le HEAD résultant.
 - Job `tests` : **success**.
 - Job `local-postgrest-integration` : **success**.
 - **353 tests Python réussis**.
