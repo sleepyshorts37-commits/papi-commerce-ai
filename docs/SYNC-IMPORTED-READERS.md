@@ -10,7 +10,7 @@ Mission 47 connecte les API de lecture existantes au magasin SQLite local de Mis
 ## Contrôles de provenance
 Le lecteur ouvre SQLite en mode strictement lecture seule. Il n'affiche que les enregistrements reliés à un lot d'import, à un reçu dont le statut est `verified_pending_manual_import` et à une référence de reçu correspondante (event ID, type, record ID et digest). Le digest SHA-256 du JSON canonique est recalculé à chaque lecture.
 
-Chaque événement mémoire est revalidé avec le validateur mémoire et doit rester `remember`, `shared`, `normal`, hors catégorie `decision`. Les messages passent par le validateur PAPI CHAT et le registre d'agents. Les identifiants en double ou collisions entre source locale et importée font échouer la lecture plutôt que choisir silencieusement une version.
+Chaque événement mémoire est revalidé avec le validateur mémoire et doit rester `remember`, `shared`, `normal`, hors catégorie `decision`. Les messages passent par le validateur PAPI CHAT et le registre d'agents. Les copies strictement identiques entre source locale et importée sont dédupliquées ; toute collision avec un contenu différent fait échouer la lecture plutôt que choisir silencieusement une version.
 
 ## Exemple d'utilisation dans le runtime
 ```python
