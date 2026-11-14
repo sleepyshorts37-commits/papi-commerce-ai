@@ -7,7 +7,6 @@ import sqlite3
 import stat
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 
 from .identity_reconciliation import reconcile_identity_snapshots
 
@@ -66,9 +65,9 @@ def _read_bounded(descriptor: int, limit: int, label: str) -> bytes:
         if total > limit:
             raise IdentitySnapshotError(f"Source {label} trop volumineuse.")
     after = os.fstat(descriptor)
-    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
-        after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns
-    ) or total != after.st_size:
+    before_signature = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns)
+    after_signature = (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns)
+    if before_signature != after_signature or total != after.st_size:
         raise IdentitySnapshotError(f"Source {label} modifiée pendant la lecture.")
     return b"".join(chunks)
 
@@ -152,12 +151,14 @@ def load_ledger_snapshot(path: Path) -> list[dict[str, Any]]:
             raise IdentitySnapshotError("Révision invalide dans le ledger.")
         if type(row["key_version"]) is not int or row["key_version"] < 1:
             raise IdentitySnapshotError("Version de clé invalide dans le ledger.")
-        permissions = _load_json_bytes(row["permissions_json"].encode("utf-8"), "permissions ledger")
-        prohibited = _load_json_bytes(row["prohibited_json"].encode("utf-8"), "interdictions ledger")
+        permissions_raw = row["permissions_json"].encode("utf-8")
+        prohibited_raw = row["prohibited_json"].encode("utf-8")
+        if len(permissions_raw) > _MAX_JSON_VALUE_BYTES or len(prohibited_raw) > _MAX_JSON_VALUE_BYTES:
+            raise IdentitySnapshotError("Valeur JSON du ledger trop volumineuse.")
+        permissions = _load_json_bytes(permissions_raw, "permissions ledger")
+        prohibited = _load_json_bytes(prohibited_raw, "interdictions ledger")
         if not isinstance(permissions, list) or not isinstance(prohibited, list):
             raise IdentitySnapshotError("Permissions et interdictions doivent être des listes.")
-        if len(row["permissions_json"].encode("utf-8")) > _MAX_JSON_VALUE_BYTES or len(row["prohibited_json"].encode("utf-8")) > _MAX_JSON_VALUE_BYTES:
-            raise IdentitySnapshotError("Valeur JSON du ledger trop volumineuse.")
         result.append({
             "agent_id": row["agent_id"], "status": row["status"],
             "revision": row["revision"], "key_version": row["key_version"],
