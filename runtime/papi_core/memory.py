@@ -232,6 +232,11 @@ def search_memory(
                 raise MemoryError("Collision entre mémoire JSONL et mémoire SQLite.")
             continue
         known_events[event["event_id"]] = event
+        if event["event_type"] == "remember":
+            prior_memory = known_memories.get(event["memory_id"])
+            if prior_memory is not None and prior_memory != event:
+                raise MemoryError("Collision d’identifiant mémoire entre JSONL et SQLite.")
+            known_memories[event["memory_id"]] = event
         events.append(event)
     for event in imported:
         _validate_event(event, 0)
