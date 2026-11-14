@@ -77,8 +77,9 @@ def _validate_event(event: Any, number: int) -> None:
         if any(key not in event for key in required):
             raise MemoryError(f"Événement remember incomplet ligne {number}.")
         if (not isinstance(event["memory_id"], str) or not event["memory_id"].strip()
-                or event["category"] not in CATEGORIES or event["scope"] not in SCOPES
-                or event["sensitivity"] not in SENSITIVITIES
+                or not isinstance(event["category"], str) or event["category"] not in CATEGORIES
+                or not isinstance(event["scope"], str) or event["scope"] not in SCOPES
+                or not isinstance(event["sensitivity"], str) or event["sensitivity"] not in SENSITIVITIES
                 or not isinstance(event["title"], str) or not event["title"].strip()
                 or len(event["title"]) > 120 or not isinstance(event["content"], str)
                 or not event["content"].strip() or len(event["content"]) > 2000
