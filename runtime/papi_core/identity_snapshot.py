@@ -38,7 +38,9 @@ def _reject_non_finite(value: str) -> None:
 
 
 def _open_regular_file(path: Path, label: str) -> int:
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise IdentitySnapshotError("Ouverture sans suivi de lien symbolique indisponible sur cette plateforme.")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | os.O_NOFOLLOW
     descriptor: int | None = None
     try:
         descriptor = os.open(os.fspath(path), flags)
