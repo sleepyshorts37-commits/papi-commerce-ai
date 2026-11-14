@@ -2,7 +2,7 @@ name: PAPI core tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, "mission-*"]
   pull_request:
     branches: [main, "mission-*"]
   workflow_dispatch:

@@ -20,6 +20,8 @@ def offer(**overrides):
         "minimum_net_hourly_rate": "8",
         "minimum_margin_percent": "10",
     }
+    if "target_hourly_rate" in overrides and "minimum_net_hourly_rate" not in overrides:
+        value.pop("minimum_net_hourly_rate")
     value.update(overrides)
     return value
 
@@ -38,6 +40,15 @@ class ProfitabilityTests(unittest.TestCase):
     def test_hourly_target_is_enforced(self):
         result = evaluate_offer_profitability(offer(target_hourly_rate="12"))
         self.assertEqual(result["status"], "below_hourly_target")
+
+    def test_legacy_target_hourly_rate_alias_is_supported(self):
+        result = evaluate_offer_profitability(offer(target_hourly_rate="12"))
+        self.assertEqual(result["minimum_net_hourly_rate"], "12.00")
+        self.assertEqual(result["status"], "below_hourly_target")
+
+    def test_conflicting_hourly_threshold_aliases_are_rejected(self):
+        with self.assertRaises(ProfitabilityError):
+            evaluate_offer_profitability(offer(target_hourly_rate="12", minimum_net_hourly_rate="8"))
 
     def test_minimum_margin_is_enforced(self):
         result = evaluate_offer_profitability(offer(minimum_margin_percent="50"))

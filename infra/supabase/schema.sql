@@ -374,6 +374,10 @@ begin
         raise exception 'Invalid worker sync event' using errcode = '22023';
     end if;
 
+    -- Serialize retries sharing an idempotency key, including the first insert race.
+    -- A hash collision only adds harmless contention; it cannot weaken uniqueness.
+    perform pg_advisory_xact_lock(hashtextextended(p_idempotency_key, 0));
+
     select * into v_receipt
       from public.papi_worker_event_receipts
      where idempotency_key = p_idempotency_key

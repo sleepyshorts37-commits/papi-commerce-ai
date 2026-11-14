@@ -56,7 +56,7 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
         "ai_workers": workers,
         "ai_workers_sources": ({**adapted["sources"], "persistent_storage_read": True, "network_access_performed": True, "central_store_read": True, "automatic_collection_performed": False} if worker_store is not None else adapted["sources"]),
         "environment": {"status": doctor["status"], "checks": doctor["checks"],
-                        "network_test_performed": worker_store is not None, "secrets_displayed": False},
+                        "network_test_performed": False, "network_access_performed": worker_store is not None, "secrets_displayed": False},
         "controls": {"writes_performed": False, "storage_reads_performed": worker_store is not None, "worker_started": False,
                      "external_actions_enabled": False, "financial_actions_enabled": False,
                      "notifications_sent": False},

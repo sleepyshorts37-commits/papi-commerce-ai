@@ -57,7 +57,12 @@ def evaluate_offer_profitability(offer: dict[str, Any]) -> dict[str, Any]:
     fees = values["platform_fee"] + values["payout_fee"]
     operating = values["infrastructure_cost"] + values["other_cost"]
     labor = hours * values["labor_hourly_rate"]
-    minimum_net_hourly = _amount(offer.get("minimum_net_hourly_rate", 0), "minimum_net_hourly_rate")
+    # target_hourly_rate is the historical public input name; keep it as an alias.
+    if "minimum_net_hourly_rate" in offer and "target_hourly_rate" in offer:
+        if str(offer["minimum_net_hourly_rate"]) != str(offer["target_hourly_rate"]):
+            raise ProfitabilityError("Définir une seule valeur de seuil horaire.")
+    hourly_target = offer.get("minimum_net_hourly_rate", offer.get("target_hourly_rate", 0))
+    minimum_net_hourly = _amount(hourly_target, "minimum_net_hourly_rate")
     cash_net = gross - fees - operating
     net_profit = cash_net - labor
     margin = (net_profit / gross * 100) if gross > 0 else Decimal("-100")
