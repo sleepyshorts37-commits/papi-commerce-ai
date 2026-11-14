@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from .registry import AGENTS_FILE, load_agents
 
@@ -59,7 +59,7 @@ def validate_message(message: dict[str, Any], agents_path: Path = AGENTS_FILE) -
     if not message["message_id"].startswith("MSG-"):
         raise ChatError("Identifiant de message invalide.")
     try:
-        parsed_id = __import__("uuid").UUID(message["message_id"][4:])
+        parsed_id = UUID(message["message_id"][4:])
     except ValueError as exc:
         raise ChatError("Identifiant de message invalide.") from exc
     if parsed_id.hex.upper() != message["message_id"][4:].upper():
