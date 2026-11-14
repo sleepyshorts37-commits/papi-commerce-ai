@@ -48,6 +48,8 @@ def _validate_endpoint(endpoint: object, allowed_hosts: object) -> str:
     if address is not None and not address.is_global:
         raise SyncTransportPlanError("Adresse IP non publique interdite.")
     normalized = host.lower()
+    if normalized == "localhost" or normalized.endswith((".localhost", ".local", ".internal", ".test")):
+        raise SyncTransportPlanError("Nom d’hôte local ou réservé interdit.")
     permitted = {item.lower() for item in allowed_hosts
                  if isinstance(item, str) and item.isascii()}
     if normalized not in permitted:
