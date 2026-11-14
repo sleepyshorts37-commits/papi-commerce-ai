@@ -180,12 +180,16 @@ def validate_sync_transfer_manifest(manifest: object) -> bool:
         item = manifest[label]
         if not isinstance(item, dict) or set(item) != {"filename", "sha256", "size_bytes", digest_key}:
             raise SyncTransferManifestError(f"Métadonnées {label} invalides.")
-        if (not isinstance(item["filename"], str) or not _DIGEST.fullmatch(str(item["sha256"]))
+        if (not isinstance(item["filename"], str)
+                or not isinstance(item["sha256"], str) or not _DIGEST.fullmatch(item["sha256"])
+                or not isinstance(item[digest_key], str) or not _DIGEST.fullmatch(item[digest_key])
                 or item["filename"] != item[digest_key] + suffix
-                or not _DIGEST.fullmatch(str(item[digest_key]))
                 or isinstance(item["size_bytes"], bool) or not isinstance(item["size_bytes"], int)
                 or item["size_bytes"] <= 0):
             raise SyncTransferManifestError(f"Champs {label} invalides.")
+        maximum = MAX_PACKAGE_BYTES if label == "package" else MAX_TRANSFER_BYTES - MAX_PACKAGE_BYTES
+        if item["size_bytes"] > maximum:
+            raise SyncTransferManifestError(f"Taille {label} supérieure à la limite autorisée.")
     for key in ("bundle_digest",):
         if not isinstance(manifest[key], str) or not _DIGEST.fullmatch(manifest[key]):
             raise SyncTransferManifestError("Digest de bundle invalide.")
@@ -197,4 +201,23 @@ def validate_sync_transfer_manifest(manifest: object) -> bool:
         raise SyncTransferManifestError("Digest du manifeste de transfert invalide.")
     if manifest["package"]["size_bytes"] + manifest["payload"]["size_bytes"] > MAX_TRANSFER_BYTES:
         raise SyncTransferManifestError("Transfert supérieur à la taille maximale autorisée.")
+    return True
+
+
+def verify_sync_transfer_manifest_files(
+    manifest: object, *, directory: Path
+) -> bool:
+    """Vérifie les octets présents contre le manifeste, sans les modifier."""
+    validate_sync_transfer_manifest(manifest)
+    root = Path(directory)
+    if root.is_symlink() or not root.is_dir():
+        raise SyncTransferManifestError("Le répertoire de transfert doit être un dossier local réel.")
+    package_path = root / manifest["package"]["filename"]
+    payload_path = root / manifest["payload"]["filename"]
+    rebuilt = build_sync_transfer_manifest(
+        package_path=package_path,
+        payload_path=payload_path,
+    )
+    if _canonical(rebuilt) != _canonical(manifest):
+        raise SyncTransferManifestError("Les fichiers présents ne correspondent pas au manifeste.")
     return True
