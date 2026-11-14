@@ -24,8 +24,11 @@ create table if not exists public.papi_outbox (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     check (
-        (status = 'processing') =
-        (lease_owner is not null and lease_token is not null and lease_until is not null)
+        (status = 'processing'
+         and lease_owner is not null and lease_token is not null and lease_until is not null)
+        or
+        (status <> 'processing'
+         and lease_owner is null and lease_token is null and lease_until is null)
     ),
     check (
         status not in ('delivered', 'dead_letter', 'cancelled')
