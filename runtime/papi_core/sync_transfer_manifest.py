@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from .sync_spool import MAX_PACKAGE_BYTES
+from .sync_bundle import SyncBundleError, validate_sync_bundle
+from .sync_payload import SyncPayloadError, validate_sync_payload
 
 MAX_TRANSFER_BYTES = 4 * 1024 * 1024
 _DIGEST = re.compile(r"^[a-f0-9]{64}$")
@@ -92,14 +94,16 @@ def build_sync_transfer_manifest(*, package_path: Path, payload_path: Path) -> d
     package = _decode_canonical(package_raw, label="Paquet")
     payload = _decode_canonical(payload_raw, label="Charge utile")
 
-    if set(package) != {"format_version", "bundle", "approval", "package_digest"}:
+    if (set(package) != {"format_version", "bundle", "approval", "package_digest"}
+            or package.get("format_version") != 1 or isinstance(package.get("format_version"), bool)):
         raise SyncTransferManifestError("Enveloppe du paquet inattendue.")
     package_body = {key: package[key] for key in ("format_version", "bundle", "approval")}
     package_digest = hashlib.sha256(_canonical(package_body)).hexdigest()
     if package.get("package_digest") != package_digest or package_path.name != package_digest + ".papisync":
         raise SyncTransferManifestError("Digest ou nom du paquet incohérent.")
 
-    if set(payload) != {"format_version", "bundle_digest", "records", "payload_digest"}:
+    if (set(payload) != {"format_version", "bundle_digest", "records", "payload_digest"}
+            or payload.get("format_version") != 1 or isinstance(payload.get("format_version"), bool)):
         raise SyncTransferManifestError("Enveloppe de charge utile inattendue.")
     payload_body = {key: payload[key] for key in ("format_version", "bundle_digest", "records")}
     payload_digest = hashlib.sha256(_canonical(payload_body)).hexdigest()
@@ -107,16 +111,22 @@ def build_sync_transfer_manifest(*, package_path: Path, payload_path: Path) -> d
         raise SyncTransferManifestError("Digest ou nom de la charge utile incohérent.")
 
     bundle = package.get("bundle")
-    if not isinstance(bundle, dict) or not _DIGEST.fullmatch(str(bundle.get("bundle_digest", ""))):
-        raise SyncTransferManifestError("Bundle de référence invalide.")
-    if payload.get("bundle_digest") != bundle["bundle_digest"]:
-        raise SyncTransferManifestError("La charge utile ne correspond pas au bundle du paquet.")
+    try:
+        validate_sync_bundle(bundle)
+    except (SyncBundleError, TypeError, KeyError, AttributeError) as exc:
+        raise SyncTransferManifestError("Bundle de référence invalide.") from exc
+    try:
+        validate_sync_payload(payload, bundle=bundle)
+    except (SyncPayloadError, SyncBundleError, TypeError, KeyError, AttributeError) as exc:
+        raise SyncTransferManifestError("Charge utile non conforme au bundle.") from exc
     source = bundle.get("source_instance_id")
     destination = bundle.get("destination_instance_id")
     export_id = bundle.get("export_id")
     if not all(isinstance(item, str) and item for item in (source, destination, export_id)):
         raise SyncTransferManifestError("Métadonnées de routage du bundle absentes.")
-    if package.get("approval", {}).get("payload", {}).get("destination_instance_id") != destination:
+    approval = package.get("approval")
+    if (not isinstance(approval, dict) or not isinstance(approval.get("payload"), dict)
+            or approval["payload"].get("destination_instance_id") != destination):
         raise SyncTransferManifestError("Destination du paquet et approbation différentes.")
 
     core = {
