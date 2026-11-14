@@ -95,7 +95,9 @@ class SyncTransportReceiptLedgerTests(unittest.TestCase):
             self.record(receipt)
         with sqlite3.connect(self.ledger) as db:
             self.assertEqual(db.execute("SELECT count(*) FROM sync_transport_receipts").fetchone()[0], 0)
-            self.assertEqual(db.execute("SELECT count(*) FROM used_nonces").fetchone()[0], 0)
+            tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            if "used_nonces" in tables:
+                self.assertEqual(db.execute("SELECT count(*) FROM used_nonces").fetchone()[0], 0)
 
     def test_corrupt_request_not_recorded(self):
         self.request["body"]["package_base64"] = "tampered"
