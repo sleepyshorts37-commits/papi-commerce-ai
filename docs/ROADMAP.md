@@ -49,6 +49,7 @@
 - [x] Conserver les anciennes clés publiques versionnées lors des rotations et permettre la vérification cryptographique des archives après rotation/révocation, sans autorisation d’action ni consommation de nonce (Mission 63 ; audit uniquement).
 - [x] Ajouter un journal transactionnel durable pour la rotation Ed25519, récupération fail-closed des états interrompus et reprise avant signature/nouvelle rotation (Mission 64 ; tests de panne simulée, sans réseau ni activation).
 - [ ] Ajouter un gestionnaire transactionnel central du cycle de vie des identités : provision, rotation, permissions et révocation, avec approbation explicite, idempotence, contrôle de révision, journal append-only et chaîne SHA-256 (Mission 65 ; validation CI requise, aucune activation réelle).
+- [ ] Ajouter un moteur de rapprochement en lecture seule entre registre canonique et journal transactionnel : détection des identités orphelines, activations non autorisées, écarts d'état/permissions, révisions et versions de clés invalides ; rapport déterministe SHA-256 et recommandation fail-closed (Mission 66 ; aucune correction automatique ni activation).
 - [x] Rendre atomiques la réservation du nonce Ed25519 anti-rejeu et l'archivage du reçu de transport dans une seule transaction SQLite `BEGIN IMMEDIATE` / `COMMIT`, avec rollback conjoint et idempotence des doublons exacts (Mission 59 ; aucun réseau ni import).
 
 ## Phase 3 — Première activité commerciale
