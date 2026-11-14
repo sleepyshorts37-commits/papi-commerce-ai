@@ -230,6 +230,32 @@ jobs:
           PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGDATABASE=papi_test PGPASSWORD=papi_test_password \
             bash tests/sql/test_execution_queue_concurrency.sh
 
+          # Exercise the guarded rollback against a clean disposable database.
+          createdb -h 127.0.0.1 -U postgres papi_sync_rollback_test
+          psql -h 127.0.0.1 -U postgres -d papi_sync_rollback_test -v ON_ERROR_STOP=1 \
+            -c "create role anon; create role authenticated; create role service_role;" 2>/dev/null || true
+          psql -h 127.0.0.1 -U postgres -d papi_sync_rollback_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/schema.sql
+          psql -h 127.0.0.1 -U postgres -d papi_sync_rollback_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/010_approval_ledger.sql
+          psql -h 127.0.0.1 -U postgres -d papi_sync_rollback_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/017_sync_approval_scope.sql
+          psql -h 127.0.0.1 -U postgres -d papi_sync_rollback_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/017_sync_approval_scope_down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_sync_rollback_test -v ON_ERROR_STOP=1 <<'ROLLBACK_CHECK'
+          do $check$
+          begin
+            if exists (select 1 from information_schema.columns
+                       where table_schema='public' and table_name='papi_approval_ledger'
+                         and column_name in ('scope_digest','destination_instance','action_ids'))
+               or to_regprocedure('public.papi_issue_sync_approval(text,text,text,text,text,timestamptz,timestamptz,text,text,jsonb)') is not null
+               or to_regprocedure('public.papi_consume_sync_approval(text,text,text,text,text,text,jsonb)') is not null then
+              raise exception 'Clean Mission 33 rollback left scoped approval objects';
+            end if;
+          end
+          $check$;
+          ROLLBACK_CHECK
+
   local-postgrest-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
