@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 import tempfile
 from pathlib import Path
 
@@ -51,6 +52,40 @@ class WorkerSafetyTests(unittest.TestCase):
         with self.assertRaises(WorkerError):
             PapiWorker(queue=QueueSpy(), registry=HandlerRegistry(),
                 policy={"execution_enabled": False}, worker_id=" ")
+
+
+    def test_worker_does_not_report_completion_after_lease_is_lost(self):
+        class LeaseLostQueue(QueueSpy):
+            def __init__(self, job):
+                super().__init__(job)
+                self.store = FakeStore()
+                self.complete_calls = []
+
+            def complete(self, **kwargs):
+                self.complete_calls.append(kwargs)
+                return False
+
+        job = {"id": "job-lease", "task_id": "task-lease", "handler": "report.preview",
+               "payload": {}, "lease_token": "lease-stale", "agent_identity": {"signed": True}}
+        queue = LeaseLostQueue(job)
+        registry = HandlerRegistry()
+        registry.register("report.preview", "read_only", lambda payload, context: {"ok": True})
+        policy = {"execution_enabled": True, "allowed_handlers": ["report.preview"],
+                  "action_permissions": {"read_only": {"enabled": True, "owner_approval": False}},
+                  "external_actions_enabled": False}
+        with tempfile.TemporaryDirectory() as tmp:
+            worker = PapiWorker(queue=queue, registry=registry, policy=policy,
+                worker_id="worker-test", key_dir=Path(tmp) / "keys",
+                replay_db=Path(tmp) / "replay.sqlite3")
+            with patch("papi_core.worker.authorize_authenticated_agent",
+                       return_value={"principal": "agent-a"}), \
+                 patch("papi_core.worker.execute_authorized_job", return_value={"ok": True}):
+                result = worker.run_once()
+
+        self.assertEqual(result["status"], "lease_lost")
+        self.assertEqual(len(queue.complete_calls), 1)
+        self.assertEqual(queue.complete_calls[0]["lease_token"], "lease-stale")
+        self.assertEqual(queue.fail_calls, [])
 
     def test_worker_blocks_job_without_signed_agent_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
