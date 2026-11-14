@@ -7,7 +7,8 @@ from pathlib import Path
 from papi_core.sync_bundle import build_sync_bundle
 from papi_core.sync_payload import build_sync_payload
 from papi_core.sync_transfer_manifest import (
-    SyncTransferManifestError, build_sync_transfer_manifest,
+    SyncTransferManifestError,
+    build_sync_transfer_manifest,
     validate_sync_transfer_manifest,
 )
 
@@ -42,3 +43,73 @@ class SyncTransferManifestTests(unittest.TestCase):
         payload = build_sync_payload(bundle=bundle, records=[])
         payload_body = {key: payload[key] for key in ("format_version", "bundle_digest", "records")}
         self.payload = write_object(self.root, ".papidata", payload_body, "payload_digest")
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_build_and_validate_manifest(self):
+        manifest = build_sync_transfer_manifest(
+            package_path=self.package, payload_path=self.payload)
+        self.assertTrue(validate_sync_transfer_manifest(manifest))
+        self.assertEqual(manifest["source_instance_id"], "instance-source")
+        self.assertEqual(manifest["destination_instance_id"], "instance-target")
+        self.assertFalse(manifest["network_transfer_performed"])
+        self.assertFalse(manifest["import_performed"])
+        self.assertFalse(manifest["execution_enabled"])
+
+    def test_tampered_file_is_rejected(self):
+        self.package.write_bytes(self.package.read_bytes() + b" ")
+        with self.assertRaises(SyncTransferManifestError):
+            build_sync_transfer_manifest(package_path=self.package, payload_path=self.payload)
+
+    def test_payload_for_another_bundle_is_rejected(self):
+        other_bundle = build_sync_bundle(
+            source_instance_id="instance-source",
+            destination_instance_id="instance-target",
+            export_id="export-other",
+            created_at="2026-11-14T10:00:00Z",
+            cursor_start=1, cursor_end=0, events=[],
+        )
+        other_payload = build_sync_payload(bundle=other_bundle, records=[])
+        body = {key: other_payload[key] for key in ("format_version", "bundle_digest", "records")}
+        other = write_object(self.root, ".papidata", body, "payload_digest")
+        with self.assertRaises(SyncTransferManifestError):
+            build_sync_transfer_manifest(package_path=self.package, payload_path=other)
+
+    def test_destination_mismatch_in_approval_is_rejected(self):
+        bundle = build_sync_bundle(
+            source_instance_id="instance-source",
+            destination_instance_id="instance-target",
+            export_id="export-53",
+            created_at="2026-11-14T10:00:00Z",
+            cursor_start=1, cursor_end=0, events=[],
+        )
+        body = {"format_version": 1, "bundle": bundle,
+                "approval": {"payload": {"destination_instance_id": "instance-other"}}}
+        other = write_object(self.root, ".papisync", body, "package_digest")
+        with self.assertRaises(SyncTransferManifestError):
+            build_sync_transfer_manifest(package_path=other, payload_path=self.payload)
+
+    def test_symlink_is_rejected(self):
+        link = self.root / ("c" * 64 + ".papisync")
+        link.symlink_to(self.package)
+        with self.assertRaises(SyncTransferManifestError):
+            build_sync_transfer_manifest(package_path=link, payload_path=self.payload)
+
+    def test_manifest_tampering_is_rejected(self):
+        manifest = build_sync_transfer_manifest(
+            package_path=self.package, payload_path=self.payload)
+        manifest["destination_instance_id"] = "instance-attacker"
+        with self.assertRaises(SyncTransferManifestError):
+            validate_sync_transfer_manifest(manifest)
+
+    def test_execution_flags_cannot_be_enabled(self):
+        manifest = build_sync_transfer_manifest(
+            package_path=self.package, payload_path=self.payload)
+        manifest["network_transfer_performed"] = True
+        with self.assertRaises(SyncTransferManifestError):
+            validate_sync_transfer_manifest(manifest)
+
+
+if __name__ == "__main__":
+    unittest.main()
