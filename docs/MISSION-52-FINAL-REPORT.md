@@ -14,4 +14,4 @@ Renforcement du manifeste des sauvegardes SQLite chiffrées.
 Aucune clé, donnée client ou sauvegarde réelle n'a été ajoutée au dépôt. Aucun accès distant, déploiement, worker, scheduler, publication, contact externe ou mouvement financier n'a été exécuté.
 
 ## Validation
-Le statut de complétion dépend du CI final sur le SHA exact de la branche. Les résultats et le nombre de tests doivent être reportés après vérification de GitHub Actions.
+CI final #1453 réussi sur le SHA `7f2ed957fe0575867388717edfa1d04124e971b9` : les deux jobs (`tests` et `local-postgrest-integration`) sont réussis ; 469 tests Python passés. La PR #212 reste ouverte en brouillon et non fusionnée.
