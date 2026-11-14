@@ -180,6 +180,8 @@ def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAU
     if not isinstance(timestamp, int) or isinstance(timestamp, bool):
         raise Ed25519IdentityError("Horodatage invalide.")
     current = int(time.time()) if now is None else int(now)
+    if allow_expired and consume_nonce:
+        raise Ed25519IdentityError("La vérification historique ne peut pas consommer de nonce.")
     if not allow_expired and abs(current - timestamp) > MAX_CLOCK_SKEW_SECONDS:
         raise Ed25519IdentityError("Signature expirée ou horloge désynchronisée.")
     if not isinstance(nonce, str) or len(nonce) < 16:
