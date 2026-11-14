@@ -120,6 +120,7 @@ class IdentityTransactionManagerTests(unittest.TestCase):
         )
         self.assertTrue(self.manager.verify_event_chain()["valid"])
         with sqlite3.connect(self.db) as connection:
+            connection.execute("DROP TRIGGER identity_events_no_update")
             connection.execute(
                 "UPDATE identity_events SET event_json='{}' WHERE sequence=1"
             )
