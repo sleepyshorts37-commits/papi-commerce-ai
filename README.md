@@ -38,6 +38,7 @@ Depuis la racine du dépôt :
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
 ## Documents
+- [Échange hors ligne des paquets de synchronisation](docs/SYNC-OFFLINE-SPOOL.md)
 - [Consommation atomique des approbations et reçus sync](docs/SYNC-ATOMIC-RECEIPTS.md)
 - [Registre local des reçus de synchronisation](docs/SYNC-RECEIPT-LEDGER.md)
 - [Organisation](docs/ORGANISATION.md)
