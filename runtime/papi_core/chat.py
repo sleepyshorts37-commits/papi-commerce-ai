@@ -71,7 +71,7 @@ def validate_message(message: dict[str, Any], agents_path: Path = AGENTS_FILE) -
 def send_message(
     *, sender: str, recipient: str, subject: str, body: str,
     message_type: str = "info", path: Path = CHAT_FILE,
-    agents_path: Path = AGENTS_FILE,
+    agents_path: Path = AGENTS_FILE, sqlite_db: Path | None = None,
 ) -> dict[str, Any]:
     """Enregistre un message local; n'envoie rien sur Internet."""
     message = {
@@ -111,7 +111,7 @@ def send_message(
 def read_messages(
     *, recipient: str | None = None, limit: int = 50,
     path: Path = CHAT_FILE, agents_path: Path = AGENTS_FILE,
-    import_db: Path | None = None,
+    import_db: Path | None = None, sqlite_db: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Lit les messages locaux destinés à un agent ou diffusés à tous."""
     if not isinstance(limit, int) or not 1 <= limit <= 200:
@@ -141,9 +141,27 @@ def read_messages(
         if recipient is None or message["recipient"] in {recipient, "all"}:
             messages.append(message)
     try:
+        operational = load_local_records(sqlite_db, "message")
         imported = load_imported_records(import_db, "message")
     except SyncStoreError as exc:
         raise ChatError(f"Magasin PAPI CHAT synchronisé invalide: {exc}") from exc
+    except LocalStoreError as exc:
+        raise ChatError(f"Magasin SQLite PAPI CHAT invalide: {exc}") from exc
+    for number, message in enumerate(operational, start=1):
+        try:
+            validate_message(message, agents_path)
+            message_id = message["message_id"]
+            if message_id in seen_ids:
+                previous = seen_messages.get(message_id)
+                if previous == message:
+                    continue
+                raise ChatError("Collision entre message JSONL et message SQLite.")
+            seen_ids.add(message_id)
+            seen_messages[message_id] = message
+        except (ChatError, KeyError, TypeError) as exc:
+            raise ChatError(f"Message SQLite invalide #{number}: {exc}") from exc
+        if recipient is None or message["recipient"] in {recipient, "all"}:
+            messages.append(message)
     for number, message in enumerate(imported, start=1):
         try:
             validate_message(message, agents_path)
