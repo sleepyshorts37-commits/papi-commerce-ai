@@ -1,0 +1,293 @@
+{
+  "project": "PAPI COMMERCE AI",
+  "department": "PAPI VIDEO TASKS",
+  "status": "design_and_scaffold",
+  "team_size": 10,
+  "manager": {
+    "id": "video-analysis-manager",
+    "name": "Responsable analyse vidéo",
+    "status": "planned"
+  },
+  "agents": [
+    {
+      "id": "video-analyst-01",
+      "name": "PAPI Video Analyst 1",
+      "role": "Structure et résumé",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-02",
+      "name": "PAPI Video Analyst 2",
+      "role": "Faits et informations clés",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-03",
+      "name": "PAPI Video Analyst 3",
+      "role": "Idées et enseignements",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-04",
+      "name": "PAPI Video Analyst 4",
+      "role": "Chronologie et chapitrage",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-05",
+      "name": "PAPI Video Analyst 5",
+      "role": "Exemples et démonstrations",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-06",
+      "name": "PAPI Video Analyst 6",
+      "role": "Analyse technique",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-07",
+      "name": "PAPI Video Analyst 7",
+      "role": "Langue et terminologie",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-08",
+      "name": "PAPI Video Analyst 8",
+      "role": "Audience et niveau pédagogique",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-09",
+      "name": "PAPI Video Analyst 9",
+      "role": "Sources et affirmations à vérifier",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    },
+    {
+      "id": "video-analyst-10",
+      "name": "PAPI Video Analyst 10",
+      "role": "Synthèse indépendante",
+      "department": "PAPI VIDEO TASKS",
+      "reports_to": "video-analysis-manager",
+      "mission": "Analyser le contenu d'une vidéo fournie par le propriétaire et produire des observations distinctes.",
+      "skills": [
+        "analyse de contenu",
+        "synthèse",
+        "repérage de points clés"
+      ],
+      "objective": "Fournir une observation traçable et utile sur la vidéo assignée.",
+      "autonomy": "analyse interne uniquement; aucune action externe",
+      "permissions": [
+        "analyze_owner_submitted_video",
+        "prepare_internal_observation"
+      ],
+      "prohibited": [
+        "artificial_views",
+        "artificial_engagement",
+        "ad_revenue_manipulation",
+        "automated_repeated_playback",
+        "external_publication"
+      ],
+      "status": "planned",
+      "created_at": "2026-11-13"
+    }
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "project": "PAPI COMMERCE AI",
+  "department": "PAPI SOCIAL GROWTH",
+  "status": "design_and_scaffold",
+  "manager": {
+    "id": "social-growth-manager",
+    "name": "Responsable PAPI SOCIAL GROWTH",
+    "status": "planned"
+  },
+  "agents": [
+    {
+      "id": "tiktok-growth-agent",
+      "platform": "TikTok",
+      "page_owner": "PAPI COMMERCE AI",
+      "status": "planned",
+      "responsibilities": [
+        "create_platform_native_content",
+        "schedule_and_publish_when_authorized",
+        "grow_real_audience",
+        "monitor_comments_and_messages_when_authorized",
+        "discover_qualified_customers",
+        "identify_paid_missions_and_revenue_opportunities",
+        "promote_papi_products",
+        "track_leads_sales_and_conversions"
+      ],
+      "kpis": [
+        "published_content",
+        "reach",
+        "watch_time_or_views",
+        "real_followers",
+        "qualified_leads",
+        "eligible_missions_found",
+        "sales",
+        "verified_revenue_xof"
+      ],
+      "prohibited": [
+        "fake_views",
+        "fake_followers",
+        "engagement_pods",
+        "spam",
+        "platform_rule_evasion",
+        "unapproved_paid_ads"
+      ]
+    },
+    {
+      "id": "instagram-growth-agent",
+      "platform": "Instagram",
+      "page_owner": "PAPI COMMERCE AI",
+      "status": "planned",
+      "responsibilities": [
+        "create_platform_native_content",
+        "schedule_and_publish_when_authorized",
+        "grow_real_audience",
+        "monitor_comments_and_messages_when_authorized",
+        "discover_qualified_customers",
+        "identify_paid_missions_and_revenue_opportunities",
+        "promote_papi_products",
+        "track_leads_sales_and_conversions"
+      ],
+      "kpis": [
+        "published_content",
+        "reach",
+        "watch_time_or_views",
+        "real_followers",
+        "qualified_leads",
+        "eligible_missions_found",
+        "sales",
+        "verified_revenue_xof"
+      ],
+      "prohibited": [
+        "fake_views",
+        "fake_followers",
+        "engagement_pods",
+        "spam",
+        "platform_rule_evasion",
+        "unapproved_paid_ads"
+      ]
+    },
+    {
+      "id": "facebook-growth-agent",
+      "platform": "Facebook",
+      "page_owner": "PAPI COMMERCE AI",
+      "status": "planned",
+      "responsibilities": [
+        "create_platform_native_content",
+        "schedule_and_publish_when_authorized",
+        "grow_real_audience",
+        "monitor_comments_and_messages_when_authorized",
+        "discover_qualified_customers",
+        "identify_paid_missions_and_revenue_opportunities",
+        "promote_papi_products",
+        "track_leads_sales_and_conversions"
+      ],
+      "kpis": [
+        "published_content",
+        "reach",
+        "watch_time_or_views",
+        "real_followers",
+        "qualified_leads",
+        "eligible_missions_found",
+        "sales",
+        "verified_revenue_xof"
+      ],
+      "prohibited": [
+        "fake_views",
+        "fake_followers",
+        "engagement_pods",
+        "spam",
+        "platform_rule_evasion",
+        "unapproved_paid_ads"
+      ]
+    },
+    {
+      "id": "youtube-growth-agent",
+      "platform": "YouTube",
+      "page_owner": "PAPI COMMERCE AI",
+      "status": "planned",
+      "responsibilities": [
+        "create_platform_native_content",
+        "schedule_and_publish_when_authorized",
+        "grow_real_audience",
+        "monitor_comments_and_messages_when_authorized",
+        "discover_qualified_customers",
+        "identify_paid_missions_and_revenue_opportunities",
+        "promote_papi_products",
+        "track_leads_sales_and_conversions"
+      ],
+      "kpis": [
+        "published_content",
+        "reach",
+        "watch_time_or_views",
+        "real_followers",
+        "qualified_leads",
+        "eligible_missions_found",
+        "sales",
+        "verified_revenue_xof"
+      ],
+      "prohibited": [
+        "fake_views",
+        "fake_followers",
+        "engagement_pods",
+        "spam",
+        "platform_rule_evasion",
+        "unapproved_paid_ads"
+      ]
+    },
+    {
+      "id": "linkedin-growth-agent",
+      "platform": "LinkedIn",
+      "page_owner": "PAPI COMMERCE AI",
+      "status": "planned",
+      "responsibilities": [
+        "create_platform_native_content",
+        "schedule_and_publish_when_authorized",
+        "grow_real_audience",
+        "monitor_comments_and_messages_when_authorized",
+        "discover_qualified_customers",
+        "identify_paid_missions_and_revenue_opportunities",
+        "promote_papi_products",
+        "track_leads_sales_and_conversions"
+      ],
+      "kpis": [
+        "published_content",
+        "reach",
+        "watch_time_or_views",
+        "real_followers",
+        "qualified_leads",
+        "eligible_missions_found",
+        "sales",
+        "verified_revenue_xof"
+      ],
+      "prohibited": [
+        "fake_views",
+        "fake_followers",
+        "engagement_pods",
+        "spam",
+        "platform_rule_evasion",
+        "unapproved_paid_ads"
+      ]
+    }
+  ],
+  "global_rules": [
+    "Every platform action must comply with its current terms and authorized API capabilities.",
+    "Revenue is counted only after independent payment verification.",
+    "Paid promotion, subscriptions and spending require owner approval."
+  ]
+}
