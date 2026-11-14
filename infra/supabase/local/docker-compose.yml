@@ -18,3 +18,19 @@ services:
       timeout: 3s
       retries: 20
     restart: "no"
+
+  postgrest:
+    image: postgrest/postgrest:v12.2.12
+    container_name: papi-supabase-contract-rest
+    environment:
+      PGRST_DB_URI: postgres://postgres:papi_local_only_password@postgres:5432/papi_contract_test
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: papi_local_only_jwt_secret_change_before_any_nonlocal_use
+      PGRST_SERVER_PORT: "3000"
+    ports:
+      - "127.0.0.1:55433:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
