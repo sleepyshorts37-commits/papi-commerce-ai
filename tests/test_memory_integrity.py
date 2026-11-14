@@ -15,7 +15,7 @@ class MemoryJournalIntegrityTests(unittest.TestCase):
         self.temp.cleanup()
 
     def write(self, *events):
-        self.path.write_text("".join(json.dumps(event) + "\\n" for event in events), encoding="utf-8")
+        self.path.write_text("".join(json.dumps(event) + "\n" for event in events), encoding="utf-8")
 
     def remember(self, **changes):
         event = {
