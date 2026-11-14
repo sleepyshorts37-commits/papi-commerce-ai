@@ -108,6 +108,19 @@ def import_approved_sync_content(
                             bundle["export_id"], len(bundle["events"]))
                 if receipt and receipt != expected:
                     raise SyncImportError("Reçu existant avec des métadonnées divergentes.")
+                if receipt:
+                    existing_items = db.execute(
+                        "SELECT event_id,kind,record_id,content_digest,sequence "
+                        "FROM sync_bundle_receipt_items WHERE bundle_digest=? ORDER BY sequence",
+                        (digest,),
+                    ).fetchall()
+                    expected_items = [
+                        (event["event_id"], event["kind"], event["record_id"],
+                         event["content_digest"], event["sequence"])
+                        for event in bundle["events"]
+                    ]
+                    if existing_items != expected_items:
+                        raise SyncImportError("Références du reçu existant divergentes; import refusé.")
                 if not receipt:
                     db.execute("INSERT INTO sync_bundle_receipts VALUES (?,?,?,?,?,?,?,?,?)",
                         (digest, envelope["payload"]["approval_id"], owner_id,
