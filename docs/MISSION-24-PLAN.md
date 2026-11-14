@@ -1,24 +1,30 @@
 # Mission 24 — Observabilité sûre et opérations contrôlées de la file
 
 ## Objectif
-Donner aux responsables une visibilité opérationnelle sur la file de travaux sans exposer les données des tâches, les résultats, les identifiants internes ou les secrets, et sans activer de traitement autonome.
+Fournir une visibilité opérationnelle sûre sur la file d'exécution, renforcer les contrôles de sécurité et fiabiliser les procédures d'exploitation sans activer de traitement autonome.
 
-## Jour 1/5 — Indicateurs agrégés de santé de la file
-- Ajouter une fonction PostgreSQL en lecture seule qui retourne uniquement des compteurs agrégés par statut, les baux expirés, les travaux prêts et l'âge du plus ancien travail prêt.
-- Exclure strictement les identifiants, payloads, résultats, jetons de bail et détails d'erreur.
-- Limiter l'exécution à service_role ; refuser anon, authenticated et PUBLIC.
-- Tester les compteurs, les baux expirés, les permissions et l'absence de fuite sur PostgreSQL jetable.
-- Ajouter la migration au workflow CI sans toucher à un projet hébergé.
+## Programme étendu — 10 jours
+1. Indicateurs agrégés de santé de la file.
+2. Cohérence des transitions et visibilité des erreurs génériques.
+3. Contrôles de rétention et purge simulée (preview-only).
+4. Rapports de diagnostic et procédures de reprise manuelle.
+5. Audit de sécurité et de fiabilité : privilèges, migrations, confidentialité, couverture CI PostgreSQL/PostgREST et correction des écarts.
+6. Surveillance des performances PostgreSQL et seuils d'observation, sans scheduler permanent.
+7. Gestion des incidents et alertes contrôlées, sans notification externe automatique.
+8. Sauvegarde, restauration et continuité : procédures vérifiables et tests isolés.
+9. Tests de résistance, concurrence et scénarios de panne.
+10. Audit final, documentation des limites opérationnelles et clôture.
 
-## Jours suivants — périmètre prévu
-- Jour 2 : cohérence des transitions et visibilité des erreurs génériques.
-- Jour 3 : contrôles de rétention et purge simulée/preview-only.
-- Jour 4 : rapports de diagnostic et procédures de reprise manuelle.
-- Jour 5 : audit final, limites opérationnelles et clôture.
+## État d'avancement
+- Jours 1 à 4 : livrables réalisés ; validation CI du Jour 4 confirmée.
+- Jour 5 : audit et extension de la couverture d'intégration en cours.
+- Jours 6 à 10 : à réaliser après validation du jour précédent.
 
-## Garde-fous
+## Garde-fous non négociables
 - Aucun worker permanent, scheduler ou boucle autonome.
-- Aucune reprise manuelle automatisée et aucun effet externe.
-- Aucun projet Supabase hébergé ou service Google connecté sans autorisation explicite.
-- Aucun secret réel dans Git, les tests ou les journaux.
+- Aucune reprise automatique, purge réelle ou action externe.
+- Aucun projet Supabase hébergé ni service Google connecté sans autorisation explicite.
+- Aucun secret réel dans Git, tests ou journaux.
+- Accès aux fonctions opérationnelles limité au rôle de service explicitement autorisé.
 - Aucun merge ni déploiement sans approbation explicite.
+- Les validations PostgreSQL/PostgREST restent isolées et ne prouvent pas qu'un projet Supabase hébergé est opérationnel.
