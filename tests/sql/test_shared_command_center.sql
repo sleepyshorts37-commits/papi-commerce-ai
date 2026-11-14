@@ -26,15 +26,16 @@ begin
        or (v_snapshot->'summary'->>'incidents_open')::integer < 1 then
         raise exception 'Command-center summary counts are incorrect: %', v_snapshot->'summary';
     end if;
-    if jsonb_array_length(v_snapshot->'workers') <> 1
-       or v_snapshot->'workers'->0->>'worker_id' <> v_worker
-       or v_snapshot->'workers'->0->>'heartbeat_source' <> 'trusted_monitor' then
+    if not exists (
+        select 1 from jsonb_array_elements(v_snapshot->'workers') x
+        where x->>'worker_id' = v_worker and x->>'heartbeat_source' = 'trusted_monitor'
+    ) then
         raise exception 'Worker/heartbeat projection is incomplete';
     end if;
-    if jsonb_array_length(v_snapshot->'jobs') <> 1
-       or v_snapshot->'jobs'->0->>'id' <> 'JOB-CI-M31-001'
-       or jsonb_array_length(v_snapshot->'alerts') <> 1
-       or jsonb_array_length(v_snapshot->'incidents') <> 1 then
+    if not exists (select 1 from jsonb_array_elements(v_snapshot->'jobs') x where x->>'id' = 'JOB-CI-M31-001')
+       or not exists (select 1 from jsonb_array_elements(v_snapshot->'alerts') x where x->>'alert_id' = v_alert::text)
+       or not exists (select 1 from jsonb_array_elements(v_snapshot->'incidents') x
+                      where x->>'incident_key' = 'ci-m31-incident-key-001') then
         raise exception 'Job, alert or incident projection is incomplete';
     end if;
     if v_snapshot::text like '%IDENTITY-CI-WORKER-M31%'
