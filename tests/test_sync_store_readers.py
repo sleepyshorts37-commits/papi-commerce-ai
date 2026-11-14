@@ -93,6 +93,13 @@ class ImportedReaderTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["message_id"], self.message["message_id"])
 
+    def test_identical_chat_message_is_deduplicated_before_recipient_filter(self):
+        self.chat_file.write_text(json.dumps(self.message, ensure_ascii=False) + "\n",
+                                  encoding="utf-8")
+        result = read_messages(recipient="agent-b", path=self.chat_file,
+                               agents_path=self.agents, import_db=self.db)
+        self.assertEqual(result, [])
+
     def test_chat_reader_excludes_other_recipients(self):
         result = read_messages(recipient="agent-b", path=self.chat_file,
                                agents_path=self.agents, import_db=self.db)
