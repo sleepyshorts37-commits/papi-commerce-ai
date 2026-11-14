@@ -9,6 +9,11 @@ from pathlib import Path
 from typing import Any
 
 from .identity_reconciliation import reconcile_identity_snapshots
+from .identity_snapshot_contract import (
+    IdentitySnapshotContractError,
+    validate_ledger_states,
+    validate_registry_agents,
+)
 
 
 class IdentitySnapshotError(ValueError):
@@ -184,4 +189,9 @@ def reconcile_identity_sources(registry_path: Path, ledger_path: Path) -> dict[s
     """Extract both local sources read-only, then invoke the Mission 66 reconciler."""
     registry = load_registry_snapshot(registry_path)
     ledger = load_ledger_snapshot(ledger_path)
+    try:
+        validate_registry_agents(registry)
+        validate_ledger_states(ledger)
+    except IdentitySnapshotContractError as exc:
+        raise IdentitySnapshotError("Contrat sémantique des snapshots non respecté.") from exc
     return reconcile_identity_snapshots(registry, ledger)
