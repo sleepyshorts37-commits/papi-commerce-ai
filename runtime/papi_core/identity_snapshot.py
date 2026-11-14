@@ -39,10 +39,13 @@ def _reject_non_finite(value: str) -> None:
 
 def _open_regular_file(path: Path, label: str) -> int:
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    descriptor: int | None = None
     try:
         descriptor = os.open(os.fspath(path), flags)
         info = os.fstat(descriptor)
     except OSError as exc:
+        if descriptor is not None:
+            os.close(descriptor)
         raise IdentitySnapshotError(f"Source {label} inaccessible ou symbolique.") from exc
     if not stat.S_ISREG(info.st_mode):
         os.close(descriptor)
@@ -128,6 +131,14 @@ def load_ledger_snapshot(path: Path) -> list[dict[str, Any]]:
         }
         if not _REQUIRED_COLUMNS.issubset(columns):
             raise IdentitySnapshotError("Schéma identity_state incomplet.")
+        oversized = connection.execute(
+            """SELECT 1 FROM identity_state
+               WHERE length(CAST(permissions_json AS BLOB)) > ?
+                  OR length(CAST(prohibited_json AS BLOB)) > ? LIMIT 1""",
+            (_MAX_JSON_VALUE_BYTES, _MAX_JSON_VALUE_BYTES),
+        ).fetchone()
+        if oversized is not None:
+            raise IdentitySnapshotError("Valeur JSON du ledger trop volumineuse.")
         rows = connection.execute(
             """SELECT agent_id,status,revision,key_version,permissions_json,prohibited_json
                FROM identity_state ORDER BY agent_id"""
@@ -151,10 +162,10 @@ def load_ledger_snapshot(path: Path) -> list[dict[str, Any]]:
             raise IdentitySnapshotError("Révision invalide dans le ledger.")
         if type(row["key_version"]) is not int or row["key_version"] < 1:
             raise IdentitySnapshotError("Version de clé invalide dans le ledger.")
+        if not isinstance(row["permissions_json"], str) or not isinstance(row["prohibited_json"], str):
+            raise IdentitySnapshotError("Permissions et interdictions doivent être du texte JSON.")
         permissions_raw = row["permissions_json"].encode("utf-8")
         prohibited_raw = row["prohibited_json"].encode("utf-8")
-        if len(permissions_raw) > _MAX_JSON_VALUE_BYTES or len(prohibited_raw) > _MAX_JSON_VALUE_BYTES:
-            raise IdentitySnapshotError("Valeur JSON du ledger trop volumineuse.")
         permissions = _load_json_bytes(permissions_raw, "permissions ledger")
         prohibited = _load_json_bytes(prohibited_raw, "interdictions ledger")
         if not isinstance(permissions, list) or not isinstance(prohibited, list):
