@@ -39,6 +39,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 
 ## Documents
 - [Organisation](docs/ORGANISATION.md)
+- [Gouvernance des identités et contrôle de l'organigramme](docs/AGENT-ORGANIZATION-GOVERNANCE.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Plan de réalisation](docs/ROADMAP.md)
