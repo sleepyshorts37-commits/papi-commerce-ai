@@ -41,6 +41,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 ## Documents
 - [Échange hors ligne des paquets de synchronisation](docs/SYNC-OFFLINE-SPOOL.md)
 - [Réception locale authentifiée des paquets](docs/SYNC-LOCAL-RECEIVER.md)
+- [Charges utiles de synchronisation contrôlées](docs/SYNC-CONTENT-PAYLOAD.md)
 - [Consommation atomique des approbations et reçus sync](docs/SYNC-ATOMIC-RECEIPTS.md)
 - [Registre local des reçus de synchronisation](docs/SYNC-RECEIPT-LEDGER.md)
 - [Organisation](docs/ORGANISATION.md)
