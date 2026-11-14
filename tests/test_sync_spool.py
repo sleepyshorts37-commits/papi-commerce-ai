@@ -1,4 +1,4 @@
-import hashlib, tempfile, unittest
+import hashlib, json, tempfile, unittest
 from pathlib import Path
 from papi_core.identity_ed25519 import provision_ed25519_agent
 from papi_core.sync_bundle import build_sync_bundle
@@ -43,6 +43,20 @@ class SyncSpoolTests(unittest.TestCase):
         result=write_sync_package(bundle=self.bundle,approval=self.approval,spool_dir=self.spool); path=Path(result["path"])
         path.write_text('{"format_version":1,"format_version":1}',encoding="utf-8")
         with self.assertRaises(SyncSpoolError): read_sync_package(path)
+    def test_boolean_format_version_rejected(self):
+        result=write_sync_package(bundle=self.bundle,approval=self.approval,spool_dir=self.spool)
+        original=Path(result["path"])
+        package=json.loads(original.read_text(encoding="utf-8"))
+        package["format_version"]=True
+        body={key:value for key,value in package.items() if key!="package_digest"}
+        canonical=json.dumps(body,ensure_ascii=False,sort_keys=True,separators=(",",":"),allow_nan=False).encode("utf-8")
+        package["package_digest"]=hashlib.sha256(canonical).hexdigest()
+        raw=json.dumps(package,ensure_ascii=False,sort_keys=True,separators=(",",":"),allow_nan=False).encode("utf-8")
+        original.unlink()
+        forged=self.spool/(package["package_digest"]+".papisync")
+        forged.write_bytes(raw)
+        with self.assertRaises(SyncSpoolError):
+            read_sync_package(forged)
     def test_wrong_filename_rejected(self):
         result=write_sync_package(bundle=self.bundle,approval=self.approval,spool_dir=self.spool); path=Path(result["path"])
         wrong=path.with_name("unsafe-name.papisync"); path.rename(wrong)
