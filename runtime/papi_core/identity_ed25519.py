@@ -216,8 +216,13 @@ def revoke_ed25519_agent(agent_id: str, registry_path: Path = DEFAULT_PUBLIC_REG
 
 def sign_ed25519_request(agent_id: str, payload: dict[str, Any], private_path: Path,
                          key_version: int = 1, timestamp: int | None = None,
-                         nonce: str | None = None) -> dict[str, Any]:
+                         nonce: str | None = None,
+                         registry_path: Path = DEFAULT_PUBLIC_REGISTRY) -> dict[str, Any]:
     _validate_agent(agent_id)
+    try:
+        recover_key_rotation(private_path, registry_path)
+    except RotationJournalError as exc:
+        raise Ed25519IdentityError("Rotation en attente non récupérable : signature interdite.") from exc
     try:
         key = serialization.load_pem_private_key(private_path.read_bytes(), password=None)
     except (OSError, ValueError, TypeError) as exc:
