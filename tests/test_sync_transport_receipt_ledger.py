@@ -93,7 +93,9 @@ class SyncTransportReceiptLedgerTests(unittest.TestCase):
         receipt["payload"]["decision"] = "rejected"
         with self.assertRaises(SyncTransportReceiptLedgerError):
             self.record(receipt)
-        self.assertFalse(self.ledger.exists())
+        with sqlite3.connect(self.ledger) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM sync_transport_receipts").fetchone()[0], 0)
+            self.assertEqual(db.execute("SELECT count(*) FROM used_nonces").fetchone()[0], 0)
 
     def test_corrupt_request_not_recorded(self):
         self.request["body"]["package_base64"] = "tampered"
