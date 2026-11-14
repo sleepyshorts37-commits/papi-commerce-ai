@@ -40,7 +40,6 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 ## Documents
 - [Échange hors ligne des paquets de synchronisation](docs/SYNC-OFFLINE-SPOOL.md)
 - [Consommation atomique des approbations et reçus sync](docs/SYNC-ATOMIC-RECEIPTS.md)
-- [Consommation atomique des approbations et reçus sync](docs/SYNC-ATOMIC-RECEIPTS.md)
 - [Registre local des reçus de synchronisation](docs/SYNC-RECEIPT-LEDGER.md)
 - [Organisation](docs/ORGANISATION.md)
 - [Gouvernance des identités et contrôle de l'organigramme](docs/AGENT-ORGANIZATION-GOVERNANCE.md)
