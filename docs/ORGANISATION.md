@@ -34,16 +34,30 @@ Apport d'affaires pour hôtels, restaurants, immobilier, automobile, écoles, co
 - Cheikh : e-mail.
 - Sokhna : Instagram.
 - Babacar : Facebook.
-- Ndeye : LinkedIn.
+- Ndeye : prospection LinkedIn.
 - Moussa : coordination multicanale, WhatsApp/téléphone lorsque autorisés, suivi et négociation.
 - Moussa conduit les discussions et négocie dans une grille préautorisée.
 - Marietou supervise les partenariats et valide les engagements dépassant les limites déléguées.
 - Seydina recherche les entreprises via Google Search, Google Maps et sources publiques ; Gmail pour les échanges et Google Sheets comme registre éventuel après configuration.
 
-**Collision de noms à résoudre avant déploiement :** Ndeye a aussi été proposé pour les RH numériques. Cheikh et Cheikh Fall sont deux rôles distincts.
+**Clarification du registre :** Ndeye conserve le rôle de prospection LinkedIn. Le registre agents attribue les RH numériques à Oumou (`oumou-rh`). Cheikh (`cheikh-prospect`) et Cheikh Fall (`cheikh-fall`) sont deux identités distinctes avec des fonctions différentes.
 
 ## Création et communication
 Khaly : direction marketing et communication. Aminata : direction créative et identité visuelle. Seynabou : veille concurrentielle et vérification préliminaire des noms.
 
 ## PAPI CHAT
 Messagerie interne prévue : identités d'agents, conversations privées, groupes de départements, direction, conseil et urgences. Non déployée à ce stade.
+
+## Référentiel canonique et règles d'identité
+
+Le fichier `data/agents.json` est le référentiel canonique des identifiants, noms affichés, fonctions, départements, statuts, permissions et interdictions. Le présent document décrit l'organisation fonctionnelle ; en cas de divergence, la divergence doit être corrigée explicitement et non résolue par supposition.
+
+- Chaque agent possède un identifiant technique stable et unique ; les références de tâches et d'autorisations utilisent cet identifiant, jamais le seul nom affiché.
+- Les noms affichés doivent rester uniques après normalisation de la casse, des accents et des espaces.
+- Une identité homonyme ne peut pas être ajoutée en réutilisant ou en devinant un nom ; demander une décision du propriétaire et créer un identifiant distinct.
+- Les rôles humains, agents logiciels et interlocuteurs externes doivent être clairement distingués.
+- Un statut `defined` ou `planned` ne signifie pas que l'agent est déployé ou actif.
+- Les permissions et interdictions sont déclarées dans le registre ; une description organisationnelle ne peut pas accorder une permission.
+- Les responsables hiérarchiques, lorsqu'ils sont renseignés, doivent pointer vers un identifiant existant.
+
+La commande `PYTHONPATH=runtime python -m papi_core organization-check` contrôle les identifiants, noms normalisés, fonctions, départements, statuts, listes de permissions/interdictions et références hiérarchiques. Cette vérification est statique ; elle ne crée ni ne déploie d'agent.
