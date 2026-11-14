@@ -38,7 +38,57 @@ CREATE TABLE IF NOT EXISTS sync_transport_receipts (
     verified_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     status TEXT NOT NULL CHECK(status = 'verified_transport_receipt')
 );
+CREATE TRIGGER IF NOT EXISTS sync_transport_receipts_no_update
+BEFORE UPDATE ON sync_transport_receipts
+BEGIN
+    SELECT RAISE(ABORT, 'transport receipt ledger is append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS sync_transport_receipts_no_delete
+BEFORE DELETE ON sync_transport_receipts
+BEGIN
+    SELECT RAISE(ABORT, 'transport receipt ledger is append-only');
+END;
 """
+
+
+def audit_sync_transport_receipt_ledger(*, ledger_db: Path) -> dict[str, Any]:
+    """Audite en lecture seule les digests et l'encodage canonique du ledger."""
+    path = Path(ledger_db)
+    if not path.is_file():
+        raise SyncTransportReceiptLedgerError("Registre des reçus introuvable.")
+    try:
+        uri = f"file:{path.resolve().as_posix()}?mode=ro"
+        with sqlite3.connect(uri, uri=True, timeout=10) as db:
+            rows = db.execute(
+                "SELECT receipt_id, delivery_id, receipt_sha256, receipt_json "
+                "FROM sync_transport_receipts ORDER BY receipt_id"
+            ).fetchall()
+        audited = 0
+        for receipt_id, delivery_id, expected_digest, receipt_json in rows:
+            try:
+                receipt = json.loads(receipt_json)
+            except (TypeError, ValueError) as exc:
+                raise SyncTransportReceiptLedgerError("JSON de reçu illisible.") from exc
+            canonical = _canonical(receipt)
+            actual_digest = hashlib.sha256(canonical).hexdigest()
+            if canonical.decode("utf-8") != receipt_json or actual_digest != expected_digest:
+                raise SyncTransportReceiptLedgerError(
+                    f"Intégrité du reçu compromise : {receipt_id}."
+                )
+            payload = receipt.get("payload") if isinstance(receipt, dict) else None
+            if not isinstance(payload, dict) or payload.get("receipt_id") != receipt_id or payload.get("delivery_id") != delivery_id:
+                raise SyncTransportReceiptLedgerError(
+                    f"Liaison des identifiants compromise : {receipt_id}."
+                )
+            audited += 1
+    except SyncTransportReceiptLedgerError:
+        raise
+    except sqlite3.Error as exc:
+        raise SyncTransportReceiptLedgerError("Lecture du registre impossible.") from exc
+    return {
+        "status": "integrity_verified", "records_audited": audited,
+        "read_only": True, "signature_reverified": False,
+    }
 
 
 def record_verified_sync_transport_receipt(

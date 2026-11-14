@@ -42,7 +42,7 @@
 - [x] Ajouter un précontrôle local complet du transfert : fichiers, charge utile, destination et signature Ed25519 du propriétaire, sans écrire de reçu ni consommer le nonce (Mission 55).
 - [x] Construire localement une requête de transport HTTPS canonique, allowlistée et idempotente, avec fichiers encodés et contrôles anti-SSRF initiaux, sans émission réseau (Mission 56).
 - [x] Définir et vérifier localement le reçu de transport signé Ed25519, lié au digest exact de la requête et à la livraison, avec anti-rejeu du nonce destinataire ; aucune connexion réseau ni import (Mission 57).
-- [x] Archiver les reçus de transport vérifiés dans un registre SQLite local append-only, idempotent et protégé contre les collisions ; la consommation du nonce et l'archivage restent deux transactions distinctes à réconcilier manuellement en cas de panne (Mission 58).
+- [x] Archiver les reçus de transport vérifiés dans un registre SQLite local idempotent et protégé contre les collisions (Mission 58 ; atomicité nonce/reçu renforcée en Mission 59).
 - [x] Rendre atomiques la réservation du nonce Ed25519 anti-rejeu et l'archivage du reçu de transport dans une seule transaction SQLite `BEGIN IMMEDIATE` / `COMMIT`, avec rollback conjoint et idempotence des doublons exacts (Mission 59 ; aucun réseau ni import).
 
 ## Phase 3 — Première activité commerciale
@@ -66,3 +66,5 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+
+- [x] Imposer l'append-only du registre local des reçus par triggers SQLite et ajouter un audit en lecture seule des digests SHA-256, du JSON canonique et des identifiants liés (Mission 60 ; intégrité locale, sans prétention d'inviolabilité).

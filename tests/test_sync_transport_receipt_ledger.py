@@ -7,7 +7,8 @@ from pathlib import Path
 
 from papi_core.identity_ed25519 import provision_ed25519_agent, sign_ed25519_request
 from papi_core.sync_transport_receipt_ledger import (
-    SyncTransportReceiptLedgerError, record_verified_sync_transport_receipt,
+    SyncTransportReceiptLedgerError, audit_sync_transport_receipt_ledger,
+    record_verified_sync_transport_receipt,
 )
 
 
@@ -153,6 +154,25 @@ class SyncTransportReceiptLedgerTests(unittest.TestCase):
             tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             if "used_nonces" in tables:
                 self.assertEqual(db.execute("SELECT count(*) FROM used_nonces").fetchone()[0], 0)
+
+    def test_ledger_blocks_update_and_delete(self):
+        self.record(self.receipt())
+        with sqlite3.connect(self.ledger) as db:
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.execute("UPDATE sync_transport_receipts SET status='changed'")
+            with self.assertRaises(sqlite3.IntegrityError):
+                db.execute("DELETE FROM sync_transport_receipts")
+        self.assertEqual(audit_sync_transport_receipt_ledger(
+            ledger_db=self.ledger
+        )["records_audited"], 1)
+
+    def test_read_only_audit_detects_receipt_tampering(self):
+        self.record(self.receipt())
+        with sqlite3.connect(self.ledger) as db:
+            db.execute("DROP TRIGGER sync_transport_receipts_no_update")
+            db.execute("UPDATE sync_transport_receipts SET receipt_json='{}'")
+        with self.assertRaises(SyncTransportReceiptLedgerError):
+            audit_sync_transport_receipt_ledger(ledger_db=self.ledger)
 
     def test_separate_replay_database_is_rejected(self):
         with self.assertRaises(SyncTransportReceiptLedgerError):
