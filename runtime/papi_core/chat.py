@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from .registry import AGENTS_FILE, load_agents
 from .sync_store import SyncStoreError, load_imported_records
+from .local_store import LocalStoreError, append_local_record, load_local_records
 
 CHAT_FILE = Path(__file__).resolve().parents[2] / "data" / "chat" / "messages.jsonl"
 SECRET_PATTERN = re.compile(
@@ -83,19 +84,27 @@ def send_message(
         "message_type": message_type,
     }
     validate_message(message, agents_path)
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = (json.dumps(message, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-    try:
-        view = memoryview(payload)
-        while view:
-            written = os.write(descriptor, view)
-            if written <= 0:
-                raise OSError("Écriture incomplète du journal PAPI CHAT.")
-            view = view[written:]
-    finally:
-        os.close(descriptor)
+    if sqlite_db is None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = (json.dumps(message, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        try:
+            view = memoryview(payload)
+            while view:
+                written = os.write(descriptor, view)
+                if written <= 0:
+                    raise OSError("Écriture incomplète du journal PAPI CHAT.")
+                view = view[written:]
+        finally:
+            os.close(descriptor)
+    else:
+        try:
+            append_local_record(sqlite_db, kind="message", record_id=message["message_id"],
+                                event_id=message["message_id"], created_at=message["sent_at"],
+                                record=message)
+        except LocalStoreError as exc:
+            raise ChatError(f"Écriture SQLite PAPI CHAT refusée: {exc}") from exc
     return message
 
 
