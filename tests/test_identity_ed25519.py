@@ -192,5 +192,167 @@ class Ed25519IdentityTests(unittest.TestCase):
 
 
 
+    def test_rotation_journal_recovers_crash_after_private_key_replace(self):
+        import json
+        from unittest.mock import patch
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from papi_core import rotation_journal
+
+        old_private = self.private.read_bytes()
+        old_registry = self.registry.read_bytes()
+        key = Ed25519PrivateKey.generate()
+        new_private = key.private_bytes(serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        registry = json.loads(old_registry)
+        registry["agents"]["agent-a"]["key_version"] = 2
+        registry["agents"]["agent-a"]["public_key"] = key.public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+        registry["agents"]["agent-a"]["key_history"] = [{
+            "key_version": 1,
+            "public_key": json.loads(old_registry)["agents"]["agent-a"]["public_key"],
+            "retired_at": 123,
+        }]
+        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\n").encode()
+
+        real_write = rotation_journal._atomic_write
+        calls = 0
+        def crash_before_registry(path, content):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return real_write(path, content)
+            raise SystemExit("simulated process crash")
+
+        with patch.object(rotation_journal, "_atomic_write", side_effect=crash_before_registry):
+            with self.assertRaises(SystemExit):
+                rotation_journal.commit_key_rotation(
+                    self.private, self.registry, old_private, new_private,
+                    old_registry, new_registry,
+                )
+
+        self.assertNotEqual(self.private.read_bytes(), old_private)
+        self.assertEqual(self.registry.read_bytes(), old_registry)
+        self.assertTrue(self.private.with_name(self.private.name + ".rotation-journal").exists())
+        self.assertEqual(rotation_journal.recover_key_rotation(self.private, self.registry), "rolled_back")
+        self.assertEqual(self.private.read_bytes(), old_private)
+        self.assertEqual(self.registry.read_bytes(), old_registry)
+        self.assertFalse(self.private.with_name(self.private.name + ".rotation-journal").exists())
+
+    def test_rotation_journal_recovers_committed_pair_after_cleanup_crash(self):
+        import json
+        from unittest.mock import patch
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from papi_core import rotation_journal
+
+        old_private = self.private.read_bytes()
+        old_registry = self.registry.read_bytes()
+        key = Ed25519PrivateKey.generate()
+        new_private = key.private_bytes(serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        registry = json.loads(old_registry)
+        registry["agents"]["agent-a"]["key_version"] = 2
+        registry["agents"]["agent-a"]["public_key"] = key.public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+        registry["agents"]["agent-a"]["key_history"] = [{
+            "key_version": 1,
+            "public_key": json.loads(old_registry)["agents"]["agent-a"]["public_key"],
+            "retired_at": 123,
+        }]
+        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\n").encode()
+
+        with patch.object(rotation_journal, "_remove_journal", side_effect=SystemExit("crash after commit")):
+            with self.assertRaises(SystemExit):
+                rotation_journal.commit_key_rotation(
+                    self.private, self.registry, old_private, new_private,
+                    old_registry, new_registry,
+                )
+
+        self.assertEqual(self.registry.read_bytes(), new_registry)
+        self.assertEqual(rotation_journal.recover_key_rotation(self.private, self.registry), "committed")
+        self.assertEqual(self.private.read_bytes(), new_private)
+        self.assertFalse(self.private.with_name(self.private.name + ".rotation-journal").exists())
+
+    def test_rotation_journal_fails_closed_and_preserves_evidence_on_ambiguous_state(self):
+        import json
+        from unittest.mock import patch
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from papi_core import rotation_journal
+
+        old_private = self.private.read_bytes()
+        old_registry = self.registry.read_bytes()
+        key = Ed25519PrivateKey.generate()
+        new_private = key.private_bytes(serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        registry = json.loads(old_registry)
+        registry["agents"]["agent-a"]["key_version"] = 2
+        registry["agents"]["agent-a"]["public_key"] = key.public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+        registry["agents"]["agent-a"]["key_history"] = [{
+            "key_version": 1,
+            "public_key": json.loads(old_registry)["agents"]["agent-a"]["public_key"],
+            "retired_at": 123,
+        }]
+        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\n").encode()
+
+        real_write = rotation_journal._atomic_write
+        calls = 0
+        def crash_before_registry(path, content):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return real_write(path, content)
+            raise SystemExit("simulated process crash")
+
+        with patch.object(rotation_journal, "_atomic_write", side_effect=crash_before_registry):
+            with self.assertRaises(SystemExit):
+                rotation_journal.commit_key_rotation(
+                    self.private, self.registry, old_private, new_private,
+                    old_registry, new_registry,
+                )
+
+        self.registry.write_bytes(b"tampered registry")
+        journal = self.private.with_name(self.private.name + ".rotation-journal")
+        with self.assertRaises(rotation_journal.RotationJournalError):
+            rotation_journal.recover_key_rotation(self.private, self.registry)
+        self.assertTrue(journal.exists())
+
+
+    def test_signer_recovers_pending_rotation_before_using_private_key(self):
+        from unittest.mock import patch
+        from papi_core import rotation_journal
+
+        old_private = self.private.read_bytes()
+        old_registry = self.registry.read_bytes()
+        new_private = b"new private key fixture"
+        new_registry = b'{"schema_version":1,"agents":{}}'
+        real_write = rotation_journal._atomic_write
+        calls = 0
+        def crash_before_registry(path, content):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return real_write(path, content)
+            raise SystemExit("simulated process crash")
+
+        with patch.object(rotation_journal, "_atomic_write", side_effect=crash_before_registry):
+            with self.assertRaises(SystemExit):
+                rotation_journal.commit_key_rotation(
+                    self.private, self.registry, old_private, new_private,
+                    old_registry, new_registry,
+                )
+
+        envelope = sign_ed25519_request(
+            "agent-a", {"permission": "read"}, self.private,
+            timestamp=1000, nonce="recovery-before-signing-0001",
+            registry_path=self.registry,
+        )
+        self.assertTrue(verify_ed25519_request(
+            envelope, self.registry, self.replay, now=1000)["authenticated"])
+        self.assertFalse(self.private.with_name(self.private.name + ".rotation-journal").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
