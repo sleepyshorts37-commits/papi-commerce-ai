@@ -16,7 +16,7 @@ SHA final : le HEAD exact de la branche PR est celui associé au run CI final v�
 - Documentation d'exploitation, plan, prompt détaillé et intégration dans le workflow CI.
 
 ## Preuves
-- GitHub Actions run #1143 / ID `43611713339` : **success** sur le commit de code `c16910d797e91f0120ebe0b43b7bb9cca721ff61`. La mise à jour documentaire finale doit également être validée sur le HEAD résultant.
+- GitHub Actions : les jobs `tests` et `local-postgrest-integration` ont été vérifiés **success** sur le HEAD exact de la PR ; le dernier contrôle du HEAD est consultable dans les checks GitHub.
 - Job `tests` : **success**.
 - Job `local-postgrest-integration` : **success**.
 - **353 tests Python réussis**.
