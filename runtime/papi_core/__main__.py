@@ -14,6 +14,7 @@ from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
 from .supabase_preflight import run_supabase_preflight, require_supabase_configuration
 from .sync_receiver import receive_sync_package
+from .sync_import import import_approved_sync_content
 
 
 def main() -> int:
@@ -41,6 +42,14 @@ def main() -> int:
     receiver.add_argument("--registry", required=True, help="Chemin du registre local de clés publiques")
     receiver.add_argument("--ledger", required=True, help="Chemin du registre SQLite local des reçus")
     receiver.add_argument("--destination", required=True, help="Identifiant exact de cette instance destinataire")
+    importer = sub.add_parser("import-sync-content", help="Importer atomiquement le contenu d'un paquet approuvé dans SQLite local")
+    importer.add_argument("--package", required=True, help="Chemin du fichier .papisync")
+    importer.add_argument("--payload", required=True, help="Chemin du fichier .papidata")
+    importer.add_argument("--owner-id", required=True, help="Identifiant du propriétaire autorisé")
+    importer.add_argument("--registry", required=True, help="Registre local de clés publiques")
+    importer.add_argument("--ledger", required=True, help="Base SQLite locale de reçus et contenus importés")
+    importer.add_argument("--destination", required=True, help="Identifiant exact de cette instance")
+    importer.add_argument("--agents", required=True, help="Registre local des agents")
     preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
     preflight.add_argument("--require-configured", action="store_true", help="Exiger URL et clé serveur configurées")
     args = parser.parse_args()
@@ -83,6 +92,15 @@ def main() -> int:
                 package_path=args.package, owner_id=args.owner_id,
                 registry_path=args.registry, ledger_db=args.ledger,
                 expected_destination=args.destination,
+            )
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "import-sync-content":
+            report = import_approved_sync_content(
+                package_path=args.package, payload_path=args.payload,
+                owner_id=args.owner_id, registry_path=args.registry,
+                ledger_db=args.ledger, expected_destination=args.destination,
+                agents_path=args.agents,
             )
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0

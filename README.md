@@ -36,12 +36,12 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core receive-sync-package --package ./incoming/paquet.papisync --owner-id OWNER_ID --registry ./keys/public.json --ledger ./data/sync-receipts.sqlite3 --destination INSTANCE_ID` — authentifier un paquet reçu et inscrire le reçu/nonce atomiquement, sans importer de contenu.
 - `PYTHONPATH=runtime python -m papi_core supabase-preflight` — vérifier localement l'inventaire des migrations et la configuration Supabase sans réseau.
 
-Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
+- `PYTHONPATH=runtime python -m papi_core import-sync-content --package ./incoming/export.papisync --payload ./incoming/export.papidata --owner-id OWNER_ID --registry ./keys/public.json --ledger ./data/sync-imports.sqlite3 --destination INSTANCE_ID --agents ./data/agents.json` — vérifier et importer atomiquement les contenus approuvés dans SQLite local.\n\nLe worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
 ## Documents
 - [Échange hors ligne des paquets de synchronisation](docs/SYNC-OFFLINE-SPOOL.md)
 - [Réception locale authentifiée des paquets](docs/SYNC-LOCAL-RECEIVER.md)
-- [Charges utiles de synchronisation contrôlées](docs/SYNC-CONTENT-PAYLOAD.md)
+- [Charges utiles de synchronisation contrôlées](docs/SYNC-CONTENT-PAYLOAD.md)\n- [Import atomique des contenus mémoire et PAPI CHAT](docs/SYNC-ATOMIC-CONTENT-IMPORT.md)
 - [Consommation atomique des approbations et reçus sync](docs/SYNC-ATOMIC-RECEIPTS.md)
 - [Registre local des reçus de synchronisation](docs/SYNC-RECEIPT-LEDGER.md)
 - [Organisation](docs/ORGANISATION.md)
