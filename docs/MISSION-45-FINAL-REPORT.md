@@ -19,8 +19,12 @@ Préparer le transfert du contenu mémoire et PAPI CHAT au moyen d'une charge ut
 ## Limites
 Aucun import mémoire/CHAT, aucun transport réseau, aucun worker/scheduler, aucune activation ou déploiement. Les filtres PII ne sont pas exhaustifs; revue humaine requise. La vérification Ed25519 et l'anti-rejeu restent la responsabilité du récepteur Mission 44.
 
-## Validation
-À compléter après exécution des tests et vérification CI sur le SHA final exact.
+## Validation initiale
+- GitHub Actions run 1313 (ID `43623260867`) : succès sur le SHA `84bb2f346afa1bc84b349e8bb3854d107a02ac1c`.
+- Étape `Run unit tests` : succès.
+- Jobs `tests` et `local-postgrest-integration` : succès.
+- Préflight Supabase hors ligne et intégration PostgREST locale : succès.
+- Le dernier commit documentaire de ce rapport doit encore être vérifié par CI avant clôture.
 
 ## Gouvernance
 PR en brouillon, ouverte et non fusionnée. Aucun secret, donnée client volontairement ajoutée, contact externe, publication, dépense ou paiement.
