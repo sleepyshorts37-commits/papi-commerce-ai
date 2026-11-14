@@ -1,0 +1,251 @@
+"""Chiffrement authentifié AES-256-GCM et gestion locale des clés de sauvegarde."""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import secrets
+import sqlite3
+import stat
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from .sqlite_backup import BackupRestoreError, _integrity, _write_exclusive
+
+_FORMAT_VERSION = 1
+_ALGORITHM = "AES-256-GCM"
+_KEY_BYTES = 32
+_NONCE_BYTES = 12
+_MAX_ENCRYPTED_BYTES = 256 * 1024 * 1024
+
+
+class BackupEncryptionError(ValueError):
+    """Erreur de chiffrement ou de gestion de clé."""
+
+
+def generate_backup_key(key_path: Path) -> dict[str, Any]:
+    """Crée une clé aléatoire 256 bits dans un fichier local exclusif, jamais dans le dépôt."""
+    path = Path(key_path)
+    if path.is_symlink() or path.exists():
+        raise BackupEncryptionError("Le chemin de clé doit être absent et ne pas être un lien symbolique.")
+    if path.parent.is_symlink() or (path.parent.exists() and not path.parent.is_dir()):
+        raise BackupEncryptionError("Répertoire de clé invalide.")
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    key = secrets.token_bytes(_KEY_BYTES)
+    try:
+        _write_exclusive(path, key, 0o600)
+        os.chmod(path, 0o600)
+    except OSError as exc:
+        raise BackupEncryptionError("Création de la clé impossible.") from exc
+    return {"status": "key_created", "key_path": str(path),
+            "key_id": hashlib.sha256(key).hexdigest()[:16],
+            "algorithm": _ALGORITHM, "key_bytes": _KEY_BYTES,
+            "secret_returned": False}
+
+
+def _load_key(key_path: Path) -> bytes:
+    path = Path(key_path)
+    if path.is_symlink() or not path.is_file():
+        raise BackupEncryptionError("Fichier de clé absent ou lien symbolique interdit.")
+    try:
+        if os.name == "posix":
+            mode = stat.S_IMODE(path.stat().st_mode)
+            if mode & 0o077:
+                raise BackupEncryptionError("Permissions de clé trop ouvertes ; appliquer chmod 600.")
+        key = path.read_bytes()
+    except OSError as exc:
+        raise BackupEncryptionError("Lecture de la clé impossible.") from exc
+    if len(key) != _KEY_BYTES:
+        raise BackupEncryptionError("La clé doit contenir exactement 32 octets.")
+    return key
+
+
+def _canonical(value: dict[str, Any]) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+
+
+def _exclusive_bytes(path: Path, content: bytes) -> None:
+    if path.is_symlink() or path.exists():
+        raise BackupEncryptionError("La destination existe déjà ; aucun écrasement n'est autorisé.")
+    if path.parent.is_symlink() or (path.parent.exists() and not path.parent.is_dir()):
+        raise BackupEncryptionError("Répertoire de destination invalide.")
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        _write_exclusive(path, content, 0o600)
+        os.chmod(path, 0o600)
+    except FileExistsError as exc:
+        raise BackupEncryptionError("La destination existe déjà.") from exc
+    except OSError as exc:
+        raise BackupEncryptionError("Écriture sécurisée impossible.") from exc
+
+
+def _manifest_header(manifest: dict[str, Any]) -> dict[str, Any]:
+    return {key: manifest[key] for key in (
+        "format_version", "algorithm", "key_id", "encrypted_file", "nonce"
+    )}
+
+
+def encrypt_sqlite_backup(backup_path: Path, key_path: Path,
+                          manifest_path: Path) -> dict[str, Any]:
+    """Chiffre un snapshot SQLite AES-256-GCM ; les fichiers source restent inchangés."""
+    source = Path(backup_path)
+    if source.is_symlink() or not source.is_file():
+        raise BackupEncryptionError("Sauvegarde source absente ou lien symbolique interdit.")
+    try:
+        _integrity(source)
+        size = source.stat().st_size
+        if size <= 0 or size > _MAX_ENCRYPTED_BYTES:
+            raise BackupEncryptionError("Taille hors limite du chiffrement (256 Mio).")
+        plaintext = source.read_bytes()
+        key = _load_key(key_path)
+        nonce = secrets.token_bytes(_NONCE_BYTES)
+        encrypted_path = Path(str(manifest_path)[:-len(".manifest.json")] + ".enc") if str(manifest_path).endswith(".manifest.json") else Path(str(manifest_path) + ".enc")
+        header = {"format_version": _FORMAT_VERSION, "algorithm": _ALGORITHM,
+                  "key_id": hashlib.sha256(key).hexdigest()[:16],
+                  "encrypted_file": encrypted_path.name, "nonce": nonce.hex()}
+        ciphertext = AESGCM(key).encrypt(nonce, plaintext, _canonical(header))
+        manifest = {**header, "created_at": datetime.now(timezone.utc).isoformat(),
+                    "ciphertext_size": len(ciphertext),
+                    "ciphertext_sha256": hashlib.sha256(ciphertext).hexdigest(),
+                    "plaintext_size": len(plaintext)}
+        _exclusive_bytes(encrypted_path, ciphertext)
+        try:
+            _exclusive_bytes(Path(manifest_path), _canonical(manifest) + b"\n")
+        except Exception:
+            encrypted_path.unlink(missing_ok=True)
+            raise
+        return {"status": "encrypted", "encrypted_path": str(encrypted_path),
+                "manifest_path": str(manifest_path), "key_id": header["key_id"],
+                "algorithm": _ALGORITHM, "plaintext_size": len(plaintext),
+                "ciphertext_size": len(ciphertext)}
+    except BackupRestoreError as exc:
+        raise BackupEncryptionError("La sauvegarde source n'est pas intègre.") from exc
+    except OSError as exc:
+        raise BackupEncryptionError("Lecture ou chiffrement de la sauvegarde impossible.") from exc
+
+
+def _read_encrypted(manifest_path: Path, key_path: Path) -> tuple[bytes, bytes, dict[str, Any]]:
+    manifest_file = Path(manifest_path)
+    if manifest_file.is_symlink() or not manifest_file.is_file():
+        raise BackupEncryptionError("Manifeste chiffré absent ou lien symbolique interdit.")
+    try:
+        manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict) or type(manifest.get("format_version")) is not int or manifest["format_version"] != _FORMAT_VERSION:
+            raise BackupEncryptionError("Version de manifeste invalide.")
+        if manifest.get("algorithm") != _ALGORITHM:
+            raise BackupEncryptionError("Algorithme de chiffrement non pris en charge.")
+        name = manifest.get("encrypted_file")
+        if not isinstance(name, str) or Path(name).name != name or not name.endswith(".enc"):
+            raise BackupEncryptionError("Nom de fichier chiffré invalide.")
+        nonce = bytes.fromhex(manifest.get("nonce", ""))
+        if len(nonce) != _NONCE_BYTES:
+            raise BackupEncryptionError("Nonce AES-GCM invalide.")
+        encrypted = manifest_file.parent / name
+        if encrypted.is_symlink() or not encrypted.is_file():
+            raise BackupEncryptionError("Fichier chiffré absent ou lien symbolique interdit.")
+        ciphertext = encrypted.read_bytes()
+        if len(ciphertext) <= 16 or len(ciphertext) > _MAX_ENCRYPTED_BYTES + 16:
+            raise BackupEncryptionError("Taille du fichier chiffré invalide.")
+        if len(ciphertext) != manifest.get("ciphertext_size") or hashlib.sha256(ciphertext).hexdigest() != manifest.get("ciphertext_sha256"):
+            raise BackupEncryptionError("Intégrité du fichier chiffré incorrecte.")
+        key = _load_key(key_path)
+        key_id = hashlib.sha256(key).hexdigest()[:16]
+        if key_id != manifest.get("key_id"):
+            raise BackupEncryptionError("Cette clé ne correspond pas au manifeste.")
+        return ciphertext, key, manifest
+    except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        if isinstance(exc, BackupEncryptionError):
+            raise
+        raise BackupEncryptionError("Manifeste ou données chiffrées invalides.") from exc
+
+
+def verify_encrypted_backup(manifest_path: Path, key_path: Path) -> dict[str, Any]:
+    """Authentifie le ciphertext et contrôle l'intégrité SQLite en mémoire, sans écrire de clair."""
+    ciphertext, key, manifest = _read_encrypted(manifest_path, key_path)
+    try:
+        plaintext = AESGCM(key).decrypt(bytes.fromhex(manifest["nonce"]), ciphertext,
+                                        _canonical(_manifest_header(manifest)))
+    except Exception as exc:
+        raise BackupEncryptionError("Authentification AES-GCM échouée ; clé ou données incorrectes.") from exc
+    if len(plaintext) != manifest.get("plaintext_size"):
+        raise BackupEncryptionError("Taille du contenu déchiffré incohérente.")
+    import tempfile
+    fd, name = tempfile.mkstemp(prefix="papi-verify-", suffix=".sqlite3")
+    os.close(fd)
+    temporary = Path(name)
+    try:
+        temporary.write_bytes(plaintext)
+        os.chmod(temporary, 0o600)
+        integrity, user_version = _integrity(temporary)
+        return {"status": "verified", "algorithm": _ALGORITHM,
+                "key_id": manifest["key_id"], "plaintext_size": len(plaintext),
+                "integrity_check": integrity, "user_version": user_version,
+                "plaintext_written_to_user_path": False}
+    except BackupRestoreError as exc:
+        raise BackupEncryptionError("Le contenu déchiffré n'est pas une base SQLite intègre.") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def decrypt_sqlite_backup(manifest_path: Path, key_path: Path,
+                          destination_path: Path) -> dict[str, Any]:
+    """Déchiffre vers un nouveau fichier SQLite ; aucune destination existante n'est remplacée."""
+    ciphertext, key, manifest = _read_encrypted(manifest_path, key_path)
+    destination = Path(destination_path)
+    if destination.exists() or destination.is_symlink():
+        raise BackupEncryptionError("La destination doit être absente ; aucun écrasement n'est autorisé.")
+    try:
+        plaintext = AESGCM(key).decrypt(bytes.fromhex(manifest["nonce"]), ciphertext,
+                                        _canonical(_manifest_header(manifest)))
+    except Exception as exc:
+        raise BackupEncryptionError("Authentification AES-GCM échouée ; aucun fichier restauré.") from exc
+    if len(plaintext) != manifest.get("plaintext_size"):
+        raise BackupEncryptionError("Taille du contenu déchiffré incohérente.")
+    import tempfile
+    fd, name = tempfile.mkstemp(prefix=".papi-decrypt-", suffix=".tmp", dir=destination.parent if destination.parent.exists() else None)
+    os.close(fd)
+    temporary = Path(name)
+    try:
+        temporary.write_bytes(plaintext)
+        os.chmod(temporary, 0o600)
+        integrity, _ = _integrity(temporary)
+        if integrity != "ok":
+            raise BackupEncryptionError("La base déchiffrée ne passe pas le contrôle d'intégrité.")
+        _exclusive_bytes(destination, plaintext)
+        return {"status": "decrypted", "destination_path": str(destination),
+                "integrity_check": integrity, "overwrite": False,
+                "warning": "Le fichier restauré est en clair ; protégez-le immédiatement."}
+    except BackupRestoreError as exc:
+        raise BackupEncryptionError("La base déchiffrée n'est pas intègre.") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def rotate_encrypted_backup_key(manifest_path: Path, old_key_path: Path,
+                                new_key_path: Path, new_manifest_path: Path) -> dict[str, Any]:
+    """Ré-enveloppe le snapshot avec une nouvelle clé ; conserve les originaux."""
+    ciphertext, old_key, manifest = _read_encrypted(manifest_path, old_key_path)
+    try:
+        plaintext = AESGCM(old_key).decrypt(bytes.fromhex(manifest["nonce"]), ciphertext,
+                                            _canonical(_manifest_header(manifest)))
+    except Exception as exc:
+        raise BackupEncryptionError("Ancienne clé invalide ou sauvegarde altérée.") from exc
+    import tempfile
+    fd, name = tempfile.mkstemp(prefix="papi-rotate-", suffix=".sqlite3")
+    os.close(fd)
+    temporary = Path(name)
+    try:
+        temporary.write_bytes(plaintext)
+        os.chmod(temporary, 0o600)
+        _integrity(temporary)
+        result = encrypt_sqlite_backup(temporary, new_key_path, new_manifest_path)
+        return {"status": "key_rotated", "new_key_id": result["key_id"],
+                "new_manifest_path": result["manifest_path"],
+                "old_backup_preserved": True, "old_key_revocation_required": True}
+    except BackupRestoreError as exc:
+        raise BackupEncryptionError("Le contenu déchiffré n'est pas intègre.") from exc
+    finally:
+        temporary.unlink(missing_ok=True)

@@ -17,6 +17,7 @@ from .sync_receiver import receive_sync_package
 from .sync_import import import_approved_sync_content
 from .jsonl_migration import migrate_jsonl_to_sqlite, MigrationError
 from .sqlite_backup import create_sqlite_backup, verify_sqlite_backup, restore_sqlite_backup, BackupRestoreError
+from .sqlite_backup_crypto import (generate_backup_key, encrypt_sqlite_backup, verify_encrypted_backup, decrypt_sqlite_backup, rotate_encrypted_backup_key, BackupEncryptionError)
 
 
 def main() -> int:
@@ -66,6 +67,24 @@ def main() -> int:
     restore = sub.add_parser("sqlite-restore", help="Restaurer une sauvegarde vers un nouveau chemin sans écrasement")
     restore.add_argument("--manifest", required=True)
     restore.add_argument("--destination", required=True)
+    keygen = sub.add_parser("sqlite-keygen", help="Générer une clé locale AES-256 dans un fichier exclusif")
+    keygen.add_argument("--key-file", required=True)
+    encrypt = sub.add_parser("sqlite-backup-encrypt", help="Chiffrer un snapshot SQLite avec AES-256-GCM")
+    encrypt.add_argument("--backup", required=True)
+    encrypt.add_argument("--key-file", required=True)
+    encrypt.add_argument("--manifest", required=True)
+    verify_enc = sub.add_parser("sqlite-backup-verify-encrypted", help="Authentifier et vérifier une sauvegarde chiffrée")
+    verify_enc.add_argument("--manifest", required=True)
+    verify_enc.add_argument("--key-file", required=True)
+    decrypt = sub.add_parser("sqlite-backup-decrypt", help="Déchiffrer vers un nouveau fichier SQLite")
+    decrypt.add_argument("--manifest", required=True)
+    decrypt.add_argument("--key-file", required=True)
+    decrypt.add_argument("--destination", required=True)
+    rotate = sub.add_parser("sqlite-backup-rotate-key", help="Ré-encrypter une sauvegarde avec une nouvelle clé")
+    rotate.add_argument("--manifest", required=True)
+    rotate.add_argument("--old-key-file", required=True)
+    rotate.add_argument("--new-key-file", required=True)
+    rotate.add_argument("--new-manifest", required=True)
     preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
     preflight.add_argument("--require-configured", action="store_true", help="Exiger URL et clé serveur configurées")
     args = parser.parse_args()
@@ -139,6 +158,26 @@ def main() -> int:
             report = restore_sqlite_backup(args.manifest, args.destination)
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0
+        if args.command == "sqlite-keygen":
+            report = generate_backup_key(args.key_file)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "sqlite-backup-encrypt":
+            report = encrypt_sqlite_backup(args.backup, args.key_file, args.manifest)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "sqlite-backup-verify-encrypted":
+            report = verify_encrypted_backup(args.manifest, args.key_file)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "sqlite-backup-decrypt":
+            report = decrypt_sqlite_backup(args.manifest, args.key_file, args.destination)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "sqlite-backup-rotate-key":
+            report = rotate_encrypted_backup_key(args.manifest, args.old_key_file, args.new_key_file, args.new_manifest)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
         if args.command == "supabase-preflight":
             report = run_supabase_preflight()
             print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -157,7 +196,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, MigrationError, BackupRestoreError, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, MigrationError, BackupRestoreError, BackupEncryptionError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 

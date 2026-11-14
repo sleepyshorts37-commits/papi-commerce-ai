@@ -41,9 +41,17 @@ Depuis la racine du dépôt :
 
 - `PYTHONPATH=runtime python -m papi_core import-sync-content --package ./incoming/export.papisync --payload ./incoming/export.papidata --owner-id OWNER_ID --registry ./keys/public.json --ledger ./data/sync-imports.sqlite3 --destination INSTANCE_ID --agents ./data/agents.json` — vérifier et importer atomiquement les contenus approuvés dans SQLite local.\n\nLe mode SQLite local append-only pour mémoire et PAPI CHAT est facultatif ; JSONL reste le mode par défaut (Mission 48).\n\nLe worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
+
+- `PYTHONPATH=runtime python -m papi_core sqlite-keygen --key-file "$HOME/.config/papi/keys/backup.key"` — créer une clé AES-256 locale, sans l'afficher.
+- `PYTHONPATH=runtime python -m papi_core sqlite-backup-encrypt --backup backups/sqlite/<snapshot>.sqlite3 --key-file "$HOME/.config/papi/keys/backup.key" --manifest backups/encrypted/backup.manifest.json` — chiffrer un snapshot en AES-256-GCM.
+- `PYTHONPATH=runtime python -m papi_core sqlite-backup-verify-encrypted --manifest backups/encrypted/backup.manifest.json --key-file "$HOME/.config/papi/keys/backup.key"` — authentifier et vérifier la sauvegarde chiffrée.
+- `PYTHONPATH=runtime python -m papi_core sqlite-backup-decrypt --manifest backups/encrypted/backup.manifest.json --key-file "$HOME/.config/papi/keys/backup.key" --destination data/recovered.sqlite3` — déchiffrer vers un nouveau fichier sans écrasement.
+- `PYTHONPATH=runtime python -m papi_core sqlite-backup-rotate-key --manifest backups/encrypted/backup.manifest.json --old-key-file "$HOME/.config/papi/keys/backup.key" --new-key-file "$HOME/.config/papi/keys/backup-next.key" --new-manifest backups/encrypted/backup-next.manifest.json` — ré-encrypter avec une nouvelle clé.
+
 ## Documents
 - [Journaux SQLite locaux mémoire et PAPI CHAT](docs/LOCAL-SQLITE-JOURNALS.md)\n- [Migration contrôlée JSONL vers SQLite](docs/JSONL-SQLITE-MIGRATION.md)
 - [Sauvegarde, vérification et restauration SQLite](docs/SQLITE-BACKUP-RESTORE.md)
+- [Chiffrement AES-256-GCM et gestion des clés SQLite](docs/SQLITE-BACKUP-ENCRYPTION.md)
 - [Échange hors ligne des paquets de synchronisation](docs/SYNC-OFFLINE-SPOOL.md)
 - [Réception locale authentifiée des paquets](docs/SYNC-LOCAL-RECEIVER.md)
 - [Charges utiles de synchronisation contrôlées](docs/SYNC-CONTENT-PAYLOAD.md)\n- [Import atomique des contenus mémoire et PAPI CHAT](docs/SYNC-ATOMIC-CONTENT-IMPORT.md)
