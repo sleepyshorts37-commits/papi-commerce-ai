@@ -13,7 +13,8 @@ from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
 from .supabase_preflight import run_supabase_preflight, require_supabase_configuration
-from .sync_receiver import receive_sync_package\nfrom .sync_import import import_approved_sync_content
+from .sync_receiver import receive_sync_package
+from .sync_import import import_approved_sync_content
 
 
 def main() -> int:
