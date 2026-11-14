@@ -7,7 +7,7 @@ Programme unique de 20 journées en quatre phases. Le cahier des charges complet
 | A — Contrats et sécurité | 1–5 | Audit, canonicalisation, visibilité, modèle de menace | Réalisé |
 | B — Planification déterministe | 6–10 | Plans référentiels, SHA-256, conflits bloquants, tests | Réalisé |
 | C — Approbation et reprise | 11–15 | Signature propriétaire Ed25519, portée exacte, ledger atomique, anti-rejeu | Réalisé |
-| D — Validation et transfert | 16–20 | CI PostgreSQL/PostgREST jetable, tests SQL, runbook, revue | CI en cours de validation ; gates distants explicitement exclus |
+| D — Validation et transfert | 16–20 | CI PostgreSQL/PostgREST jetable, tests SQL, runbook, revue | Réalisé et validé sur le SHA final ; gates distants explicitement exclus |
 
 ## Livrables de code
 - `runtime/papi_core/sync_protocol.py` : planification sans écriture, références seulement, digest d'intégrité.
