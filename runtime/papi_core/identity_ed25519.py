@@ -13,6 +13,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from .rotation_journal import commit_key_rotation, recover_key_rotation, RotationJournalError
+
 DEFAULT_PRIVATE_DIR = Path.home() / ".papi" / "identity" / "ed25519"
 DEFAULT_PUBLIC_REGISTRY = Path.home() / ".papi" / "identity" / "public-keys.json"
 DEFAULT_REPLAY_DB = Path.home() / ".papi" / "identity" / "ed25519-replay.sqlite3"
@@ -154,40 +156,50 @@ def provision_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_D
 
 def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
                          registry_path: Path = DEFAULT_PUBLIC_REGISTRY) -> Path:
-    """Incrémente la version de clé et invalide immédiatement l'ancienne clé."""
+    """Rotate a key with a durable journal and deterministic crash recovery."""
     _validate_agent(agent_id)
+    private_path = private_dir / (agent_id + ".ed25519.pem")
+    try:
+        recover_key_rotation(private_path, registry_path)
+    except RotationJournalError as exc:
+        raise Ed25519IdentityError("Rotation précédente non récupérable : accès fermé.") from exc
+
+    registry_raw = registry_path.read_bytes()
+    old_private = private_path.read_bytes()
     registry = _read_registry(registry_path)
     current = registry["agents"].get(agent_id)
     if not isinstance(current, dict) or current.get("status") != "active":
         raise Ed25519IdentityError("Identité active inconnue.")
     current_version, _, history = _validated_registry_key_record(current)
-    private_path = private_dir / (agent_id + ".ed25519.pem")
-    if not private_path.is_file():
-        raise Ed25519IdentityError("Clé privée locale absente.")
+
     key = Ed25519PrivateKey.generate()
-    private_bytes = key.private_bytes(serialization.Encoding.PEM,
-        serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
-    temp = private_dir / ("." + agent_id + "." + secrets.token_hex(8) + ".tmp")
-    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(private_bytes)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temp, private_path)
-    finally:
-        temp.unlink(missing_ok=True)
-    public_bytes = key.public_key().public_bytes(serialization.Encoding.Raw,
-                                                  serialization.PublicFormat.Raw)
+    new_private = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    public_bytes = key.public_key().public_bytes(
+        serialization.Encoding.Raw, serialization.PublicFormat.Raw
+    )
     history.append({
         "key_version": current_version,
         "public_key": current["public_key"],
         "retired_at": int(time.time()),
     })
-    registry["agents"][agent_id] = {"status": "active",
+    registry["agents"][agent_id] = {
+        "status": "active",
         "key_version": current_version + 1,
-        "public_key": public_bytes.hex(), "key_history": history}
-    _write_registry(registry_path, registry)
+        "public_key": public_bytes.hex(),
+        "key_history": history,
+    }
+    new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\n").encode("utf-8")
+    try:
+        commit_key_rotation(
+            private_path, registry_path, old_private, new_private,
+            registry_raw, new_registry,
+        )
+    except RotationJournalError as exc:
+        raise Ed25519IdentityError("Rotation interrompue ; journal conservé si récupération requise.") from exc
     return private_path
 
 
