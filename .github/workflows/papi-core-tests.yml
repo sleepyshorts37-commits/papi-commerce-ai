@@ -63,6 +63,8 @@ jobs:
             -f infra/supabase/migrations/010_approval_ledger.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/011_transactional_outbox.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/012_worker_engine.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SHARED_COLLAB_SQL'
           insert into public.papi_memory_events(
             event_id, memory_id, event_type, created_at, actor, category, title,
@@ -197,6 +199,8 @@ jobs:
             -f tests/sql/test_approval_ledger.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/test_transactional_outbox.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_worker_engine.sql
           PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGDATABASE=papi_test \
             bash tests/sql/test_transactional_outbox_concurrency.sh
           PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGDATABASE=papi_test \
@@ -237,9 +241,11 @@ jobs:
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/009_queue_diagnostic_report.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/010_approval_ledger.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/011_transactional_outbox.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/012_worker_engine.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_queue_diagnostic_report.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_approval_ledger.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_transactional_outbox.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_worker_engine.sql
           PGHOST=127.0.0.1 PGPORT=55432 PGUSER=postgres PGDATABASE=papi_contract_test PGPASSWORD=papi_local_only_password bash tests/sql/test_transactional_outbox_concurrency.sh
           PGHOST=127.0.0.1 PGPORT=55432 PGUSER=postgres PGDATABASE=papi_contract_test PGPASSWORD=papi_local_only_password bash tests/sql/test_approval_ledger_concurrency.sh
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_queue_performance_observation.sql
