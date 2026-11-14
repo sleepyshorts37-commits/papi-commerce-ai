@@ -232,7 +232,7 @@ class SupabaseStore:
             raise StoreError("Limite mémoire invalide.")
         query = ("papi_memory_events?select=event_id,memory_id,event_type,created_at,actor,category,title,content,"
                  "source_type,source_id,confidence,scope,tags,sensitivity,target_memory_id,reason"
-                 "&or=(and(scope.eq.shared),and(scope.eq.agent,actor.eq." + quote(actor, safe="") + "))"
+                 "&and=(or(scope.eq.shared,and(scope.eq.agent,actor.eq." + quote(actor, safe="") + ")),or(event_type.eq.remember,event_type.eq.supersede))"
                  "&order=created_at.desc,event_id.desc&limit=" + str(limit))
         rows = self._request("GET", query)
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
@@ -248,7 +248,7 @@ class SupabaseStore:
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 200:
             raise StoreError("Limite chat invalide.")
         query = ("papi_chat_messages?select=message_id,sent_at,sender,recipient,subject,body,message_type"
-                 "&or=(recipient.eq.all,recipient.eq." + quote(actor, safe="") + ")"
+                 "&and=(or(recipient.eq.all,recipient.eq." + quote(actor, safe="") + "))"
                  "&order=sent_at.desc,message_id.desc&limit=" + str(limit))
         rows = self._request("GET", query)
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
@@ -290,7 +290,7 @@ class SupabaseStore:
         decoded = self._decode_collaboration_cursor(cursor)
         if decoded:
             ts, identifier = decoded
-            query += "&or=(created_at.lt." + quote(ts, safe=":.-+") + ",and(created_at.eq." + quote(ts, safe=":.-+") + ",event_id.lt." + quote(identifier, safe="") + "))"
+            query += "&and=(or(scope.eq.shared,and(scope.eq.agent,actor.eq." + quote(actor, safe="") + ")),or(created_at.lt." + quote(ts, safe=":.-+") + ",and(created_at.eq." + quote(ts, safe=":.-+") + ",event_id.lt." + quote(identifier, safe="") + ")))"
         query += "&order=created_at.desc,event_id.desc&limit=" + str(limit + 1)
         rows = self._request("GET", query)
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
@@ -315,7 +315,7 @@ class SupabaseStore:
         decoded = self._decode_collaboration_cursor(cursor)
         if decoded:
             ts, identifier = decoded
-            query += "&or=(sent_at.lt." + quote(ts, safe=":.-+") + ",and(sent_at.eq." + quote(ts, safe=":.-+") + ",message_id.lt." + quote(identifier, safe="") + "))"
+            query += "&and=(or(recipient.eq.all,recipient.eq." + quote(actor, safe="") + "),or(sent_at.lt." + quote(ts, safe=":.-+") + ",and(sent_at.eq." + quote(ts, safe=":.-+") + ",message_id.lt." + quote(identifier, safe="") + ")))"
         query += "&order=sent_at.desc,message_id.desc&limit=" + str(limit + 1)
         rows = self._request("GET", query)
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
