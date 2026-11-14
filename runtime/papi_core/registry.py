@@ -5,6 +5,9 @@ Ce module ne contacte aucun service externe et n'exécute aucune action métier.
 from __future__ import annotations
 
 import json
+import re
+import unicodedata
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +46,89 @@ def load_agents(path: Path = AGENTS_FILE) -> dict[str, dict[str, Any]]:
             raise RegistryError(f"Identifiant d'agent dupliqué: {agent['id']}")
         result[agent["id"]] = agent
     return result
+
+
+
+def _normalized_agent_name(value: str) -> str:
+    folded = unicodedata.normalize("NFKD", value.casefold())
+    return " ".join("".join(ch for ch in folded if not unicodedata.combining(ch)).split())
+
+
+def validate_agent_directory(path: Path = AGENTS_FILE) -> dict[str, Any]:
+    """Validate canonical agent identities and return a safe organization summary."""
+    data = load_json(path)
+    agents = data.get("agents")
+    if not isinstance(agents, list) or not agents:
+        raise RegistryError("Le registre doit contenir une liste non vide 'agents'.")
+
+    errors: list[str] = []
+    ids: set[str] = set()
+    names: dict[str, list[str]] = {}
+    departments: Counter[str] = Counter()
+    allowed_statuses = {"defined", "planned", "active", "suspended", "revoked"}
+
+    for index, agent in enumerate(agents):
+        label = f"Agent #{index + 1}"
+        if not isinstance(agent, dict):
+            errors.append(f"{label}: objet attendu.")
+            continue
+        agent_id = agent.get("id")
+        name = agent.get("name")
+        role = agent.get("role")
+        department = agent.get("department")
+        status = agent.get("status")
+        if not isinstance(agent_id, str) or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,99}", agent_id):
+            errors.append(f"{label}: identifiant invalide.")
+        elif agent_id in ids:
+            errors.append(f"Identifiant d'agent dupliqué: {agent_id}")
+        else:
+            ids.add(agent_id)
+        if not isinstance(name, str) or not name.strip():
+            errors.append(f"{label}: nom affiché absent ou invalide.")
+        else:
+            names.setdefault(_normalized_agent_name(name), []).append(agent_id or label)
+        if not isinstance(role, str) or not role.strip():
+            errors.append(f"{label}: fonction absente ou invalide.")
+        if not isinstance(department, str) or not department.strip():
+            errors.append(f"{label}: département absent ou invalide.")
+        else:
+            departments[department.strip()] += 1
+        if status not in allowed_statuses:
+            errors.append(f"{label}: statut invalide.")
+        for field in ("permissions", "prohibited"):
+            values = agent.get(field)
+            if not isinstance(values, list) or any(not isinstance(item, str) or not item.strip() for item in values):
+                errors.append(f"{label}: {field} doit être une liste de chaînes non vides.")
+            elif len(values) != len(set(values)):
+                errors.append(f"{label}: valeur dupliquée dans {field}.")
+        manager = agent.get("manager_agent_id")
+        if manager is not None and (not isinstance(manager, str) or not manager.strip()):
+            errors.append(f"{label}: manager_agent_id invalide.")
+
+    for normalized, matching_ids in sorted(names.items()):
+        if len(matching_ids) > 1:
+            errors.append(
+                "Nom affiché ambigu après normalisation : "
+                + ", ".join(matching_ids)
+                + f" (clé={normalized})."
+            )
+
+    for agent in agents:
+        if isinstance(agent, dict):
+            manager = agent.get("manager_agent_id")
+            if manager and manager not in ids:
+                errors.append(f"Responsable hiérarchique inconnu pour {agent.get('id', 'agent inconnu')}: {manager}")
+
+    return {
+        "valid": not errors,
+        "agent_count": len(agents),
+        "department_count": len(departments),
+        "departments": dict(sorted(departments.items())),
+        "status_counts": dict(sorted(Counter(
+            item.get("status", "invalid") for item in agents if isinstance(item, dict)
+        ).items())),
+        "errors": errors,
+    }
 
 
 def validate_task(task: dict[str, Any], agents: dict[str, dict[str, Any]]) -> list[str]:
