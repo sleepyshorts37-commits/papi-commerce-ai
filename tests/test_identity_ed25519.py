@@ -1,10 +1,12 @@
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
 from papi_core.identity_ed25519 import (
     Ed25519IdentityError, provision_ed25519_agent, revoke_ed25519_agent,
     rotate_ed25519_agent, sign_ed25519_request, verify_ed25519_request,
+    verify_ed25519_signature,
 )
 
 
@@ -110,6 +112,35 @@ class Ed25519IdentityTests(unittest.TestCase):
             results = list(pool.map(lambda _: attempt(), range(2)))
         self.assertEqual(results.count("accepted"), 1)
         self.assertEqual(results.count("rejected"), 1)
+
+    def test_historical_signature_survives_key_rotation(self):
+        signed_at = int(time.time())
+        old = sign_ed25519_request("agent-a", {"message": "before rotation"}, self.private,
+                                   timestamp=signed_at, nonce="l" * 24)
+        rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+        result = verify_ed25519_signature(old, self.registry)
+        self.assertTrue(result["historical_verification"])
+        with self.assertRaises(Ed25519IdentityError):
+            verify_ed25519_request(old, self.registry, self.replay, now=signed_at)
+
+    def test_historical_signature_survives_revocation_but_post_revocation_does_not(self):
+        signed_at = int(time.time())
+        before = sign_ed25519_request("agent-a", {"message": "before revoke"}, self.private,
+                                      timestamp=signed_at, nonce="m" * 24)
+        revoke_ed25519_agent("agent-a", self.registry)
+        self.assertTrue(verify_ed25519_signature(before, self.registry)["authenticated"])
+        after = sign_ed25519_request("agent-a", {"message": "after revoke"}, self.private,
+                                     timestamp=signed_at + 2, nonce="n" * 24)
+        with self.assertRaises(Ed25519IdentityError):
+            verify_ed25519_signature(after, self.registry)
+
+    def test_key_history_contains_public_versions_only(self):
+        rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+        import json
+        registry = json.loads(self.registry.read_text(encoding="utf-8"))
+        history = registry["agents"]["agent-a"]["key_history"]
+        self.assertEqual([item["key_version"] for item in history], [1, 2])
+        self.assertTrue(all("private_key" not in item for item in history))
 
 
 if __name__ == "__main__":
