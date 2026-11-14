@@ -50,10 +50,6 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/004_shared_collaboration.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
-            -f infra/supabase/migrations/004_shared_collaboration.sql
-          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
-            -f infra/supabase/migrations/005_collaboration_pagination_idempotency.sql
-          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/005_collaboration_pagination_idempotency.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/006_execution_queue_health.sql
@@ -221,6 +217,11 @@ jobs:
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/schema.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/004_shared_collaboration.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/005_collaboration_pagination_idempotency.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/006_execution_queue_health.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/007_queue_transition_integrity.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/008_queue_retention_preview.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/009_queue_diagnostic_report.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_queue_diagnostic_report.sql
       - name: Start local PostgREST
         run: |
           docker compose -f infra/supabase/local/docker-compose.yml up -d --wait postgrest
