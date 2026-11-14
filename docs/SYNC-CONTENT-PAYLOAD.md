@@ -38,4 +38,4 @@ verified = read_sync_payload(
 ## Limites
 Cette mission prépare et vérifie le transfert du contenu, mais n'importe rien dans `events.jsonl` ou `messages.jsonl`. Elle ne consomme pas elle-même le nonce d'approbation et ne remplace pas la vérification Ed25519 du bundle par le récepteur Mission 44. Le récepteur doit valider le bundle et l'approbation avant tout usage de la charge utile. Aucun transport réseau, import atomique, fusion, suppression, worker, scheduler ou déploiement n'est activé.
 
-Les filtres de confidentialité sont conservateurs mais ne peuvent pas reconnaître toutes les formes de données personnelles dans du texte libre. Une revue humaine du contenu exporté reste nécessaire.
+Les fichiers ne sont pas chiffrés par cette mission : les permissions locales ne remplacent pas le chiffrement au repos ou en transit. Les filtres de confidentialité sont conservateurs mais ne peuvent pas reconnaître toutes les formes de données personnelles dans du texte libre. Une revue humaine du contenu exporté reste nécessaire.
