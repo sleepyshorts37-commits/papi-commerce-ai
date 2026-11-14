@@ -15,17 +15,17 @@ begin
  values
  ('JOB-CI-M29-001','CI-M29-TASK-001','test.run','{}'::jsonb,'ci-m29-job-key-001','done',1,3),
  ('JOB-CI-M29-002','CI-M29-TASK-001','test.run','{}'::jsonb,'ci-m29-job-key-002','failed',2,3),
- ('JOB-CI-M29-003','CI-M29-TASK-001','test.run','{}'::jsonb,'ci-m29-job-key-003','queued',0,3);
+ ('JOB-CI-M29-003','CI-M29-TASK-001','test.run','{}'::jsonb,'ci-m29-job-key-003','failed',1,3);
  insert into public.papi_worker_assignments(task_id,worker_id,job_id,required_skill,required_permission,assigned_by,status,assigned_at,started_at,finished_at)
  values
  ('CI-M29-TASK-001','CI-WORKER-M29','JOB-CI-M29-001','test.run','task.execute','ci-owner','completed',now()-interval '1 hour',now()-interval '40 minutes',now()-interval '10 minutes'),
  ('CI-M29-TASK-001','CI-WORKER-M29','JOB-CI-M29-002','test.run','task.execute','ci-owner','failed',now()-interval '1 hour',now()-interval '50 minutes',now()-interval '20 minutes'),
- ('CI-M29-TASK-001','CI-WORKER-M29','JOB-CI-M29-003','test.run','task.execute','ci-owner','assigned',now()-interval '1 hour',null,null);
+ ('CI-M29-TASK-001','CI-WORKER-M29','JOB-CI-M29-003','test.run','task.execute','ci-owner','failed',now()-interval '1 hour',now()-interval '50 minutes',now()-interval '20 minutes);
 
  v_eval:=public.papi_supervisor_evaluate_worker('CI-WORKER-M29','supervisor-ci',now()-interval '1 day',now()+interval '1 second');
- if (v_eval->>'sample_size')::integer<>3 or (v_eval->>'completed')::integer<>1 or (v_eval->>'failed')::integer<>1
+ if (v_eval->>'sample_size')::integer<>3 or (v_eval->>'completed')::integer<>1 or (v_eval->>'failed')::integer<>2
  then raise exception 'Evaluation sample or terminal counts are incorrect'; end if;
- if (v_eval->>'reliability_score')::numeric<>50 or (v_eval->>'completion_score')::numeric<>66.67
+ if (v_eval->>'reliability_score')::numeric<>33.33 or (v_eval->>'completion_score')::numeric<>100
  then raise exception 'Reliability or completion score is incorrect: %',v_eval; end if;
  if (v_eval->>'overall_score')::numeric>=60 then raise exception 'Low-score alert threshold was not exercised'; end if;
  if not exists(select 1 from public.papi_supervisor_alerts where worker_id='CI-WORKER-M29' and alert_type='failure_rate' and severity='critical')
