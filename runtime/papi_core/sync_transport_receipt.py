@@ -24,6 +24,7 @@ def _canonical(value: Any) -> bytes:
 def verify_sync_transport_receipt(
     *, request: object, receipt: object, registry_path: Path,
     replay_db: Path, now: int | None = None,
+    replay_connection: Any | None = None,
 ) -> dict[str, Any]:
     """Authentifie le destinataire et lie son reçu à la requête exacte.
 
