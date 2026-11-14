@@ -12,6 +12,7 @@ from typing import Any
 
 DOMAINS = {"platform_candidate", "human_handoff", "profitability_result"}
 IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$")
+SENSITIVE_TEXT = re.compile(r"\\b(?:password|passwd|otp|one[- ]time code|private key|seed phrase|recovery phrase|access token|refresh token)\\s*[:=]", re.IGNORECASE)
 SENSITIVE_KEYS = {
     "password", "passwd", "otp", "one_time_code", "verification_code",
     "private_key", "secret_key", "seed_phrase", "recovery_phrase",
@@ -31,6 +32,8 @@ def _required_text(value: Any, field: str) -> str:
 
 
 def _reject_secrets(value: Any, path: str = "payload") -> None:
+    if isinstance(value, str) and SENSITIVE_TEXT.search(value):
+        raise WorkerStoreError(f"Contenu sensible détecté dans {path}.")
     if isinstance(value, dict):
         for key, child in value.items():
             normalized = str(key).strip().casefold().replace("-", "_")
