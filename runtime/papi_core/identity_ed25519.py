@@ -167,7 +167,8 @@ def sign_ed25519_request(agent_id: str, payload: dict[str, Any], private_path: P
 
 def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAULT_PUBLIC_REGISTRY,
                            replay_db: Path = DEFAULT_REPLAY_DB, now: int | None = None,
-                           consume_nonce: bool = True) -> dict[str, Any]:
+                           consume_nonce: bool = True,
+                           allow_expired: bool = False) -> dict[str, Any]:
     required = {"agent_id", "key_version", "timestamp", "nonce", "payload", "signature"}
     if not isinstance(envelope, dict) or set(envelope) != required:
         raise Ed25519IdentityError("Enveloppe Ed25519 invalide.")
@@ -179,7 +180,7 @@ def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAU
     if not isinstance(timestamp, int) or isinstance(timestamp, bool):
         raise Ed25519IdentityError("Horodatage invalide.")
     current = int(time.time()) if now is None else int(now)
-    if abs(current - timestamp) > MAX_CLOCK_SKEW_SECONDS:
+    if not allow_expired and abs(current - timestamp) > MAX_CLOCK_SKEW_SECONDS:
         raise Ed25519IdentityError("Signature expirée ou horloge désynchronisée.")
     if not isinstance(nonce, str) or len(nonce) < 16:
         raise Ed25519IdentityError("Nonce invalide.")
