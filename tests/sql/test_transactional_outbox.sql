@@ -176,5 +176,4 @@ begin
     end;
 
     perform public.papi_outbox_health();
-end;
-$;
+end;$$;
