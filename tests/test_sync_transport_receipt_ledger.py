@@ -45,7 +45,7 @@ class SyncTransportReceiptLedgerTests(unittest.TestCase):
             "receiver_reverification_required": True, "tls_verification_required": True,
             "redirects_allowed": False,
         }
-        self.replay, self.ledger = self.root / "replay.sqlite3", self.root / "ledger.sqlite3"
+        self.replay = self.ledger = self.root / "ledger.sqlite3"
 
     def tearDown(self):
         self.temp.cleanup()
@@ -99,6 +99,41 @@ class SyncTransportReceiptLedgerTests(unittest.TestCase):
         self.request["body"]["package_base64"] = "tampered"
         with self.assertRaises(SyncTransportReceiptLedgerError):
             self.record(self.receipt())
+        if self.ledger.exists():
+            with sqlite3.connect(self.ledger) as db:
+                tables = {row[0] for row in db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )}
+                if "sync_transport_receipts" in tables:
+                    self.assertEqual(db.execute(
+                        "SELECT count(*) FROM sync_transport_receipts"
+                    ).fetchone()[0], 0)
+                if "used_nonces" in tables:
+                    self.assertEqual(db.execute(
+                        "SELECT count(*) FROM used_nonces"
+                    ).fetchone()[0], 0)
+
+    def test_nonce_and_receipt_share_one_database(self):
+        result = self.record(self.receipt())
+        self.assertTrue(result["nonce_and_receipt_atomic"])
+        with sqlite3.connect(self.ledger) as db:
+            receipt_count = db.execute(
+                "SELECT count(*) FROM sync_transport_receipts"
+            ).fetchone()[0]
+            nonce_count = db.execute(
+                "SELECT count(*) FROM used_nonces WHERE agent_id='target-58'"
+            ).fetchone()[0]
+        self.assertEqual(receipt_count, 1)
+        self.assertEqual(nonce_count, 1)
+
+    def test_separate_replay_database_is_rejected(self):
+        with self.assertRaises(SyncTransportReceiptLedgerError):
+            record_verified_sync_transport_receipt(
+                request=self.request, receipt=self.receipt(),
+                registry_path=self.registry, replay_db=self.root / "other.sqlite3",
+                ledger_db=self.ledger, now=1794657600,
+            )
+        self.assertFalse((self.root / "other.sqlite3").exists())
         self.assertFalse(self.ledger.exists())
 
 
