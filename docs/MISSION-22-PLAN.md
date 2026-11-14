@@ -2,21 +2,26 @@
 
 ## Objectif
 
-Passer des contrats simulés de la Mission 21 à une validation reproductible de la frontière HTTP/PostgREST, puis préparer des tests d'intégration sur une instance Supabase de test explicitement autorisée. Cette mission n'active aucune synchronisation automatique.
+Passer des contrats simulés de la Mission 21 à une validation reproductible de la frontière HTTP/PostgREST, puis préparer des tests d'intégration sur un environnement Supabase local/éphémère explicitement contrôlé. Cette mission n'active aucune synchronisation automatique.
 
 ## Jour 1/5 — Contrat HTTP de l'adaptateur partagé
 
-- Ajouter des tests qui traversent réellement `SupabaseStore._request` et `SharedCollaborationStore`, avec le transport réseau remplacé uniquement à la frontière.
-- Vérifier la méthode, l'URL PostgREST, les filtres destinataires côté serveur, les en-têtes d'authentification serveur et la préférence d'idempotence.
-- Vérifier qu'une erreur HTTP ne révèle ni corps interne de base de données ni clé d'accès.
-- N'utiliser aucun projet Supabase hébergé, aucune clé réelle et aucune donnée utilisateur.
+- Tests traversant SupabaseStore._request et SharedCollaborationStore, avec transport intercepté à la frontière.
+- Vérification des URL/méthodes PostgREST, en-têtes serveur, filtres destinataires, idempotence et erreurs sans divulgation de secrets.
+- Aucun projet hébergé ni secret réel.
+
+## Jour 2/5 — Harnais PostgreSQL jetable
+
+- Ajout d'un Compose PostgreSQL 16 reproductible, isolé sur loopback et stockage éphémère.
+- Création de rôles de test anon, authenticated et service_role.
+- Procédure documentée pour appliquer deux fois le schéma et les migrations partagées.
+- Limite explicitée : PostgreSQL seul ne valide ni Supabase Auth, ni PostgREST, ni les JWT.
 
 ## Jours suivants — critères de sortie prévus
 
-1. Définir et documenter un environnement Supabase local/éphémère reproductible, avec versions et démarrage contrôlés.
-2. Exécuter les migrations et tests de permissions/RLS sur cet environnement.
-3. Tester les adaptateurs mémoire et PAPI CHAT sur PostgREST réel, notamment idempotence, pagination et cloisonnement.
-4. Produire un rapport de préparation, les limites restantes et les conditions de validation humaine.
+1. Exécuter les migrations et tests de permissions/RLS sur un environnement Supabase local complet.
+2. Tester les adaptateurs mémoire et PAPI CHAT sur PostgREST réel, notamment idempotence, pagination et cloisonnement.
+3. Produire un rapport de préparation, les limites restantes et les conditions de validation humaine.
 
 ## Garde-fous
 
