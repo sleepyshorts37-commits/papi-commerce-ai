@@ -24,11 +24,14 @@
 - [x] PAPI COMMAND CENTER local en lecture seule.
 - [x] PAPI CHAT : socle local de communication interne, journal append-only validé (Mission 37).
 - [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
-- [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
+- [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.
+- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
 - [x] Ajouter un prototype Ed25519, registre public versionné, révocation, rotation et tests unitaires.
 - [x] Brancher Ed25519 au contrôle d'accès et au worker ; maintenir HMAC uniquement pour compatibilité transitoire.
-- [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
-- [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).\n- [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
+- [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.
+- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
+- [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).
+- [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
 - [ ] Synchroniser mémoire et messages entre instances (contrat Mission 38 + paquet référentiel Mission 39 + approbation Ed25519 Mission 40 + registre local de reçus Mission 41 + consommation nonce/reçu atomique SQLite Mission 42 + spool local hors ligne et échange manuel Mission 43; transport réseau, stockage distribué, import des contenus et tests multi-instance encore requis).
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
