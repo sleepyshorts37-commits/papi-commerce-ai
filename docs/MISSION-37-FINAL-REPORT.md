@@ -19,7 +19,10 @@ Fiabiliser le journal local PAPI CHAT sans ajouter de transport réseau ni activ
 - Aucun agent activé et aucune opération financière.
 
 ## Validation
-Résultats de tests et CI à compléter après exécution sur le SHA final de cette mission.
+GitHub Actions run #1194 / ID `43614260745`, succès sur le SHA `aff452739612728b2a4a23034d9dd07757cdce8a` :
+- Job `tests` : SUCCESS — **374 tests Python réussis**.
+- Job `local-postgrest-integration` : SUCCESS.
+- Les deux jobs ont réussi sur le même SHA que la tête de branche avant cette mise à jour du rapport ; une nouvelle exécution finale est lancée pour inclure le présent rapport.
 
 ## Pull request
 PR ouverte en brouillon, non fusionnée.
