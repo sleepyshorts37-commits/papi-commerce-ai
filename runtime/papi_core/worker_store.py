@@ -13,7 +13,7 @@ from typing import Any
 DOMAINS = {"platform_candidate", "human_handoff", "profitability_result"}
 IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$")
 SENSITIVE_TEXT = re.compile(r"\\b(?:password|passwd|otp|one[- ]time code|private key|seed phrase|recovery phrase|access token|refresh token)\\s*[:=]", re.IGNORECASE)
-SENSITIVE_KEYS = {
+SENSITIVE_TEXT = re.compile(r"\b(?:password|passwd|otp|one[- ]time code|private key|seed phrase|recovery phrase|access token|refresh token)\s*[:=]", re.IGNORECASE)
     "password", "passwd", "otp", "one_time_code", "verification_code",
     "private_key", "secret_key", "seed_phrase", "recovery_phrase",
     "card_number", "cvv", "cvc", "access_token", "refresh_token",
