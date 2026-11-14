@@ -51,7 +51,13 @@ def main() -> int:
     importer.add_argument("--ledger", required=True, help="Base SQLite locale de reçus et contenus importés")
     importer.add_argument("--destination", required=True, help="Identifiant exact de cette instance")
     importer.add_argument("--agents", required=True, help="Registre local des agents")
-    migrate = sub.add_parser("migrate-jsonl", help="Sauvegarder puis migrer un journal JSONL local vers SQLite")\n    migrate.add_argument("--kind", choices=("memory", "message"), required=True)\n    migrate.add_argument("--source", required=True)\n    migrate.add_argument("--database", required=True)\n    migrate.add_argument("--backup-dir", required=True)\n    migrate.add_argument("--agents", default="data/agents.json")\n    preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
+    migrate = sub.add_parser("migrate-jsonl", help="Sauvegarder puis migrer un journal JSONL local vers SQLite")
+    migrate.add_argument("--kind", choices=("memory", "message"), required=True)
+    migrate.add_argument("--source", required=True)
+    migrate.add_argument("--database", required=True)
+    migrate.add_argument("--backup-dir", required=True)
+    migrate.add_argument("--agents", default="data/agents.json")
+    preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
     preflight.add_argument("--require-configured", action="store_true", help="Exiger URL et clé serveur configurées")
     args = parser.parse_args()
     try:
@@ -105,7 +111,14 @@ def main() -> int:
             )
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0
-        if args.command == "migrate-jsonl":\n            report = migrate_jsonl_to_sqlite(\n                kind=args.kind, source_path=args.source, database_path=args.database,\n                backup_dir=args.backup_dir, agents_path=args.agents,\n            )\n            print(json.dumps(report, ensure_ascii=False, indent=2))\n            return 0\n        if args.command == "supabase-preflight":
+        if args.command == "migrate-jsonl":
+            report = migrate_jsonl_to_sqlite(
+                kind=args.kind, source_path=args.source, database_path=args.database,
+                backup_dir=args.backup_dir, agents_path=args.agents,
+            )
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "supabase-preflight":
             report = run_supabase_preflight()
             print(json.dumps(report, ensure_ascii=False, indent=2))
             if args.require_configured:
