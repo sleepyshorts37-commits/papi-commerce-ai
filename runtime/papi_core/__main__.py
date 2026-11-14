@@ -13,6 +13,7 @@ from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
 from .supabase_preflight import run_supabase_preflight, require_supabase_configuration
+from .sync_receiver import receive_sync_package
 
 
 def main() -> int:
@@ -34,6 +35,12 @@ def main() -> int:
     sub.add_parser("finance-validate", help="Valider le registre financier local")
     sub.add_parser("finance-report", help="Afficher le rapport financier local en lecture seule")
     sub.add_parser("security-check", help="Vérifier la posture de sécurité locale en lecture seule")
+    receiver = sub.add_parser("receive-sync-package", help="Authentifier un paquet .papisync et inscrire un reçu local sans importer de contenu")
+    receiver.add_argument("--package", required=True, help="Chemin du fichier .papisync reçu")
+    receiver.add_argument("--owner-id", required=True, help="Identifiant du propriétaire autorisé")
+    receiver.add_argument("--registry", required=True, help="Chemin du registre local de clés publiques")
+    receiver.add_argument("--ledger", required=True, help="Chemin du registre SQLite local des reçus")
+    receiver.add_argument("--destination", required=True, help="Identifiant exact de cette instance destinataire")
     preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
     preflight.add_argument("--require-configured", action="store_true", help="Exiger URL et clé serveur configurées")
     args = parser.parse_args()
@@ -70,6 +77,14 @@ def main() -> int:
             return 0
         if args.command == "security-check":
             print(json.dumps(check_security(), ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "receive-sync-package":
+            report = receive_sync_package(
+                package_path=args.package, owner_id=args.owner_id,
+                registry_path=args.registry, ledger_db=args.ledger,
+                expected_destination=args.destination,
+            )
+            print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0
         if args.command == "supabase-preflight":
             report = run_supabase_preflight()
