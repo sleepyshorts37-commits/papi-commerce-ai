@@ -120,15 +120,22 @@ class SupabaseWorkerStore:
         if canonical["event_id"] != event["event_id"] or canonical["idempotency_key"] != event["idempotency_key"]:
             raise WorkerStoreError("Identifiants d'idempotence non conformes à l'enveloppe.")
         result = self.store.sync_worker_event(event, expected_version=expected_version)
-        if not isinstance(result, dict) or not isinstance(result.get("duplicate"), bool):
+        if (not isinstance(result, dict) or not isinstance(result.get("duplicate"), bool)
+                or not isinstance(result.get("record_version"), int) or result["record_version"] < 1):
             raise WorkerStoreError("Réponse de synchronisation Supabase invalide.")
         return result
 
     def load_worker_inputs(self, *, limit_per_domain: int = 500) -> dict[str, list[dict[str, Any]]]:
         if not isinstance(limit_per_domain, int) or isinstance(limit_per_domain, bool) or not 1 <= limit_per_domain <= 1000:
             raise WorkerStoreError("Limite de lecture invalide.")
-        return {
+        inputs = {
             "platform_candidates": self.store.list_worker_records("platform_candidate", limit=limit_per_domain),
             "handoffs": self.store.list_worker_records("human_handoff", limit=limit_per_domain),
             "profitability_results": self.store.list_worker_records("profitability_result", limit=limit_per_domain),
         }
+        for field, records in inputs.items():
+            if not isinstance(records, list) or any(not isinstance(record, dict) for record in records):
+                raise WorkerStoreError(f"Réponse de lecture invalide pour {field}.")
+            for record in records:
+                _reject_secrets(record)
+        return inputs
