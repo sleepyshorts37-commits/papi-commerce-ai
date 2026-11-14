@@ -38,6 +38,7 @@ Depuis la racine du dépôt :
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
 ## Documents
+- [Registre local des reçus de synchronisation](docs/SYNC-RECEIPT-LEDGER.md)
 - [Organisation](docs/ORGANISATION.md)
 - [Gouvernance des identités et contrôle de l'organigramme](docs/AGENT-ORGANIZATION-GOVERNANCE.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)

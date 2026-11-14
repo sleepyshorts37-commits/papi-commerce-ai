@@ -29,7 +29,7 @@
 - [x] Brancher Ed25519 au contrôle d'accès et au worker ; maintenir HMAC uniquement pour compatibilité transitoire.
 - [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
 - [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).\n- [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
-- [ ] Synchroniser mémoire et messages entre instances (contrat Mission 38 + validateur référentiel Mission 39 + approbation propriétaire Ed25519 locale Mission 40; transport, consommation atomique distribuée, import transactionnel et tests multi-instance encore requis).
+- [ ] Synchroniser mémoire et messages entre instances (contrat Mission 38 + paquet référentiel Mission 39 + approbation Ed25519 Mission 40 + registre local de reçus atomique Mission 41; transport, consommation d'approbation distribuée, import transactionnel et tests multi-instance encore requis).
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
 ## Phase 3 — Première activité commerciale
