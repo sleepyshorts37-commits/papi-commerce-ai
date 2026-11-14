@@ -10,5 +10,8 @@
 ## Distinction critique
 La consommation atomique empêche la réutilisation d'une autorisation. Elle ne fournit pas exactement-once pour un effet externe. Pour les futures opérations métier, utiliser une clé d'idempotence persistante, une outbox transactionnelle et une vérification du résultat auprès du prestataire.
 
+## Validation de concurrence
+Le script `tests/sql/test_approval_ledger_concurrency.sh` lance deux sessions PostgreSQL simultanées et exige exactement un résultat `true` et un résultat `false`. Le workflow CI l'exécute sur les deux bases jetables.
+
 ## Limite de la mission
-Les tests SQL séquentiels vérifient les contrats ; la garantie de concurrence découle du verrouillage de ligne et devra être complétée par un test multi-session dédié avant production.
+Le test démontre le comportement de cette RPC dans PostgreSQL local ; il ne remplace pas un test de charge, une revue des droits de production ou un test de panne réseau.
