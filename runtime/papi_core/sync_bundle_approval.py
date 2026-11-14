@@ -67,12 +67,14 @@ def verify_sync_bundle_approval(*, envelope: dict[str, Any], bundle: dict[str, A
                                 replay_db: Path, expected_destination: str,
                                 now_epoch: int | None = None,
                                 now: datetime | None = None,
-                                max_approval_ttl_seconds: int = 900) -> dict[str, Any]:
+                                max_approval_ttl_seconds: int = 900,
+                                consume_nonce: bool = True) -> dict[str, Any]:
     """Vérifie signature, propriétaire, destination, digest, événements et anti-rejeu."""
     try:
         validate_sync_bundle(bundle, expected_destination=expected_destination)
         verified = verify_ed25519_request(envelope, registry_path=registry_path,
-                                           replay_db=replay_db, now=now_epoch)
+                                           replay_db=replay_db, now=now_epoch,
+                                           consume_nonce=consume_nonce)
     except (SyncBundleError, Ed25519IdentityError) as exc:
         raise SyncBundleApprovalError(str(exc)) from exc
     if verified["agent_id"] != owner_id:
@@ -109,7 +111,8 @@ def verify_sync_bundle_approval(*, envelope: dict[str, Any], bundle: dict[str, A
         "destination_instance_id": expected_destination,
         "event_count": len(bundle["events"]),
         "signature_verified": True,
-        "nonce_replay_protected": True,
+        "nonce_replay_protected": bool(consume_nonce),
+        "nonce_consumed": bool(verified.get("nonce_consumed", False)),
         "execution_enabled": False,
         "import_performed": False,
         "durable_consumption_required": True,

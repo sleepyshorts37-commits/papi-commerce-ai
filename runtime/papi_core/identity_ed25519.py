@@ -166,7 +166,8 @@ def sign_ed25519_request(agent_id: str, payload: dict[str, Any], private_path: P
 
 
 def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAULT_PUBLIC_REGISTRY,
-                           replay_db: Path = DEFAULT_REPLAY_DB, now: int | None = None) -> dict[str, Any]:
+                           replay_db: Path = DEFAULT_REPLAY_DB, now: int | None = None,
+                           consume_nonce: bool = True) -> dict[str, Any]:
     required = {"agent_id", "key_version", "timestamp", "nonce", "payload", "signature"}
     if not isinstance(envelope, dict) or set(envelope) != required:
         raise Ed25519IdentityError("Enveloppe Ed25519 invalide.")
@@ -201,18 +202,19 @@ def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAU
             signature_bytes, _canonical(agent_id, version, timestamp, nonce, envelope["payload"]))
     except (ValueError, KeyError, TypeError, InvalidSignature) as exc:
         raise Ed25519IdentityError("Signature Ed25519 incorrecte.") from exc
-    replay_db.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with sqlite3.connect(replay_db, timeout=30) as connection:
-        # Wait for concurrent writers; do not change journal mode per request.
-        # Concurrent WAL initialization can fail with SQLITE_BUSY.
-        connection.execute("PRAGMA busy_timeout=30000")
-        connection.execute("CREATE TABLE IF NOT EXISTS used_nonces (agent_id TEXT NOT NULL, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(agent_id, nonce))")
-        connection.execute("DELETE FROM used_nonces WHERE expires_at < ?", (current,))
-        try:
-            connection.execute("INSERT INTO used_nonces VALUES (?, ?, ?)",
-                               (agent_id, nonce, timestamp + MAX_CLOCK_SKEW_SECONDS))
-        except sqlite3.IntegrityError as exc:
-            raise Ed25519IdentityError("Rejeu détecté.") from exc
-    os.chmod(replay_db, 0o600)
+    if consume_nonce:
+        replay_db.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with sqlite3.connect(replay_db, timeout=30) as connection:
+            # Wait for concurrent writers; do not change journal mode per request.
+            connection.execute("PRAGMA busy_timeout=30000")
+            connection.execute("CREATE TABLE IF NOT EXISTS used_nonces (agent_id TEXT NOT NULL, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(agent_id, nonce))")
+            connection.execute("DELETE FROM used_nonces WHERE expires_at < ?", (current,))
+            try:
+                connection.execute("INSERT INTO used_nonces VALUES (?, ?, ?)",
+                                   (agent_id, nonce, timestamp + MAX_CLOCK_SKEW_SECONDS))
+            except sqlite3.IntegrityError as exc:
+                raise Ed25519IdentityError("Rejeu détecté.") from exc
+        os.chmod(replay_db, 0o600)
     return {"authenticated": True, "agent_id": agent_id, "key_version": version,
-            "algorithm": "Ed25519", "replay_protected": True}
+            "algorithm": "Ed25519", "replay_protected": bool(consume_nonce),
+            "nonce_consumed": bool(consume_nonce)}
