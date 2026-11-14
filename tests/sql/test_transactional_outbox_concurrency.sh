@@ -12,7 +12,7 @@ two="$(mktemp)"
 trap 'rm -f "$one" "$two"' EXIT
 
 psql -X -q -v ON_ERROR_STOP=1 -c "select public.papi_enqueue_outbox('$key', 'test.race', 'RACE-$suffix', '{}'::jsonb, 2);" >/dev/null
-sql="select (public.papi_claim_outbox('race-worker', gen_random_uuid(), 60) is not null)::text;"
+sql="select case when public.papi_claim_outbox('race-worker', gen_random_uuid(), 60) is not null then 't' else 'f' end;"
 psql -X -A -t -v ON_ERROR_STOP=1 -c "$sql" >"$one" &
 pid_one=$!
 psql -X -A -t -v ON_ERROR_STOP=1 -c "$sql" >"$two" &
