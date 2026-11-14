@@ -1,20 +1,19 @@
 # Mission 33 — Plan de réalisation sur 20 journées
 
-Cette mission est un programme unique de 20 journées, regroupées en quatre phases. Le détail exécutable est dans [le prompt complet](MISSION-33-PROMPT.md).
+Programme unique de 20 journées en quatre phases. Le cahier des charges complet est dans [MISSION-33-PROMPT.md](MISSION-33-PROMPT.md).
 
-| Phase | Jours | Résultat attendu |
-|---|---:|---|
-| A — Contrats et sécurité | 1–5 | Contrats vérifiés, modèle de menace et règles de visibilité |
-| B — Planification déterministe | 6–10 | Plans référentiels, empreintes stables, conflits bloquants et tests |
-| C — Approbation et reprise | 11–15 | Contrat d'approbation à périmètre fixe, idempotence et runbook de reprise |
-| D — Validation opérationnelle | 16–20 | Matrice d'intégration, observabilité, runbook, revue et transfert |
+| Phase | Jours | Livrables | État |
+|---|---:|---|---|
+| A — Contrats et sécurité | 1–5 | Audit, canonicalisation, visibilité, modèle de menace | Réalisé |
+| B — Planification déterministe | 6–10 | Plans référentiels, SHA-256, conflits bloquants, tests | Réalisé |
+| C — Approbation et reprise | 11–15 | Signature propriétaire Ed25519, portée exacte, ledger atomique, anti-rejeu | Réalisé |
+| D — Validation et transfert | 16–20 | CI PostgreSQL/PostgREST jetable, tests SQL, runbook, revue | CI en cours de validation ; gates distants explicitement exclus |
 
-## Exécution réellement réalisée dans cette PR
-- Audit documentaire et statique des interfaces Mission 32 et de la feuille de route.
-- Ajout d'un planificateur déterministe `build_sync_plan`, sans écriture ni transport de contenu.
-- Les entrées identiques sont ignorées ; les divergences restent bloquantes ; les différences produisent seulement des références d'action à faire approuver.
-- Ajout d'un digest d'intégrité et de tests adversariaux.
-- Les étapes d'approbation cryptographiquement vérifiée, les tests sur projet Supabase réel, les migrations distantes et le déploiement restent des gates ultérieurs non exécutés.
+## Livrables de code
+- `runtime/papi_core/sync_protocol.py` : planification sans écriture, références seulement, digest d'intégrité.
+- `runtime/papi_core/sync_approval.py` : approbation signée du propriétaire liée au plan exact.
+- `infra/supabase/migrations/017_sync_approval_scope.sql` et rollback prudent.
+- Tests unitaires et SQL ; CI applique migration 017 sur ses deux bases PostgreSQL jetables et exécute les contrats.
 
-## Règle de clôture
-La présence du code ne signifie pas que la synchronisation est opérationnelle. L'activation exige une approbation propriétaire distincte, une frontière serveur vérifiée, un environnement de test autorisé et une revue indépendante.
+## Limites
+Les environnements CI sont isolés et fictifs. Aucun projet Supabase distant, identifiant de connexion, transfert de données ou approbation de mise en production n'a été fourni. Les tests distants et la restauration sur projet réel restent des prérequis opérationnels, pas des tâches à simuler ni à déclarer réussies.
