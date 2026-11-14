@@ -175,7 +175,7 @@ jobs:
             -f tests/sql/test_execution_queue.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/prepare_execution_queue_concurrency.sql
-          PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGDATABASE=papi_test \
+          PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGDATABASE=papi_test PGPASSWORD=papi_test_password \
             bash tests/sql/test_execution_queue_concurrency.sh
 
   local-postgrest-integration:
