@@ -171,3 +171,41 @@ jobs:
           SQL
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/test_worker_sync.sql
+
+  local-postgrest-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Start isolated local PostgreSQL
+        run: docker compose -f infra/supabase/local/docker-compose.yml up -d --wait postgres
+      - name: Apply schema and collaboration migrations
+        env:
+          PGPASSWORD: papi_local_only_password
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            pg_isready -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test && break
+            sleep 2
+          done
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/schema.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/004_shared_collaboration.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/005_collaboration_pagination_idempotency.sql
+      - name: Start local PostgREST
+        run: |
+          docker compose -f infra/supabase/local/docker-compose.yml up -d --wait postgrest
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:55433/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker compose -f infra/supabase/local/docker-compose.yml logs postgrest
+          exit 1
+      - name: Verify live PostgREST contracts
+        run: python tests/integration/test_local_postgrest_contract.py
+      - name: Stop disposable local stack
+        if: always()
+        run: docker compose -f infra/supabase/local/docker-compose.yml down --volumes
