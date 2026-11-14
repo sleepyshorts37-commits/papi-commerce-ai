@@ -26,24 +26,24 @@ def b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
-def service_token() -> str:
+def service_token(secret: str | None = None, expires_in: int = 300, role: str = "service_role") -> str:
     header = b64url(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
     payload = b64url(json.dumps({
-        "role": "service_role",
+        "role": role,
         "iss": "papi-local-contract-test",
         "iat": int(time.time()),
-        "exp": int(time.time()) + 300,
+        "exp": int(time.time()) + expires_in,
     }).encode())
     signing_input = f"{header}.{payload}".encode()
     import hashlib
     import hmac
-    signature = hmac.new(JWT_SECRET.encode(), signing_input, hashlib.sha256).digest()
+    signature = hmac.new((secret or JWT_SECRET).encode(), signing_input, hashlib.sha256).digest()
     return f"{header}.{payload}.{b64url(signature)}"
 
 
-def request(method: str, path: str, payload: dict | None = None, prefer: str | None = None):
+def request(method: str, path: str, payload: dict | None = None, prefer: str | None = None, token: str | None = None):
     headers = {
-        "Authorization": f"Bearer {service_token()}",
+        "Authorization": f"Bearer {token if token is not None else service_token()}",
         "Content-Type": "application/json",
     }
     if prefer:
@@ -55,11 +55,31 @@ def request(method: str, path: str, payload: dict | None = None, prefer: str | N
         return response.status, json.loads(body) if body else None
 
 
+
+def expect_auth_rejection(label: str, token: str | None) -> None:
+    headers = {"Content-Type": "application/json"}
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(f"{BASE_URL}/papi_chat_messages?select=message_id&limit=1", headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            raise AssertionError(f"{label} unexpectedly accepted with HTTP {response.status}")
+    except urllib.error.HTTPError as exc:
+        assert exc.code in (401, 403), f"{label} returned unexpected HTTP {exc.code}"
+
+
 def main() -> None:
     if not BASE_URL.startswith("http://127.0.0.1:") and not BASE_URL.startswith("http://localhost:"):
         raise SystemExit("Refusing non-loopback REST URL; this test is local-only.")
     if len(JWT_SECRET) < 32:
         raise SystemExit("Local JWT secret must contain at least 32 characters.")
+
+    # Authentication boundary: credentials and claims must be rejected when invalid.
+    expect_auth_rejection("Missing bearer token", None)
+    expect_auth_rejection("Malformed bearer token", "not.a.valid.jwt")
+    expect_auth_rejection("Wrong signing secret", service_token(secret="wrong_local_test_signing_secret_000000000000"))
+    expect_auth_rejection("Expired token", service_token(expires_in=-60))
+    expect_auth_rejection("Anon role token", service_token(role="anon"))
 
     recipient = f"ci_{uuid.uuid4().hex[:12]}"
     message_id = f"MSG-{uuid.uuid4().hex.upper()}"
@@ -100,7 +120,7 @@ def main() -> None:
     else:
         raise AssertionError("Append-only message unexpectedly allowed PATCH")
 
-    print("PASS: PostgREST JWT auth, insert, recipient filter, and append-only guard")
+    print("PASS: JWT rejection matrix, privileged insert, recipient filter, and append-only guard")
 
 
 if __name__ == "__main__":
