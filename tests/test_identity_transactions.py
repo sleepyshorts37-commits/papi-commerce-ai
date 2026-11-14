@@ -77,6 +77,15 @@ class IdentityTransactionManagerTests(unittest.TestCase):
                 permissions=["spend_money"], approval_ref="approval-004",
             )
 
+    def test_permission_update_cannot_remove_prohibited_permissions(self):
+        self.provision()
+        with self.assertRaises(IdentityTransactionError):
+            self.manager.apply(
+                agent_id="agent-a", operation="permissions", idempotency_key="perm-weaken",
+                actor_id="owner", expected_revision=1, permissions=["read_reports"],
+                prohibited=[], approval_ref="approval-012",
+            )
+
     def test_stale_revision_is_rejected(self):
         self.provision()
         self.manager.apply(
