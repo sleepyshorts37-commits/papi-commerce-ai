@@ -54,10 +54,11 @@ def record_verified_sync_bundle(*, envelope: dict[str, Any], bundle: dict[str, A
                 "export_id, event_count FROM sync_bundle_receipts WHERE bundle_digest=?",
                 (bundle["bundle_digest"],)).fetchone()
             if existing:
-                expected = (payload["approval_id"], owner_id, bundle["source_instance_id"],
+                expected = (owner_id, bundle["source_instance_id"],
                     bundle["destination_instance_id"], bundle["export_id"], len(bundle["events"]))
-                if existing != expected:
+                if existing[1:] != expected:
                     raise SyncReceiptLedgerError("Digest déjà enregistré avec des métadonnées divergentes.")
+                receipt_approval_id = existing[0]
                 db.execute("COMMIT")
                 status = "already_recorded"
             else:
@@ -72,6 +73,7 @@ def record_verified_sync_bundle(*, envelope: dict[str, Any], bundle: dict[str, A
                         "VALUES (?,?,?,?,?,?)",
                         (event["event_id"], event["kind"], event["record_id"],
                          event["content_digest"], event["sequence"], bundle["bundle_digest"]))
+                receipt_approval_id = payload["approval_id"]
                 db.execute("COMMIT")
                 status = "recorded"
     except SyncReceiptLedgerError:
@@ -84,6 +86,6 @@ def record_verified_sync_bundle(*, envelope: dict[str, Any], bundle: dict[str, A
 
     os.chmod(ledger_db, 0o600)
     return {"status": status, "bundle_digest": bundle["bundle_digest"],
-        "approval_id": verified["approval_id"], "event_count": verified["event_count"],
+        "approval_id": receipt_approval_id, "latest_verified_approval_id": verified["approval_id"], "event_count": verified["event_count"],
         "receipt_committed": True, "import_performed": False,
         "execution_enabled": False, "ledger_scope": "single_instance_local"}
