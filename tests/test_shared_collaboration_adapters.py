@@ -68,7 +68,7 @@ class SharedCollaborationAdapterTests(unittest.TestCase):
         self.assertEqual(len(self.fake.rows["papi_memory_events"]), 1)
         self.assertEqual(first["actor"], "astou")
         self.adapter.search_memory(principal=self.marietou)
-        self.assertIn("actor=eq.marietou", self.fake.calls[-2][1])
+        self.assertIn("actor=eq.marietou", self.fake.calls[-1][1])
 
     def test_reusing_idempotency_key_with_different_payload_is_rejected(self):
         args = dict(principal=self.astou, category="fact", title="Règle",
