@@ -50,6 +50,13 @@ class ImportedReaderTests(unittest.TestCase):
                     bundle_digest TEXT PRIMARY KEY, payload_digest TEXT,
                     imported_at TEXT, record_count INTEGER
                 );
+                CREATE TABLE sync_bundle_receipts (
+                    bundle_digest TEXT PRIMARY KEY, status TEXT
+                );
+                CREATE TABLE sync_bundle_receipt_items (
+                    event_id TEXT, kind TEXT, record_id TEXT, content_digest TEXT,
+                    bundle_digest TEXT
+                );
                 CREATE TABLE sync_imported_records (
                     event_id TEXT PRIMARY KEY, kind TEXT, record_id TEXT,
                     content_digest TEXT, record_json TEXT, bundle_digest TEXT
@@ -57,13 +64,18 @@ class ImportedReaderTests(unittest.TestCase):
             """)
             db.execute("INSERT INTO sync_import_batches VALUES (?,?,?,?)",
                        ("bundle-47", "payload-47", "2026-11-14T11:00:00Z", 2))
+            db.execute("INSERT INTO sync_bundle_receipts VALUES (?,?)",
+                       ("bundle-47", "verified_pending_manual_import"))
             for kind, record_id, record in (
                 ("memory", self.memory["memory_id"], self.memory),
                 ("message", self.message["message_id"], self.message),
             ):
+                event_id = record["event_id"] if kind == "memory" else record["message_id"]
+                content_digest = hashlib.sha256(canonical(record)).hexdigest()
+                db.execute("INSERT INTO sync_bundle_receipt_items VALUES (?,?,?,?,?)",
+                    (event_id, kind, record_id, content_digest, "bundle-47"))
                 db.execute("INSERT INTO sync_imported_records VALUES (?,?,?,?,?,?)",
-                    (record.get("event_id", record["message_id"]), kind, record_id,
-                     hashlib.sha256(canonical(record)).hexdigest(),
+                    (event_id, kind, record_id, content_digest,
                      canonical(record).decode(), "bundle-47"))
 
     def tearDown(self):
