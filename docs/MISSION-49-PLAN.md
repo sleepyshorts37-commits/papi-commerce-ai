@@ -9,4 +9,4 @@
 - [x] Ajouter une commande CLI dédiée.
 - [x] Ajouter tests de migration, répétition, intégrité, symlink et rollback.
 - [x] Documenter les opérations et les limites.
-- [ ] Vérifier la suite complète et l'intégration CI sur le SHA final.
+- [x] Vérifier les 452 tests Python et l'intégration CI sur le SHA validé.
