@@ -10,7 +10,8 @@ from .workers_inputs import build_workers_inputs
 
 def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_path=None, environ=None, *,
                          platform_candidates=None, handoffs=None, profitability_results=None,
-                         platform_discovery_batch=None, handoff_records=None, profitability_batch=None) -> dict[str, Any]:
+                         platform_discovery_batch=None, handoff_records=None, profitability_batch=None,
+                         worker_store=None) -> dict[str, Any]:
     """Aggregate local registries and explicit worker outputs without side effects."""
     agents = load_agents(agents_path)
     tasks_data = load_json(tasks_path)
@@ -23,6 +24,9 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
     brief = build_director_brief(tasks_path, agents_path, policy_path) if policy_path else build_director_brief(tasks_path, agents_path)
     doctor = diagnose_environment(environ)
 
+    if worker_store is not None and any(value is not None for value in (platform_candidates, handoffs, profitability_results, platform_discovery_batch, handoff_records, profitability_batch)):
+        raise ValueError("Le stockage central ne peut pas être combiné avec des entrées worker explicites.")
+
     raw_values = (platform_candidates, handoffs, profitability_results)
     source_values = (platform_discovery_batch, handoff_records, profitability_batch)
     if any(raw is not None and source is not None for raw, source in zip(raw_values, source_values)):
@@ -30,14 +34,15 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
 
     adapted = build_workers_inputs(platform_discovery_batch=platform_discovery_batch,
                                    handoff_records=handoff_records, profitability_batch=profitability_batch)
+    central_inputs = worker_store.load_worker_inputs() if worker_store is not None else None
     workers = build_workers_report(
-        platform_candidates=platform_candidates if platform_candidates is not None else adapted["platform_candidates"],
-        handoffs=handoffs if handoffs is not None else adapted["handoffs"],
-        profitability_results=profitability_results if profitability_results is not None else adapted["profitability_results"],
+        platform_candidates=central_inputs["platform_candidates"] if central_inputs is not None else (platform_candidates if platform_candidates is not None else adapted["platform_candidates"]),
+        handoffs=central_inputs["handoffs"] if central_inputs is not None else (handoffs if handoffs is not None else adapted["handoffs"]),
+        profitability_results=central_inputs["profitability_results"] if central_inputs is not None else (profitability_results if profitability_results is not None else adapted["profitability_results"]),
     )
     return {
         "product": "PAPI COMMAND CENTER",
-        "mode": "read_only_local",
+        "mode": "read_only_supabase" if worker_store is not None else "read_only_local",
         "dashboard": {
             "agents_total": len(agents),
             "agents_by_status": dict(sorted(agent_statuses.items())),
@@ -49,10 +54,10 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
         },
         "astou_brief": brief,
         "ai_workers": workers,
-        "ai_workers_sources": adapted["sources"],
+        "ai_workers_sources": ({**adapted["sources"], "persistent_storage_read": True, "network_access_performed": True, "central_store_read": True, "automatic_collection_performed": False} if worker_store is not None else adapted["sources"]),
         "environment": {"status": doctor["status"], "checks": doctor["checks"],
-                        "network_test_performed": False, "secrets_displayed": False},
-        "controls": {"writes_performed": False, "worker_started": False,
+                        "network_test_performed": worker_store is not None, "secrets_displayed": False},
+        "controls": {"writes_performed": False, "storage_reads_performed": worker_store is not None, "worker_started": False,
                      "external_actions_enabled": False, "financial_actions_enabled": False,
                      "notifications_sent": False},
     }

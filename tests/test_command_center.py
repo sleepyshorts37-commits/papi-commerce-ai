@@ -113,5 +113,43 @@ class CommandCenterTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 build_command_center(tasks, agents, policy, {}, handoffs={"invalid": True})
 
+
+    def test_command_center_reads_central_store_only_when_injected(self):
+        class FakeCentralStore:
+            def __init__(self):
+                self.called = False
+
+            def load_worker_inputs(self):
+                self.called = True
+                return {
+                    "platform_candidates": [{"platform_id": "P-C", "status": "needs_human_review"}],
+                    "handoffs": [{"handoff_id": "H-C", "status": "awaiting_user"}],
+                    "profitability_results": [{"offer_id": "O-C", "status": "viable_for_human_review"}],
+                }
+
+        with tempfile.TemporaryDirectory() as directory:
+            tasks, agents, policy = self._fixtures(Path(directory))
+            central = FakeCentralStore()
+            result = build_command_center(tasks, agents, policy, {}, worker_store=central)
+        self.assertTrue(central.called)
+        self.assertEqual(result["mode"], "read_only_supabase")
+        self.assertEqual(result["ai_workers"]["platforms"]["total"], 1)
+        self.assertEqual(result["ai_workers"]["human_handoffs"]["awaiting_user_count"], 1)
+        self.assertTrue(result["ai_workers_sources"]["central_store_read"])
+        self.assertTrue(result["ai_workers_sources"]["network_access_performed"])
+        self.assertTrue(result["controls"]["storage_reads_performed"])
+        self.assertFalse(result["controls"]["writes_performed"])
+        self.assertFalse(result["controls"]["worker_started"])
+
+    def test_command_center_rejects_mixing_central_and_explicit_worker_data(self):
+        class FakeCentralStore:
+            def load_worker_inputs(self):
+                return {"platform_candidates": [], "handoffs": [], "profitability_results": []}
+
+        with tempfile.TemporaryDirectory() as directory:
+            tasks, agents, policy = self._fixtures(Path(directory))
+            with self.assertRaises(ValueError):
+                build_command_center(tasks, agents, policy, {}, worker_store=FakeCentralStore(), handoffs=[])
+
 if __name__ == "__main__":
     unittest.main()

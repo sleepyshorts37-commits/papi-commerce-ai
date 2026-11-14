@@ -20,10 +20,10 @@ class SupabaseStore:
 
     def __init__(self, url: str | None = None, key: str | None = None, timeout: int = 15):
         self.url = (url or os.getenv("SUPABASE_URL", "")).rstrip("/")
-        self.key = key or os.getenv("SUPABASE_KEY", "")
+        self.key = key or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_KEY", "")
         self.timeout = timeout
         if not self.url.startswith("https://") or not self.key:
-            raise StoreError("Configurer SUPABASE_URL (HTTPS) et SUPABASE_KEY dans l'environnement.")
+            raise StoreError("Configurer SUPABASE_URL (HTTPS) et SUPABASE_SERVICE_ROLE_KEY dans l'environnement serveur.")
 
     def _request(self, method: str, path: str, payload: Any = None, prefer: str | None = None):
         body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -145,3 +145,65 @@ class SupabaseStore:
             raise StoreError(f"Approbation refusée : {exc}") from exc
         version = self.commit_task_change(updated, event, expected_version=expected_version)
         return updated, version
+
+
+    def sync_worker_event(self, event: dict[str, Any], *, expected_version: int) -> dict[str, Any]:
+        """Persist one worker event through the atomic, idempotent PostgreSQL RPC."""
+        from .worker_store import DOMAINS, _reject_secrets
+
+        if not isinstance(event, dict) or event.get("domain") not in DOMAINS:
+            raise StoreError("Événement worker invalide.")
+        if not isinstance(expected_version, int) or isinstance(expected_version, bool) or expected_version < 0:
+            raise StoreError("Version attendue invalide.")
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise StoreError("Payload worker invalide.")
+        _reject_secrets(payload)
+        arguments = {
+            "p_domain": event["domain"],
+            "p_record_id": event["record_id"],
+            "p_expected_version": expected_version,
+            "p_event_id": event["event_id"],
+            "p_idempotency_key": event["idempotency_key"],
+            "p_source_event_id": event["source_event_id"],
+            "p_event_type": event["event_type"],
+            "p_actor": event["actor"],
+            "p_payload": payload,
+            "p_occurred_at": event["occurred_at"],
+        }
+        result = self._request("POST", "rpc/papi_sync_worker_record", arguments)
+        if not isinstance(result, dict) or not isinstance(result.get("duplicate"), bool):
+            raise StoreError("Réponse invalide de la synchronisation worker.")
+        version = result.get("record_version")
+        if not isinstance(version, int) or version < 1:
+            raise StoreError("Version worker absente de la réponse Supabase.")
+        return result
+
+    def list_worker_records(self, domain: str, *, limit: int = 500) -> list[dict[str, Any]]:
+        """Read one allowlisted worker domain; never returns credentials or raw DB rows."""
+        from .worker_store import DOMAINS, _reject_secrets
+
+        if domain not in DOMAINS or not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 1000:
+            raise StoreError("Paramètres de lecture worker invalides.")
+        query = (
+            "papi_worker_records?domain=eq." + quote(domain, safe="")
+            + "&select=domain,record_id,payload,version,source_event_id,updated_at"
+            + "&order=updated_at.desc&limit=" + str(limit)
+        )
+        rows = self._request("GET", query)
+        if not isinstance(rows, list):
+            raise StoreError("Réponse inattendue du registre worker.")
+        output = []
+        id_fields = {
+            "platform_candidate": "platform_id",
+            "human_handoff": "handoff_id",
+            "profitability_result": "offer_id",
+        }
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("payload"), dict):
+                raise StoreError("Enregistrement worker mal formé.")
+            payload = dict(row["payload"])
+            _reject_secrets(payload)
+            payload.setdefault(id_fields[domain], row.get("record_id"))
+            output.append(payload)
+        return output
