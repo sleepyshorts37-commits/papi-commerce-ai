@@ -24,7 +24,8 @@ begin
 
  perform public.papi_incident_transition(v_incident,'assign','human-operator','human-manager',null,'{}'::jsonb,'ci-m30-assign-001');
  v_result:=public.papi_incident_transition(v_incident,'qualify','human-manager',null,'Initial qualification','{"triage":"complete"}'::jsonb,'ci-m30-qualify-001');
- if (public.papi_incident_transition(v_incident,'qualify','human-manager',null,'Initial qualification','{"triage":"complete"}'::jsonb,'ci-m30-qualify-001')->>'duplicate')::boolean is not true then raise exception 'Transition replay was not idempotent'; end if;
+ v_result:=public.papi_incident_transition(v_incident,'qualify','human-manager',null,'Initial qualification','{"triage":"complete"}'::jsonb,'ci-m30-qualify-001');
+ if (v_result->>'duplicate')::boolean is not true then raise exception 'Transition replay was not idempotent'; end if;
  perform public.papi_incident_transition(v_incident,'investigate','human-manager',null,'Investigation started','{}'::jsonb,'ci-m30-investigate-001');
  perform public.papi_incident_transition(v_incident,'escalate','human-manager',null,'Additional failures confirmed','{"evidence_ref":"internal-log-1"}'::jsonb,'ci-m30-escalate-001');
  if not exists(select 1 from public.papi_incidents where incident_id=v_incident and severity='critical' and assigned_human='human-manager')
