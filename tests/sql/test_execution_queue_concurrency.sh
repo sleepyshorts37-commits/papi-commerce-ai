@@ -60,9 +60,9 @@ case "$id_a:$id_b" in
 esac
 
 # Release both leases through their actual owners and fencing tokens.
-"${psql_cmd[@]}" -v job_id="$id_a" -v lease_token="$token_a" \
-  -c "select public.papi_complete_job(:'job_id', 'ci-concurrent-worker-a', :'lease_token'::uuid, '{\"concurrency_test\":true}'::jsonb) as completed" > /dev/null 2>&1 || true
-"${psql_cmd[@]}" -v job_id="$id_b" -v lease_token="$token_b" \
-  -c "select public.papi_complete_job(:'job_id', 'ci-concurrent-worker-b', :'lease_token'::uuid, '{\"concurrency_test\":true}'::jsonb)" > /dev/null
+"${psql_cmd[@]}" \
+  -c "select public.papi_complete_job('$id_a', 'ci-concurrent-worker-a', '$token_a'::uuid, '{\"concurrency_test\":true}'::jsonb)" > /dev/null
+"${psql_cmd[@]}" \
+  -c "select public.papi_complete_job('$id_b', 'ci-concurrent-worker-b', '$token_b'::uuid, '{\"concurrency_test\":true}'::jsonb)" > /dev/null
 
 echo "PASS: overlapping PostgreSQL sessions claimed distinct jobs with distinct lease tokens ($id_a, $id_b)"
