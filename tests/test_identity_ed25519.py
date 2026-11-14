@@ -73,6 +73,14 @@ class Ed25519IdentityTests(unittest.TestCase):
             verify_ed25519_request(envelope, self.registry, self.replay, now=1301)
         self.assertFalse(self.replay.exists())
 
+    def test_expired_signature_cannot_bypass_freshness_and_consume_nonce(self):
+        envelope = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
+                                        timestamp=1000, nonce="z" * 16)
+        with self.assertRaises(Ed25519IdentityError):
+            verify_ed25519_request(envelope, self.registry, self.replay,
+                                   now=1301, allow_expired=True, consume_nonce=True)
+        self.assertFalse(self.replay.exists())
+
     def test_wrong_key_version_rejected(self):
         envelope = sign_ed25519_request("agent-a", {"permission": "read"}, self.private,
                                         key_version=2, timestamp=1000, nonce="i" * 16)
