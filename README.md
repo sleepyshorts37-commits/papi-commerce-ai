@@ -9,6 +9,7 @@ Groupe commercial numérique assisté par agents IA. **État : fondations techni
 4. **PAPI FREELANCE** — missions réalisables et autorisées pour des agents IA.
 5. **PAPI SERVICES** — services numériques aux entreprises.
 6. **PAPI BUSINESS PARTNERS** — apport d'affaires rémunéré à la commission.
+7. **PAPI SOCIAL GROWTH** — gestion des pages officielles, développement d'audience réelle, prospection, opportunités rémunérées et suivi des conversions.
 
 ## Principes
 - Objectif initial : 0 FCFA. Aucune dépense, souscription, publicité payante ou crédit API sans autorisation explicite.
