@@ -63,24 +63,24 @@ def record_verified_sync_transport_receipt(
     path = Path(ledger_db)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     try:
-        with sqlite3.connect(path, timeout=30, isolation_level=None) as db:
-            db.execute("PRAGMA busy_timeout=30000")
-            db.executescript(_SCHEMA)
-            existing = db.execute(
-                "SELECT receipt_id, delivery_id, receipt_sha256 FROM sync_transport_receipts "
-                "WHERE receipt_id=? OR delivery_id=?", (receipt_id, delivery_id)
-            ).fetchone()
-            if existing:
-                if existing == (receipt_id, delivery_id, receipt_digest):
-                    return {
-                        "status": "already_recorded", "receipt_id": receipt_id,
-                        "delivery_id": delivery_id, "receipt_sha256": receipt_digest,
-                        "receipt_committed": True, "network_transfer_performed": False,
-                        "import_performed": False, "execution_enabled": False,
-                    }
-                raise SyncTransportReceiptLedgerError(
-                    "Identifiant de reçu ou livraison déjà associé à une autre preuve."
-                )
+        if path.exists():
+            with sqlite3.connect(path, timeout=30, isolation_level=None) as db:
+                db.execute("PRAGMA busy_timeout=30000")
+                existing = db.execute(
+                    "SELECT receipt_id, delivery_id, receipt_sha256 FROM sync_transport_receipts "
+                    "WHERE receipt_id=? OR delivery_id=?", (receipt_id, delivery_id)
+                ).fetchone()
+                if existing:
+                    if existing == (receipt_id, delivery_id, receipt_digest):
+                        return {
+                            "status": "already_recorded", "receipt_id": receipt_id,
+                            "delivery_id": delivery_id, "receipt_sha256": receipt_digest,
+                            "receipt_committed": True, "network_transfer_performed": False,
+                            "import_performed": False, "execution_enabled": False,
+                        }
+                    raise SyncTransportReceiptLedgerError(
+                        "Identifiant de reçu ou livraison déjà associé à une autre preuve."
+                    )
 
         verified = verify_sync_transport_receipt(
             request=request, receipt=receipt, registry_path=Path(registry_path),
