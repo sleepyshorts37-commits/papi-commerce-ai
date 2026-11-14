@@ -213,7 +213,7 @@ class Ed25519IdentityTests(unittest.TestCase):
             "public_key": json.loads(old_registry)["agents"]["agent-a"]["public_key"],
             "retired_at": 123,
         }]
-        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\\n").encode()
+        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\n").encode()
 
         real_write = rotation_journal._atomic_write
         calls = 0
@@ -260,7 +260,7 @@ class Ed25519IdentityTests(unittest.TestCase):
             "public_key": json.loads(old_registry)["agents"]["agent-a"]["public_key"],
             "retired_at": 123,
         }]
-        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\\n").encode()
+        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\n").encode()
 
         with patch.object(rotation_journal, "_remove_journal", side_effect=SystemExit("crash after commit")):
             with self.assertRaises(SystemExit):
@@ -295,7 +295,7 @@ class Ed25519IdentityTests(unittest.TestCase):
             "public_key": json.loads(old_registry)["agents"]["agent-a"]["public_key"],
             "retired_at": 123,
         }]
-        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\\n").encode()
+        new_registry = (json.dumps(registry, sort_keys=True, indent=2) + "\n").encode()
 
         real_write = rotation_journal._atomic_write
         calls = 0
