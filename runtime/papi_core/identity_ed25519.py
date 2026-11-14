@@ -51,6 +51,55 @@ def _read_registry(path: Path) -> dict[str, Any]:
         raise Ed25519IdentityError("Registre de clés invalide : accès fermé.")
     return data
 
+def _validated_registry_key_record(record: Any) -> tuple[int, bytes, list[dict[str, Any]]]:
+    """Validate the current Ed25519 key and its ordered, versioned history."""
+    if not isinstance(record, dict):
+        raise Ed25519IdentityError("Enregistrement d'identité invalide.")
+
+    current_version = record.get("key_version")
+    if type(current_version) is not int or current_version < 1:
+        raise Ed25519IdentityError("Version de clé courante invalide.")
+
+    current_hex = record.get("public_key")
+    if not isinstance(current_hex, str):
+        raise Ed25519IdentityError("Clé publique courante invalide.")
+    try:
+        current_public = bytes.fromhex(current_hex)
+    except ValueError as exc:
+        raise Ed25519IdentityError("Clé publique courante invalide.") from exc
+    if len(current_public) != 32:
+        raise Ed25519IdentityError("Longueur de clé publique courante invalide.")
+
+    history = record.get("key_history", [])
+    if not isinstance(history, list):
+        raise Ed25519IdentityError("Historique des clés invalide.")
+
+    previous_version = 0
+    for item in history:
+        if not isinstance(item, dict):
+            raise Ed25519IdentityError("Entrée d'historique invalide.")
+        retired_version = item.get("key_version")
+        retired_at = item.get("retired_at")
+        public_hex = item.get("public_key")
+        if (
+            type(retired_version) is not int
+            or retired_version <= previous_version
+            or retired_version >= current_version
+            or type(retired_at) is not int
+            or retired_at < 0
+            or not isinstance(public_hex, str)
+        ):
+            raise Ed25519IdentityError("Métadonnées de clé historique invalides.")
+        try:
+            historical_public = bytes.fromhex(public_hex)
+        except ValueError as exc:
+            raise Ed25519IdentityError("Clé publique historique invalide.") from exc
+        if len(historical_public) != 32:
+            raise Ed25519IdentityError("Longueur de clé publique historique invalide.")
+        previous_version = retired_version
+
+    return current_version, current_public, list(history)
+
 
 def _write_registry(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -94,7 +143,7 @@ def provision_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_D
     public_bytes = key.public_key().public_bytes(serialization.Encoding.Raw,
                                                   serialization.PublicFormat.Raw)
     registry["agents"][agent_id] = {"status": "active", "key_version": 1,
-                                    "public_key": public_bytes.hex()}
+                                    "public_key": public_bytes.hex(), "key_history": []}
     try:
         _write_registry(registry_path, registry)
     except Exception:
@@ -111,6 +160,7 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
     current = registry["agents"].get(agent_id)
     if not isinstance(current, dict) or current.get("status") != "active":
         raise Ed25519IdentityError("Identité active inconnue.")
+    current_version, _, history = _validated_registry_key_record(current)
     private_path = private_dir / (agent_id + ".ed25519.pem")
     if not private_path.is_file():
         raise Ed25519IdentityError("Clé privée locale absente.")
@@ -129,8 +179,14 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
         temp.unlink(missing_ok=True)
     public_bytes = key.public_key().public_bytes(serialization.Encoding.Raw,
                                                   serialization.PublicFormat.Raw)
+    history.append({
+        "key_version": current_version,
+        "public_key": current["public_key"],
+        "retired_at": int(time.time()),
+    })
     registry["agents"][agent_id] = {"status": "active",
-        "key_version": int(current["key_version"]) + 1, "public_key": public_bytes.hex()}
+        "key_version": current_version + 1,
+        "public_key": public_bytes.hex(), "key_history": history}
     _write_registry(registry_path, registry)
     return private_path
 
@@ -165,6 +221,49 @@ def sign_ed25519_request(agent_id: str, payload: dict[str, Any], private_path: P
             "nonce": token, "payload": payload, "signature": key.sign(message).hex()}
 
 
+
+def verify_ed25519_archived_signature(
+    envelope: dict[str, Any], registry_path: Path = DEFAULT_PUBLIC_REGISTRY,
+) -> dict[str, Any]:
+    """Vérifie une preuve archivée sans autoriser une action."""
+    required = {"agent_id", "key_version", "timestamp", "nonce", "payload", "signature"}
+    if not isinstance(envelope, dict) or set(envelope) != required:
+        raise Ed25519IdentityError("Enveloppe Ed25519 invalide.")
+    agent_id, version = envelope["agent_id"], envelope["key_version"]
+    _validate_agent(agent_id)
+    if not isinstance(version, int) or isinstance(version, bool) or version < 1:
+        raise Ed25519IdentityError("Version de clé invalide.")
+    timestamp, nonce, signature = envelope["timestamp"], envelope["nonce"], envelope["signature"]
+    if not isinstance(timestamp, int) or isinstance(timestamp, bool):
+        raise Ed25519IdentityError("Horodatage invalide.")
+    if not isinstance(nonce, str) or len(nonce) < 16:
+        raise Ed25519IdentityError("Nonce invalide.")
+    try:
+        signature_bytes = bytes.fromhex(signature)
+    except (TypeError, ValueError) as exc:
+        raise Ed25519IdentityError("Signature invalide.") from exc
+    if len(signature_bytes) != 64:
+        raise Ed25519IdentityError("Signature invalide.")
+    record = _read_registry(registry_path)["agents"].get(agent_id)
+    if not isinstance(record, dict) or record.get("status") not in {"active", "revoked"}:
+        raise Ed25519IdentityError("Identité inconnue ou statut invalide.")
+    current_version, current_public, history = _validated_registry_key_record(record)
+    candidates = [current_public] if current_version == version else [
+        bytes.fromhex(item["public_key"])
+        for item in history if item["key_version"] == version
+    ]
+    if len(candidates) != 1:
+        raise Ed25519IdentityError("Version de clé historique absente ou ambiguë.")
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        Ed25519PublicKey.from_public_bytes(candidates[0]).verify(
+            signature_bytes, _canonical(agent_id, version, timestamp, nonce, envelope["payload"]))
+    except (ValueError, TypeError, InvalidSignature) as exc:
+        raise Ed25519IdentityError("Signature Ed25519 incorrecte.") from exc
+    return {"signature_verified": True, "agent_id": agent_id, "key_version": version,
+            "algorithm": "Ed25519", "historical_key": record.get("key_version") != version,
+            "authorization_granted": False, "nonce_consumed": False}
+
 def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAULT_PUBLIC_REGISTRY,
                            replay_db: Path = DEFAULT_REPLAY_DB, now: int | None = None,
                            consume_nonce: bool = True,
@@ -196,10 +295,10 @@ def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAU
     record = registry["agents"].get(agent_id)
     if not isinstance(record, dict) or record.get("status") != "active":
         raise Ed25519IdentityError("Identité inconnue ou révoquée.")
-    if record.get("key_version") != version:
+    current_version, public, _ = _validated_registry_key_record(record)
+    if current_version != version:
         raise Ed25519IdentityError("Version de clé révoquée ou obsolète.")
     try:
-        public = bytes.fromhex(record["public_key"])
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
         Ed25519PublicKey.from_public_bytes(public).verify(
             signature_bytes, _canonical(agent_id, version, timestamp, nonce, envelope["payload"]))
