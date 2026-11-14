@@ -12,6 +12,7 @@ from .sales import SalesError, build_sales_report, load_sales
 from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
+from .supabase_preflight import run_supabase_preflight, require_supabase_configuration
 
 
 def main() -> int:
@@ -32,6 +33,8 @@ def main() -> int:
     sub.add_parser("finance-validate", help="Valider le registre financier local")
     sub.add_parser("finance-report", help="Afficher le rapport financier local en lecture seule")
     sub.add_parser("security-check", help="Vérifier la posture de sécurité locale en lecture seule")
+    preflight = sub.add_parser("supabase-preflight", help="Contrôler les migrations et la configuration Supabase sans réseau")
+    preflight.add_argument("--require-configured", action="store_true", help="Exiger URL et clé serveur configurées")
     args = parser.parse_args()
     try:
         if args.command == "agent-check":
@@ -62,6 +65,12 @@ def main() -> int:
             return 0
         if args.command == "security-check":
             print(json.dumps(check_security(), ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "supabase-preflight":
+            report = run_supabase_preflight()
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            if args.require_configured:
+                require_supabase_configuration(report)
             return 0
         if args.command == "validate":
             errors = validate_registries()
