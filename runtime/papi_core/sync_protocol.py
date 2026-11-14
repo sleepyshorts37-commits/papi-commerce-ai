@@ -101,13 +101,14 @@ def build_sync_plan(
         "writes_performed": False,
         "mode": "plan_only",
     }
-    core["plan_digest"] = _digest(core)
     core["readiness_blockers"] = list(readiness["blockers"])
     core["next_gate"] = (
         "resolve_conflicts_and_obtain_owner_approval"
         if core["conflicts_block_execution"] else
         "owner_approval_and_environment_integration_tests"
     )
+    # Bind every displayed decision field into the digest; no unsigned metadata.
+    core["plan_digest"] = _digest(core)
     return core
 
 
@@ -120,11 +121,31 @@ def validate_plan_integrity(plan: dict[str, Any]) -> bool:
     digest = plan.get("plan_digest")
     if not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest):
         raise SyncProtocolError("Empreinte du plan absente ou invalide.")
-    unsigned = {key: value for key, value in plan.items()
-                if key not in {"plan_digest", "readiness_blockers", "next_gate"}}
+    unsigned = {key: value for key, value in plan.items() if key != "plan_digest"}
     if _digest(unsigned) != digest:
         raise SyncProtocolError("L'empreinte du plan ne correspond plus à son contenu.")
-    action_ids = [row.get("action_id") for row in plan.get("actions", [])]
+    actions = plan.get("actions")
+    if not isinstance(actions, list) or len(actions) > 500:
+        raise SyncProtocolError("Liste d'actions absente ou hors limites.")
+    action_ids = []
+    for action in actions:
+        if not isinstance(action, dict) or set(action) != {
+            "action_id", "operation", "type", "record_id", "status"
+        }:
+            raise SyncProtocolError("Structure d'action invalide.")
+        if (not isinstance(action["action_id"], str)
+                or not re.fullmatch(r"[a-f0-9]{64}", action["action_id"])
+                or action["operation"] not in {"copy_local_to_remote", "copy_remote_to_local"}
+                or action["type"] not in _KINDS
+                or not isinstance(action["record_id"], str)
+                or not _IDENTIFIER.fullmatch(action["record_id"])
+                or action["status"] != "pending_human_approval"):
+            raise SyncProtocolError("Action non conforme au protocole.")
+        action_ids.append(action["action_id"])
     if len(action_ids) != len(set(action_ids)):
         raise SyncProtocolError("Identifiants d'action dupliqués.")
+    if plan.get("requires_human_approval") is not bool(bool(actions)):
+        raise SyncProtocolError("Drapeau d'approbation incohérent.")
+    if plan.get("conflicts_block_execution") and actions:
+        raise SyncProtocolError("Un plan en conflit ne peut contenir d'action.")
     return True
