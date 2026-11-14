@@ -33,6 +33,7 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core finance-validate` — valider le registre financier local.
 - `PYTHONPATH=runtime python -m papi_core finance-report` — afficher les recettes vérifiées et dépenses payées, en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core security-check` — contrôler les garde-fous locaux sans réseau ni affichage de secrets.
+- `PYTHONPATH=runtime python -m papi_core receive-sync-package --package ./incoming/paquet.papisync --owner-id OWNER_ID --registry ./keys/public.json --ledger ./data/sync-receipts.sqlite3 --destination INSTANCE_ID` — authentifier un paquet reçu et inscrire le reçu/nonce atomiquement, sans importer de contenu.
 - `PYTHONPATH=runtime python -m papi_core supabase-preflight` — vérifier localement l'inventaire des migrations et la configuration Supabase sans réseau.
 
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
