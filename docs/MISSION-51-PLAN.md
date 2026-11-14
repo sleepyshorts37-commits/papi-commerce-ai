@@ -8,4 +8,4 @@
 - [x] Ajouter ré-encryptage avec une nouvelle clé sans supprimer l'original.
 - [x] Ajouter tests adversariaux : clé incorrecte, altération, collisions, permissions et rotation.
 - [x] Documenter les commandes et le cycle de vie des clés.
-- [ ] Vérifier CI sur le SHA final et corriger tout défaut détecté.
+- [x] Vérifier la CI sur le commit de code corrigé : 466 tests et deux jobs réussis.
