@@ -68,3 +68,20 @@ Le module `runtime/papi_core/reconciliation.py` compare deux instantanés fourni
 - Le résultat indique explicitement `preview_only` et `writes_performed: false`. Toute différence ou collision exige une revue humaine.
 
 Cette étape n'effectue aucun transfert, aucune fusion, aucun écrasement et aucun effacement. Les snapshots et le principal sont injectés par l'appelant ; aucun client réseau ou projet Supabase hébergé n'est créé.
+
+
+## Jour 5/5 : contrat de préparation et clôture technique
+
+Le module `runtime/papi_core/sync_readiness.py` transforme un aperçu de réconciliation en rapport de préparation strictement informatif.
+
+- Accepte uniquement le mode `preview_only` avec `writes_performed: false`.
+- Vérifie la présence de l'identité d'agent, des quatre catégories de résultats et la cohérence des compteurs avec les enregistrements.
+- Rejette les rapports incomplets, mal formés ou présentant un mode d'exécution/écriture.
+- Signale les différences comme nécessitant une revue humaine.
+- Maintient explicitement `sync_enabled: false` et expose les validations qui restent à accomplir.
+
+### Limites et conditions de mise en service
+
+La Mission 21 livre les contrats SQL, les adaptateurs injectables, la pagination/idempotence, la prévisualisation de réconciliation et le rapport de préparation. Elle ne livre pas une synchronisation active. Il reste nécessaire de valider un projet Supabase de test, les permissions/RLS et les flux inter-instances réels, puis de définir une procédure d'approbation humaine avant tout transfert. Une revue indépendante de sécurité et des tests de bout en bout restent obligatoires avant production.
+
+Aucune donnée personnelle ou historique local n'a été transféré. Aucun projet Supabase hébergé n'a été modifié. Aucun scheduler, worker permanent, synchronisation automatique, merge ou déploiement n'a été activé.
