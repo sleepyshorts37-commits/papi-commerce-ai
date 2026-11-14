@@ -8,14 +8,20 @@ from .memory import SECRET_PATTERN
 from .principal import require_authenticated_agent_principal
 
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_AGENT_ID = re.compile(r"^[A-Za-z0-9_-]{1,100}$")
+_MESSAGE_ID = re.compile(r"^MSG-[A-F0-9]{32}$")
+_MEMORY_SCOPES = {"shared", "agent", "owner"}
+_MEMORY_SENSITIVITIES = {"normal", "restricted"}
+_CHAT_TYPES = {"info", "task", "alert", "report"}
 _MEMORY_SECRET = re.compile(
     r"(?i)\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
     r"token|otp|pin|cvv|authorization|cookie)\s*[:=]\s*\S+|"
     r"\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\b"
 )
 _CHAT_SECRET = re.compile(
-    r"(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
-    r"otp|pin|cvv|authorization)\s*[:=]\s*\S+|"
+    r"(?i)\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
+    r"token|otp|pin|cvv|authorization|cookie)\s*[:=]\s*\S+|"
+    r"\bBearer\s+[A-Za-z0-9._~+/=-]{12,}|"
     r"\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\b"
 )
 
@@ -32,10 +38,21 @@ def _visible_memory(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in records:
         if not isinstance(row, dict):
             raise ReconciliationError("Enregistrement mémoire invalide.")
-        # Les mémoires privées, owner et restreintes ne sont jamais candidates.
-        if row.get("scope") != "shared" or row.get("sensitivity", "normal") != "normal":
+        event_type = row.get("event_type", "remember")
+        if not isinstance(event_type, str) or event_type not in {"remember", "supersede"}:
+            raise ReconciliationError("Type d'événement mémoire invalide.")
+        if event_type == "supersede":
             continue
-        if row.get("event_type", "remember") != "remember":
+        scope = row.get("scope")
+        if not isinstance(scope, str) or scope not in _MEMORY_SCOPES:
+            raise ReconciliationError("Portée mémoire invalide.")
+        # Les mémoires privées et owner ne sont jamais candidates à la comparaison.
+        if scope != "shared":
+            continue
+        sensitivity = row.get("sensitivity")
+        if not isinstance(sensitivity, str) or sensitivity not in _MEMORY_SENSITIVITIES:
+            raise ReconciliationError("Sensibilité mémoire invalide.")
+        if sensitivity != "normal":
             continue
         record_id = row.get("memory_id")
         if not isinstance(record_id, str) or not _ID.fullmatch(record_id):
@@ -44,7 +61,10 @@ def _visible_memory(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             raise ReconciliationError("Identifiant mémoire dupliqué dans une même source.")
         seen.add(record_id)
         title, content = row.get("title"), row.get("content")
-        if not isinstance(title, str) or not isinstance(content, str):
+        if (
+            not isinstance(title, str) or not title.strip() or len(title) > 120
+            or not isinstance(content, str) or not content.strip() or len(content) > 2000
+        ):
             raise ReconciliationError("Contenu mémoire invalide.")
         if SECRET_PATTERN.search(title + "\n" + content) or _MEMORY_SECRET.search(title + "\n" + content):
             raise ReconciliationError("Contenu mémoire ressemblant à un secret refusé.")
@@ -73,19 +93,37 @@ def _visible_messages(records: list[dict[str, Any]], actor: str) -> list[dict[st
     for row in records:
         if not isinstance(row, dict):
             raise ReconciliationError("Enregistrement message invalide.")
+        recipient = row.get("recipient")
+        if (
+            not isinstance(recipient, str)
+            or (recipient != "all" and not _AGENT_ID.fullmatch(recipient))
+        ):
+            raise ReconciliationError("Destinataire message invalide.")
         # Un agent ne compare que les messages diffusés ou qui lui sont adressés.
-        if row.get("recipient") not in {"all", actor}:
+        if recipient not in {"all", actor}:
             continue
+        sender = row.get("sender")
+        if not isinstance(sender, str) or not _AGENT_ID.fullmatch(sender):
+            raise ReconciliationError("Expéditeur message invalide.")
         message_id = row.get("message_id")
-        if not isinstance(message_id, str) or not _ID.fullmatch(message_id):
+        if not isinstance(message_id, str) or not _MESSAGE_ID.fullmatch(message_id):
             raise ReconciliationError("Identifiant message invalide.")
         if message_id in seen:
             raise ReconciliationError("Identifiant message dupliqué dans une même source.")
         seen.add(message_id)
         subject, body = row.get("subject"), row.get("body")
-        if not isinstance(subject, str) or not isinstance(body, str):
+        if (
+            not isinstance(subject, str) or not subject.strip() or len(subject) > 120
+            or not isinstance(body, str) or not body.strip() or len(body) > 2000
+        ):
             raise ReconciliationError("Contenu message invalide.")
-        if _CHAT_SECRET.search(subject + "\n" + body):
+        message_type = row.get("message_type")
+        if not isinstance(message_type, str) or message_type not in _CHAT_TYPES:
+            raise ReconciliationError("Type de message invalide.")
+        if (
+            SECRET_PATTERN.search(subject + "\n" + body)
+            or _CHAT_SECRET.search(subject + "\n" + body)
+        ):
             raise ReconciliationError("Contenu message ressemblant à un secret refusé.")
         visible.append(row)
     return visible

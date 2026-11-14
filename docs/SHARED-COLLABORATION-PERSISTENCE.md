@@ -85,3 +85,10 @@ Le module `runtime/papi_core/sync_readiness.py` transforme un aperçu de réconc
 La Mission 21 livre les contrats SQL, les adaptateurs injectables, la pagination/idempotence, la prévisualisation de réconciliation et le rapport de préparation. Elle ne livre pas une synchronisation active. Il reste nécessaire de valider un projet Supabase de test, les permissions/RLS et les flux inter-instances réels, puis de définir une procédure d'approbation humaine avant tout transfert. Une revue indépendante de sécurité et des tests de bout en bout restent obligatoires avant production.
 
 Aucune donnée personnelle ou historique local n'a été transféré. Aucun projet Supabase hébergé n'a été modifié. Aucun scheduler, worker permanent, synchronisation automatique, merge ou déploiement n'a été activé.
+
+
+## Durcissement complémentaire de l'aperçu
+
+Un contrôle supplémentaire refuse les valeurs mémoire inconnues au lieu de les traiter comme des données privées par défaut. Il valide aussi le contrat des messages visibles (destinataire, expéditeur, identifiant, type et tailles) et étend la détection des secrets aux jetons Bearer, aux champs génériques token= et aux cookies. Les messages destinés à d'autres agents restent exclus sans inspection de leur contenu.
+
+Les tests couvrent les entrées mal formées et confirment que l'aperçu reste strictement sans écriture. Cette amélioration ne change pas le statut de la Mission 21 : aucune synchronisation active ni connexion Supabase hébergée n'est mise en place.

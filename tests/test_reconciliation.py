@@ -14,8 +14,9 @@ class ReconciliationPreviewTests(unittest.TestCase):
             "confidence": 0.9, "tags": [],
         }
         self.message = {
-            "message_id": "MSG-001", "sender": "astou", "recipient": "all",
-            "subject": "Rapport", "body": "Rapport prêt.", "message_type": "report",
+            "message_id": "MSG-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "sender": "astou",
+            "recipient": "all", "subject": "Rapport", "body": "Rapport prêt.",
+            "message_type": "report",
         }
 
     def preview(self, **overrides):
@@ -52,7 +53,10 @@ class ReconciliationPreviewTests(unittest.TestCase):
 
     def test_private_memory_and_other_recipient_messages_are_excluded(self):
         private = {**self.memory, "memory_id": "MEM-PRIVATE", "scope": "agent"}
-        private_message = {**self.message, "message_id": "MSG-PRIVATE", "recipient": "marietou"}
+        private_message = {
+            **self.message, "message_id": "MSG-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+            "recipient": "marietou",
+        }
         result = self.preview(local_memory=[self.memory, private], remote_memory=[self.memory],
                               local_messages=[self.message, private_message],
                               remote_messages=[self.message])
@@ -65,6 +69,35 @@ class ReconciliationPreviewTests(unittest.TestCase):
             self.preview(local_memory=[secret])
         with self.assertRaises(ReconciliationError):
             self.preview(local_memory=[self.memory, self.memory])
+
+    def test_unknown_memory_scope_sensitivity_and_event_type_fail_closed(self):
+        for changes in (
+            {"scope": "shraed"},
+            {"sensitivity": "private"},
+            {"event_type": "unknown"},
+            {"scope": []},
+        ):
+            with self.subTest(changes=changes), self.assertRaises(ReconciliationError):
+                self.preview(local_memory=[{**self.memory, **changes}])
+
+    def test_malformed_message_recipient_and_contract_fail_closed(self):
+        for changes in (
+            {"recipient": []},
+            {"sender": "not a valid id"},
+            {"message_type": "unknown"},
+            {"message_id": "MSG-001"},
+        ):
+            with self.subTest(changes=changes), self.assertRaises(ReconciliationError):
+                self.preview(local_messages=[{**self.message, **changes}])
+
+    def test_chat_secret_patterns_are_rejected(self):
+        for body in (
+            "Bearer abcdefghijklmnopqrstuvwxyz1234",
+            "token=abc123secret",
+            "cookie=session-secret",
+        ):
+            with self.subTest(body=body), self.assertRaises(ReconciliationError):
+                self.preview(local_messages=[{**self.message, "body": body}])
 
     def test_authentication_is_mandatory(self):
         with self.assertRaises(PermissionError):
