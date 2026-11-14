@@ -39,5 +39,22 @@ class SupabaseSchemaTests(unittest.TestCase):
         )
 
 
+    def test_worker_store_tables_are_private_and_rls_protected(self):
+        self.assertIn("create table if not exists public.papi_worker_records", self.sql)
+        self.assertIn("create table if not exists public.papi_worker_event_receipts", self.sql)
+        self.assertIn("alter table public.papi_worker_records enable row level security", self.sql)
+        self.assertIn("alter table public.papi_worker_event_receipts enable row level security", self.sql)
+        self.assertIn("revoke all on public.papi_worker_records from public, anon, authenticated", self.sql)
+        self.assertIn("revoke all on public.papi_worker_event_receipts from public, anon, authenticated", self.sql)
+
+    def test_worker_sync_rpc_is_invoker_only_and_idempotent(self):
+        self.assertEqual(self.sql.count("create or replace function public.papi_sync_worker_record("), 1)
+        self.assertIn("security invoker", self.sql.lower())
+        self.assertIn("where idempotency_key = p_idempotency_key", self.sql)
+        self.assertIn("v_receipt.payload is distinct from p_payload", self.sql)
+        self.assertIn("grant execute on function public.papi_sync_worker_record(", self.sql)
+        self.assertIn("to service_role;", self.sql)
+        self.assertIn("using errcode = '40001'", self.sql)
+
 if __name__ == "__main__":
     unittest.main()
