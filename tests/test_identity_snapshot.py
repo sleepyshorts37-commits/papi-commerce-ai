@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -55,12 +56,34 @@ class IdentitySnapshotTests(unittest.TestCase):
         with self.assertRaises(IdentitySnapshotError):
             load_registry_snapshot(self.registry)
 
+    def test_registry_rejects_duplicate_json_keys(self):
+        self.registry.write_text('{"agents":[],"agents":[{"id":"shadow"}]}', encoding="utf-8")
+        with self.assertRaises(IdentitySnapshotError):
+            load_registry_snapshot(self.registry)
+
+    def test_registry_rejects_non_finite_numbers(self):
+        self.registry.write_text('{"agents":[],"ratio":NaN}', encoding="utf-8")
+        with self.assertRaises(IdentitySnapshotError):
+            load_registry_snapshot(self.registry)
+
+    def test_registry_enforces_size_limit(self):
+        self.registry.write_bytes(b" " * (5 * 1024 * 1024 + 1))
+        with self.assertRaises(IdentitySnapshotError):
+            load_registry_snapshot(self.registry)
+
     def test_ledger_read_only_snapshot(self):
         self.create_database()
         before = self.database.read_bytes()
         rows = load_ledger_snapshot(self.database)
         self.assertEqual(rows[0]["agent_id"], "agent-a")
         self.assertEqual(self.database.read_bytes(), before)
+
+    def test_ledger_rejects_symlink(self):
+        self.create_database()
+        alias = self.root / "alias.sqlite"
+        alias.symlink_to(self.database)
+        with self.assertRaises(IdentitySnapshotError):
+            load_ledger_snapshot(alias)
 
     def test_missing_database_is_not_created(self):
         missing = self.root / "missing.sqlite"
@@ -71,6 +94,24 @@ class IdentitySnapshotTests(unittest.TestCase):
     def test_incomplete_schema_fails_closed(self):
         db = sqlite3.connect(self.database)
         db.execute("CREATE TABLE identity_state (agent_id TEXT)")
+        db.commit()
+        db.close()
+        with self.assertRaises(IdentitySnapshotError):
+            load_ledger_snapshot(self.database)
+
+    def test_invalid_ledger_permissions_fail_closed(self):
+        self.create_database()
+        db = sqlite3.connect(self.database)
+        db.execute("UPDATE identity_state SET permissions_json='{}'")
+        db.commit()
+        db.close()
+        with self.assertRaises(IdentitySnapshotError):
+            load_ledger_snapshot(self.database)
+
+    def test_invalid_ledger_revision_fails_closed(self):
+        self.create_database()
+        db = sqlite3.connect(self.database)
+        db.execute("UPDATE identity_state SET revision=0")
         db.commit()
         db.close()
         with self.assertRaises(IdentitySnapshotError):
