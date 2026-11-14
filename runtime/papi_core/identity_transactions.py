@@ -10,6 +10,7 @@ import json
 import os
 import sqlite3
 import time
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,7 @@ class IdentityTransactionManager:
     def __init__(self, database: Path):
         self.database = Path(database)
         self.database.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        if self.database.exists() and self.database.is_symlink():
+        if self.database.is_symlink():
             raise IdentityTransactionError("Base identité symbolique interdite.")
         self._initialize()
         os.chmod(self.database, 0o600)
@@ -52,7 +53,7 @@ class IdentityTransactionManager:
         return connection
 
     def _initialize(self) -> None:
-        with self._connect() as db:
+        with closing(self._connect()) as db:
             db.execute("""
                 CREATE TABLE IF NOT EXISTS identity_state (
                     agent_id TEXT PRIMARY KEY,
@@ -120,8 +121,8 @@ class IdentityTransactionManager:
         self._validate_id(idempotency_key, "Clé d'idempotence")
         if operation not in _ALLOWED_OPERATIONS:
             raise IdentityTransactionError("Opération de cycle de vie inconnue.")
-        if approval_ref is not None and (not isinstance(approval_ref, str) or not approval_ref.strip()):
-            raise IdentityTransactionError("Référence d'approbation invalide.")
+        if not isinstance(approval_ref, str) or not approval_ref.strip():
+            raise IdentityTransactionError("Approbation humaine explicite requise pour toute transition.")
 
         perms = self._permission_list(permissions or [], "autorisée")
         denied = self._permission_list(prohibited or [], "interdite")
@@ -136,7 +137,7 @@ class IdentityTransactionManager:
         request_digest = _digest(request)
         now = int(time.time())
 
-        with self._connect() as db:
+        with closing(self._connect()) as db:
             db.execute("BEGIN IMMEDIATE")
             try:
                 prior = db.execute(
@@ -183,8 +184,8 @@ class IdentityTransactionManager:
                     elif operation == "permissions":
                         if key_version is not None:
                             raise IdentityTransactionError("Une mise à jour des permissions ne change pas la clé.")
-                        if not approval_ref:
-                            raise IdentityTransactionError("Approbation explicite requise pour modifier les permissions.")
+                        if permissions is None:
+                            raise IdentityTransactionError("Nouvel ensemble de permissions obligatoire.")
                         next_permissions = perms
                         next_prohibited = denied if prohibited is not None else current_prohibited
                         if set(next_permissions) & set(next_prohibited):
@@ -242,7 +243,7 @@ class IdentityTransactionManager:
 
     def get_state(self, agent_id: str) -> dict[str, Any] | None:
         self._validate_id(agent_id, "Identifiant agent")
-        with self._connect() as db:
+        with closing(self._connect()) as db:
             row = db.execute("SELECT * FROM identity_state WHERE agent_id=?", (agent_id,)).fetchone()
         if row is None:
             return None
@@ -255,7 +256,7 @@ class IdentityTransactionManager:
         }
 
     def verify_event_chain(self) -> dict[str, Any]:
-        with self._connect() as db:
+        with closing(self._connect()) as db:
             rows = db.execute("SELECT * FROM identity_events ORDER BY sequence").fetchall()
         previous_hash = "0" * 64
         for row in rows:
