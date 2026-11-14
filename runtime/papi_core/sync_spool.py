@@ -88,6 +88,7 @@ def read_sync_package(path: Path) -> dict[str, Any]:
         raise SyncSpoolError("Version ou enveloppe du paquet invalide.")
     expected=hashlib.sha256(_canonical({"format_version":package["format_version"],"bundle":package["bundle"],"approval":package["approval"]})).hexdigest()
     if package["package_digest"]!=expected or path.name!=expected+".papisync": raise SyncSpoolError("Empreinte du paquet invalide ou nom incohérent.")
+    if raw != _canonical(package): raise SyncSpoolError("Encodage JSON non canonique ou octets ajoutés.")
     _validate_package(package["bundle"],package["approval"])
     return {"bundle":package["bundle"],"approval":package["approval"],"package_digest":expected,"size_bytes":len(raw),
         "signature_verified":False,"nonce_consumed":False,"import_performed":False,"execution_enabled":False}
