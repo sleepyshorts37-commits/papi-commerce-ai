@@ -29,3 +29,10 @@ Types autorisés : `info`, `task`, `alert`, `report`. Le destinataire `all` perm
 - Pas de chiffrement ni de synchronisation multi-serveur dans cette version. Ne pas y déposer de données personnelles ou confidentielles.
 
 Une future version serveur devra ajouter authentification, autorisations par canal, chiffrement en transit et au repos, rétention, contrôle d'accès et journalisation avant tout usage réel multi-utilisateur.
+
+
+## Intégrité du journal — Mission 37
+
+Chaque message relu doit respecter la structure exacte, les types de champs, un identifiant `MSG-` suivi d'un UUID valide, et une date ISO-8601 munie d'un fuseau horaire. Le lecteur rejette les IDs dupliqués, les lignes vides, les entrées JSON invalides et les messages malformés avant de retourner des résultats. L'écriture append-only gère les écritures système partielles.
+
+Le journal reste local, mono-instance, non chiffré et non synchronisé. Ces contrôles ne fournissent pas de verrouillage inter-processus ni de chiffrement. Sauvegarder avant maintenance et ne jamais réparer silencieusement une ligne invalide.
