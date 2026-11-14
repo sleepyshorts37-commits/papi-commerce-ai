@@ -146,7 +146,7 @@ def import_approved_sync_content(
     os.chmod(db_path, 0o600)
     return {
         "status": status, "bundle_digest": bundle["bundle_digest"],
-        "payload_digest": payload["payload_digest"], "approval_id": verified["approval_id"],
+        "payload_digest": payload["payload_digest"], "approval_id": verified["approval_id"], "signature_verified": True,
         "destination_instance_id": expected_destination, "imported_records": len(records),
         "nonce_consumed_atomically": True, "receipt_and_content_committed_atomically": True,
         "storage": "local_sqlite_import_store", "source_files_retained": True,
