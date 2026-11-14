@@ -87,6 +87,55 @@ class SQLiteBackupCryptoTests(unittest.TestCase):
         with self.assertRaises(BackupEncryptionError):
             verify_encrypted_backup(self.manifest, self.key)
 
+    def test_v2_authenticates_timestamp_and_size_metadata(self):
+        original = json.loads(self.manifest.read_text(encoding="utf-8"))
+        self.assertEqual(original["format_version"], 2)
+        for field, value in (
+            ("created_at", "2020-01-01T00:00:00+00:00"),
+            ("plaintext_size", original["plaintext_size"] + 1),
+            ("ciphertext_size", original["ciphertext_size"] + 1),
+        ):
+            with self.subTest(field=field):
+                altered = dict(original)
+                altered[field] = value
+                self.manifest.write_text(json.dumps(altered), encoding="utf-8")
+                with self.assertRaises(BackupEncryptionError):
+                    verify_encrypted_backup(self.manifest, self.key)
+        self.manifest.write_text(json.dumps(original), encoding="utf-8")
+        self.assertEqual(verify_encrypted_backup(self.manifest, self.key)["status"], "verified")
+
+    def test_manifest_rejects_unexpected_fields_and_invalid_sizes(self):
+        original = json.loads(self.manifest.read_text(encoding="utf-8"))
+        altered = dict(original, operator_override=True)
+        self.manifest.write_text(json.dumps(altered), encoding="utf-8")
+        with self.assertRaises(BackupEncryptionError):
+            verify_encrypted_backup(self.manifest, self.key)
+        altered = dict(original, plaintext_size=True)
+        self.manifest.write_text(json.dumps(altered), encoding="utf-8")
+        with self.assertRaises(BackupEncryptionError):
+            verify_encrypted_backup(self.manifest, self.key)
+
+    def test_manifest_v1_legacy_aad_remains_readable(self):
+        original = json.loads(self.manifest.read_text(encoding="utf-8"))
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        key = self.key.read_bytes()
+        nonce = os.urandom(12)
+        encrypted_path = self.root / "legacy.enc"
+        header = {"format_version": 1, "algorithm": "AES-256-GCM",
+                  "key_id": original["key_id"], "encrypted_file": encrypted_path.name,
+                  "nonce": nonce.hex()}
+        plaintext = self.db.read_bytes()
+        ciphertext = AESGCM(key).encrypt(nonce, plaintext,
+            json.dumps(header, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+        encrypted_path.write_bytes(ciphertext)
+        legacy = {**header, "created_at": "2026-11-14T12:00:00+00:00",
+                  "ciphertext_size": len(ciphertext),
+                  "ciphertext_sha256": __import__("hashlib").sha256(ciphertext).hexdigest(),
+                  "plaintext_size": len(plaintext)}
+        legacy_manifest = self.root / "legacy.manifest.json"
+        legacy_manifest.write_text(json.dumps(legacy), encoding="utf-8")
+        self.assertEqual(verify_encrypted_backup(legacy_manifest, self.key)["status"], "verified")
+
 
 if __name__ == "__main__":
     unittest.main()

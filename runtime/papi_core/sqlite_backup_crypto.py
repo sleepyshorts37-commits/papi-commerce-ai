@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from .sqlite_backup import BackupRestoreError, _integrity, _write_exclusive
 
-_FORMAT_VERSION = 1
+_FORMAT_VERSION = 2
 _ALGORITHM = "AES-256-GCM"
 _KEY_BYTES = 32
 _NONCE_BYTES = 12
@@ -82,10 +82,21 @@ def _exclusive_bytes(path: Path, content: bytes) -> None:
         raise BackupEncryptionError("Écriture sécurisée impossible.") from exc
 
 
-def _manifest_header(manifest: dict[str, Any]) -> dict[str, Any]:
-    return {key: manifest[key] for key in (
+def _manifest_aad(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Construit les données associées authentifiées, avec compatibilité lecture v1."""
+    core = {key: manifest[key] for key in (
         "format_version", "algorithm", "key_id", "encrypted_file", "nonce"
     )}
+    if manifest["format_version"] == 1:
+        return core
+    return {**core, "created_at": manifest["created_at"],
+            "ciphertext_size": manifest["ciphertext_size"],
+            "plaintext_size": manifest["plaintext_size"]}
+
+
+def _manifest_header(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Alias interne conservé pour les appels de déchiffrement."""
+    return _manifest_aad(manifest)
 
 
 def encrypt_sqlite_backup(backup_path: Path, key_path: Path,
@@ -103,14 +114,14 @@ def encrypt_sqlite_backup(backup_path: Path, key_path: Path,
         key = _load_key(key_path)
         nonce = secrets.token_bytes(_NONCE_BYTES)
         encrypted_path = Path(str(manifest_path)[:-len(".manifest.json")] + ".enc") if str(manifest_path).endswith(".manifest.json") else Path(str(manifest_path) + ".enc")
+        created_at = datetime.now(timezone.utc).isoformat()
         header = {"format_version": _FORMAT_VERSION, "algorithm": _ALGORITHM,
                   "key_id": hashlib.sha256(key).hexdigest()[:16],
-                  "encrypted_file": encrypted_path.name, "nonce": nonce.hex()}
+                  "encrypted_file": encrypted_path.name, "nonce": nonce.hex(),
+                  "created_at": created_at, "ciphertext_size": len(plaintext) + 16,
+                  "plaintext_size": len(plaintext)}
         ciphertext = AESGCM(key).encrypt(nonce, plaintext, _canonical(header))
-        manifest = {**header, "created_at": datetime.now(timezone.utc).isoformat(),
-                    "ciphertext_size": len(ciphertext),
-                    "ciphertext_sha256": hashlib.sha256(ciphertext).hexdigest(),
-                    "plaintext_size": len(plaintext)}
+        manifest = {**header, "ciphertext_sha256": hashlib.sha256(ciphertext).hexdigest()}
         _exclusive_bytes(encrypted_path, ciphertext)
         try:
             _exclusive_bytes(Path(manifest_path), _canonical(manifest) + b"\n")
@@ -133,37 +144,57 @@ def _read_encrypted(manifest_path: Path, key_path: Path) -> tuple[bytes, bytes, 
         raise BackupEncryptionError("Manifeste chiffré absent ou lien symbolique interdit.")
     try:
         manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
-        if not isinstance(manifest, dict) or type(manifest.get("format_version")) is not int or manifest["format_version"] != _FORMAT_VERSION:
+        if not isinstance(manifest, dict):
+            raise BackupEncryptionError("Manifeste invalide.")
+        version = manifest.get("format_version")
+        if type(version) is not int or version not in (1, _FORMAT_VERSION):
             raise BackupEncryptionError("Version de manifeste invalide.")
+        legacy_fields = {"format_version", "algorithm", "key_id", "encrypted_file", "nonce",
+                         "created_at", "ciphertext_size", "ciphertext_sha256", "plaintext_size"}
+        if set(manifest) != legacy_fields:
+            raise BackupEncryptionError("Champs du manifeste absents ou inattendus.")
         if manifest.get("algorithm") != _ALGORITHM:
             raise BackupEncryptionError("Algorithme de chiffrement non pris en charge.")
         name = manifest.get("encrypted_file")
-        if not isinstance(name, str) or Path(name).name != name or not name.endswith(".enc"):
+        if not isinstance(name, str) or Path(name).name != name or not name.endswith(".enc") or name in (".enc", "..enc"):
             raise BackupEncryptionError("Nom de fichier chiffré invalide.")
-        nonce = bytes.fromhex(manifest.get("nonce", ""))
-        if len(nonce) != _NONCE_BYTES:
+        if not isinstance(manifest.get("key_id"), str) or len(manifest["key_id"]) != 16:
+            raise BackupEncryptionError("Identifiant de clé invalide.")
+        if not isinstance(manifest.get("created_at"), str) or len(manifest["created_at"]) > 64:
+            raise BackupEncryptionError("Horodatage du manifeste invalide.")
+        try:
+            datetime.fromisoformat(manifest["created_at"].replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise BackupEncryptionError("Horodatage du manifeste invalide.") from exc
+        if type(manifest.get("plaintext_size")) is not int or not (0 < manifest["plaintext_size"] <= _MAX_ENCRYPTED_BYTES):
+            raise BackupEncryptionError("Taille du contenu clair invalide.")
+        if type(manifest.get("ciphertext_size")) is not int or manifest["ciphertext_size"] != manifest["plaintext_size"] + 16:
+            raise BackupEncryptionError("Taille du contenu chiffré invalide.")
+        if not isinstance(manifest.get("ciphertext_sha256"), str) or len(manifest["ciphertext_sha256"]) != 64:
+            raise BackupEncryptionError("Empreinte du contenu chiffré invalide.")
+        nonce_value = manifest.get("nonce")
+        if not isinstance(nonce_value, str) or len(nonce_value) != _NONCE_BYTES * 2:
             raise BackupEncryptionError("Nonce AES-GCM invalide.")
+        nonce = bytes.fromhex(nonce_value)
         encrypted = manifest_file.parent / name
         if encrypted.is_symlink() or not encrypted.is_file():
             raise BackupEncryptionError("Fichier chiffré absent ou lien symbolique interdit.")
         ciphertext = encrypted.read_bytes()
-        if len(ciphertext) <= 16 or len(ciphertext) > _MAX_ENCRYPTED_BYTES + 16:
-            raise BackupEncryptionError("Taille du fichier chiffré invalide.")
-        if len(ciphertext) != manifest.get("ciphertext_size") or hashlib.sha256(ciphertext).hexdigest() != manifest.get("ciphertext_sha256"):
+        if len(ciphertext) != manifest["ciphertext_size"] or hashlib.sha256(ciphertext).hexdigest() != manifest["ciphertext_sha256"]:
             raise BackupEncryptionError("Intégrité du fichier chiffré incorrecte.")
         key = _load_key(key_path)
         key_id = hashlib.sha256(key).hexdigest()[:16]
         if key_id != manifest.get("key_id"):
             raise BackupEncryptionError("Cette clé ne correspond pas au manifeste.")
         return ciphertext, key, manifest
+    except BackupEncryptionError:
+        raise
     except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
-        if isinstance(exc, BackupEncryptionError):
-            raise
         raise BackupEncryptionError("Manifeste ou données chiffrées invalides.") from exc
 
 
 def verify_encrypted_backup(manifest_path: Path, key_path: Path) -> dict[str, Any]:
-    """Authentifie le ciphertext et contrôle l'intégrité SQLite en mémoire, sans écrire de clair."""
+    """Authentifie le ciphertext et contrôle l'intégrité SQLite sans publier de clair."""
     ciphertext, key, manifest = _read_encrypted(manifest_path, key_path)
     try:
         plaintext = AESGCM(key).decrypt(bytes.fromhex(manifest["nonce"]), ciphertext,
@@ -205,7 +236,8 @@ def decrypt_sqlite_backup(manifest_path: Path, key_path: Path,
     if len(plaintext) != manifest.get("plaintext_size"):
         raise BackupEncryptionError("Taille du contenu déchiffré incohérente.")
     import tempfile
-    fd, name = tempfile.mkstemp(prefix=".papi-decrypt-", suffix=".tmp", dir=destination.parent if destination.parent.exists() else None)
+    fd, name = tempfile.mkstemp(prefix=".papi-decrypt-", suffix=".tmp",
+                                dir=destination.parent if destination.parent.exists() else None)
     os.close(fd)
     temporary = Path(name)
     try:

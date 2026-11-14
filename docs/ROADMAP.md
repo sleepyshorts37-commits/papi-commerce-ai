@@ -35,7 +35,7 @@
 - [ ] Synchroniser mémoire et messages entre instances (contrat Mission 38 + paquet référentiel Mission 39 + approbation Ed25519 Mission 40 + registre local de reçus Mission 41 + consommation nonce/reçu atomique SQLite Mission 42 + spool local hors ligne Mission 43 + réception locale authentifiée et reçu atomique Mission 44 + charge utile de contenu contrôlée et liée au digest approuvé Mission 45 + import local SQLite avec nonce/reçu/contenu atomiques Mission 46 + lecteurs mémoire/chat en lecture seule Mission 47 + journaux SQLite locaux facultatifs Mission 48 + migration JSONL vers SQLite sauvegardée, atomique et idempotente Mission 49; transport réseau, exécution de migration approuvée sur l'instance cible et tests multi-instance encore requis).
 - [ ] Déployer et tester orchestration, scheduler et worker.
 - [x] Ajouter des outils locaux de sauvegarde SQLite, vérification SHA-256/intégrité et restauration contrôlée vers un nouveau chemin (Mission 50).
-- [x] Ajouter chiffrement authentifié AES-256-GCM, vérification et rotation locale des clés de sauvegarde SQLite (Mission 51 ; 466 tests et CI réussis).
+- [x] Ajouter chiffrement authentifié AES-256-GCM, vérification et rotation locale des clés de sauvegarde SQLite (Mission 51 ; 466 tests et CI réussis).\n- [x] Authentifier les métadonnées du manifeste AES-GCM v2, valider strictement son schéma et préserver la lecture v1 (Mission 52 ; 469 tests et CI #1453 réussis).
 
 ## Phase 3 — Première activité commerciale
 - [ ] Comparer les opportunités sans frais initiaux.
