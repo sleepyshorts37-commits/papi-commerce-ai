@@ -147,6 +147,174 @@ class SupabaseStore:
         return updated, version
 
 
+    @staticmethod
+    def _collaboration_idempotency_key(kind: str, identifier: str) -> str:
+        import hashlib
+        return hashlib.sha256(f"papi:{kind}:{identifier}".encode("utf-8")).hexdigest()
+
+    def sync_memory_event(self, event: dict[str, Any], *, principal: object) -> dict[str, Any]:
+        """Append one authenticated memory event; retries are idempotent."""
+        from .principal import require_authenticated_agent_principal
+
+        actor = require_authenticated_agent_principal(principal).agent_id
+        if not isinstance(event, dict) or event.get("actor") != actor:
+            raise StoreError("L'acteur mémoire ne correspond pas à l'identité authentifiée.")
+        event_type = event.get("event_type")
+        if event_type == "remember":
+            source = event.get("source")
+            if (event.get("scope") not in {"shared", "agent"} or event.get("sensitivity") != "normal"
+                    or event.get("category") not in {"fact", "project", "result", "procedure", "lesson"}
+                    or not isinstance(source, dict)):
+                raise StoreError("Événement mémoire non conforme au contrat partagé.")
+            if event["scope"] == "agent" and event["actor"] != actor:
+                raise StoreError("Une mémoire privée ne peut être publiée que par son auteur.")
+            row = {
+                "event_id": event.get("event_id"), "memory_id": event.get("memory_id"),
+                "event_type": "remember", "created_at": event.get("created_at"), "actor": actor,
+                "category": event.get("category"), "title": event.get("title"),
+                "content": event.get("content"), "source_type": source.get("type"),
+                "source_id": source.get("id"), "confidence": event.get("confidence"),
+                "scope": event.get("scope"), "tags": event.get("tags", []),
+                "sensitivity": "normal", "idempotency_key": self._collaboration_idempotency_key("memory", str(event.get("event_id"))),
+            }
+        elif event_type == "supersede":
+            row = {
+                "event_id": event.get("event_id"), "memory_id": event.get("target_memory_id"),
+                "event_type": "supersede", "created_at": event.get("created_at"),
+                "actor": actor, "target_memory_id": event.get("target_memory_id"),
+                "reason": event.get("reason"), "tags": [],
+                "idempotency_key": self._collaboration_idempotency_key("memory", str(event.get("event_id"))),
+            }
+        else:
+            raise StoreError("Type d'événement mémoire invalide.")
+        if not isinstance(row["event_id"], str) or not isinstance(row["created_at"], str):
+            raise StoreError("Identifiant ou horodatage mémoire absent.")
+        rows = self._request("POST", "papi_memory_events?on_conflict=idempotency_key",
+                             row, prefer="resolution=ignore-duplicates,return=representation")
+        if not isinstance(rows, list):
+            raise StoreError("Réponse inattendue lors de la synchronisation mémoire.")
+        return {"synced": isinstance(rows, list) and len(rows) == 1,
+                "duplicate": isinstance(rows, list) and len(rows) == 0,
+                "event_id": row["event_id"]}
+
+    def sync_chat_message(self, message: dict[str, Any], *, principal: object,
+                          agents_path=None) -> dict[str, Any]:
+        """Append an authenticated internal chat message; no external delivery."""
+        from pathlib import Path
+        from .principal import require_authenticated_agent_principal
+        from .chat import validate_message, AGENTS_FILE
+
+        actor = require_authenticated_agent_principal(principal).agent_id
+        if not isinstance(message, dict) or message.get("sender") != actor:
+            raise StoreError("L'expéditeur ne correspond pas à l'identité authentifiée.")
+        try:
+            validate_message(message, Path(agents_path) if agents_path else AGENTS_FILE)
+        except (ValueError, KeyError) as exc:
+            raise StoreError("Message interne invalide.") from exc
+        row = {key: message[key] for key in
+               ("message_id", "sent_at", "sender", "recipient", "subject", "body", "message_type")}
+        row["idempotency_key"] = self._collaboration_idempotency_key("chat", message["message_id"])
+        rows = self._request("POST", "papi_chat_messages?on_conflict=idempotency_key",
+                             row, prefer="resolution=ignore-duplicates,return=representation")
+        if not isinstance(rows, list):
+            raise StoreError("Réponse inattendue lors de la synchronisation chat.")
+        return {"synced": isinstance(rows, list) and len(rows) == 1,
+                "duplicate": isinstance(rows, list) and len(rows) == 0,
+                "message_id": message["message_id"]}
+
+    def list_memory_events(self, *, principal: object, limit: int = 50) -> list[dict[str, Any]]:
+        """Read shared, own-agent and applicable supersede events through the scoped SQL reader."""
+        return self.page_memory_events(principal=principal, limit=limit)["items"]
+
+    def list_chat_messages(self, *, principal: object, limit: int = 50) -> list[dict[str, Any]]:
+        """Read broadcasts and messages addressed to the authenticated agent."""
+        from urllib.parse import quote
+        from .principal import require_authenticated_agent_principal
+
+        actor = require_authenticated_agent_principal(principal).agent_id
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 200:
+            raise StoreError("Limite chat invalide.")
+        query = ("papi_chat_messages?select=message_id,sent_at,sender,recipient,subject,body,message_type"
+                 "&and=(or(recipient.eq.all,recipient.eq." + quote(actor, safe="") + "))"
+                 "&order=sent_at.desc,message_id.desc&limit=" + str(limit))
+        rows = self._request("GET", query)
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise StoreError("Réponse chat distante invalide.")
+        return rows
+
+    @staticmethod
+    def _decode_collaboration_cursor(cursor: str | None) -> tuple[str, str] | None:
+        import base64
+        if cursor is None:
+            return None
+        if not isinstance(cursor, str) or len(cursor) > 512:
+            raise StoreError("Curseur de synchronisation invalide.")
+        try:
+            decoded = base64.urlsafe_b64decode(cursor.encode("ascii") + b"=" * (-len(cursor) % 4)).decode("utf-8")
+            timestamp, identifier = decoded.split("|", 1)
+            if not timestamp or not identifier:
+                raise ValueError("empty cursor")
+            return timestamp, identifier
+        except (ValueError, UnicodeError) as exc:
+            raise StoreError("Curseur de synchronisation invalide.") from exc
+
+    @staticmethod
+    def _encode_collaboration_cursor(timestamp: str, identifier: str) -> str:
+        import base64
+        raw = f"{timestamp}|{identifier}".encode("utf-8")
+        return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+    def page_memory_events(self, *, principal: object, limit: int = 50,
+                           cursor: str | None = None) -> dict[str, Any]:
+        from .principal import require_authenticated_agent_principal
+        actor = require_authenticated_agent_principal(principal).agent_id
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
+            raise StoreError("Limite mémoire invalide.")
+        decoded = self._decode_collaboration_cursor(cursor)
+        result = self._request("POST", "rpc/papi_list_memory_events", {
+            "p_actor": actor,
+            "p_before_created_at": decoded[0] if decoded else None,
+            "p_before_event_id": decoded[1] if decoded else None,
+            "p_limit": limit + 1,
+        })
+        if not isinstance(result, list) or any(not isinstance(row, dict) for row in result):
+            raise StoreError("Réponse mémoire distante invalide.")
+        has_more = len(result) > limit
+        items = result[:limit]
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = self._encode_collaboration_cursor(last["created_at"], last["event_id"])
+        return {"items": items, "next_cursor": next_cursor}
+
+    def page_chat_messages(self, *, principal: object, limit: int = 50,
+                           cursor: str | None = None) -> dict[str, Any]:
+        from urllib.parse import quote
+        from .principal import require_authenticated_agent_principal
+        actor = require_authenticated_agent_principal(principal).agent_id
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 200:
+            raise StoreError("Limite chat invalide.")
+        visibility = "or(recipient.eq.all,recipient.eq." + quote(actor, safe="") + ")"
+        query = "papi_chat_messages?select=message_id,sent_at,sender,recipient,subject,body,message_type"
+        decoded = self._decode_collaboration_cursor(cursor)
+        if decoded:
+            ts, identifier = decoded
+            cursor_filter = "or(sent_at.lt." + quote(ts, safe=":.-+") + ",and(sent_at.eq." + quote(ts, safe=":.-+") + ",message_id.lt." + quote(identifier, safe="") + "))"
+            query += "&and=(" + visibility + "," + cursor_filter + ")"
+        else:
+            query += "&" + visibility
+        query += "&order=sent_at.desc,message_id.desc&limit=" + str(limit + 1)
+        rows = self._request("GET", query)
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise StoreError("Réponse chat distante invalide.")
+        has_more = len(rows) > limit
+        items = rows[:limit]
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = self._encode_collaboration_cursor(last["sent_at"], last["message_id"])
+        return {"items": items, "next_cursor": next_cursor}
+
     def sync_worker_event(self, event: dict[str, Any], *, expected_version: int) -> dict[str, Any]:
         """Persist one worker event through the atomic, idempotent PostgreSQL RPC."""
         from .worker_store import DOMAINS, _reject_secrets
