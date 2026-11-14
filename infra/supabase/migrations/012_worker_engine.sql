@@ -160,13 +160,6 @@ begin
         raise exception 'Worker lacks required skill or permission' using errcode = '42501';
     end if;
 
-    select count(*) into v_active
-      from public.papi_worker_assignments
-     where worker_id = p_worker_id and status in ('assigned','running');
-    if v_active >= v_worker.max_concurrency then
-        raise exception 'Worker capacity reached' using errcode = '54000';
-    end if;
-
     -- Existing idempotency key must not be reused for another task/worker intent.
     select j.id into v_job_id
       from public.papi_jobs j
@@ -187,6 +180,23 @@ begin
             'job_id', v_assignment.job_id,
             'status', v_assignment.status
         );
+    end if;
+
+    -- Reject a second active assignment for the same task before capacity checks.
+    -- The partial unique index remains the final concurrency-safe guard.
+    if exists (
+        select 1 from public.papi_worker_assignments
+         where task_id = p_task_id and status in ('assigned','running')
+    ) then
+        raise exception 'Task already has an active worker assignment'
+            using errcode = '23505';
+    end if;
+
+    select count(*) into v_active
+      from public.papi_worker_assignments
+     where worker_id = p_worker_id and status in ('assigned','running');
+    if v_active >= v_worker.max_concurrency then
+        raise exception 'Worker capacity reached' using errcode = '54000';
     end if;
 
     v_job_id := 'JOB-' || replace(gen_random_uuid()::text, '-', '');
