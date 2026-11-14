@@ -7,7 +7,8 @@ from pathlib import Path
 
 from papi_core.identity_ed25519 import provision_ed25519_agent, sign_ed25519_request
 from papi_core.sync_transport_receipt_ledger import (
-    SyncTransportReceiptLedgerError, audit_sync_transport_receipt_ledger,\n    record_verified_sync_transport_receipt,
+    SyncTransportReceiptLedgerError, audit_sync_transport_receipt_ledger,
+    record_verified_sync_transport_receipt,
 )
 
 
