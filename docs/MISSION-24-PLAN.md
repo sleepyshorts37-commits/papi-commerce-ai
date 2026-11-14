@@ -16,9 +16,12 @@ Fournir une visibilité opérationnelle sûre sur la file d'exécution, renforce
 10. Audit final, documentation des limites opérationnelles et clôture.
 
 ## État d'avancement
-- Jours 1 à 4 : livrables réalisés ; validation CI du Jour 4 confirmée.
-- Jour 5 : audit et extension de la couverture d'intégration en cours.
-- Jours 6 à 10 : à réaliser après validation du jour précédent.
+- Jours 1 à 5 : réalisés et validés par CI sur la branche de préparation.
+- Jour 6 : protocole d'observation des plans PostgreSQL et probe read-only ajoutés ; CI finale requise.
+- Jour 7 : classification des incidents, arbre de décision et modèle d'alerte manuelle documentés.
+- Jour 8 : procédure d'exercice backup/restauration sur bases jetables documentée ; aucun backup de production.
+- Jour 9 : matrice des scénarios de résilience et limites de test documentées ; coupure/redémarrage du conteneur non exécutés dans CI.
+- Jour 10 : audit final et matrice des risques résiduels rédigés ; clôture conditionnée à la CI finale.
 
 ## Garde-fous non négociables
 - Aucun worker permanent, scheduler ou boucle autonome.
