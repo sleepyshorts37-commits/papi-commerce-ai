@@ -113,6 +113,7 @@ def read_messages(
     path = Path(path)
     messages = []
     seen_ids: set[str] = set()
+    seen_messages: dict[str, dict[str, Any]] = {}
     local_messages = []
     if path.exists():
         local_messages = path.read_text(encoding="utf-8").splitlines()
@@ -138,7 +139,7 @@ def read_messages(
             validate_message(message, agents_path)
             message_id = message["message_id"]
             if message_id in seen_ids:
-                previous = next((item for item in messages if item["message_id"] == message_id), None)
+                previous = seen_messages.get(message_id)
                 if previous == message:
                     continue
                 raise ChatError("Collision entre message local et message importé.")
