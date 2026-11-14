@@ -14,7 +14,7 @@ from uuid import uuid4
 from papi_core.global_work_quality import GlobalWorkQualityError, canonicalize_url
 
 STATES = {"discovered", "awaiting_user", "user_confirmed", "resumed", "completed", "rejected"}
-SENSITIVE_TEXT = re.compile(r"\\b(?:otp|one[- ]time code|password|private key|seed phrase|recovery phrase|access token)\\s*[:=]", re.IGNORECASE)
+SENSITIVE_TEXT = re.compile(r"\b(?:otp|one[- ]time code|password|private key|seed phrase|recovery phrase|access token|refresh token)\s*[:=]", re.IGNORECASE)
 SENSITIVE_KEYS = {
     "password", "passwd", "otp", "one_time_code", "verification_code",
     "private_key", "secret_key", "seed_phrase", "recovery_phrase",
