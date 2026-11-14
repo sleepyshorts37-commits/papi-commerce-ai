@@ -23,7 +23,10 @@ Renforcer la fiabilité du traitement des travaux sans activer d'exécution auto
 - Vérifier l'unicité de la clé d'idempotence à la création du job, y compris lors d'une nouvelle tentative producteur.
 - Vérifier le plafond de tentatives et l'état terminal ; aucun effet métier externe n'est exécuté dans ces tests.
 
-## Jour 5/5 — Validation renforcée des événements, rapport de fiabilité et critères de préproduction.
+## Jour 5/5 — Validation renforcée des événements, rapport de fiabilité et critères de préproduction
+- Rejeter les enveloppes d'événements avec domaine inconnu, empreinte d'idempotence mal formée, payload non objet ou acteur vide.
+- Vérifier qu'aucun snapshot ni reçu n'est écrit après rejet.
+- Produire un rapport de fiabilité et expliciter les limites avant préproduction.
 
 ## Garde-fous
 - Aucun worker permanent, aucune boucle autonome et aucun scheduler activé.
