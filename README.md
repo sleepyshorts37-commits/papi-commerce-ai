@@ -33,6 +33,7 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core finance-validate` — valider le registre financier local.
 - `PYTHONPATH=runtime python -m papi_core finance-report` — afficher les recettes vérifiées et dépenses payées, en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core security-check` — contrôler les garde-fous locaux sans réseau ni affichage de secrets.
+- `PYTHONPATH=runtime python -m papi_core supabase-preflight` — vérifier localement l'inventaire des migrations et la configuration Supabase sans réseau.
 
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
@@ -56,5 +57,6 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Finances et comptabilité](docs/FINANCE-LEDGER.md)
 - [Sécurité et préparation au déploiement](docs/SECURITY-RELEASE.md)
 - [Préparation de l'environnement Supabase](docs/ENVIRONMENT-SETUP.md)
+- [Préflight Supabase hors ligne](docs/SUPABASE-PREFLIGHT.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à déployer et tester.
