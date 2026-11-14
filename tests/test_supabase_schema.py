@@ -55,6 +55,7 @@ class SupabaseSchemaTests(unittest.TestCase):
         self.assertIn("grant execute on function public.papi_sync_worker_record(", self.sql)
         self.assertIn("to service_role;", self.sql)
         self.assertIn("using errcode = '40001'", self.sql)
+        self.assertIn("pg_advisory_xact_lock(hashtextextended(p_idempotency_key, 0))", self.sql)
 
 if __name__ == "__main__":
     unittest.main()
