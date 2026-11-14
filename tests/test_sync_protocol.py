@@ -107,6 +107,29 @@ class ControlledSyncProtocolTests(unittest.TestCase):
         with self.assertRaises(SyncProtocolError):
             validate_plan_integrity(plan)
 
+    def test_readiness_metadata_is_bound_to_plan_digest(self):
+        plan = build_sync_plan(principal=self.principal, preview=self.preview(),
+                               destination_instance="instance-b", plan_id="plan-001")
+        plan["readiness_blockers"] = []
+        with self.assertRaises(SyncProtocolError):
+            validate_plan_integrity(plan)
+
+    def test_malformed_action_structure_is_rejected(self):
+        plan = build_sync_plan(principal=self.principal, preview=self.preview(),
+                               destination_instance="instance-b", plan_id="plan-001")
+        plan["actions"][0]["status"] = "approved"
+        # Recompute the public digest to prove schema validation is independent
+        # from the integrity check and cannot be bypassed by re-hashing.
+        import hashlib
+        import json
+        unsigned = {key: value for key, value in plan.items() if key != "plan_digest"}
+        plan["plan_digest"] = hashlib.sha256(json.dumps(
+            unsigned, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")).hexdigest()
+        with self.assertRaises(SyncProtocolError):
+            validate_plan_integrity(plan)
+
 
 if __name__ == "__main__":
     unittest.main()
