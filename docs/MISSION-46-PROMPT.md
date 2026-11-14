@@ -1,0 +1,3 @@
+# Mission 46 — Prompt
+
+Construire un import contrôlé et atomique des contenus mémoire/PAPI CHAT reçus, à partir des paquets `.papisync` et `.papidata` des Missions 44–45. Exiger l'approbation Ed25519 exacte, le propriétaire, la destination, le TTL, la cohérence de chaque digest et le registre d'agents. Consommer le nonce, inscrire le reçu et importer les contenus dans une transaction SQLite unique. Rejeter tout rejeu, collision ou divergence sans écriture partielle. Garder les fichiers sources et les journaux JSONL intacts. Ajouter CLI, tests adversariaux et documentation. Ne pas activer transport, workers, scheduler, déploiement ou actions externes.
