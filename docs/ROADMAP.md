@@ -41,6 +41,7 @@
 - [x] Vérifier les fichiers réels contre le manifeste de transfert, refuser les fichiers absents/modifiés/symboliques et appliquer des contrôles stricts de types et tailles (Mission 54 ; vérification locale uniquement).
 - [x] Ajouter un précontrôle local complet du transfert : fichiers, charge utile, destination et signature Ed25519 du propriétaire, sans écrire de reçu ni consommer le nonce (Mission 55).
 - [x] Construire localement une requête de transport HTTPS canonique, allowlistée et idempotente, avec fichiers encodés et contrôles anti-SSRF initiaux, sans émission réseau (Mission 56).
+- [x] Définir et vérifier localement le reçu de transport signé Ed25519, lié au digest exact de la requête et à la livraison, avec anti-rejeu du nonce destinataire ; aucune connexion réseau ni import (Mission 57).
 
 ## Phase 3 — Première activité commerciale
 - [ ] Comparer les opportunités sans frais initiaux.
