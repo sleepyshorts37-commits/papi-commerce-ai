@@ -22,7 +22,7 @@
 ## Phase 2 — Coordination
 - [x] Briefing déterministe d'Astou.
 - [x] PAPI COMMAND CENTER local en lecture seule.
-- [x] PAPI CHAT : socle local de communication interne.
+- [x] PAPI CHAT : socle local de communication interne, journal append-only validé (Mission 37).
 - [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
 - [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
 - [x] Ajouter un prototype Ed25519, registre public versionné, révocation, rotation et tests unitaires.
