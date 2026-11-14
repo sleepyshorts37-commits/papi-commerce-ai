@@ -54,6 +54,9 @@ def build_sync_plan(
 
     candidates: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
+    # A conflict anywhere in the snapshot blocks the entire plan, not only
+    # the conflicting record: partial sync could otherwise widen divergence.
+    has_conflicts = preview["counts"]["conflicts"] > 0
     for bucket in _BUCKETS:
         for row in preview["memory"][bucket] + preview["messages"][bucket]:
             kind, record_id = row["type"], row["record_id"]
@@ -63,6 +66,8 @@ def build_sync_plan(
             if key in seen:
                 raise SyncProtocolError("Une ressource apparaît dans plusieurs catégories.")
             seen.add(key)
+            if has_conflicts:
+                continue
             if bucket == "local_only":
                 candidates.append({"operation": "copy_local_to_remote", "type": kind,
                                    "record_id": record_id})
