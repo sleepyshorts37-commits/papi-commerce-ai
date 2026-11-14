@@ -191,7 +191,7 @@ class SupabaseStore:
             raise StoreError("Identifiant ou horodatage mémoire absent.")
         rows = self._request("POST", "papi_memory_events?on_conflict=idempotency_key",
                              row, prefer="resolution=ignore-duplicates,return=representation")
-        if rows is None:
+        if not isinstance(rows, list):
             raise StoreError("Réponse inattendue lors de la synchronisation mémoire.")
         return {"synced": isinstance(rows, list) and len(rows) == 1,
                 "duplicate": isinstance(rows, list) and len(rows) == 0,
@@ -216,7 +216,7 @@ class SupabaseStore:
         row["idempotency_key"] = self._collaboration_idempotency_key("chat", message["message_id"])
         rows = self._request("POST", "papi_chat_messages?on_conflict=idempotency_key",
                              row, prefer="resolution=ignore-duplicates,return=representation")
-        if rows is None:
+        if not isinstance(rows, list):
             raise StoreError("Réponse inattendue lors de la synchronisation chat.")
         return {"synced": isinstance(rows, list) and len(rows) == 1,
                 "duplicate": isinstance(rows, list) and len(rows) == 0,
@@ -232,7 +232,7 @@ class SupabaseStore:
             raise StoreError("Limite mémoire invalide.")
         query = ("papi_memory_events?select=event_id,memory_id,event_type,created_at,actor,category,title,content,"
                  "source_type,source_id,confidence,scope,tags,sensitivity,target_memory_id,reason"
-                 "&and=(or(scope.eq.shared,and(scope.eq.agent,actor.eq." + quote(actor, safe="") + ")),or(event_type.eq.remember,event_type.eq.supersede))"
+                 "&or=(scope.eq.shared,and(scope.eq.agent,actor.eq." + quote(actor, safe="") + "),and(event_type.eq.supersede,actor.eq." + quote(actor, safe="") + "))"
                  "&order=created_at.desc,event_id.desc&limit=" + str(limit))
         rows = self._request("GET", query)
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
@@ -284,7 +284,7 @@ class SupabaseStore:
         actor = require_authenticated_agent_principal(principal).agent_id
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
             raise StoreError("Limite mémoire invalide.")
-        visibility = "or(scope.eq.shared,and(scope.eq.agent,actor.eq." + quote(actor, safe="") + "))"
+        visibility = "or(scope.eq.shared,and(scope.eq.agent,actor.eq." + quote(actor, safe="") + "),and(event_type.eq.supersede,actor.eq." + quote(actor, safe="") + "))"
         query = ("papi_memory_events?select=event_id,memory_id,event_type,created_at,actor,category,title,content,"
                  "source_type,source_id,confidence,scope,tags,sensitivity,target_memory_id,reason")
         decoded = self._decode_collaboration_cursor(cursor)
