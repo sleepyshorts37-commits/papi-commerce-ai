@@ -1,4 +1,6 @@
 -- Queue health must expose aggregate counts only and must not leak job data.
+-- Keep fixtures isolated so later queue tests see an unchanged database.
+begin;
 do $$
 declare
   v_before jsonb;
@@ -50,4 +52,6 @@ begin
     raise exception 'Queue health function privileges are too broad or incomplete';
   end if;
 end;
-$$;
+$;
+
+rollback;
