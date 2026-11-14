@@ -193,14 +193,19 @@ class SharedCollaborationStore:
             raise SharedCollaborationError("limit doit être compris entre 1 et 200.")
         position = self._cursor(cursor)
         seek = ""
+        recipient_filter = f"or(recipient.eq.all,recipient.eq.{quote(actor, safe='')})"
         if position:
             stamp, message_id = position
             encoded_stamp = quote(stamp, safe="")
-            seek = f"&and=(or=(sent_at.lt.{encoded_stamp},and(sent_at.eq.{encoded_stamp},message_id.lt.{quote(message_id, safe='')})))"
+            seek = (
+                f"&and=({recipient_filter},or(sent_at.lt.{encoded_stamp},"
+                f"and(sent_at.eq.{encoded_stamp},message_id.lt.{quote(message_id, safe='')})))"
+            )
+        else:
+            seek = f"&{recipient_filter}"
         path = (
             "papi_chat_messages?select=message_id,sent_at,sender,recipient,subject,body,message_type"
-            f"&or=(recipient.eq.all,recipient.eq.{quote(actor, safe='')})"
-            f"&order=sent_at.desc,message_id.desc&limit={limit + 1}{seek}"
+            f"{seek}&order=sent_at.desc,message_id.desc&limit={limit + 1}"
         )
         rows = self._store._request("GET", path)
         if not isinstance(rows, list):
