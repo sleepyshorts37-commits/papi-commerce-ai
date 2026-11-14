@@ -12,7 +12,7 @@ Ajouter un mécanisme local et hors ligne de mise en file de paquets de synchron
 Le spool ne vérifie pas cryptographiquement la signature, ne consomme pas de nonce, n'importe aucune donnée et ne communique pas sur le réseau. La signature doit être vérifiée séparément à destination avec les clés publiques de confiance et l'anti-rejeu atomique de Mission 42. Le format transporte uniquement les références et empreintes déjà définies par le protocole, pas les contenus mémoire/chat.
 
 ## Validation
-CI GitHub Actions réussie sur le commit de validation `4e333f97d7730ab8122b6c329ba28446957e997c` : 410 tests Python réussis et job `local-postgrest-integration` réussi. Une dernière exécution CI sera déclenchée par la mise à jour de ce rapport et devra confirmer le SHA final de clôture.
+Une revue complémentaire a corrigé un contrôle de version qui acceptait le booléen `true` comme version 1, ajouté un test de non-régression, supprimé un lien README dupliqué et réparé les sauts de ligne littéraux du roadmap. CI sur le SHA final à confirmer.
 
 ## Gouvernance
 PR ouverte en brouillon, non fusionnée. Aucun secret, donnée client, dépense, contact externe, publication ou déploiement.
