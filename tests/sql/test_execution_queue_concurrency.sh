@@ -63,6 +63,6 @@ esac
 "${psql_cmd[@]}" -v job_id="$id_a" -v lease_token="$token_a" \
   -c "select public.papi_complete_job(:'job_id', 'ci-concurrent-worker-a', :'lease_token'::uuid, '{\"concurrency_test\":true}'::jsonb) as completed" > /dev/null 2>&1 || true
 "${psql_cmd[@]}" -v job_id="$id_b" -v lease_token="$token_b" \
-  -c "select public.papi_complete_job(:'job_id', case when :'job_id' = 'CI-CONCURRENT-JOB-A' then 'ci-concurrent-worker-a' else 'ci-concurrent-worker-b' end, :'lease_token'::uuid, '{\"concurrency_test\":true}'::jsonb)" > /dev/null
+  -c "select public.papi_complete_job(:'job_id', 'ci-concurrent-worker-b', :'lease_token'::uuid, '{\"concurrency_test\":true}'::jsonb)" > /dev/null
 
 echo "PASS: overlapping PostgreSQL sessions claimed distinct jobs with distinct lease tokens ($id_a, $id_b)"
