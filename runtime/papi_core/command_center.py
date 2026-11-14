@@ -7,7 +7,6 @@ from .registry import AGENTS_FILE, TASKS_FILE, load_agents, load_json
 from .doctor import diagnose_environment
 from .workers_report import build_workers_report
 from .workers_inputs import build_workers_inputs
-from .worker_store import SupabaseWorkerStore
 
 def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_path=None, environ=None, *,
                          platform_candidates=None, handoffs=None, profitability_results=None,
@@ -35,10 +34,11 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
 
     adapted = build_workers_inputs(platform_discovery_batch=platform_discovery_batch,
                                    handoff_records=handoff_records, profitability_batch=profitability_batch)
+    central_inputs = worker_store.load_worker_inputs() if worker_store is not None else None
     workers = build_workers_report(
-        platform_candidates=platform_candidates if platform_candidates is not None else adapted["platform_candidates"],
-        handoffs=handoffs if handoffs is not None else adapted["handoffs"],
-        profitability_results=profitability_results if profitability_results is not None else adapted["profitability_results"],
+        platform_candidates=central_inputs["platform_candidates"] if central_inputs is not None else (platform_candidates if platform_candidates is not None else adapted["platform_candidates"]),
+        handoffs=central_inputs["handoffs"] if central_inputs is not None else (handoffs if handoffs is not None else adapted["handoffs"]),
+        profitability_results=central_inputs["profitability_results"] if central_inputs is not None else (profitability_results if profitability_results is not None else adapted["profitability_results"]),
     )
     return {
         "product": "PAPI COMMAND CENTER",
@@ -56,7 +56,7 @@ def build_command_center(tasks_path=TASKS_FILE, agents_path=AGENTS_FILE, policy_
         "ai_workers": workers,
         "ai_workers_sources": ({**adapted["sources"], "persistent_storage_read": True, "network_access_performed": True, "central_store_read": True, "automatic_collection_performed": False} if worker_store is not None else adapted["sources"]),
         "environment": {"status": doctor["status"], "checks": doctor["checks"],
-                        "network_test_performed": False, "secrets_displayed": False},
+                        "network_test_performed": worker_store is not None, "secrets_displayed": False},
         "controls": {"writes_performed": False, "storage_reads_performed": worker_store is not None, "worker_started": False,
                      "external_actions_enabled": False, "financial_actions_enabled": False,
                      "notifications_sent": False},
