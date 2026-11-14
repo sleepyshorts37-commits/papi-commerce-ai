@@ -295,3 +295,164 @@ revoke all on function public.papi_consume_agent_nonce(text, text, timestamptz)
     from public, anon, authenticated;
 grant execute on function public.papi_consume_agent_nonce(text, text, timestamptz)
     to service_role;
+
+
+-- Stockage centralisé des snapshots PAPI AI WORKERS et reçus d'idempotence.
+-- Les payloads sont des données métier non sensibles : aucun secret, OTP ou moyen
+-- de paiement ne doit être transmis par le backend à cette fonction.
+create table if not exists public.papi_worker_records (
+    domain text not null check (domain in ('platform_candidate', 'human_handoff', 'profitability_result')),
+    record_id text not null check (length(record_id) between 1 and 160),
+    payload jsonb not null check (jsonb_typeof(payload) = 'object'),
+    version bigint not null default 1 check (version >= 1),
+    source_event_id text not null check (length(source_event_id) between 1 and 160),
+    updated_at timestamptz not null default now(),
+    primary key (domain, record_id)
+);
+
+create index if not exists papi_worker_records_updated_idx
+    on public.papi_worker_records(domain, updated_at desc);
+
+create table if not exists public.papi_worker_event_receipts (
+    event_id text primary key,
+    idempotency_key text not null unique check (length(idempotency_key) = 64),
+    domain text not null check (domain in ('platform_candidate', 'human_handoff', 'profitability_result')),
+    record_id text not null check (length(record_id) between 1 and 160),
+    source_event_id text not null check (length(source_event_id) between 1 and 160),
+    event_type text not null check (length(event_type) between 1 and 160),
+    actor text not null check (length(actor) between 1 and 160),
+    payload jsonb not null check (jsonb_typeof(payload) = 'object'),
+    occurred_at timestamptz not null,
+    record_version bigint not null check (record_version >= 1),
+    received_at timestamptz not null default now()
+);
+
+create index if not exists papi_worker_event_record_idx
+    on public.papi_worker_event_receipts(domain, record_id, occurred_at desc);
+
+alter table public.papi_worker_records enable row level security;
+alter table public.papi_worker_event_receipts enable row level security;
+
+revoke all on public.papi_worker_records from public, anon, authenticated;
+revoke all on public.papi_worker_event_receipts from public, anon, authenticated;
+grant select, insert, update on public.papi_worker_records to service_role;
+grant select, insert on public.papi_worker_event_receipts to service_role;
+
+-- Écrit un snapshot et son reçu d'événement dans une seule transaction.
+-- expected_version = 0 crée le record ; sinon la version doit correspondre.
+-- Une nouvelle tentative identique renvoie duplicate=true sans réécrire le record.
+create or replace function public.papi_sync_worker_record(
+    p_domain text,
+    p_record_id text,
+    p_expected_version bigint,
+    p_event_id text,
+    p_idempotency_key text,
+    p_source_event_id text,
+    p_event_type text,
+    p_actor text,
+    p_payload jsonb,
+    p_occurred_at timestamptz
+) returns jsonb
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+    v_receipt public.papi_worker_event_receipts%rowtype;
+    v_new_version bigint;
+begin
+    if p_domain is null or p_domain not in ('platform_candidate', 'human_handoff', 'profitability_result')
+       or p_record_id is null or length(trim(p_record_id)) not between 1 and 160
+       or p_expected_version is null or p_expected_version < 0
+       or p_event_id is null or length(trim(p_event_id)) not between 1 and 160
+       or p_idempotency_key is null or p_idempotency_key !~ '^[0-9a-f]{64}$'
+       or p_source_event_id is null or length(trim(p_source_event_id)) not between 1 and 160
+       or p_event_type is null or length(trim(p_event_type)) not between 1 and 160
+       or p_actor is null or length(trim(p_actor)) not between 1 and 160
+       or p_payload is null or jsonb_typeof(p_payload) <> 'object'
+       or p_occurred_at is null then
+        raise exception 'Invalid worker sync event' using errcode = '22023';
+    end if;
+
+    select * into v_receipt
+      from public.papi_worker_event_receipts
+     where idempotency_key = p_idempotency_key
+     for update;
+
+    if found then
+        if v_receipt.event_id is distinct from p_event_id
+           or v_receipt.domain is distinct from p_domain
+           or v_receipt.record_id is distinct from p_record_id
+           or v_receipt.source_event_id is distinct from p_source_event_id
+           or v_receipt.event_type is distinct from p_event_type
+           or v_receipt.actor is distinct from p_actor
+           or v_receipt.payload is distinct from p_payload
+           or v_receipt.occurred_at is distinct from p_occurred_at then
+            raise exception 'Idempotency key reused with different event content' using errcode = '22023';
+        end if;
+        return jsonb_build_object(
+            'duplicate', true,
+            'event_id', v_receipt.event_id,
+            'record_version', v_receipt.record_version
+        );
+    end if;
+
+    if p_expected_version = 0 then
+        insert into public.papi_worker_records(
+            domain, record_id, payload, version, source_event_id, updated_at
+        ) values (
+            p_domain, p_record_id, p_payload, 1, p_source_event_id, now()
+        )
+        on conflict (domain, record_id) do nothing
+        returning version into v_new_version;
+    else
+        update public.papi_worker_records
+           set payload = p_payload,
+               version = version + 1,
+               source_event_id = p_source_event_id,
+               updated_at = now()
+         where domain = p_domain
+           and record_id = p_record_id
+           and version = p_expected_version
+        returning version into v_new_version;
+    end if;
+
+    if v_new_version is null then
+        raise exception 'Worker record version conflict or record not found' using errcode = '40001';
+    end if;
+
+    insert into public.papi_worker_event_receipts(
+        event_id, idempotency_key, domain, record_id, source_event_id,
+        event_type, actor, payload, occurred_at, record_version
+    ) values (
+        p_event_id, p_idempotency_key, p_domain, p_record_id, p_source_event_id,
+        p_event_type, p_actor, p_payload, p_occurred_at, v_new_version
+    );
+
+    insert into public.papi_audit_events(
+        event_id, occurred_at, actor, action, entity_type, entity_id, details
+    ) values (
+        p_event_id, p_occurred_at, p_actor, p_event_type, 'worker_' || p_domain,
+        p_record_id,
+        jsonb_build_object(
+            'record_version', v_new_version,
+            'source_event_id', p_source_event_id,
+            'idempotency_key', p_idempotency_key,
+            'payload', p_payload
+        )
+    );
+
+    return jsonb_build_object(
+        'duplicate', false,
+        'event_id', p_event_id,
+        'record_version', v_new_version
+    );
+end;
+$$;
+
+revoke all on function public.papi_sync_worker_record(
+    text, text, bigint, text, text, text, text, text, jsonb, timestamptz
+) from public, anon, authenticated;
+grant execute on function public.papi_sync_worker_record(
+    text, text, bigint, text, text, text, text, text, jsonb, timestamptz
+) to service_role;
