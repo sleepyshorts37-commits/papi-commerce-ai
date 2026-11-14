@@ -99,10 +99,23 @@ def _read_secure_journal(path: Path) -> dict[str, Any]:
         "new_registry_b64", "old_private_sha256", "new_private_sha256",
         "old_registry_sha256", "new_registry_sha256",
     }
-    if not isinstance(data, dict) or set(data) != required or data.get("schema_version") != 1:
+    if (not isinstance(data, dict) or set(data) != required
+            or type(data.get("schema_version")) is not int or data.get("schema_version") != 1):
         raise RotationJournalError("Structure du journal de rotation invalide.")
+    transaction_id = data.get("transaction_id")
+    if not isinstance(transaction_id, str) or len(transaction_id) != 32 or any(
+        char not in "0123456789abcdef" for char in transaction_id
+    ):
+        raise RotationJournalError("Identifiant de transaction invalide.")
     if data.get("private_path_name") != path.name.removesuffix(".rotation-journal"):
         raise RotationJournalError("Le journal ne correspond pas au fichier de clé attendu.")
+    for digest_name in ("old_private_sha256", "new_private_sha256",
+                        "old_registry_sha256", "new_registry_sha256"):
+        digest = data.get(digest_name)
+        if not isinstance(digest, str) or len(digest) != 64 or any(
+            char not in "0123456789abcdef" for char in digest
+        ):
+            raise RotationJournalError("Empreinte du journal de rotation invalide.")
     try:
         decoded = {
             "old_private": base64.b64decode(data["old_private_b64"], validate=True),
