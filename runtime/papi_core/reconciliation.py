@@ -8,6 +8,11 @@ from .memory import SECRET_PATTERN
 from .principal import require_authenticated_agent_principal
 
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_MEMORY_SECRET = re.compile(
+    r"(?i)\\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
+    r"token|otp|pin|cvv|authorization|cookie)\\s*[:=]\\s*\\S+|"
+    r"\\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,})\\b"
+)
 _CHAT_SECRET = re.compile(
     r"(?i)(api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
     r"otp|pin|cvv|authorization)\s*[:=]\s*\S+|"
