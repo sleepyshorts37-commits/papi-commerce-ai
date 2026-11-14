@@ -126,6 +126,7 @@ def read_messages(
             if message["message_id"] in seen_ids:
                 raise ChatError("Identifiant de message dupliqué.")
             seen_ids.add(message["message_id"])
+            seen_messages[message["message_id"]] = message
         except (json.JSONDecodeError, ChatError) as exc:
             raise ChatError(f"Message invalide à la ligne {number}: {exc}") from exc
         if recipient is None or message["recipient"] in {recipient, "all"}:
@@ -144,6 +145,7 @@ def read_messages(
                     continue
                 raise ChatError("Collision entre message local et message importé.")
             seen_ids.add(message_id)
+            seen_messages[message_id] = message
         except (ChatError, KeyError, TypeError) as exc:
             raise ChatError(f"Message importé invalide #{number}: {exc}") from exc
         if recipient is None or message["recipient"] in {recipient, "all"}:
