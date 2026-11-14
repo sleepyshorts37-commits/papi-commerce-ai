@@ -4,7 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from papi_core.sync_bundle import build_sync_bundle\nfrom papi_core.sync_payload import build_sync_payload\nfrom papi_core.sync_transfer_manifest import (
+from papi_core.sync_bundle import build_sync_bundle
+from papi_core.sync_payload import build_sync_payload
+from papi_core.sync_transfer_manifest import (
     SyncTransferManifestError, build_sync_transfer_manifest,
     validate_sync_transfer_manifest,
 )
