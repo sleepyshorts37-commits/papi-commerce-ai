@@ -45,12 +45,16 @@ def record_verified_sync_transport_receipt(
     *, request: object, receipt: object, registry_path: Path,
     replay_db: Path, ledger_db: Path, now: int | None = None,
 ) -> dict[str, Any]:
-    """Vérifie puis archive le reçu dans un registre local append-only.
+    """Vérifie, consomme le nonce et archive le reçu dans UNE transaction SQLite.
 
-    L'anti-rejeu Ed25519 et le registre métier SQLite sont deux bases distinctes :
-    leur écriture n'est pas une transaction distribuée. En cas d'arrêt entre
-    consommation du nonce et archivage, il faut une réconciliation manuelle.
+    replay_db et ledger_db doivent désigner le même fichier : la réservation
+    anti-rejeu et l'insertion métier sont alors validées ou annulées ensemble.
+    Aucun réseau, import ou déclenchement d'exécution n'est effectué.
     """
+    if Path(replay_db).resolve() != Path(ledger_db).resolve():
+        raise SyncTransportReceiptLedgerError(
+            "Le registre anti-rejeu et le registre des reçus doivent partager la même base SQLite."
+        )
     if not isinstance(receipt, dict) or not isinstance(receipt.get("payload"), dict):
         raise SyncTransportReceiptLedgerError("Enveloppe de reçu absente.")
     payload = receipt["payload"]
@@ -63,33 +67,31 @@ def record_verified_sync_transport_receipt(
     path = Path(ledger_db)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     try:
-        if path.exists():
-            with sqlite3.connect(path, timeout=30, isolation_level=None) as db:
-                db.execute("PRAGMA busy_timeout=30000")
-                existing = db.execute(
-                    "SELECT receipt_id, delivery_id, receipt_sha256 FROM sync_transport_receipts "
-                    "WHERE receipt_id=? OR delivery_id=?", (receipt_id, delivery_id)
-                ).fetchone()
-                if existing:
-                    if existing == (receipt_id, delivery_id, receipt_digest):
-                        return {
-                            "status": "already_recorded", "receipt_id": receipt_id,
-                            "delivery_id": delivery_id, "receipt_sha256": receipt_digest,
-                            "receipt_committed": True, "network_transfer_performed": False,
-                            "import_performed": False, "execution_enabled": False,
-                        }
-                    raise SyncTransportReceiptLedgerError(
-                        "Identifiant de reçu ou livraison déjà associé à une autre preuve."
-                    )
-
-        verified = verify_sync_transport_receipt(
-            request=request, receipt=receipt, registry_path=Path(registry_path),
-            replay_db=Path(replay_db), now=now,
-        )
         with sqlite3.connect(path, timeout=30, isolation_level=None) as db:
             db.execute("PRAGMA busy_timeout=30000")
             db.executescript(_SCHEMA)
             db.execute("BEGIN IMMEDIATE")
+            existing = db.execute(
+                "SELECT receipt_id, delivery_id, receipt_sha256 FROM sync_transport_receipts "
+                "WHERE receipt_id=? OR delivery_id=?", (receipt_id, delivery_id)
+            ).fetchone()
+            if existing:
+                if existing == (receipt_id, delivery_id, receipt_digest):
+                    db.execute("ROLLBACK")
+                    return {
+                        "status": "already_recorded", "receipt_id": receipt_id,
+                        "delivery_id": delivery_id, "receipt_sha256": receipt_digest,
+                        "receipt_committed": True, "network_transfer_performed": False,
+                        "import_performed": False, "execution_enabled": False,
+                    }
+                raise SyncTransportReceiptLedgerError(
+                    "Identifiant de reçu ou livraison déjà associé à une autre preuve."
+                )
+
+            verified = verify_sync_transport_receipt(
+                request=request, receipt=receipt, registry_path=Path(registry_path),
+                replay_db=path, now=now, replay_connection=db,
+            )
             db.execute(
                 "INSERT INTO sync_transport_receipts "
                 "(receipt_id,delivery_id,request_body_sha256,source_instance_id,"
@@ -106,10 +108,10 @@ def record_verified_sync_transport_receipt(
         raise SyncTransportReceiptLedgerError(str(exc)) from exc
     except sqlite3.IntegrityError as exc:
         raise SyncTransportReceiptLedgerError(
-            "Conflit concurrent dans le registre; réconciliation manuelle requise."
+            "Conflit ou rejeu concurrent; nonce et reçu annulés atomiquement."
         ) from exc
     except sqlite3.Error as exc:
-        raise SyncTransportReceiptLedgerError("Échec SQLite du registre.") from exc
+        raise SyncTransportReceiptLedgerError("Échec SQLite; nonce et reçu annulés.") from exc
 
     os.chmod(path, 0o600)
     return {
@@ -119,5 +121,6 @@ def record_verified_sync_transport_receipt(
         "destination_nonce_consumed": verified["destination_nonce_consumed"],
         "receipt_committed": True, "network_transfer_performed": False,
         "import_performed": False, "execution_enabled": False,
-        "manual_reconciliation_required": True,
+        "manual_reconciliation_required": False,
+        "nonce_and_receipt_atomic": True,
     }

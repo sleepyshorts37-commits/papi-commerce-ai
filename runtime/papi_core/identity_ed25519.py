@@ -218,3 +218,34 @@ def verify_ed25519_request(envelope: dict[str, Any], registry_path: Path = DEFAU
     return {"authenticated": True, "agent_id": agent_id, "key_version": version,
             "algorithm": "Ed25519", "replay_protected": bool(consume_nonce),
             "nonce_consumed": bool(consume_nonce)}
+
+
+def verify_ed25519_request_transactional(
+    envelope: dict[str, Any], *, connection: sqlite3.Connection,
+    registry_path: Path = DEFAULT_PUBLIC_REGISTRY, now: int | None = None,
+) -> dict[str, Any]:
+    """Vérifie une signature et réserve son nonce dans la transaction appelante.
+
+    La fonction ne démarre, ne valide et n'annule jamais la transaction SQLite.
+    L'appelant doit utiliser BEGIN IMMEDIATE puis COMMIT/ROLLBACK.
+    """
+    verified = verify_ed25519_request(
+        envelope, registry_path=registry_path, replay_db=Path("."),
+        now=now, consume_nonce=False,
+    )
+    current = int(time.time()) if now is None else int(now)
+    timestamp = envelope["timestamp"]
+    connection.execute(
+        "CREATE TABLE IF NOT EXISTS used_nonces ("
+        "agent_id TEXT NOT NULL, nonce TEXT NOT NULL, expires_at INTEGER NOT NULL, "
+        "PRIMARY KEY(agent_id, nonce))"
+    )
+    connection.execute("DELETE FROM used_nonces WHERE expires_at < ?", (current,))
+    try:
+        connection.execute(
+            "INSERT INTO used_nonces (agent_id, nonce, expires_at) VALUES (?, ?, ?)",
+            (envelope["agent_id"], envelope["nonce"], timestamp + MAX_CLOCK_SKEW_SECONDS),
+        )
+    except sqlite3.IntegrityError as exc:
+        raise Ed25519IdentityError("Rejeu détecté.") from exc
+    return {**verified, "replay_protected": True, "nonce_consumed": True}

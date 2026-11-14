@@ -43,6 +43,7 @@
 - [x] Construire localement une requête de transport HTTPS canonique, allowlistée et idempotente, avec fichiers encodés et contrôles anti-SSRF initiaux, sans émission réseau (Mission 56).
 - [x] Définir et vérifier localement le reçu de transport signé Ed25519, lié au digest exact de la requête et à la livraison, avec anti-rejeu du nonce destinataire ; aucune connexion réseau ni import (Mission 57).
 - [x] Archiver les reçus de transport vérifiés dans un registre SQLite local append-only, idempotent et protégé contre les collisions ; la consommation du nonce et l'archivage restent deux transactions distinctes à réconcilier manuellement en cas de panne (Mission 58).
+- [x] Rendre atomiques la réservation du nonce Ed25519 anti-rejeu et l'archivage du reçu de transport dans une seule transaction SQLite `BEGIN IMMEDIATE` / `COMMIT`, avec rollback conjoint et idempotence des doublons exacts (Mission 59 ; aucun réseau ni import).
 
 ## Phase 3 — Première activité commerciale
 - [ ] Comparer les opportunités sans frais initiaux.
