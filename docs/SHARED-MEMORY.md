@@ -28,3 +28,14 @@ Depuis la racine : `PYTHONPATH=runtime python -m unittest discover -s tests -v`.
 
 ## Statut
 Socle logiciel local ajouté ; mémoire non déployée et non alimentée automatiquement par les agents.
+
+
+## Intégrité du journal — Mission 36
+
+Avant toute recherche ou opération d'archivage, chaque ligne est validée selon son type :
+- `remember` : identifiants, date ISO-8601 avec fuseau, catégorie, portée, sensibilité, titre, contenu, source, confiance finie entre 0 et 1 et tags bornés ;
+- `supersede` : identifiants, date avec fuseau, cible déjà présente et motif non vide ;
+- unicité des identifiants d'événement et de mémoire ; un archivage orphelin ou répété rend le journal invalide ;
+- contrôle récursif des champs sensibles dans le contenu et la source.
+
+Les écritures gèrent les retours partiels de l'appel système. Cela ne constitue pas un verrou inter-processus : le journal reste mono-instance et ne doit pas être partagé par plusieurs écrivains concurrents. Une corruption doit entraîner l'arrêt de la lecture et une restauration contrôlée depuis une sauvegarde, sans suppression silencieuse de lignes.
