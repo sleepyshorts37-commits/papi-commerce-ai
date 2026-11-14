@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sqlite3
 import tempfile
@@ -71,11 +72,16 @@ class SyncTransportReceiptCheckpointTests(unittest.TestCase):
     def test_checkpoint_detects_inserted_receipt_after_signing(self):
         checkpoint = self.create()
         with sqlite3.connect(self.db) as connection:
+            receipt = {"payload": {"receipt_id": "r1", "delivery_id": "d1"}}
+            receipt_json = json.dumps(
+                receipt, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), allow_nan=False,
+            )
+            receipt_digest = hashlib.sha256(receipt_json.encode("utf-8")).hexdigest()
             connection.execute(
                 "INSERT INTO sync_transport_receipts VALUES (?,?,?,?,?,?,?,?,?)",
-                ("r1", "d1", "a" * 64, "source", "target", "b" * 64,
-                 json.dumps({"payload": {"receipt_id": "r1", "delivery_id": "d1"}}),
-                 "2026-11-14T00:00:00Z", "verified_transport_receipt"),
+                ("r1", "d1", "a" * 64, "source", "target", receipt_digest,
+                 receipt_json, "2026-11-14T00:00:00Z", "verified_transport_receipt"),
             )
         with self.assertRaises(SyncTransportReceiptCheckpointError):
             self.verify(checkpoint)
