@@ -333,7 +333,7 @@ class Ed25519IdentityTests(unittest.TestCase):
         def crash_before_registry(path, content):
             nonlocal calls
             calls += 1
-            if calls <= 2:
+            if calls == 1:
                 return real_write(path, content)
             raise SystemExit("simulated process crash")
 
