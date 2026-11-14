@@ -40,6 +40,8 @@ class WorkerStoreEventTests(unittest.TestCase):
             self._event(payload={"profile": {"access_token": "do-not-store"}})
         with self.assertRaises(WorkerStoreError):
             self._event(payload={"password": "do-not-store"})
+        with self.assertRaises(WorkerStoreError):
+            self._event(payload={"note": "access token: abc123"})
 
     def test_payload_must_be_json_safe_object(self):
         with self.assertRaises(WorkerStoreError):
