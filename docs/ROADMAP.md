@@ -61,6 +61,7 @@
 - [ ] PAPI SERVICES et PAPI FREELANCE.
 - [ ] PAPI AFFILIATION.
 - [ ] PAPI MARKET et PAPI DROPSHIPPING.
+- [ ] PAPI SOCIAL GROWTH : équipes distinctes par réseau, publication autorisée, audience réelle, prospection, opportunités rémunérées et suivi des conversions ; équipe de 10 agents d'analyse vidéo.
 - [ ] Intégrer les prestataires de paiement après validation de l'éligibilité, des frais, des permissions et des conditions.
 - [ ] Mettre en place sauvegardes, rapprochement périodique et séparation des rôles comptables.
 
