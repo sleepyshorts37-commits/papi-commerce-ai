@@ -186,8 +186,10 @@ class IdentityTransactionManager:
                             raise IdentityTransactionError("Une mise à jour des permissions ne change pas la clé.")
                         if permissions is None:
                             raise IdentityTransactionError("Nouvel ensemble de permissions obligatoire.")
+                        if prohibited is not None and denied != current_prohibited:
+                            raise IdentityTransactionError("Les interdictions existantes sont immuables dans ce gestionnaire.")
                         next_permissions = perms
-                        next_prohibited = denied if prohibited is not None else current_prohibited
+                        next_prohibited = current_prohibited
                         if set(next_permissions) & set(next_prohibited):
                             raise IdentityTransactionError("Permission interdite dans le nouvel ensemble.")
                     else:  # revoke
