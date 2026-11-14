@@ -44,6 +44,37 @@ begin
 end
 $consume$;
 
+do $invalid_scope$
+begin
+  begin
+    perform public.papi_issue_sync_approval(
+      'APR-M33-NULL01','TASK-M33-001','sync.apply_plan','internal_write',
+      'owner-test',now(),now()+interval '5 minutes',repeat('a',64),'instance-b',null
+    );
+    raise exception 'Null action list was accepted';
+  exception when sqlstate '22023' then null;
+  end;
+  begin
+    perform public.papi_issue_sync_approval(
+      'APR-M33-DUP001','TASK-M33-001','sync.apply_plan','internal_write',
+      'owner-test',now(),now()+interval '5 minutes',repeat('a',64),'instance-b',
+      jsonb_build_array(repeat('b',64),repeat('b',64))
+    );
+    raise exception 'Duplicate action IDs were accepted';
+  exception when sqlstate '22023' then null;
+  end;
+  begin
+    perform public.papi_issue_sync_approval(
+      'APR-M33-BAD001','TASK-M33-001','sync.apply_plan','internal_write',
+      'owner-test',now(),now()+interval '5 minutes',repeat('a',64),'instance-b',
+      jsonb_build_array('not-a-digest')
+    );
+    raise exception 'Malformed action ID was accepted';
+  exception when sqlstate '22023' then null;
+  end;
+end
+$invalid_scope$;
+
 do $audit$
 begin
   if (select count(*) from public.papi_audit_events
