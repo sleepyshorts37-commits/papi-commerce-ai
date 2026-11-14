@@ -57,7 +57,7 @@ create or replace function public.papi_supervisor_heartbeat(p_worker_id text,p_s
 returns timestamptz language plpgsql security definer set search_path=public,pg_temp as $$
 declare v_seen timestamptz:=now();
 begin
- if p_worker_id is null or p_source not in ('worker_runtime','trusted_monitor') then raise exception 'Invalid supervisor heartbeat' using errcode='22023'; end if;
+ if p_worker_id is null or p_source is null or p_source not in ('worker_runtime','trusted_monitor') then raise exception 'Invalid supervisor heartbeat' using errcode='22023'; end if;
  if not exists(select 1 from public.papi_workers where worker_id=p_worker_id) then raise exception 'Unknown worker' using errcode='23503'; end if;
  insert into public.papi_worker_heartbeats(worker_id,last_seen_at,source,updated_at) values(p_worker_id,v_seen,p_source,v_seen)
  on conflict(worker_id) do update set last_seen_at=greatest(public.papi_worker_heartbeats.last_seen_at,excluded.last_seen_at),source=excluded.source,updated_at=v_seen;
@@ -69,7 +69,7 @@ end; $$;
 create or replace function public.papi_supervisor_evaluate_worker(
  p_worker_id text,p_evaluator_id text,p_period_start timestamptz default now()-interval '30 days',p_period_end timestamptz default now()
 ) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_sample integer; v_completed integer; v_failed integer; v_reliability numeric(5,2); v_completion numeric(5,2);
+declare v_sample integer; v_terminal integer; v_completed integer; v_failed integer; v_reliability numeric(5,2); v_completion numeric(5,2);
  v_timeliness numeric(5,2); v_overall numeric(5,2); v_eval uuid; v_durations numeric;
 begin
  if p_worker_id is null or p_evaluator_id is null or length(trim(p_evaluator_id)) not between 1 and 120
@@ -77,13 +77,13 @@ begin
  or p_period_end>now()+interval '60 seconds' or p_period_end-p_period_start>interval '366 days'
  then raise exception 'Invalid or self evaluation request' using errcode='22023'; end if;
  if not exists(select 1 from public.papi_workers where worker_id=p_worker_id) then raise exception 'Unknown worker' using errcode='23503'; end if;
- select count(*),count(*) filter(where a.status='completed'),count(*) filter(where a.status='failed'),
- avg(extract(epoch from(a.finished_at-a.started_at))/60.0)
- into v_sample,v_completed,v_failed,v_durations
- from public.papi_worker_assignments a where a.worker_id=p_worker_id and a.assigned_at>=p_period_start and a.assigned_at<p_period_end
- and a.status in('completed','failed');
- v_reliability:=case when v_sample=0 then 100 else round(100.0*v_completed/v_sample,2) end;
- v_completion:=case when v_sample=0 then 100 else round(100.0*(v_completed+v_failed)/v_sample,2) end;
+ select count(*),count(*) filter(where a.status in('completed','failed')),
+ count(*) filter(where a.status='completed'),count(*) filter(where a.status='failed'),
+ avg(extract(epoch from(a.finished_at-a.started_at))/60.0) filter(where a.status in('completed','failed'))
+ into v_sample,v_terminal,v_completed,v_failed,v_durations
+ from public.papi_worker_assignments a where a.worker_id=p_worker_id and a.assigned_at>=p_period_start and a.assigned_at<p_period_end;
+ v_reliability:=case when v_terminal=0 then 100 else round(100.0*v_completed/v_terminal,2) end;
+ v_completion:=case when v_sample=0 then 100 else round(100.0*v_terminal/v_sample,2) end;
  v_timeliness:=case when v_durations is null then 100 else round(greatest(0,least(100,100-(v_durations/60.0*100))),2) end;
  v_overall:=round(v_reliability*0.50+v_completion*0.30+v_timeliness*0.20,2);
  insert into public.papi_worker_evaluations(worker_id,evaluator_id,period_start,period_end,sample_size,completed_count,failed_count,
@@ -96,14 +96,14 @@ begin
  insert into public.papi_audit_events(event_id,occurred_at,actor,action,entity_type,entity_id,details)
  values('supervisor-eval:'||v_eval::text,now(),p_evaluator_id,'worker.evaluated','worker',p_worker_id,
  jsonb_build_object('evaluation_id',v_eval,'overall_score',v_overall,'sample_size',v_sample));
- if v_sample>=3 and v_reliability<70 then
+ if v_terminal>=3 and v_reliability<70 then
   insert into public.papi_supervisor_alerts(alert_key,worker_id,manager_worker_id,severity,alert_type,summary,evidence,recommended_action)
   select 'failure-rate:'||p_worker_id||':'||to_char(p_period_end at time zone 'UTC','YYYYMMDDHH24MI'),p_worker_id,w.manager_worker_id,
   'critical','failure_rate','Worker failure rate requires human review.',
   jsonb_build_object('sample_size',v_sample,'completed',v_completed,'failed',v_failed,'reliability_score',v_reliability),'review'
   from public.papi_workers w where w.worker_id=p_worker_id on conflict(alert_key) do nothing;
  end if;
- if v_sample>=3 and v_overall<60 then
+ if v_terminal>=3 and v_overall<60 then
   insert into public.papi_supervisor_alerts(alert_key,worker_id,manager_worker_id,severity,alert_type,summary,evidence,recommended_action)
   select 'low-score:'||p_worker_id||':'||to_char(p_period_end at time zone 'UTC','YYYYMMDDHH24MI'),p_worker_id,w.manager_worker_id,
   'warning','low_score','Worker operational score is below the review threshold.',
@@ -118,7 +118,7 @@ create or replace function public.papi_supervisor_detect_stale_workers(p_evaluat
 returns integer language plpgsql security definer set search_path=public,pg_temp as $$
 declare v_count integer;
 begin
- if p_evaluator_id is null or length(trim(p_evaluator_id)) not between 1 and 120 or p_stale_after_seconds not between 60 and 86400
+ if p_evaluator_id is null or length(trim(p_evaluator_id)) not between 1 and 120 or p_stale_after_seconds is null or p_stale_after_seconds not between 60 and 86400
  then raise exception 'Invalid stale-worker detection request' using errcode='22023'; end if;
  insert into public.papi_supervisor_alerts(alert_key,worker_id,manager_worker_id,severity,alert_type,summary,evidence,recommended_action)
  select 'stale-heartbeat:'||w.worker_id||':'||to_char(coalesce(h.last_seen_at,w.created_at) at time zone 'UTC','YYYYMMDDHH24MI'),
@@ -134,14 +134,14 @@ create or replace function public.papi_supervisor_update_alert(p_alert_id uuid,p
 returns boolean language plpgsql security definer set search_path=public,pg_temp as $$
 declare v_count integer;
 begin
- if p_alert_id is null or p_action not in('acknowledge','resolve') or p_human_actor is null or length(trim(p_human_actor)) not between 1 and 120
+ if p_alert_id is null or p_action is null or p_action not in('acknowledge','resolve') or p_human_actor is null or length(trim(p_human_actor)) not between 1 and 120
  then raise exception 'Invalid alert update request' using errcode='22023'; end if;
  update public.papi_supervisor_alerts set status=case when p_action='resolve' then 'resolved' else 'acknowledged' end,
  acknowledged_at=case when p_action='acknowledge' then now() else acknowledged_at end,
  acknowledged_by=case when p_action='acknowledge' then p_human_actor else acknowledged_by end,
  resolved_at=case when p_action='resolve' then now() else resolved_at end,
  resolved_by=case when p_action='resolve' then p_human_actor else resolved_by end
- where alert_id=p_alert_id and status<>'resolved';
+ where alert_id=p_alert_id and ((p_action='acknowledge' and status='open') or (p_action='resolve' and status in('open','acknowledged')));
  get diagnostics v_count=row_count;
  if v_count=1 then
   insert into public.papi_audit_events(event_id,occurred_at,actor,action,entity_type,entity_id,details)
