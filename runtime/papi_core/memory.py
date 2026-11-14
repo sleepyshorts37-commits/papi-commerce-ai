@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .principal import require_authenticated_agent_principal
+from .sync_store import SyncStoreError, load_imported_records
 
 DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "memory" / "events.jsonl"
 CATEGORIES = {"fact", "decision", "project", "result", "procedure", "lesson"}
@@ -191,6 +192,7 @@ def remember_fact(
 def search_memory(
     *, principal: object, query: str = "", category: str | None = None,
     scope: str | None = None, limit: int = 20, path: Path = DEFAULT_PATH,
+    import_db: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Recherche locale ; les entrées privées ne sont visibles que dans leur portée."""
     authenticated = require_authenticated_agent_principal(principal)
@@ -204,6 +206,26 @@ def search_memory(
     if scope is not None and scope not in SCOPES:
         raise MemoryError("Portée invalide.")
     events = _read_events(Path(path))
+    try:
+        imported = load_imported_records(import_db, "memory")
+    except SyncStoreError as exc:
+        raise MemoryError(f"Magasin de mémoire synchronisée invalide: {exc}") from exc
+    known_events = {event["event_id"]: event for event in events}
+    known_memories = {event.get("memory_id"): event for event in events if event.get("event_type") == "remember"}
+    for event in imported:
+        _validate_event(event, 0)
+        if (event.get("event_type") != "remember" or event.get("scope") != "shared"
+                or event.get("sensitivity") != "normal" or event.get("category") == "decision"):
+            raise MemoryError("Contenu mémoire importé hors du périmètre partagé autorisé.")
+        previous = known_events.get(event["event_id"])
+        previous_memory = known_memories.get(event["memory_id"])
+        if previous is not None or previous_memory is not None:
+            if previous == event and previous_memory == event:
+                continue
+            raise MemoryError("Collision entre mémoire locale et mémoire importée.")
+        known_events[event["event_id"]] = event
+        known_memories[event["memory_id"]] = event
+        events.append(event)
     superseded = {e.get("target_memory_id") for e in events if e["event_type"] == "supersede"}
     terms = query.casefold().split()
     results = []
