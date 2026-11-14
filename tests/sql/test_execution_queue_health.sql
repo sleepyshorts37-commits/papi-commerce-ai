@@ -52,6 +52,6 @@ begin
     raise exception 'Queue health function privileges are too broad or incomplete';
   end if;
 end;
-$;
+$$;
 
 rollback;
