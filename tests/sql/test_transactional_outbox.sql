@@ -138,6 +138,43 @@ begin
         raise exception 'Outbox privileges are too broad or incomplete';
     end if;
 
+    -- The business mutation and outbox insert roll back together when kept
+    -- inside the same PostgreSQL transaction boundary.
+    begin
+        insert into public.papi_tasks(id, task, version)
+        values (
+            'CI-M27-ATOMIC-TASK',
+            '{"id":"CI-M27-ATOMIC-TASK","status":"created"}'::jsonb,
+            1
+        );
+        perform public.papi_enqueue_outbox(
+            'ci-m27-atomic-rollback-004', 'task.created',
+            'CI-M27-ATOMIC-TASK', '{"task_ref":"CI-M27-ATOMIC-TASK"}'::jsonb, 2
+        );
+        raise exception 'force transaction rollback';
+    exception when raise_exception then
+        null;
+    end;
+    if exists (select 1 from public.papi_tasks where id = 'CI-M27-ATOMIC-TASK')
+       or exists (select 1 from public.papi_outbox
+                   where idempotency_key = 'ci-m27-atomic-rollback-004') then
+        raise exception 'Business write and outbox intent did not roll back together';
+    end if;
+
+    -- Incomplete lease metadata is invalid for every status.
+    begin
+        insert into public.papi_outbox(
+            idempotency_key, event_type, aggregate_id, payload,
+            status, lease_owner
+        ) values (
+            'ci-m27-invalid-lease-005', 'test.invalid', 'INVALID-LEASE',
+            '{}'::jsonb, 'pending', 'orphan-worker'
+        );
+        raise exception 'Incomplete lease state was accepted';
+    exception when check_violation then
+        null;
+    end;
+
     perform public.papi_outbox_health();
 end;
-$$;
+$;
