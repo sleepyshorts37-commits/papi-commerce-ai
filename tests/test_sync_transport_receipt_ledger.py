@@ -130,6 +130,28 @@ class SyncTransportReceiptLedgerTests(unittest.TestCase):
         self.assertEqual(receipt_count, 1)
         self.assertEqual(nonce_count, 1)
 
+    def test_receipt_insert_failure_rolls_back_nonce(self):
+        with sqlite3.connect(self.ledger) as db:
+            db.execute("""
+                CREATE TABLE sync_transport_receipts (
+                    receipt_id TEXT PRIMARY KEY, delivery_id TEXT NOT NULL UNIQUE,
+                    request_body_sha256 TEXT NOT NULL, source_instance_id TEXT NOT NULL,
+                    destination_instance_id TEXT NOT NULL, receipt_sha256 TEXT NOT NULL UNIQUE,
+                    receipt_json TEXT NOT NULL,
+                    verified_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+                    status TEXT NOT NULL CHECK(status = 'verified_transport_receipt')
+                )
+            """)
+            db.execute("""
+                CREATE TRIGGER reject_receipt BEFORE INSERT ON sync_transport_receipts
+                BEGIN SELECT RAISE(ABORT, 'injected ledger write failure'); END
+            """)
+        with self.assertRaises(SyncTransportReceiptLedgerError):
+            self.record(self.receipt())
+        with sqlite3.connect(self.ledger) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM sync_transport_receipts").fetchone()[0], 0)
+            self.assertEqual(db.execute("SELECT count(*) FROM used_nonces").fetchone()[0], 0)
+
     def test_separate_replay_database_is_rejected(self):
         with self.assertRaises(SyncTransportReceiptLedgerError):
             record_verified_sync_transport_receipt(
