@@ -33,6 +33,9 @@ def validate_message(message: dict[str, Any], agents_path: Path = AGENTS_FILE) -
     required = {"message_id", "sent_at", "sender", "recipient", "subject", "body", "message_type"}
     if set(message) != required:
         raise ChatError("Structure du message invalide.")
+    for field in ("sender", "recipient", "message_id", "sent_at", "message_type"):
+        if not isinstance(message[field], str) or not message[field].strip():
+            raise ChatError(f"Champ {field} invalide.")
     allowed = _allowed_ids(agents_path)
     if message["sender"] not in allowed:
         raise ChatError("Expéditeur inconnu.")
@@ -47,13 +50,19 @@ def validate_message(message: dict[str, Any], agents_path: Path = AGENTS_FILE) -
         raise ChatError("Contenu ressemblant à un secret d'authentification interdit.")
     if message["message_type"] not in {"info", "task", "alert", "report"}:
         raise ChatError("Type de message invalide.")
-    if not isinstance(message["sent_at"], str):
-        raise ChatError("sent_at doit être une date ISO 8601.")
     try:
-        datetime.fromisoformat(message["sent_at"].replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(message["sent_at"].replace("Z", "+00:00"))
     except ValueError as exc:
         raise ChatError("sent_at invalide.") from exc
-    if not isinstance(message["message_id"], str) or not message["message_id"].startswith("MSG-"):
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ChatError("sent_at doit inclure un fuseau horaire.")
+    if not message["message_id"].startswith("MSG-"):
+        raise ChatError("Identifiant de message invalide.")
+    try:
+        parsed_id = __import__("uuid").UUID(message["message_id"][4:])
+    except ValueError as exc:
+        raise ChatError("Identifiant de message invalide.") from exc
+    if parsed_id.hex.upper() != message["message_id"][4:].upper():
         raise ChatError("Identifiant de message invalide.")
 
 
@@ -75,10 +84,15 @@ def send_message(
     validate_message(message, agents_path)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = (json.dumps(message, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
+    payload = (json.dumps(message, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     try:
-        os.write(descriptor, payload)
+        view = memoryview(payload)
+        while view:
+            written = os.write(descriptor, view)
+            if written <= 0:
+                raise OSError("Écriture incomplète du journal PAPI CHAT.")
+            view = view[written:]
     finally:
         os.close(descriptor)
     return message
@@ -98,12 +112,16 @@ def read_messages(
     if not path.exists():
         return []
     messages = []
+    seen_ids: set[str] = set()
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
-            continue
+            raise ChatError(f"Ligne vide interdite dans le journal PAPI CHAT ligne {number}.")
         try:
             message = json.loads(line)
             validate_message(message, agents_path)
+            if message["message_id"] in seen_ids:
+                raise ChatError("Identifiant de message dupliqué.")
+            seen_ids.add(message["message_id"])
         except (json.JSONDecodeError, ChatError) as exc:
             raise ChatError(f"Message invalide à la ligne {number}: {exc}") from exc
         if recipient is None or message["recipient"] in {recipient, "all"}:
