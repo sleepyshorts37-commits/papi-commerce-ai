@@ -125,7 +125,7 @@ begin
  if p_event_key is not null and exists(select 1 from public.papi_incident_events where event_key=p_event_key) then
   return jsonb_build_object('incident_id',p_incident_id,'duplicate',true,'status',v_incident.status);
  end if;
- v_new_status:=v_incident.status; v_new_severity:=v_incident.severity; v_event_type:=p_action;
+ v_new_status:=v_incident.status; v_new_severity:=v_incident.severity; v_event_type:=case p_action when 'qualify' then 'qualified' when 'investigate' then 'investigating' when 'mitigate' then 'mitigated' when 'escalate' then 'escalated' when 'add_evidence' then 'evidence_added' else p_action end;
  if p_action='qualify' and v_incident.status='open' then v_new_status:='qualified';
  elsif p_action='investigate' and v_incident.status in('open','qualified') then v_new_status:='investigating';
  elsif p_action='mitigate' and v_incident.status in('investigating','qualified') then v_new_status:='mitigated';
@@ -177,11 +177,12 @@ begin
   select incident_id,'incident-sla-breach:'||incident_id::text,'sla_breached',p_actor,status,status,
    jsonb_build_object('severity',severity,'target_resolution_at',target_resolution_at,'assigned_human',assigned_human)
   from overdue returning incident_id
+ ), audited as (
+  insert into public.papi_audit_events(event_id,occurred_at,actor,action,entity_type,entity_id,details)
+  select 'incident-sla-audit:'||incident_id::text,now(),p_actor,'incident.sla_breached','incident',incident_id::text,'{}'::jsonb
+  from events returning entity_id
  )
- select count(*) into v_count from events;
- insert into public.papi_audit_events(event_id,occurred_at,actor,action,entity_type,entity_id,details)
- select 'incident-sla-audit:'||incident_id::text,now(),p_actor,'incident.sla_breached','incident',incident_id::text,'{}'::jsonb
- from public.papi_incidents where sla_breached_at is not null and updated_at>=now()-interval '2 seconds';
+ select count(*) into v_count from audited;
  return v_count;
 end; $$;
 
