@@ -8,7 +8,7 @@ Groupe commercial numérique assisté par agents IA. **État : fondations techni
 3. **PAPI AFFILIATION** — affiliation et parrainages autorisés.
 4. **PAPI FREELANCE** — missions réalisables et autorisées pour des agents IA.
 5. **PAPI SERVICES** — services numériques aux entreprises.
-6. **PAPI BUSINESS PARTNERS** — apport d'affaires rémunéré à la commission.
+6. **PAPI BUSINESS PARTNERS** — apport d'affaires rémunéré à la commission.\n7. **PAPI KIDS PUBLISHING** — création, publication et vente de livres originaux pour enfants et de publications numériques, sans stock physique grâce à l'impression à la demande et à la distribution numérique.
 
 ## Principes
 - Objectif initial : 0 FCFA. Aucune dépense, souscription, publicité payante ou crédit API sans autorisation explicite.
@@ -37,7 +37,7 @@ Depuis la racine du dépôt :
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
 ## Documents
-- [Organisation](docs/ORGANISATION.md)
+- [Organisation](docs/ORGANISATION.md)\n- [PAPI KIDS PUBLISHING — organisation, 24 rôles et chaîne de vente](docs/PAPI-KIDS-PUBLISHING.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Plan de réalisation](docs/ROADMAP.md)
