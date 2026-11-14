@@ -34,13 +34,13 @@ Apport d'affaires pour hôtels, restaurants, immobilier, automobile, écoles, co
 - Cheikh : e-mail.
 - Sokhna : Instagram.
 - Babacar : Facebook.
-- Ndeye : LinkedIn.
+- Ndeye : prospection LinkedIn.
 - Moussa : coordination multicanale, WhatsApp/téléphone lorsque autorisés, suivi et négociation.
 - Moussa conduit les discussions et négocie dans une grille préautorisée.
 - Marietou supervise les partenariats et valide les engagements dépassant les limites déléguées.
 - Seydina recherche les entreprises via Google Search, Google Maps et sources publiques ; Gmail pour les échanges et Google Sheets comme registre éventuel après configuration.
 
-**Collision de noms à résoudre avant déploiement :** Ndeye a aussi été proposé pour les RH numériques. Cheikh et Cheikh Fall sont deux rôles distincts.
+**Clarification du registre :** Ndeye conserve le rôle de prospection LinkedIn. Le registre agents attribue les RH numériques à Oumou (`oumou-rh`). Cheikh (`cheikh-prospect`) et Cheikh Fall (`cheikh-fall`) sont deux identités distinctes avec des fonctions différentes.
 
 ## Création et communication
 Khaly : direction marketing et communication. Aminata : direction créative et identité visuelle. Seynabou : veille concurrentielle et vérification préliminaire des noms.
