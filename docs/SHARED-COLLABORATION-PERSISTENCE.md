@@ -44,3 +44,14 @@ Le module `runtime/papi_core/shared_collaboration.py` ajoute une façade explici
 - La clé `service_role` ne doit exister que dans l'environnement serveur protégé.
 
 Les tests unitaires utilisent un faux store sans réseau ni projet Supabase hébergé.
+
+
+## Jour 3/5 : pagination stable et idempotence
+
+- Les lectures mémoire et PAPI CHAT utilisent désormais une pagination par curseur (keyset), ordonnée par horodatage puis identifiant unique ; les pages suivantes ne dépendent pas d'un offset qui se décale lorsque de nouveaux messages arrivent.
+- Chaque écriture mémoire ou message exige une clé d'idempotence stable de 8 à 128 caractères. Une répétition de la même requête renvoie l'enregistrement existant ; la réutilisation de la clé avec un contenu différent est refusée.
+- La migration `005_collaboration_pagination_idempotency.sql` ajoute les contraintes d'unicité, les validations de clés et les index adaptés aux lectures paginées.
+- Les lectures de mémoire privée et des messages destinés à l'agent restent filtrées côté serveur.
+- Les tests unitaires couvrent répétition, collision de clé, pagination et validation des curseurs. Le workflow applique les migrations 004/005 deux fois et vérifie l'unicité dans PostgreSQL éphémère.
+
+Le curseur est un jeton de position opaque, pas une preuve d'autorisation : chaque page réauthentifie le principal et réapplique les filtres d'accès. Aucune synchronisation automatique ou opération sur un projet Supabase hébergé n'est activée.
