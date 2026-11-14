@@ -5,7 +5,7 @@
 
 Branche : `mission-33-controlled-sync-protocol`  
 PR : [#193](https://github.com/sleepyshorts37-commits/papi-commerce-ai/pull/193) — ouverte, draft, non fusionnée.  
-SHA validé : `5fa99ede010c8d03e147d4cf4975c43144138087`.
+SHA validé : `6c49c11ab351cb3233011b326e161aec61c24a8f`.
 
 ## Résultats par phase
 - Jours 1–5 : audit des contrats, identité, visibilité, canonicalisation et modèle de menace.
@@ -14,7 +14,7 @@ SHA validé : `5fa99ede010c8d03e147d4cf4975c43144138087`.
 - Jours 16–20 : tests unitaires, SQL, PostgreSQL jetable, PostgREST local, validation des privilèges, runbook et revue finale.
 
 ## Preuves de validation
-- GitHub Actions run #1103, ID `43610821667` : succès sur le SHA indiqué.
+- GitHub Actions run #1125, ID `43610941829` : succès sur le SHA indiqué.
 - 345 tests Python réussis.
 - Job `tests` : succès.
 - Job `local-postgrest-integration` : succès.
