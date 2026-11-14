@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .identity_ed25519 import Ed25519IdentityError, verify_ed25519_request
+from .identity_ed25519 import Ed25519IdentityError, verify_ed25519_request, verify_ed25519_request_transactional
 
 
 class SyncTransportReceiptError(ValueError):
@@ -88,15 +88,22 @@ def verify_sync_transport_receipt(
     if receipt.get("agent_id") != destination_id:
         raise SyncTransportReceiptError("Le reçu doit être signé par l'instance destinataire.")
     try:
-        verified = verify_ed25519_request(
-            receipt, registry_path=Path(registry_path), replay_db=Path(replay_db),
-            now=now, consume_nonce=False,
-        )
-        # Consume the destination nonce only after all receipt bindings pass.
-        verified = verify_ed25519_request(
-            receipt, registry_path=Path(registry_path), replay_db=Path(replay_db),
-            now=now, consume_nonce=True,
-        )
+        if replay_connection is not None:
+            # Nonce reservation participates in the caller's SQLite transaction.
+            verified = verify_ed25519_request_transactional(
+                receipt, connection=replay_connection,
+                registry_path=Path(registry_path), now=now,
+            )
+        else:
+            verified = verify_ed25519_request(
+                receipt, registry_path=Path(registry_path), replay_db=Path(replay_db),
+                now=now, consume_nonce=False,
+            )
+            # Legacy standalone mode; caller cannot atomically couple a separate ledger.
+            verified = verify_ed25519_request(
+                receipt, registry_path=Path(registry_path), replay_db=Path(replay_db),
+                now=now, consume_nonce=True,
+            )
     except Ed25519IdentityError as exc:
         raise SyncTransportReceiptError(str(exc)) from exc
     return {
