@@ -17,11 +17,23 @@ Passer des contrats simulés de la Mission 21 à une validation reproductible de
 - Procédure documentée pour appliquer deux fois le schéma et les migrations partagées.
 - Limite explicitée : PostgreSQL seul ne valide ni Supabase Auth, ni PostgREST, ni les JWT.
 
-## Jours suivants — critères de sortie prévus
+## Jour 3/5 — PostgREST local réel
 
-1. Exécuter les migrations et tests de permissions/RLS sur un environnement Supabase local complet.
-2. Tester les adaptateurs mémoire et PAPI CHAT sur PostgREST réel, notamment idempotence, pagination et cloisonnement.
-3. Produire un rapport de préparation, les limites restantes et les conditions de validation humaine.
+- PostgREST v12.2.12 devant PostgreSQL jetable.
+- JWT HS256 local, insertion, filtre destinataire et protection append-only.
+- Limite : aucun Supabase Auth ni gateway complet.
+
+## Jour 4/5 — Adaptateurs applicatifs réels
+
+- Tests des adaptateurs mémoire partagée et PAPI CHAT via PostgREST local.
+- Vérification idempotence, lecture filtrée et pagination.
+- CI dédiée sur la pile locale jetable.
+
+## Jour 5/5 — Frontière d'authentification et rapport de préparation
+
+- Matrice de rejet des requêtes sans jeton, malformées, signées avec une mauvaise clé, expirées et portant le rôle anon.
+- Conservation des tests d'insertion privilégiée, de cloisonnement et d'immutabilité.
+- Rapport final distinguant les contrôles validés localement des composants non couverts.
 
 ## Garde-fous
 
