@@ -10,6 +10,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from .registry import AGENTS_FILE, load_agents
+from .sync_store import SyncStoreError, load_imported_records
 
 CHAT_FILE = Path(__file__).resolve().parents[2] / "data" / "chat" / "messages.jsonl"
 SECRET_PATTERN = re.compile(
@@ -101,6 +102,7 @@ def send_message(
 def read_messages(
     *, recipient: str | None = None, limit: int = 50,
     path: Path = CHAT_FILE, agents_path: Path = AGENTS_FILE,
+    import_db: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Lit les messages locaux destinés à un agent ou diffusés à tous."""
     if not isinstance(limit, int) or not 1 <= limit <= 200:
@@ -109,11 +111,12 @@ def read_messages(
     if recipient is not None and recipient not in allowed:
         raise ChatError("Destinataire inconnu.")
     path = Path(path)
-    if not path.exists():
-        return []
     messages = []
     seen_ids: set[str] = set()
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    local_messages = []
+    if path.exists():
+        local_messages = path.read_text(encoding="utf-8").splitlines()
+    for number, line in enumerate(local_messages, start=1):
         if not line.strip():
             raise ChatError(f"Ligne vide interdite dans le journal PAPI CHAT ligne {number}.")
         try:
@@ -124,6 +127,24 @@ def read_messages(
             seen_ids.add(message["message_id"])
         except (json.JSONDecodeError, ChatError) as exc:
             raise ChatError(f"Message invalide à la ligne {number}: {exc}") from exc
+        if recipient is None or message["recipient"] in {recipient, "all"}:
+            messages.append(message)
+    try:
+        imported = load_imported_records(import_db, "message")
+    except SyncStoreError as exc:
+        raise ChatError(f"Magasin PAPI CHAT synchronisé invalide: {exc}") from exc
+    for number, message in enumerate(imported, start=1):
+        try:
+            validate_message(message, agents_path)
+            message_id = message["message_id"]
+            if message_id in seen_ids:
+                previous = next((item for item in messages if item["message_id"] == message_id), None)
+                if previous == message:
+                    continue
+                raise ChatError("Collision entre message local et message importé.")
+            seen_ids.add(message_id)
+        except (ChatError, KeyError, TypeError) as exc:
+            raise ChatError(f"Message importé invalide #{number}: {exc}") from exc
         if recipient is None or message["recipient"] in {recipient, "all"}:
             messages.append(message)
     return messages[-limit:]
