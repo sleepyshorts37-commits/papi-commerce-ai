@@ -17,8 +17,8 @@ from .sync_spool import MAX_PACKAGE_BYTES
 
 MAX_TRANSFER_BYTES = 4 * 1024 * 1024
 _DIGEST = re.compile(r"^[a-f0-9]{64}$")
-_PACKAGE_NAME = re.compile(r"^[a-f0-9]{64}\\.papisync$")
-_PAYLOAD_NAME = re.compile(r"^[a-f0-9]{64}\\.papidata$")
+_PACKAGE_NAME = re.compile(r"^[a-f0-9]{64}\.papisync$")
+_PAYLOAD_NAME = re.compile(r"^[a-f0-9]{64}\.papidata$")
 
 
 class SyncTransferManifestError(ValueError):
@@ -170,8 +170,8 @@ def validate_sync_transfer_manifest(manifest: object) -> bool:
         item = manifest[label]
         if not isinstance(item, dict) or set(item) != {"filename", "sha256", "size_bytes", digest_key}:
             raise SyncTransferManifestError(f"Métadonnées {label} invalides.")
-        if (not isinstance(item["filename"], str) or not item["filename"].endswith(suffix)
-                or not _DIGEST.fullmatch(str(item["sha256"]))
+        if (not isinstance(item["filename"], str) or not _DIGEST.fullmatch(str(item["sha256"]))
+                or item["filename"] != item[digest_key] + suffix
                 or not _DIGEST.fullmatch(str(item[digest_key]))
                 or isinstance(item["size_bytes"], bool) or not isinstance(item["size_bytes"], int)
                 or item["size_bytes"] <= 0):
