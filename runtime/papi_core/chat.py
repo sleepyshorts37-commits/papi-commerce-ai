@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from .registry import AGENTS_FILE, load_agents
 from .sync_store import SyncStoreError, load_imported_records
+from .local_store import LocalStoreError, append_local_record, load_local_records
 
 CHAT_FILE = Path(__file__).resolve().parents[2] / "data" / "chat" / "messages.jsonl"
 SECRET_PATTERN = re.compile(
@@ -70,7 +71,7 @@ def validate_message(message: dict[str, Any], agents_path: Path = AGENTS_FILE) -
 def send_message(
     *, sender: str, recipient: str, subject: str, body: str,
     message_type: str = "info", path: Path = CHAT_FILE,
-    agents_path: Path = AGENTS_FILE,
+    agents_path: Path = AGENTS_FILE, sqlite_db: Path | None = None,
 ) -> dict[str, Any]:
     """Enregistre un message local; n'envoie rien sur Internet."""
     message = {
@@ -83,26 +84,34 @@ def send_message(
         "message_type": message_type,
     }
     validate_message(message, agents_path)
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = (json.dumps(message, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-    try:
-        view = memoryview(payload)
-        while view:
-            written = os.write(descriptor, view)
-            if written <= 0:
-                raise OSError("Écriture incomplète du journal PAPI CHAT.")
-            view = view[written:]
-    finally:
-        os.close(descriptor)
+    if sqlite_db is None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = (json.dumps(message, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        try:
+            view = memoryview(payload)
+            while view:
+                written = os.write(descriptor, view)
+                if written <= 0:
+                    raise OSError("Écriture incomplète du journal PAPI CHAT.")
+                view = view[written:]
+        finally:
+            os.close(descriptor)
+    else:
+        try:
+            append_local_record(sqlite_db, kind="message", record_id=message["message_id"],
+                                event_id=message["message_id"], created_at=message["sent_at"],
+                                record=message)
+        except LocalStoreError as exc:
+            raise ChatError(f"Écriture SQLite PAPI CHAT refusée: {exc}") from exc
     return message
 
 
 def read_messages(
     *, recipient: str | None = None, limit: int = 50,
     path: Path = CHAT_FILE, agents_path: Path = AGENTS_FILE,
-    import_db: Path | None = None,
+    import_db: Path | None = None, sqlite_db: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Lit les messages locaux destinés à un agent ou diffusés à tous."""
     if not isinstance(limit, int) or not 1 <= limit <= 200:
@@ -132,9 +141,27 @@ def read_messages(
         if recipient is None or message["recipient"] in {recipient, "all"}:
             messages.append(message)
     try:
+        operational = load_local_records(sqlite_db, "message")
         imported = load_imported_records(import_db, "message")
     except SyncStoreError as exc:
         raise ChatError(f"Magasin PAPI CHAT synchronisé invalide: {exc}") from exc
+    except LocalStoreError as exc:
+        raise ChatError(f"Magasin SQLite PAPI CHAT invalide: {exc}") from exc
+    for number, message in enumerate(operational, start=1):
+        try:
+            validate_message(message, agents_path)
+            message_id = message["message_id"]
+            if message_id in seen_ids:
+                previous = seen_messages.get(message_id)
+                if previous == message:
+                    continue
+                raise ChatError("Collision entre message JSONL et message SQLite.")
+            seen_ids.add(message_id)
+            seen_messages[message_id] = message
+        except (ChatError, KeyError, TypeError) as exc:
+            raise ChatError(f"Message SQLite invalide #{number}: {exc}") from exc
+        if recipient is None or message["recipient"] in {recipient, "all"}:
+            messages.append(message)
     for number, message in enumerate(imported, start=1):
         try:
             validate_message(message, agents_path)
