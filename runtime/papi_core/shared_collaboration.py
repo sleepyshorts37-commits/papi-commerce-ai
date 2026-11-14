@@ -76,7 +76,13 @@ class SharedCollaborationStore:
         if not isinstance(existing, list) or len(existing) != 1:
             raise StoreError("Résultat de l'opération idempotente introuvable.")
         row = existing[0]
-        if any(row.get(name) != value for name, value in payload.items()):
+        semantic_fields = (
+            ("actor", "category", "title", "content", "source_type", "source_id",
+             "confidence", "scope", "tags", "sensitivity")
+            if table == "papi_memory_events"
+            else ("sender", "recipient", "subject", "body", "message_type")
+        )
+        if any(row.get(name) != payload.get(name) for name in semantic_fields):
             raise SharedCollaborationError("Cette clé d'idempotence est déjà utilisée pour un contenu différent.")
         return row
 
