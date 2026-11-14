@@ -69,3 +69,4 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 
 - [x] Imposer l'append-only du registre local des reçus par triggers SQLite et ajouter un audit en lecture seule des digests SHA-256, du JSON canonique et des identifiants liés (Mission 60 ; intégrité locale, sans prétention d'inviolabilité).
 - [x] Ajouter un checkpoint local du registre des reçus, signé Ed25519, liant le nombre d'enregistrements à une empreinte SHA-256 déterministe et détectant toute divergence ultérieure (Mission 61 ; vérification sans consommation de nonce ni mutation du registre).
+- [x] Archiver durablement les checkpoints Ed25519 dans une base SQLite distincte, append-only, idempotente et auditable en lecture seule, avec vérification historique des signatures (Mission 62 ; sans réseau ni modification du registre métier).
