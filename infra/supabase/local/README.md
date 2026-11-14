@@ -43,4 +43,4 @@ Attendu : les deux tables existent, service_can_insert vaut true et anon_can_rea
 - Mot de passe fixe de test exclusivement local ; aucune clé Supabase réelle.
 - Ne pas y importer de données client ni de mémoire réelle.
 - Aucune connexion à un projet hébergé, aucune synchronisation inter-instance.
-- Le prochain niveau de validation doit utiliser la CLI Supabase et ses services locaux, puis un projet de test isolé uniquement après autorisation explicite.
+- La suite consiste à ajouter Auth/API Gateway locaux et à valider l'authentification de bout en bout. Un projet hébergé ne sera utilisé qu'après autorisation explicite.
