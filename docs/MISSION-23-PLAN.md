@@ -18,9 +18,12 @@ Renforcer la fiabilité du traitement des travaux sans activer d'exécution auto
 - Vérifier que `FOR UPDATE SKIP LOCKED` attribue deux jobs distincts avec des jetons distincts.
 - Finaliser les jobs avec les workers propriétaires ; aucun effet externe.
 
-## Jours 4 à 5 — Cibles
-- Jour 4 : crash/retry, idempotence des opérations métier et limites des effets externes.
-- Jour 5 : validation renforcée des événements, rapport de fiabilité et critères de préproduction.
+## Jour 4/5 — Crash/retry et idempotence
+- Simuler un worker qui disparaît après réservation ; vérifier la récupération après expiration du bail.
+- Vérifier l'unicité de la clé d'idempotence à la création du job, y compris lors d'une nouvelle tentative producteur.
+- Vérifier le plafond de tentatives et l'état terminal ; aucun effet métier externe n'est exécuté dans ces tests.
+
+## Jour 5/5 — Validation renforcée des événements, rapport de fiabilité et critères de préproduction.
 
 ## Garde-fous
 - Aucun worker permanent, aucune boucle autonome et aucun scheduler activé.
