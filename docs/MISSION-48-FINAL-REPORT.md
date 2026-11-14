@@ -7,7 +7,7 @@ Adaptateur SQLite local append-only ajouté. Mémoire, archivage mémoire et PAP
 Transactions SQLite immédiates, contraintes d'unicité, triggers interdisant UPDATE/DELETE, permissions restrictives, refus des liens symboliques et détection des collisions entre sources.
 
 ## Validation
-Les tests ciblés sont ajoutés dans `tests/test_sqlite_journals.py`. Le statut de validation définitif dépend de la CI exécutée sur le SHA final de cette branche ; ne considérer la mission comme vérifiée qu'après succès de tous les jobs requis sur ce SHA.
+**445 tests Python réussis.** CI GitHub Actions réussie sur le SHA `bffd4f3aa6d77f1ed8b15303dfdbc259be6f7dad` (run 1382) ; jobs `tests` et `local-postgrest-integration` terminés avec succès. Préflight Supabase hors ligne et validation du schéma PostgreSQL jetable réussis.
 
 ## Limites
 Aucune migration automatique JSONL, aucune réplication, aucun transport réseau, aucun déploiement, aucune activation de worker/scheduler. La base SQLite n'est pas chiffrée au repos et reste mono-instance.
