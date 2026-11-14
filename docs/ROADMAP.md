@@ -52,6 +52,7 @@
 - [x] Ajouter un moteur de rapprochement en lecture seule entre registre canonique et journal transactionnel : détection des identités orphelines, activations non autorisées, écarts d'état/permissions, révisions et versions de clés invalides ; rapport déterministe SHA-256 et recommandation fail-closed (Mission 66 ; CI verte sur le SHA final, aucune correction automatique ni activation).
 - [x] Ajouter des adaptateurs locaux read-only pour extraire le registre JSON canonique et le ledger SQLite, valider les schémas, refuser les sources ambiguës et alimenter directement le moteur de rapprochement (Mission 67 ; CI verte sur le SHA final, aucune écriture, aucun accès réseau).
 - [x] Durcir les adaptateurs de snapshots : ouverture par descripteur sans suivi de lien symbolique, limites de taille, détection des clés JSON dupliquées et validation stricte du ledger SQLite (Mission 68 ; CI verte sur le SHA final, aucune mutation ni accès réseau).
+- [ ] Ajouter un contrat sémantique commun aux snapshots : identifiants uniques, statuts bornés, permissions/interdictions cohérentes et versions strictement positives (Mission 69 ; aucune mutation ni activation).
 - [x] Rendre atomiques la réservation du nonce Ed25519 anti-rejeu et l'archivage du reçu de transport dans une seule transaction SQLite `BEGIN IMMEDIATE` / `COMMIT`, avec rollback conjoint et idempotence des doublons exacts (Mission 59 ; aucun réseau ni import).
 
 ## Phase 3 — Première activité commerciale
