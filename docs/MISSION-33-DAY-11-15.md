@@ -1,9 +1,14 @@
 # Mission 33 — Jours 11 à 15 : approbation et reprise gouvernées
 
-11. Définir une approbation future liée au digest du plan, à la destination et aux actions exactes.
-12. L'approbation doit être émise par une identité propriétaire authentifiée dans le backend ; un agent ne peut pas l'émettre pour lui-même.
-13. Les clés d'idempotence futures dérivent de l'identifiant d'action immuable ; un retry ne crée pas une deuxième opération.
-14. États cibles documentés : proposed, approved, applying, completed, partial, blocked, expired.
-15. Runbook de reprise : résultat réseau inconnu, crash, lease expiré, conflit et vérification manuelle.
+11. Définition d'une approbation liée au digest du plan, à la destination et à la liste exacte des actions.
+12. Signature Ed25519 obligatoire par l'identité propriétaire désignée ; l'agent auteur du plan ne peut pas s'approuver lui-même.
+13. Identifiants d'action immuables et vérification de nonce anti-rejeu ; consommation SQL atomique et auditée.
+14. Contrat d'état défini : proposed, approved, applying, completed, partial, blocked, expired. L'exécution reste désactivée dans cette mission.
+15. Runbook de reprise : timeout réseau, crash, rejeu, lease expiré, conflit et arbitrage humain.
 
-**État :** contrats et contraintes documentés. Aucun nouvel endpoint d'approbation ni exécuteur de transfert n'est activé dans cette PR ; ce choix évite de présenter une approbation non vérifiée comme autorisation effective.
+## Livrables exécutés
+- `runtime/papi_core/sync_approval.py` vérifie l'enveloppe Ed25519, l'identité propriétaire, la tâche, l'expiration et l'égalité stricte du digest, de la destination et des action IDs.
+- Migration `017_sync_approval_scope.sql` étend le ledger existant avec la portée exacte du plan.
+- RPC `papi_issue_sync_approval` et `papi_consume_sync_approval` : fonctions réservées à `service_role`, consommation atomique à usage unique et audit transactionnel.
+- Tests unitaires signés, tests SQL de périmètre et de rejeu.
+- La validation cryptographique consomme un nonce anti-rejeu ; la consommation durable de l'approbation doit ensuite être appelée côté backend via la RPC. Aucune action de synchronisation n'est exécutée.
