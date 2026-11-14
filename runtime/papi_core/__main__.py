@@ -12,6 +12,8 @@ from .sales import SalesError, build_sales_report, load_sales
 from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
+from .global_work import GlobalWorkError, load_global_work_registry
+from .video_tasks import VideoTaskError, load_video_task_registry
 
 
 def main() -> int:
@@ -29,6 +31,8 @@ def main() -> int:
     sub.add_parser("schedule-preview", help="Afficher les échéances récurrentes à examiner, sans exécution")
     sub.add_parser("sales-validate", help="Valider le registre commercial local")
     sub.add_parser("sales-report", help="Afficher le rapport commercial local en lecture seule")
+    sub.add_parser("global-work-validate", help="Valider le registre des missions internationales")
+    sub.add_parser("video-tasks-validate", help="Valider le registre des tâches vidéo YouTube")
     sub.add_parser("finance-validate", help="Valider le registre financier local")
     sub.add_parser("finance-report", help="Afficher le rapport financier local en lecture seule")
     sub.add_parser("security-check", help="Vérifier la posture de sécurité locale en lecture seule")
@@ -53,6 +57,14 @@ def main() -> int:
         if args.command == "sales-report":
             print(json.dumps(build_sales_report(), ensure_ascii=False, indent=2))
             return 0
+        if args.command == "global-work-validate":
+            load_global_work_registry()
+            print("OK — registre GLOBAL WORK valide.")
+            return 0
+        if args.command == "video-tasks-validate":
+            load_video_task_registry()
+            print("OK — registre VIDEO TASKS valide.")
+            return 0
         if args.command == "finance-validate":
             load_ledger()
             print("OK — registre financier valide.")
@@ -75,7 +87,8 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError,
+            AccessDenied, GlobalWorkError, VideoTaskError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
