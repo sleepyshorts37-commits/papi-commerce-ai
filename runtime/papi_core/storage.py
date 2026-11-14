@@ -179,7 +179,7 @@ class SupabaseStore:
             }
         elif event_type == "supersede":
             row = {
-                "event_id": event.get("event_id"), "memory_id": event.get("memory_id"),
+                "event_id": event.get("event_id"), "memory_id": event.get("target_memory_id"),
                 "event_type": "supersede", "created_at": event.get("created_at"),
                 "actor": actor, "target_memory_id": event.get("target_memory_id"),
                 "reason": event.get("reason"), "tags": [],
@@ -254,6 +254,79 @@ class SupabaseStore:
         if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
             raise StoreError("Réponse chat distante invalide.")
         return rows
+
+    @staticmethod
+    def _decode_collaboration_cursor(cursor: str | None) -> tuple[str, str] | None:
+        import base64
+        if cursor is None:
+            return None
+        if not isinstance(cursor, str) or len(cursor) > 512:
+            raise StoreError("Curseur de synchronisation invalide.")
+        try:
+            decoded = base64.urlsafe_b64decode(cursor.encode("ascii") + b"=" * (-len(cursor) % 4)).decode("utf-8")
+            timestamp, identifier = decoded.split("|", 1)
+            if not timestamp or not identifier:
+                raise ValueError("empty cursor")
+            return timestamp, identifier
+        except (ValueError, UnicodeError) as exc:
+            raise StoreError("Curseur de synchronisation invalide.") from exc
+
+    @staticmethod
+    def _encode_collaboration_cursor(timestamp: str, identifier: str) -> str:
+        import base64
+        raw = f"{timestamp}|{identifier}".encode("utf-8")
+        return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+    def page_memory_events(self, *, principal: object, limit: int = 50,
+                           cursor: str | None = None) -> dict[str, Any]:
+        from urllib.parse import quote
+        from .principal import require_authenticated_agent_principal
+        actor = require_authenticated_agent_principal(principal).agent_id
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
+            raise StoreError("Limite mémoire invalide.")
+        query = ("papi_memory_events?select=event_id,memory_id,event_type,created_at,actor,category,title,content,"
+                 "source_type,source_id,confidence,scope,tags,sensitivity,target_memory_id,reason"
+                 "&or=(and(scope.eq.shared),and(scope.eq.agent,actor.eq." + quote(actor, safe="") + "))")
+        decoded = self._decode_collaboration_cursor(cursor)
+        if decoded:
+            ts, identifier = decoded
+            query += "&or=(created_at.lt." + quote(ts, safe=":.-+") + ",and(created_at.eq." + quote(ts, safe=":.-+") + ",event_id.lt." + quote(identifier, safe="") + "))"
+        query += "&order=created_at.desc,event_id.desc&limit=" + str(limit + 1)
+        rows = self._request("GET", query)
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise StoreError("Réponse mémoire distante invalide.")
+        has_more = len(rows) > limit
+        items = rows[:limit]
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = self._encode_collaboration_cursor(last["created_at"], last["event_id"])
+        return {"items": items, "next_cursor": next_cursor}
+
+    def page_chat_messages(self, *, principal: object, limit: int = 50,
+                           cursor: str | None = None) -> dict[str, Any]:
+        from urllib.parse import quote
+        from .principal import require_authenticated_agent_principal
+        actor = require_authenticated_agent_principal(principal).agent_id
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 200:
+            raise StoreError("Limite chat invalide.")
+        query = ("papi_chat_messages?select=message_id,sent_at,sender,recipient,subject,body,message_type"
+                 "&or=(recipient.eq.all,recipient.eq." + quote(actor, safe="") + ")")
+        decoded = self._decode_collaboration_cursor(cursor)
+        if decoded:
+            ts, identifier = decoded
+            query += "&or=(sent_at.lt." + quote(ts, safe=":.-+") + ",and(sent_at.eq." + quote(ts, safe=":.-+") + ",message_id.lt." + quote(identifier, safe="") + "))"
+        query += "&order=sent_at.desc,message_id.desc&limit=" + str(limit + 1)
+        rows = self._request("GET", query)
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise StoreError("Réponse chat distante invalide.")
+        has_more = len(rows) > limit
+        items = rows[:limit]
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = self._encode_collaboration_cursor(last["sent_at"], last["message_id"])
+        return {"items": items, "next_cursor": next_cursor}
 
     def sync_worker_event(self, event: dict[str, Any], *, expected_version: int) -> dict[str, Any]:
         """Persist one worker event through the atomic, idempotent PostgreSQL RPC."""
