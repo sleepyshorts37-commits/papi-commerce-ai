@@ -3,7 +3,7 @@ import argparse
 import json
 import sys
 
-from .registry import RegistryError, route_department, validate_registries
+from .registry import RegistryError, route_department, validate_registries, validate_agent_directory
 from .orchestrator import build_dispatch_plan
 from .doctor import diagnose_environment
 from .command_center import build_command_center
@@ -19,6 +19,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="papi", description="Outils de contrôle PAPI COMMERCE AI")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate", help="Valider les registres agents et tâches")
+    sub.add_parser("organization-check", help="Valider les identités et la cohérence de l'organigramme")
     route = sub.add_parser("route", help="Lister les agents candidats d'un département")
     route.add_argument("department")
     agent_check = sub.add_parser("agent-check", help="Contrôler localement une permission d'agent")
@@ -37,6 +38,10 @@ def main() -> int:
     preflight.add_argument("--require-configured", action="store_true", help="Exiger URL et clé serveur configurées")
     args = parser.parse_args()
     try:
+        if args.command == "organization-check":
+            report = validate_agent_directory()
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 0 if report["valid"] else 1
         if args.command == "agent-check":
             print(json.dumps(authorize_agent(args.agent_id, args.permission), ensure_ascii=False, indent=2))
             return 0
