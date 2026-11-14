@@ -10,7 +10,7 @@ begin
  if v_heartbeat is null or not exists(select 1 from public.papi_worker_heartbeats where worker_id='CI-WORKER-M29' and last_seen_at=v_heartbeat)
  then raise exception 'Heartbeat was not recorded'; end if;
 
- -- Add three assignments: one successful, one failed and one still open.
+ -- Add three terminal assignments: one successful and two failed.
  insert into public.papi_jobs(id,task_id,handler,payload,idempotency_key,status,attempts,max_attempts)
  values
  ('JOB-CI-M29-001','CI-M29-TASK-001','test.run','{}'::jsonb,'ci-m29-job-key-001','done',1,3),
@@ -20,7 +20,7 @@ begin
  values
  ('CI-M29-TASK-001','CI-WORKER-M29','JOB-CI-M29-001','test.run','task.execute','ci-owner','completed',now()-interval '1 hour',now()-interval '40 minutes',now()-interval '10 minutes'),
  ('CI-M29-TASK-001','CI-WORKER-M29','JOB-CI-M29-002','test.run','task.execute','ci-owner','failed',now()-interval '1 hour',now()-interval '50 minutes',now()-interval '20 minutes'),
- ('CI-M29-TASK-001','CI-WORKER-M29','JOB-CI-M29-003','test.run','task.execute','ci-owner','failed',now()-interval '1 hour',now()-interval '50 minutes',now()-interval '20 minutes);
+ ('CI-M29-TASK-001','CI-WORKER-M29','JOB-CI-M29-003','test.run','task.execute','ci-owner','failed',now()-interval '1 hour',now()-interval '50 minutes',now()-interval '20 minutes');
 
  v_eval:=public.papi_supervisor_evaluate_worker('CI-WORKER-M29','supervisor-ci',now()-interval '1 day',now()+interval '1 second');
  if (v_eval->>'sample_size')::integer<>3 or (v_eval->>'completed')::integer<>1 or (v_eval->>'failed')::integer<>2
