@@ -14,7 +14,7 @@ Authentifier une approbation propriétaire pour un paquet référentiel exact, s
 Aucun import, transport, registre distribué de nonces, consommation du ledger SQL partagé, déploiement, worker, scheduler ou synchronisation réelle. L'anti-rejeu est local à une installation. La vérification ne prouve pas la légitimité juridique du titulaire.
 
 ## Validation
-Résultat CI et nombre final de tests à confirmer sur le SHA final de la branche.
+CI réussie : run #1228 (`43616441468`) sur le SHA `31c785e457f178036b21e7349c99752395cd834c`. Les deux jobs (`tests` et `local-postgrest-integration`) sont au vert; 391 tests Python réussis.
 
 ## Gouvernance
 Aucune clé privée, donnée client ou secret n'est ajouté au dépôt. PR brouillon, ouverte et non fusionnée.
