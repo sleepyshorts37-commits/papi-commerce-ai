@@ -47,6 +47,88 @@ jobs:
             -c "create role anon; create role authenticated; create role service_role;"
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/schema.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/004_shared_collaboration.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/004_shared_collaboration.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SHARED_COLLAB_SQL'
+          insert into public.papi_memory_events(
+            event_id, memory_id, event_type, created_at, actor, category, title,
+            content, source_type, source_id, confidence, scope, tags, sensitivity
+          ) values (
+            gen_random_uuid(), gen_random_uuid(), 'remember', now(), 'ci-agent',
+            'fact', 'CI memory', 'Disposable database contract test.',
+            'test', 'ci-004', 0.9, 'shared', array['ci'], 'normal'
+          );
+          insert into public.papi_chat_messages(
+            message_id, sent_at, sender, recipient, subject, body, message_type
+          ) values (
+            'MSG-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', now(), 'ci-agent', 'all',
+            'CI message', 'Disposable database contract test.', 'info'
+          );
+          do $privileges$
+          begin
+            if not has_table_privilege('service_role', 'public.papi_memory_events', 'insert')
+               or not has_table_privilege('service_role', 'public.papi_chat_messages', 'select')
+               or has_table_privilege('anon', 'public.papi_memory_events', 'select')
+               or has_table_privilege('authenticated', 'public.papi_chat_messages', 'select')
+               or has_table_privilege('service_role', 'public.papi_chat_messages', 'update')
+               or has_table_privilege('service_role', 'public.papi_memory_events', 'delete') then
+              raise exception 'Shared collaboration table privileges are too broad or incomplete';
+            end if;
+          end
+          $privileges$;
+          do $immutable$
+          begin
+            begin
+              update public.papi_chat_messages set body = body
+               where message_id = 'MSG-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+              raise exception 'Append-only chat UPDATE was accepted';
+            exception when sqlstate '55000' then
+              null;
+            end;
+            begin
+              delete from public.papi_memory_events where actor = 'ci-agent';
+              raise exception 'Append-only memory DELETE was accepted';
+            exception when sqlstate '55000' then
+              null;
+            end;
+          end
+          $immutable$;
+          SHARED_COLLAB_SQL
+          if psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/004_shared_collaboration_down.sql; then
+            echo "Populated shared-collaboration rollback unexpectedly succeeded" >&2
+            exit 1
+          fi
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SHARED_GUARD_SQL'
+          do $guard$
+          begin
+            if not exists (select 1 from public.papi_memory_events where actor = 'ci-agent')
+               or not exists (select 1 from public.papi_chat_messages where recipient = 'all') then
+              raise exception 'Refused rollback changed existing shared records';
+            end if;
+          end
+          $guard$;
+          SHARED_GUARD_SQL
+          createdb -h 127.0.0.1 -U postgres papi_shared_migration_test
+          psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/004_shared_collaboration.sql
+          psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/004_shared_collaboration_down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 <<'SHARED_ROLLBACK_SQL'
+          do $rollbackcheck$
+          begin
+            if to_regclass('public.papi_memory_events') is not null
+               or to_regclass('public.papi_chat_messages') is not null
+               or to_regprocedure('public.papi_reject_append_only_mutation()') is not null then
+              raise exception 'Clean shared collaboration rollback left objects behind';
+            end if;
+          end
+          $rollbackcheck$;
+          SHARED_ROLLBACK_SQL
+          psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/004_shared_collaboration.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
           select public.papi_consume_agent_nonce(
             'ci-agent', 'nonce-ci-000000000001', now() + interval '5 minutes'
