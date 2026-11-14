@@ -59,6 +59,24 @@ def _atomic_write(path: Path, data: bytes) -> None:
                 pass
 
 
+
+def _create_journal(path: Path, data: bytes) -> None:
+    """Create the transaction marker exclusively; concurrent rotations cannot overwrite it."""
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as handle:
+            fd = None
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        _fsync_directory(path.parent)
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+
 def _journal_path(private_path: Path) -> Path:
     return private_path.with_name(private_path.name + ".rotation-journal")
 
@@ -68,7 +86,7 @@ def _read_secure_journal(path: Path) -> dict[str, Any]:
         metadata = path.lstat()
         if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
             raise RotationJournalError("Journal de rotation non régulier : accès fermé.")
-        if stat.S_IMODE(metadata.st_mode) & 0o077:
+        if stat.S_IMODE(metadata.st_mode) != 0o600:
             raise RotationJournalError("Permissions du journal de rotation trop ouvertes.")
         if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
             raise RotationJournalError("Propriétaire du journal de rotation incorrect.")
@@ -169,7 +187,7 @@ def commit_key_rotation(
         "new_registry_sha256": _digest(new_registry),
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    _atomic_write(journal, encoded)
+    _create_journal(journal, encoded)
     try:
         _atomic_write(private_path, new_private)
         _atomic_write(registry_path, new_registry)
