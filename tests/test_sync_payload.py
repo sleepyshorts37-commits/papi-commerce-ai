@@ -20,7 +20,7 @@ class SyncPayloadTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.agents = self.root / "agents.json"
         self.agents.write_text(json.dumps({"agents": [
-            {"id": "agent-a"}, {"id": "agent-b"}
+            {"id": "agent-a", "name": "Agent A"}, {"id": "agent-b", "name": "Agent B"}
         ]}), encoding="utf-8")
         self.memory = {
             "event_id": "evt-memory-45", "event_type": "remember",
