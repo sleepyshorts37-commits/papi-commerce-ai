@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 def diagnose_environment(environ: dict[str, str] | None = None) -> dict:
     env = os.environ if environ is None else environ
     url = env.get("SUPABASE_URL", "").strip()
-    key = env.get("SUPABASE_KEY", "").strip()
+    key = env.get("SUPABASE_SERVICE_ROLE_KEY", "").strip() or env.get("SUPABASE_KEY", "").strip()
     parsed = urlparse(url) if url else None
 
     url_ok = bool(parsed and parsed.scheme == "https" and parsed.hostname and
@@ -27,7 +27,7 @@ def diagnose_environment(environ: dict[str, str] | None = None) -> dict:
 
     checks = {
         "supabase_url_configured": url_ok,
-        "supabase_key_configured": key_ok,
+        "supabase_server_key_configured": key_ok,
         "policy_execution_enabled": execution_enabled,
         "policy_external_actions_enabled": external_actions_enabled,
     }
