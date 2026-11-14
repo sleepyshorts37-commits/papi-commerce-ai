@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: papi-supabase-contract-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: papi_local_only_password
+      POSTGRES_DB: papi_contract_test
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d papi_contract_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: "no"
