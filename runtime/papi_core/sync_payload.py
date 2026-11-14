@@ -12,6 +12,7 @@ from typing import Any
 
 from .chat import AGENTS_FILE, validate_message, ChatError
 from .memory import _validate_event, MemoryError
+from .registry import load_agents, RegistryError
 from .sync_bundle import SyncBundleError, validate_sync_bundle
 
 FORMAT_VERSION = 1
@@ -52,6 +53,12 @@ def _record_identity(kind: str, record: dict[str, Any], agents_path: Path) -> tu
             raise SyncPayloadError("Événement mémoire invalide.") from exc
         if record.get("event_type") != "remember":
             raise SyncPayloadError("Seuls les événements remember peuvent être exportés.")
+        try:
+            known_agents = load_agents(Path(agents_path))
+        except RegistryError as exc:
+            raise SyncPayloadError("Registre d’agents indisponible; export mémoire refusé.") from exc
+        if record.get("actor") not in known_agents:
+            raise SyncPayloadError("Auteur mémoire absent du registre d’agents.")
         if record.get("scope") != "shared" or record.get("sensitivity") != "normal":
             raise SyncPayloadError("Seules les mémoires partagées et de sensibilité normale sont exportables.")
         if record.get("category") == "decision":
