@@ -82,16 +82,24 @@ def _journal_path(private_path: Path) -> Path:
 
 
 def _read_secure_journal(path: Path) -> dict[str, Any]:
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise RotationJournalError("Lecture sûre du journal indisponible sur cette plateforme.")
     try:
-        metadata = path.lstat()
-        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
-            raise RotationJournalError("Journal de rotation non régulier : accès fermé.")
-        if stat.S_IMODE(metadata.st_mode) != 0o600:
-            raise RotationJournalError("Permissions du journal de rotation trop ouvertes.")
-        if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
-            raise RotationJournalError("Propriétaire du journal de rotation incorrect.")
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        fd = os.open(path, flags | os.O_NOFOLLOW)
+        with os.fdopen(fd, "rb") as handle:
+            metadata = os.fstat(handle.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise RotationJournalError("Journal de rotation non régulier : accès fermé.")
+            if stat.S_IMODE(metadata.st_mode) != 0o600:
+                raise RotationJournalError("Permissions du journal de rotation trop ouvertes.")
+            if hasattr(os, "getuid") and metadata.st_uid != os.getuid():
+                raise RotationJournalError("Propriétaire du journal de rotation incorrect.")
+            if metadata.st_size < 2 or metadata.st_size > 2_000_000:
+                raise RotationJournalError("Taille du journal de rotation invalide.")
+            raw = handle.read(2_000_001)
+        data = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise RotationJournalError("Journal de rotation absent ou illisible : accès fermé.") from exc
     required = {
         "schema_version", "transaction_id", "private_path_name",
