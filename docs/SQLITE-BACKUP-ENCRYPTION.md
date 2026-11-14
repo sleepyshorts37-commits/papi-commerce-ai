@@ -1,6 +1,6 @@
 # Chiffrement et gestion des clés des sauvegardes SQLite
 
-Mission 51 ajoute le chiffrement authentifié AES-256-GCM aux snapshots SQLite locaux de la Mission 50.
+Les Missions 51 et 52 ajoutent le chiffrement authentifié AES-256-GCM et l'authentification renforcée des métadonnées des snapshots SQLite locaux.
 
 ## Générer une clé
 
@@ -16,7 +16,7 @@ La clé contient 32 octets aléatoires, créée en mode exclusif et avec permiss
 PYTHONPATH=runtime python -m papi_core sqlite-backup-encrypt --backup backups/sqlite/sqlite-<SHA256>.sqlite3 --key-file "$HOME/.config/papi/keys/backup-2026.key" --manifest backups/encrypted/backup-2026.manifest.json
 ```
 
-Produit un fichier `.enc` et un manifeste. Le contenu utilise AES-256-GCM avec nonce aléatoire de 96 bits et AAD qui lie la version, l'algorithme, l'identifiant de clé, le nom du fichier et le nonce. L'authentification GCM détecte toute modification du contenu ou de ces champs. La taille est limitée à 256 Mio pour cette implémentation en mémoire ; les fichiers plus grands sont refusés, jamais tronqués. Le snapshot source n'est pas modifié.
+Produit un fichier `.enc` et un manifeste. Le format de manifeste v2 utilise AES-256-GCM avec nonce aléatoire de 96 bits. L'AAD lie la version, l'algorithme, l'identifiant de clé, le nom du fichier, le nonce, l'horodatage et les tailles en clair/chiffrée. Toute modification de ces métadonnées authentifiées est rejetée. Le lecteur conserve la compatibilité avec les manifestes v1 déjà créés. L'authentification GCM détecte toute modification du contenu ou de ces champs. La taille est limitée à 256 Mio pour cette implémentation en mémoire ; les fichiers plus grands sont refusés, jamais tronqués. Le snapshot source n'est pas modifié.
 
 ## Vérifier sans écrire de base en clair à l'emplacement utilisateur
 
@@ -56,3 +56,12 @@ La rotation ré-encrypte un snapshot vers de nouveaux fichiers ; elle ne détrui
 - AES-GCM authentifie le contenu ; SHA-256 du ciphertext sert au contrôle préalable de corruption.
 - Les tailles au-delà de 256 Mio sont refusées par cette version.
 - Aucun stockage distant, aucune clé dans GitHub Actions, aucun déploiement, worker, scheduler ou traitement des données réelles.
+
+
+## Durcissement du manifeste — Mission 52
+
+- Les manifestes nouvellement créés utilisent le format v2.
+- L'AAD GCM couvre aussi `created_at`, `plaintext_size` et `ciphertext_size`, en plus des champs cryptographiques déjà liés.
+- Le lecteur impose un ensemble exact de champs, des types stricts (un booléen n'est pas accepté comme entier), des limites de taille, un nonce de 96 bits et un nom de fichier local sans chemin.
+- Les anciennes sauvegardes au format v1 restent lisibles avec leur AAD historique ; elles ne sont pas réécrites automatiquement.
+- Le digest SHA-256 reste un contrôle préalable de corruption, tandis que GCM fournit l'authenticité cryptographique.
