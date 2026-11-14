@@ -29,16 +29,28 @@ def load_imported_records(database: Path | None, kind: str) -> list[dict[str, An
             tables = {row[0] for row in db.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
             )}
-            required = {"sync_imported_records", "sync_import_batches"}
+            required = {"sync_imported_records", "sync_import_batches", "sync_bundle_receipts", "sync_bundle_receipt_items"}
             if not required.issubset(tables):
                 raise SyncStoreError("Schéma du magasin d'import incomplet.")
             rows = db.execute(
                 "SELECT r.event_id,r.kind,r.record_id,r.content_digest,r.record_json "
                 "FROM sync_imported_records AS r "
                 "JOIN sync_import_batches AS b ON b.bundle_digest=r.bundle_digest "
+                "JOIN sync_bundle_receipts AS receipt "
+                "ON receipt.bundle_digest=b.bundle_digest "
+                "AND receipt.status='verified_pending_manual_import' "
+                "JOIN sync_bundle_receipt_items AS item "
+                "ON item.bundle_digest=receipt.bundle_digest "
+                "AND item.event_id=r.event_id AND item.kind=r.kind "
+                "AND item.record_id=r.record_id AND item.content_digest=r.content_digest "
                 "WHERE r.kind=? ORDER BY b.imported_at,r.rowid",
                 (kind,),
             ).fetchall()
+            total = db.execute(
+                "SELECT COUNT(*) FROM sync_imported_records WHERE kind=?", (kind,)
+            ).fetchone()[0]
+            if total != len(rows):
+                raise SyncStoreError("Contenu sans reçu approuvé correspondant; lecture refusée.")
     except SyncStoreError:
         raise
     except sqlite3.Error as exc:
