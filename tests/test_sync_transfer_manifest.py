@@ -10,6 +10,7 @@ from papi_core.sync_transfer_manifest import (
     SyncTransferManifestError,
     build_sync_transfer_manifest,
     validate_sync_transfer_manifest,
+    verify_sync_transfer_manifest_files,
 )
 
 
@@ -107,6 +108,44 @@ class SyncTransferManifestTests(unittest.TestCase):
         manifest = build_sync_transfer_manifest(
             package_path=self.package, payload_path=self.payload)
         manifest["network_transfer_performed"] = True
+        with self.assertRaises(SyncTransferManifestError):
+            validate_sync_transfer_manifest(manifest)
+
+    def test_verify_manifest_against_existing_files(self):
+        manifest = build_sync_transfer_manifest(
+            package_path=self.package, payload_path=self.payload)
+        self.assertTrue(verify_sync_transfer_manifest_files(
+            manifest, directory=self.root))
+
+    def test_verify_rejects_package_changed_after_manifest_creation(self):
+        manifest = build_sync_transfer_manifest(
+            package_path=self.package, payload_path=self.payload)
+        self.package.write_bytes(self.package.read_bytes() + b"tamper")
+        with self.assertRaises(SyncTransferManifestError):
+            verify_sync_transfer_manifest_files(manifest, directory=self.root)
+
+    def test_verify_rejects_missing_payload(self):
+        manifest = build_sync_transfer_manifest(
+            package_path=self.package, payload_path=self.payload)
+        self.payload.unlink()
+        with self.assertRaises(SyncTransferManifestError):
+            verify_sync_transfer_manifest_files(manifest, directory=self.root)
+
+    def test_verify_rejects_symlink_directory(self):
+        manifest = build_sync_transfer_manifest(
+            package_path=self.package, payload_path=self.payload)
+        link = self.root.parent / (self.root.name + "-link")
+        try:
+            link.symlink_to(self.root, target_is_directory=True)
+            with self.assertRaises(SyncTransferManifestError):
+                verify_sync_transfer_manifest_files(manifest, directory=link)
+        finally:
+            link.unlink(missing_ok=True)
+
+    def test_manifest_rejects_non_string_digest_fields(self):
+        manifest = build_sync_transfer_manifest(
+            package_path=self.package, payload_path=self.payload)
+        manifest["package"]["package_digest"] = []
         with self.assertRaises(SyncTransferManifestError):
             validate_sync_transfer_manifest(manifest)
 
