@@ -112,6 +112,13 @@ class SupabaseWorkerStore:
         if not required.issubset(event):
             raise WorkerStoreError("Enveloppe worker incomplète.")
         _reject_secrets(event["payload"])
+        canonical = build_worker_sync_event(
+            domain=event["domain"], record_id=event["record_id"],
+            source_event_id=event["source_event_id"], event_type=event["event_type"],
+            actor=event["actor"], occurred_at=event["occurred_at"], payload=event["payload"],
+        )
+        if canonical["event_id"] != event["event_id"] or canonical["idempotency_key"] != event["idempotency_key"]:
+            raise WorkerStoreError("Identifiants d'idempotence non conformes à l'enveloppe.")
         result = self.store.sync_worker_event(event, expected_version=expected_version)
         if not isinstance(result, dict) or not isinstance(result.get("duplicate"), bool):
             raise WorkerStoreError("Réponse de synchronisation Supabase invalide.")
