@@ -1,6 +1,8 @@
 import unittest
 
 from papi_core.principal import _issue_authenticated_agent_principal
+from urllib.parse import unquote
+
 from papi_core.shared_collaboration import SharedCollaborationError, SharedCollaborationStore
 
 
@@ -33,12 +35,12 @@ class FakeStore:
                 actor = path.split("actor=eq.", 1)[1].split("&", 1)[0]
                 filtered = [row for row in filtered if row.get("scope") == "agent" and row.get("actor") == actor]
             if "created_at.lt." in path:
-                stamp = path.split("created_at.lt.", 1)[1].split(",", 1)[0]
+                stamp = unquote(path.split("created_at.lt.", 1)[1].split(",", 1)[0])
                 filtered = [row for row in filtered if row["created_at"] < stamp]
             return sorted(filtered, key=lambda row: (row["created_at"], row["event_id"]), reverse=True)
         filtered = [row for row in rows if row.get("recipient") == "all" or "recipient.eq." + row.get("recipient", "") in path]
         if "sent_at.lt." in path:
-            stamp = path.split("sent_at.lt.", 1)[1].split(",", 1)[0]
+            stamp = unquote(path.split("sent_at.lt.", 1)[1].split(",", 1)[0])
             filtered = [row for row in filtered if row["sent_at"] < stamp]
         return sorted(filtered, key=lambda row: (row["sent_at"], row["message_id"]), reverse=True)
 
