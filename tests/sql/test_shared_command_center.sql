@@ -1,4 +1,5 @@
 -- Mission 31 shared command-center snapshot contract.
+BEGIN;
 do $$
 declare
     v_snapshot jsonb;
@@ -56,3 +57,4 @@ begin
     end if;
 end;
 $$;
+ROLLBACK;
