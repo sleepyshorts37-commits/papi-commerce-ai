@@ -3,7 +3,7 @@
 ## Phase 0 — Fondations documentaires
 - [x] Vision et activités définies.
 - [x] Gouvernance et limites de sécurité documentées.
-- [ ] Résoudre les collisions de noms.
+- [x] Résoudre les collisions de noms (clarification du registre, Mission 35).
 - [ ] Valider l'organigramme final.
 
 ## Phase 1 — Socle technique minimal

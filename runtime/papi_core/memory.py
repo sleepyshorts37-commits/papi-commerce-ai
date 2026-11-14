@@ -59,33 +59,93 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _validate_event(event: Any, number: int) -> None:
+    """Validate the complete persisted event shape before any consumer uses it."""
+    if not isinstance(event, dict) or event.get("event_type") not in {"remember", "supersede"}:
+        raise MemoryError(f"Événement mémoire invalide ligne {number}.")
+    required_common = ("event_id", "created_at", "actor")
+    if any(not isinstance(event.get(key), str) or not event[key].strip() for key in required_common):
+        raise MemoryError(f"Identité ou date d'événement invalide ligne {number}.")
+    try:
+        parsed = datetime.fromisoformat(event["created_at"].replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise MemoryError(f"Date d'événement invalide ligne {number}.") from exc
+    if parsed.tzinfo is None:
+        raise MemoryError(f"Date sans fuseau horaire ligne {number}.")
+    if event["event_type"] == "remember":
+        required = ("memory_id", "category", "title", "content", "source", "confidence", "scope", "tags", "sensitivity")
+        if any(key not in event for key in required):
+            raise MemoryError(f"Événement remember incomplet ligne {number}.")
+        if (not isinstance(event["memory_id"], str) or not event["memory_id"].strip()
+                or not isinstance(event["category"], str) or event["category"] not in CATEGORIES
+                or not isinstance(event["scope"], str) or event["scope"] not in SCOPES
+                or not isinstance(event["sensitivity"], str) or event["sensitivity"] not in SENSITIVITIES
+                or not isinstance(event["title"], str) or not event["title"].strip()
+                or len(event["title"]) > 120 or not isinstance(event["content"], str)
+                or not event["content"].strip() or len(event["content"]) > 2000
+                or not isinstance(event["source"], dict)
+                or any(not isinstance(event["source"].get(k), str) or not event["source"][k].strip()
+                       for k in ("type", "id"))
+                or isinstance(event["confidence"], bool)
+                or not isinstance(event["confidence"], (int, float))
+                or not 0 <= event["confidence"] <= 1
+                or not isinstance(event["tags"], list) or len(event["tags"]) > 10
+                or any(not isinstance(tag, str) or not tag.strip() or len(tag) > 30 for tag in event["tags"])):
+            raise MemoryError(f"Champs remember invalides ligne {number}.")
+        _safe_tree({"title": event["title"], "content": event["content"], "source": event["source"], "tags": event["tags"]})
+    else:
+        if any(not isinstance(event.get(key), str) or not event[key].strip()
+               for key in ("target_memory_id", "reason")):
+            raise MemoryError(f"Événement supersede incomplet ligne {number}.")
+        _safe_text(event["reason"], "reason", 240)
+
+
 def _read_events(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     events = []
-    seen = set()
+    seen_events: set[str] = set()
+    seen_memories: set[str] = set()
+    remembered: set[str] = set()
+    superseded: set[str] = set()
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip():
-            continue
+            raise MemoryError(f"Ligne vide interdite dans le journal mémoire ligne {number}.")
         try:
             event = json.loads(line)
         except json.JSONDecodeError as exc:
             raise MemoryError(f"Journal mémoire corrompu ligne {number}.") from exc
-        if not isinstance(event, dict) or event.get("event_id") in seen:
-            raise MemoryError(f"Événement mémoire invalide ou dupliqué ligne {number}.")
-        if event.get("event_type") not in {"remember", "supersede"}:
-            raise MemoryError(f"Type d'événement invalide ligne {number}.")
-        seen.add(event["event_id"])
+        _validate_event(event, number)
+        event_id = event["event_id"]
+        if event_id in seen_events:
+            raise MemoryError(f"Identifiant d'événement dupliqué ligne {number}.")
+        seen_events.add(event_id)
+        if event["event_type"] == "remember":
+            memory_id = event["memory_id"]
+            if memory_id in seen_memories:
+                raise MemoryError(f"Identifiant mémoire dupliqué ligne {number}.")
+            seen_memories.add(memory_id)
+            remembered.add(memory_id)
+        else:
+            target = event["target_memory_id"]
+            if target not in remembered or target in superseded:
+                raise MemoryError(f"Référence d'archivage inconnue ou répétée ligne {number}.")
+            superseded.add(target)
         events.append(event)
     return events
 
 
 def _append(event: dict[str, Any], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
+    payload = (json.dumps(event, ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     try:
-        os.write(fd, payload)
+        view = memoryview(payload)
+        while view:
+            written = os.write(fd, view)
+            if written <= 0:
+                raise OSError("Écriture incomplète du journal mémoire.")
+            view = view[written:]
     finally:
         os.close(fd)
 
