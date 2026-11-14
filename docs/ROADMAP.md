@@ -32,7 +32,7 @@
 - [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
 - [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).
 - [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
-- [ ] Synchroniser mémoire et messages entre instances (contrat Mission 38 + paquet référentiel Mission 39 + approbation Ed25519 Mission 40 + registre local de reçus Mission 41 + consommation nonce/reçu atomique SQLite Mission 42 + spool local hors ligne Mission 43 + réception locale authentifiée et reçu atomique Mission 44; transport réseau, stockage distribué, import des contenus et tests multi-instance encore requis).
+- [ ] Synchroniser mémoire et messages entre instances (contrat Mission 38 + paquet référentiel Mission 39 + approbation Ed25519 Mission 40 + registre local de reçus Mission 41 + consommation nonce/reçu atomique SQLite Mission 42 + spool local hors ligne Mission 43 + réception locale authentifiée et reçu atomique Mission 44 + charge utile de contenu contrôlée et liée au digest approuvé Mission 45; transport réseau, import atomique des contenus et tests multi-instance encore requis).
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
 ## Phase 3 — Première activité commerciale
