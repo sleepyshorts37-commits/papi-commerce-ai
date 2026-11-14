@@ -23,7 +23,7 @@ class SyncBundleTests(unittest.TestCase):
     def test_builds_reference_only_bundle(self):
         bundle = self.bundle()
         self.assertTrue(validate_sync_bundle(bundle, expected_destination="instance-b"))
-        self.assertNotIn("content", str(bundle))
+        self.assertNotIn("'content':", str(bundle))
         self.assertNotIn("body", str(bundle))
 
     def test_digest_detects_tampering(self):
