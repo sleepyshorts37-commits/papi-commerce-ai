@@ -11,6 +11,7 @@ from typing import Any
 
 from .principal import require_authenticated_agent_principal
 from .sync_store import SyncStoreError, load_imported_records
+from .local_store import LocalStoreError, append_local_record, load_local_records
 
 DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "memory" / "events.jsonl"
 CATEGORIES = {"fact", "decision", "project", "result", "procedure", "lesson"}
