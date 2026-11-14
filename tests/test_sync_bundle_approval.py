@@ -50,11 +50,12 @@ class SyncBundleApprovalTests(unittest.TestCase):
         return envelope
 
     def verify(self, envelope=None, **kwargs):
-        return verify_sync_bundle_approval(
+        args = dict(
             envelope=envelope or self.sign(), bundle=self.bundle, owner_id="owner-40",
             registry_path=self.registry, replay_db=self.replay,
-            expected_destination="instance-b", now_epoch=int(NOW.timestamp()), now=NOW,
-            **kwargs)
+            expected_destination="instance-b", now_epoch=int(NOW.timestamp()), now=NOW)
+        args.update(kwargs)
+        return verify_sync_bundle_approval(**args)
 
     def test_valid_approval_is_bound_to_exact_bundle_and_does_not_import(self):
         result = self.verify()
