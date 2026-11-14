@@ -62,3 +62,5 @@ jobs:
             \quit 1
           \endif
           SQL
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_worker_sync.sql
