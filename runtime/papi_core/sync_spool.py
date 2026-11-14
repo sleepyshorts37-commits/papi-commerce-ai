@@ -22,7 +22,7 @@ def _pairs_no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 def _validate_package(bundle: object, approval: object) -> None:
     try: validate_sync_bundle(bundle)
-    except SyncBundleError as exc: raise SyncSpoolError(str(exc)) from exc
+    except (SyncBundleError, TypeError, KeyError) as exc: raise SyncSpoolError("Structure du paquet invalide.") from exc
     required = {"agent_id", "key_version", "timestamp", "nonce", "payload", "signature"}
     if not isinstance(approval, dict) or set(approval) != required: raise SyncSpoolError("Enveloppe d'approbation Ed25519 invalide.")
     if (not isinstance(approval["agent_id"], str) or not approval["agent_id"]
@@ -66,10 +66,20 @@ def read_sync_package(path: Path) -> dict[str, Any]:
     path=Path(path)
     if not _NAME.fullmatch(path.name): raise SyncSpoolError("Nom de paquet non conforme.")
     try:
-        info=path.lstat()
-        if not stat.S_ISREG(info.st_mode) or info.st_size<=0 or info.st_size>MAX_PACKAGE_BYTES: raise SyncSpoolError("Fichier absent, non régulier, vide ou trop volumineux.")
-        raw=path.read_bytes()
-    except OSError as exc: raise SyncSpoolError("Paquet inaccessible.") from exc
+        fd=os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            info=os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_size<=0 or info.st_size>MAX_PACKAGE_BYTES:
+                raise SyncSpoolError("Fichier absent, non régulier, vide ou trop volumineux.")
+            chunks=[]; remaining=MAX_PACKAGE_BYTES+1
+            while remaining:
+                chunk=os.read(fd,min(65536,remaining))
+                if not chunk: break
+                chunks.append(chunk); remaining-=len(chunk)
+            raw=b"".join(chunks)
+            if len(raw)>MAX_PACKAGE_BYTES: raise SyncSpoolError("Paquet supérieur à la taille maximale autorisée.")
+        finally: os.close(fd)
+    except OSError as exc: raise SyncSpoolError("Paquet inaccessible ou lien symbolique refusé.") from exc
     try:
         package=json.loads(raw.decode("utf-8"),object_pairs_hook=_pairs_no_duplicates,
             parse_constant=lambda _: (_ for _ in ()).throw(SyncSpoolError("Constante JSON interdite.")))
