@@ -43,6 +43,8 @@ create table if not exists public.papi_supervisor_alerts (
 );
 create index if not exists papi_supervisor_alerts_routing_idx on public.papi_supervisor_alerts(manager_worker_id,status,severity,created_at desc);
 create index if not exists papi_supervisor_alerts_worker_idx on public.papi_supervisor_alerts(worker_id,created_at desc);
+create unique index if not exists papi_supervisor_one_open_alert_per_type_idx
+ on public.papi_supervisor_alerts(worker_id,alert_type) where status in ('open','acknowledged');
 alter table public.papi_worker_heartbeats enable row level security;
 alter table public.papi_worker_evaluations enable row level security;
 alter table public.papi_supervisor_alerts enable row level security;
@@ -101,7 +103,7 @@ begin
   select 'failure-rate:'||p_worker_id||':'||to_char(p_period_end at time zone 'UTC','YYYYMMDDHH24MI'),p_worker_id,w.manager_worker_id,
   'critical','failure_rate','Worker failure rate requires human review.',
   jsonb_build_object('sample_size',v_sample,'completed',v_completed,'failed',v_failed,'reliability_score',v_reliability),'review'
-  from public.papi_workers w where w.worker_id=p_worker_id on conflict(alert_key) do nothing;
+  from public.papi_workers w where w.worker_id=p_worker_id on conflict(worker_id,alert_type) where status in('open','acknowledged') do nothing;
  end if;
  if v_terminal>=3 and v_overall<60 then
   insert into public.papi_supervisor_alerts(alert_key,worker_id,manager_worker_id,severity,alert_type,summary,evidence,recommended_action)
@@ -126,7 +128,7 @@ begin
  jsonb_build_object('last_seen_at',h.last_seen_at,'stale_after_seconds',p_stale_after_seconds),'review'
  from public.papi_workers w left join public.papi_worker_heartbeats h on h.worker_id=w.worker_id
  where w.status in('idle','active') and coalesce(h.last_seen_at,w.created_at)<now()-make_interval(secs=>p_stale_after_seconds)
- on conflict(alert_key) do nothing;
+ on conflict(worker_id,alert_type) where status in('open','acknowledged') do nothing;
  get diagnostics v_count=row_count; return v_count;
 end; $$;
 
