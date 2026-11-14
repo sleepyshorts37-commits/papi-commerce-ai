@@ -68,3 +68,16 @@ Le module `runtime/papi_core/reconciliation.py` compare deux instantanés fourni
 - Le résultat indique explicitement `preview_only` et `writes_performed: false`. Toute différence ou collision exige une revue humaine.
 
 Cette étape n'effectue aucun transfert, aucune fusion, aucun écrasement et aucun effacement. Les snapshots et le principal sont injectés par l'appelant ; aucun client réseau ou projet Supabase hébergé n'est créé.
+
+
+## Jour 5/5 : validation stricte des instantanés
+
+La validation de l'aperçu est renforcée avant toute future décision de synchronisation :
+
+- Les types d'événements mémoire inconnus, portées inconnues et sensibilités inconnues sont refusés au lieu d'être silencieusement ignorés.
+- Les mémoires privées, owner et restreintes restent exclues de la comparaison ; les événements supersede ne sont pas traités comme des mémoires actives.
+- Les destinataires, expéditeurs, identifiants, types et tailles des messages visibles sont contrôlés selon le contrat SQL partagé.
+- La détection des secrets couvre également les jetons Bearer, les champs génériques token= et les cookies.
+- Les tests vérifient les entrées mal formées, les secrets et le maintien du mode strictement sans écriture.
+
+Cette mission se termine par un aperçu uniquement. Aucun mécanisme d'application, transfert, fusion automatique, effacement ou synchronisation réseau n'est fourni. La mise en service reste bloquée jusqu'à une revue humaine, un projet Supabase de test autorisé et une procédure de reprise/arrêt vérifiée.
