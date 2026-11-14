@@ -191,3 +191,93 @@ def _read_encrypted(manifest_path: Path, key_path: Path) -> tuple[bytes, bytes, 
         raise
     except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
         raise BackupEncryptionError("Manifeste ou données chiffrées invalides.") from exc
+
+
+def verify_encrypted_backup(manifest_path: Path, key_path: Path) -> dict[str, Any]:
+    """Authentifie le ciphertext et contrôle l'intégrité SQLite sans publier de clair."""
+    ciphertext, key, manifest = _read_encrypted(manifest_path, key_path)
+    try:
+        plaintext = AESGCM(key).decrypt(bytes.fromhex(manifest["nonce"]), ciphertext,
+                                        _canonical(_manifest_header(manifest)))
+    except Exception as exc:
+        raise BackupEncryptionError("Authentification AES-GCM échouée ; clé ou données incorrectes.") from exc
+    if len(plaintext) != manifest.get("plaintext_size"):
+        raise BackupEncryptionError("Taille du contenu déchiffré incohérente.")
+    import tempfile
+    fd, name = tempfile.mkstemp(prefix="papi-verify-", suffix=".sqlite3")
+    os.close(fd)
+    temporary = Path(name)
+    try:
+        temporary.write_bytes(plaintext)
+        os.chmod(temporary, 0o600)
+        integrity, user_version = _integrity(temporary)
+        return {"status": "verified", "algorithm": _ALGORITHM,
+                "key_id": manifest["key_id"], "plaintext_size": len(plaintext),
+                "integrity_check": integrity, "user_version": user_version,
+                "plaintext_written_to_user_path": False}
+    except BackupRestoreError as exc:
+        raise BackupEncryptionError("Le contenu déchiffré n'est pas une base SQLite intègre.") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def decrypt_sqlite_backup(manifest_path: Path, key_path: Path,
+                          destination_path: Path) -> dict[str, Any]:
+    """Déchiffre vers un nouveau fichier SQLite ; aucune destination existante n'est remplacée."""
+    ciphertext, key, manifest = _read_encrypted(manifest_path, key_path)
+    destination = Path(destination_path)
+    if destination.exists() or destination.is_symlink():
+        raise BackupEncryptionError("La destination doit être absente ; aucun écrasement n'est autorisé.")
+    try:
+        plaintext = AESGCM(key).decrypt(bytes.fromhex(manifest["nonce"]), ciphertext,
+                                        _canonical(_manifest_header(manifest)))
+    except Exception as exc:
+        raise BackupEncryptionError("Authentification AES-GCM échouée ; aucun fichier restauré.") from exc
+    if len(plaintext) != manifest.get("plaintext_size"):
+        raise BackupEncryptionError("Taille du contenu déchiffré incohérente.")
+    import tempfile
+    fd, name = tempfile.mkstemp(prefix=".papi-decrypt-", suffix=".tmp",
+                                dir=destination.parent if destination.parent.exists() else None)
+    os.close(fd)
+    temporary = Path(name)
+    try:
+        temporary.write_bytes(plaintext)
+        os.chmod(temporary, 0o600)
+        integrity, _ = _integrity(temporary)
+        if integrity != "ok":
+            raise BackupEncryptionError("La base déchiffrée ne passe pas le contrôle d'intégrité.")
+        _exclusive_bytes(destination, plaintext)
+        return {"status": "decrypted", "destination_path": str(destination),
+                "integrity_check": integrity, "overwrite": False,
+                "warning": "Le fichier restauré est en clair ; protégez-le immédiatement."}
+    except BackupRestoreError as exc:
+        raise BackupEncryptionError("La base déchiffrée n'est pas intègre.") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def rotate_encrypted_backup_key(manifest_path: Path, old_key_path: Path,
+                                new_key_path: Path, new_manifest_path: Path) -> dict[str, Any]:
+    """Ré-enveloppe le snapshot avec une nouvelle clé ; conserve les originaux."""
+    ciphertext, old_key, manifest = _read_encrypted(manifest_path, old_key_path)
+    try:
+        plaintext = AESGCM(old_key).decrypt(bytes.fromhex(manifest["nonce"]), ciphertext,
+                                            _canonical(_manifest_header(manifest)))
+    except Exception as exc:
+        raise BackupEncryptionError("Ancienne clé invalide ou sauvegarde altérée.") from exc
+    import tempfile
+    fd, name = tempfile.mkstemp(prefix="papi-rotate-", suffix=".sqlite3")
+    os.close(fd)
+    temporary = Path(name)
+    try:
+        temporary.write_bytes(plaintext)
+        os.chmod(temporary, 0o600)
+        _integrity(temporary)
+        result = encrypt_sqlite_backup(temporary, new_key_path, new_manifest_path)
+        return {"status": "key_rotated", "new_key_id": result["key_id"],
+                "new_manifest_path": result["manifest_path"],
+                "old_backup_preserved": True, "old_key_revocation_required": True}
+    except BackupRestoreError as exc:
+        raise BackupEncryptionError("Le contenu déchiffré n'est pas intègre.") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
