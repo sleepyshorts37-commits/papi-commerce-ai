@@ -38,6 +38,12 @@ class ReconciliationPreviewTests(unittest.TestCase):
         self.assertTrue(result["requires_human_review"])
         self.assertFalse(result["writes_performed"])
 
+    def test_local_jsonl_source_shape_matches_remote_columns(self):
+        local = {**self.memory, "source": {"type": "test", "id": "case-1"}}
+        remote = {**self.memory, "source_type": "test", "source_id": "case-1"}
+        result = self.preview(local_memory=[local], remote_memory=[remote])
+        self.assertEqual(result["counts"]["identical"], 2)
+
     def test_same_identifier_with_different_payload_is_conflict(self):
         changed = {**self.memory, "content": "Version différente."}
         result = self.preview(remote_memory=[changed])
