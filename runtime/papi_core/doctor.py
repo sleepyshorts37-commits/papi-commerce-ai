@@ -28,6 +28,7 @@ def diagnose_environment(environ: dict[str, str] | None = None) -> dict:
     checks = {
         "supabase_url_configured": url_ok,
         "supabase_server_key_configured": key_ok,
+        "supabase_key_configured": key_ok,  # Compatibilité avec les consommateurs historiques.
         "policy_execution_enabled": execution_enabled,
         "policy_external_actions_enabled": external_actions_enabled,
     }
