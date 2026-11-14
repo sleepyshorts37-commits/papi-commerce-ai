@@ -106,7 +106,7 @@ create or replace function public.papi_incident_transition(
  p_incident_id uuid,p_action text,p_actor text,p_owner text default null,
  p_summary text default null,p_evidence jsonb default '{}'::jsonb,p_event_key text default null
 ) returns jsonb language plpgsql security definer set search_path=public,pg_temp as $$
-declare v_incident public.papi_incidents%rowtype; v_new_status text; v_new_severity text; v_event_type text; v_details jsonb;
+declare v_incident public.papi_incidents%rowtype; v_existing_event public.papi_incident_events%rowtype; v_new_status text; v_new_severity text; v_event_type text; v_details jsonb;
 begin
  if p_incident_id is null or p_action is null or p_action not in('qualify','investigate','mitigate','assign','escalate','resolve','reopen','close','add_evidence')
  or p_actor is null or length(trim(p_actor)) not between 1 and 160
@@ -122,10 +122,20 @@ begin
  end if;
  select * into v_incident from public.papi_incidents where incident_id=p_incident_id for update;
  if not found then raise exception 'Incident not found' using errcode='23503'; end if;
- if p_event_key is not null and exists(select 1 from public.papi_incident_events where event_key=p_event_key) then
-  return jsonb_build_object('incident_id',p_incident_id,'duplicate',true,'status',v_incident.status);
+ v_event_type:=case p_action when 'qualify' then 'qualified' when 'investigate' then 'investigating' when 'mitigate' then 'mitigated' when 'escalate' then 'escalated' when 'reopen' then 'reopened' when 'add_evidence' then 'evidence_added' else p_action end;
+ if p_event_key is not null then
+  select * into v_existing_event from public.papi_incident_events where event_key=p_event_key;
+  if found then
+   if v_existing_event.incident_id<>p_incident_id or v_existing_event.actor<>p_actor or v_existing_event.event_type<>v_event_type
+    or v_existing_event.details->>'action' is distinct from p_action or v_existing_event.details->>'summary' is distinct from p_summary
+    or v_existing_event.details->>'owner' is distinct from case when p_action='assign' then p_owner else null end
+    or v_existing_event.details->'evidence' is distinct from p_evidence then
+    raise exception 'Incident event key reused with different intent' using errcode='23505';
+   end if;
+   return jsonb_build_object('incident_id',p_incident_id,'duplicate',true,'status',v_incident.status);
+  end if;
  end if;
- v_new_status:=v_incident.status; v_new_severity:=v_incident.severity; v_event_type:=case p_action when 'qualify' then 'qualified' when 'investigate' then 'investigating' when 'mitigate' then 'mitigated' when 'escalate' then 'escalated' when 'add_evidence' then 'evidence_added' else p_action end;
+ v_new_status:=v_incident.status; v_new_severity:=v_incident.severity;
  if p_action='qualify' and v_incident.status='open' then v_new_status:='qualified';
  elsif p_action='investigate' and v_incident.status in('open','qualified') then v_new_status:='investigating';
  elsif p_action='mitigate' and v_incident.status in('investigating','qualified') then v_new_status:='mitigated';
