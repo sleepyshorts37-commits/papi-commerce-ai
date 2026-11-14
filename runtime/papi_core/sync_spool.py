@@ -12,7 +12,7 @@ class SyncSpoolError(ValueError):
 def _canonical(value: dict[str, Any]) -> bytes:
     try:
         return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError) as exc:
         raise SyncSpoolError("Paquet non sérialisable de manière canonique.") from exc
 def _pairs_no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result = {}
@@ -22,7 +22,7 @@ def _pairs_no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 def _validate_package(bundle: object, approval: object) -> None:
     try: validate_sync_bundle(bundle)
-    except (SyncBundleError, TypeError, KeyError) as exc: raise SyncSpoolError("Structure du paquet invalide.") from exc
+    except (SyncBundleError, TypeError, KeyError, AttributeError, IndexError, UnicodeEncodeError, RecursionError) as exc: raise SyncSpoolError("Structure du paquet invalide.") from exc
     required = {"agent_id", "key_version", "timestamp", "nonce", "payload", "signature"}
     if not isinstance(approval, dict) or set(approval) != required: raise SyncSpoolError("Enveloppe d'approbation Ed25519 invalide.")
     if (not isinstance(approval["agent_id"], str) or not approval["agent_id"]
@@ -84,7 +84,11 @@ def read_sync_package(path: Path) -> dict[str, Any]:
         package=json.loads(raw.decode("utf-8"),object_pairs_hook=_pairs_no_duplicates,
             parse_constant=lambda _: (_ for _ in ()).throw(SyncSpoolError("Constante JSON interdite.")))
     except (UnicodeDecodeError,json.JSONDecodeError) as exc: raise SyncSpoolError("JSON du paquet invalide.") from exc
-    if not isinstance(package,dict) or set(package)!={"format_version","bundle","approval","package_digest"} or package["format_version"]!=FORMAT_VERSION:
+    if (not isinstance(package, dict)
+            or set(package) != {"format_version", "bundle", "approval", "package_digest"}
+            or isinstance(package.get("format_version"), bool)
+            or not isinstance(package.get("format_version"), int)
+            or package["format_version"] != FORMAT_VERSION):
         raise SyncSpoolError("Version ou enveloppe du paquet invalide.")
     expected=hashlib.sha256(_canonical({"format_version":package["format_version"],"bundle":package["bundle"],"approval":package["approval"]})).hexdigest()
     if package["package_digest"]!=expected or path.name!=expected+".papisync": raise SyncSpoolError("Empreinte du paquet invalide ou nom incohérent.")
