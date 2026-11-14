@@ -48,8 +48,9 @@
 - [x] Archiver durablement les checkpoints Ed25519 dans une base SQLite distincte, append-only, idempotente et auditable en lecture seule, avec vérification historique des signatures (Mission 62 ; sans réseau ni modification du registre métier).
 - [x] Conserver les anciennes clés publiques versionnées lors des rotations et permettre la vérification cryptographique des archives après rotation/révocation, sans autorisation d’action ni consommation de nonce (Mission 63 ; audit uniquement).
 - [x] Ajouter un journal transactionnel durable pour la rotation Ed25519, récupération fail-closed des états interrompus et reprise avant signature/nouvelle rotation (Mission 64 ; tests de panne simulée, sans réseau ni activation).
-- [ ] Ajouter un gestionnaire transactionnel central du cycle de vie des identités : provision, rotation, permissions et révocation, avec approbation explicite, idempotence, contrôle de révision, journal append-only et chaîne SHA-256 (Mission 65 ; validation CI requise, aucune activation réelle).
-- [ ] Ajouter un moteur de rapprochement en lecture seule entre registre canonique et journal transactionnel : détection des identités orphelines, activations non autorisées, écarts d'état/permissions, révisions et versions de clés invalides ; rapport déterministe SHA-256 et recommandation fail-closed (Mission 66 ; aucune correction automatique ni activation).
+- [x] Ajouter un gestionnaire transactionnel central du cycle de vie des identités : provision, rotation, permissions et révocation, avec approbation explicite, idempotence, contrôle de révision, journal append-only et chaîne SHA-256 (Mission 65 ; CI verte sur le SHA final, aucune activation réelle).
+- [x] Ajouter un moteur de rapprochement en lecture seule entre registre canonique et journal transactionnel : détection des identités orphelines, activations non autorisées, écarts d'état/permissions, révisions et versions de clés invalides ; rapport déterministe SHA-256 et recommandation fail-closed (Mission 66 ; CI verte sur le SHA final, aucune correction automatique ni activation).
+- [ ] Ajouter des adaptateurs locaux read-only pour extraire le registre JSON canonique et le ledger SQLite, valider les schémas, refuser les sources ambiguës et alimenter directement le moteur de rapprochement (Mission 67 ; aucune écriture, aucun accès réseau).
 - [x] Rendre atomiques la réservation du nonce Ed25519 anti-rejeu et l'archivage du reçu de transport dans une seule transaction SQLite `BEGIN IMMEDIATE` / `COMMIT`, avec rollback conjoint et idempotence des doublons exacts (Mission 59 ; aucun réseau ni import).
 
 ## Phase 3 — Première activité commerciale
@@ -75,3 +76,9 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
 
+
+
+## État des missions récentes
+- Mission 65 : CI confirmée verte sur le SHA final ; PR #227 toujours en brouillon, non fusionnée.
+- Mission 66 : CI confirmée verte sur le SHA final `641627a86825e48e9aeba03b51b85a3186aea4cb` ; PR #228 toujours en brouillon, non fusionnée.
+- Mission 67 : adaptateurs d'extraction locale en lecture seule ; validation CI sur le SHA final requise.
