@@ -51,21 +51,40 @@ jobs:
             -f infra/supabase/migrations/004_shared_collaboration.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/004_shared_collaboration.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/005_collaboration_pagination_idempotency.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/005_collaboration_pagination_idempotency.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SHARED_COLLAB_SQL'
           insert into public.papi_memory_events(
             event_id, memory_id, event_type, created_at, actor, category, title,
-            content, source_type, source_id, confidence, scope, tags, sensitivity
+            content, source_type, source_id, confidence, scope, tags, sensitivity, idempotency_key
           ) values (
             gen_random_uuid(), gen_random_uuid(), 'remember', now(), 'ci-agent',
             'fact', 'CI memory', 'Disposable database contract test.',
-            'test', 'ci-004', 0.9, 'shared', array['ci'], 'normal'
+            'test', 'ci-004', 0.9, 'shared', array['ci'], 'normal', 'ci-memory-key-0001'
           );
           insert into public.papi_chat_messages(
-            message_id, sent_at, sender, recipient, subject, body, message_type
+            message_id, sent_at, sender, recipient, subject, body, message_type, idempotency_key
           ) values (
             'MSG-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', now(), 'ci-agent', 'all',
-            'CI message', 'Disposable database contract test.', 'info'
+            'CI message', 'Disposable database contract test.', 'info', 'ci-message-key-0001'
           );
+          do $idempotency$
+          begin
+            begin
+              insert into public.papi_chat_messages(
+                message_id, sent_at, sender, recipient, subject, body, message_type, idempotency_key
+              ) values (
+                'MSG-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', now(), 'ci-agent', 'all',
+                'Duplicate', 'Must be rejected by unique idempotency key.', 'info', 'ci-message-key-0001'
+              );
+              raise exception 'Duplicate idempotency key was accepted';
+            exception when unique_violation then
+              null;
+            end;
+          end
+          $idempotency$;
           do $privileges$
           begin
             if not has_table_privilege('service_role', 'public.papi_memory_events', 'insert')
@@ -115,6 +134,10 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/004_shared_collaboration.sql
           psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/005_collaboration_pagination_idempotency.sql
+          psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/005_collaboration_pagination_idempotency_down.sql
+          psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/004_shared_collaboration_down.sql
           psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 <<'SHARED_ROLLBACK_SQL'
           do $rollbackcheck$
@@ -129,6 +152,8 @@ jobs:
           SHARED_ROLLBACK_SQL
           psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/004_shared_collaboration.sql
+          psql -h 127.0.0.1 -U postgres -d papi_shared_migration_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/005_collaboration_pagination_idempotency.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
           select public.papi_consume_agent_nonce(
             'ci-agent', 'nonce-ci-000000000001', now() + interval '5 minutes'
