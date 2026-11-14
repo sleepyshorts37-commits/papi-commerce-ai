@@ -322,5 +322,39 @@ class Ed25519IdentityTests(unittest.TestCase):
         self.assertTrue(journal.exists())
 
 
+    def test_signer_recovers_pending_rotation_before_using_private_key(self):
+        from unittest.mock import patch
+        from papi_core import rotation_journal
+
+        old_private = self.private.read_bytes()
+        old_registry = self.registry.read_bytes()
+        new_private = b"new private key fixture"
+        new_registry = b'{"schema_version":1,"agents":{}}'
+        real_write = rotation_journal._atomic_write
+        calls = 0
+        def crash_before_registry(path, content):
+            nonlocal calls
+            calls += 1
+            if calls <= 2:
+                return real_write(path, content)
+            raise SystemExit("simulated process crash")
+
+        with patch.object(rotation_journal, "_atomic_write", side_effect=crash_before_registry):
+            with self.assertRaises(SystemExit):
+                rotation_journal.commit_key_rotation(
+                    self.private, self.registry, old_private, new_private,
+                    old_registry, new_registry,
+                )
+
+        envelope = sign_ed25519_request(
+            "agent-a", {"permission": "read"}, self.private,
+            timestamp=1000, nonce="recovery-before-signing-0001",
+            registry_path=self.registry,
+        )
+        self.assertTrue(verify_ed25519_request(
+            envelope, self.registry, self.replay, now=1000)["authenticated"])
+        self.assertFalse(self.private.with_name(self.private.name + ".rotation-journal").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
