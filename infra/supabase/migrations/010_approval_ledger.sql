@@ -48,6 +48,7 @@ begin
     if p_approval_id is null or p_approval_id !~ '^[A-Za-z0-9_-]{8,120}$'
        or p_task_id is null or length(trim(p_task_id)) = 0
        or p_handler is null or length(trim(p_handler)) not between 1 and 100
+       or p_action_class is null
        or p_action_class not in ('read_only', 'internal_write', 'external_communication', 'financial', 'legal')
        or p_approved_by is null or length(trim(p_approved_by)) not between 1 and 120
        or p_approved_at is null or p_expires_at is null
