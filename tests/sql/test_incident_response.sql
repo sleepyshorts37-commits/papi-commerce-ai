@@ -1,6 +1,6 @@
 -- Mission 30 incident response SQL contracts.
 do $$
-declare v_alert uuid; v_incident uuid; v_second_alert uuid; v_second_incident uuid; v_result jsonb; v_count integer;
+declare v_alert uuid; v_incident uuid; v_second_alert uuid; v_second_incident uuid; v_result jsonb; v_count integer; v_rejected boolean;
 begin
  perform public.papi_register_worker('CI-WORKER-M30','IDENTITY-CI-WORKER-M30','CI Worker M30','market','Incident Test Worker',null,
   array['test.run'],array['task.execute'],2);
@@ -16,10 +16,11 @@ begin
  v_result:=public.papi_incident_open_from_alert(v_alert,'ci-m30-incident-key-001','human-operator');
  if (v_result->>'duplicate')::boolean is not true then raise exception 'Alert replay was not idempotent'; end if;
 
+ v_rejected:=false;
  begin
   perform public.papi_incident_transition(v_incident,'close','human-operator',null,'Premature close','{}'::jsonb,'ci-m30-invalid-transition');
-  raise exception 'Incident was closed before resolution';
- exception when sqlstate '55000' then null; end;
+ exception when sqlstate '55000' then v_rejected:=true; end;
+ if not v_rejected then raise exception 'Incident was closed before resolution'; end if;
 
  perform public.papi_incident_transition(v_incident,'assign','human-operator','human-manager',null,'{}'::jsonb,'ci-m30-assign-001');
  perform public.papi_incident_transition(v_incident,'qualify','human-manager',null,'Initial qualification','{"triage":"complete"}'::jsonb,'ci-m30-qualify-001');
@@ -34,14 +35,16 @@ begin
  then raise exception 'Incident resolution or closure was not persisted'; end if;
  if (select count(*) from public.papi_incident_events where incident_id=v_incident)<7 then raise exception 'Incident event history is incomplete'; end if;
 
+ v_rejected:=false;
  begin
   update public.papi_incident_events set actor='tampered' where incident_id=v_incident;
-  raise exception 'Append-only incident history accepted UPDATE';
- exception when sqlstate '55000' then null; end;
+ exception when sqlstate '55000' then v_rejected:=true; end;
+ if not v_rejected then raise exception 'Append-only incident history accepted UPDATE'; end if;
+ v_rejected:=false;
  begin
   delete from public.papi_incident_events where incident_id=v_incident;
-  raise exception 'Append-only incident history accepted DELETE';
- exception when sqlstate '55000' then null; end;
+ exception when sqlstate '55000' then v_rejected:=true; end;
+ if not v_rejected then raise exception 'Append-only incident history accepted DELETE'; end if;
 
  insert into public.papi_supervisor_alerts(alert_key,worker_id,severity,alert_type,summary,evidence,recommended_action)
  values('ci-m30-alert-key-002','CI-WORKER-M30','warning','stale_heartbeat','Worker heartbeat overdue.',
