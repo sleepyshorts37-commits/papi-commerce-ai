@@ -56,14 +56,18 @@ def _migration_inventory(root: Path) -> list[dict[str, object]]:
 
 
 def _validate_url(raw_url: str) -> bool:
-    parsed = urlparse(raw_url)
+    try:
+        parsed = urlparse(raw_url)
+        port = parsed.port
+    except ValueError:
+        return False
     return (
         parsed.scheme == "https"
         and bool(parsed.hostname)
         and parsed.hostname.endswith(".supabase.co")
         and parsed.username is None
         and parsed.password is None
-        and parsed.port is None
+        and port is None
         and parsed.path in ("", "/")
         and not parsed.query
         and not parsed.fragment
