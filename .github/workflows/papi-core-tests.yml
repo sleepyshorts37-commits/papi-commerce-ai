@@ -61,6 +61,8 @@ jobs:
             -f infra/supabase/migrations/007_queue_transition_integrity.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f infra/supabase/migrations/008_queue_retention_preview.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/009_queue_diagnostic_report.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SHARED_COLLAB_SQL'
           insert into public.papi_memory_events(
             event_id, memory_id, event_type, created_at, actor, category, title,
@@ -189,6 +191,8 @@ jobs:
             -f tests/sql/test_queue_transition_integrity.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/test_queue_retention_preview.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_queue_diagnostic_report.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/prepare_execution_queue_concurrency.sql
           PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGDATABASE=papi_test PGPASSWORD=papi_test_password \
