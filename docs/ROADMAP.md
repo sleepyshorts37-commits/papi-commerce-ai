@@ -40,7 +40,7 @@
 - [ ] Obtenir validation avant les premiers contacts externes.
 - [ ] Mesurer les revenus réellement encaissés.
 
-## Phase 4 — Extension
+## Phase 4 — Extension\n- [x] Documenter PAPI KIDS PUBLISHING : trois activités, 24 postes cibles, workflow éditorial-commercial, modèle sans stock et garde-fous IP/financiers.\n- [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.\n- [ ] Construire les outils locaux de catalogue, briefs, fichiers, contrôles qualité, coûts et rapports.\n- [ ] Réaliser un pilote de livres originaux et vérifier les exigences KDP, l'éligibilité depuis le Sénégal et les moyens de versement.\n- [ ] Obtenir une validation humaine explicite avant toute publication ou promotion externe.\n- [ ] Tester les intégrations officielles et l'automatisation contrôlée après revue de sécurité.\n
 - [ ] PAPI BUSINESS PARTNERS.
 - [ ] PAPI SERVICES et PAPI FREELANCE.
 - [ ] PAPI AFFILIATION.
