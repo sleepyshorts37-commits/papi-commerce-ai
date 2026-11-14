@@ -8,7 +8,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from .identity_ed25519 import Ed25519IdentityError, verify_ed25519_request
+from .identity_ed25519 import Ed25519IdentityError, verify_ed25519_archived_signature
 from .sync_transport_receipt_checkpoint import (
     SyncTransportReceiptCheckpointError,
     verify_sync_transport_receipt_checkpoint,
@@ -171,10 +171,13 @@ def audit_sync_transport_receipt_checkpoint_archive(
                 raise SyncTransportReceiptCheckpointArchiveError(
                     f"Protocole de checkpoint invalide : {checkpoint_id}."
                 )
-            verify_ed25519_request(
-                envelope, registry_path=Path(registry_path), replay_db=Path("."),
-                now=now, consume_nonce=False, allow_expired=True,
+            historical = verify_ed25519_archived_signature(
+                envelope, registry_path=Path(registry_path),
             )
+            if historical["authorization_granted"] or historical["nonce_consumed"]:
+                raise SyncTransportReceiptCheckpointArchiveError(
+                    "Une vérification historique ne peut autoriser une action ni consommer un nonce."
+                )
         except (ValueError, TypeError, KeyError, Ed25519IdentityError) as exc:
             if isinstance(exc, SyncTransportReceiptCheckpointArchiveError):
                 raise
