@@ -190,6 +190,8 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/test_queue_diagnostic_report.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_queue_performance_observation.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/prepare_execution_queue_concurrency.sql
           PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGDATABASE=papi_test PGPASSWORD=papi_test_password \
             bash tests/sql/test_execution_queue_concurrency.sh
@@ -222,6 +224,7 @@ jobs:
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/008_queue_retention_preview.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/009_queue_diagnostic_report.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_queue_diagnostic_report.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_queue_performance_observation.sql
       - name: Start local PostgREST
         run: |
           docker compose -f infra/supabase/local/docker-compose.yml up -d --wait postgrest
