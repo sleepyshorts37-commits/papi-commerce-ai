@@ -23,7 +23,8 @@ begin
  if not v_rejected then raise exception 'Incident was closed before resolution'; end if;
 
  perform public.papi_incident_transition(v_incident,'assign','human-operator','human-manager',null,'{}'::jsonb,'ci-m30-assign-001');
- perform public.papi_incident_transition(v_incident,'qualify','human-manager',null,'Initial qualification','{"triage":"complete"}'::jsonb,'ci-m30-qualify-001');
+ v_result:=public.papi_incident_transition(v_incident,'qualify','human-manager',null,'Initial qualification','{"triage":"complete"}'::jsonb,'ci-m30-qualify-001');
+ if (public.papi_incident_transition(v_incident,'qualify','human-manager',null,'Initial qualification','{"triage":"complete"}'::jsonb,'ci-m30-qualify-001')->>'duplicate')::boolean is not true then raise exception 'Transition replay was not idempotent'; end if;
  perform public.papi_incident_transition(v_incident,'investigate','human-manager',null,'Investigation started','{}'::jsonb,'ci-m30-investigate-001');
  perform public.papi_incident_transition(v_incident,'escalate','human-manager',null,'Additional failures confirmed','{"evidence_ref":"internal-log-1"}'::jsonb,'ci-m30-escalate-001');
  if not exists(select 1 from public.papi_incidents where incident_id=v_incident and severity='critical' and assigned_human='human-manager')
@@ -51,6 +52,11 @@ begin
   '{"last_seen":"earlier"}'::jsonb,'review') returning alert_id into v_second_alert;
  v_result:=public.papi_incident_open_from_alert(v_second_alert,'ci-m30-incident-key-002','human-operator');
  v_second_incident:=(v_result->>'incident_id')::uuid;
+ v_rejected:=false;
+ begin
+  perform public.papi_incident_transition(v_second_incident,'qualify','human-manager',null,'Different incident','{}'::jsonb,'ci-m30-qualify-001');
+ exception when unique_violation then v_rejected:=true; end;
+ if not v_rejected then raise exception 'Event key reuse across incidents was accepted'; end if;
  update public.papi_incidents set target_resolution_at=now()-interval '1 minute' where incident_id=v_second_incident;
  v_count:=public.papi_incident_detect_overdue('incident-monitor');
  if v_count<>1 then raise exception 'Overdue incident was not detected'; end if;
