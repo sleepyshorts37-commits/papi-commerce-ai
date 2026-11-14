@@ -20,6 +20,8 @@ def offer(**overrides):
         "minimum_net_hourly_rate": "8",
         "minimum_margin_percent": "10",
     }
+    if "target_hourly_rate" in overrides and "minimum_net_hourly_rate" not in overrides:
+        value.pop("minimum_net_hourly_rate")
     value.update(overrides)
     return value
 
