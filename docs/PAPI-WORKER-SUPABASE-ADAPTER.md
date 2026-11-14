@@ -17,3 +17,18 @@ La variable recommandée est `SUPABASE_SERVICE_ROLE_KEY`, côté backend uniquem
 
 ## Vérifications
 Les tests utilisent des stores simulés et vérifient les paramètres RPC, les trois lectures autorisées, le mapping des identifiants, les erreurs, les clés d'idempotence et le raccordement du Command Center. Aucun projet Supabase distant n'a été contacté par les tests de cette PR.
+
+
+## Exemple d'activation explicite côté serveur
+
+```python
+from papi_core.command_center import build_command_center
+from papi_core.storage import SupabaseStore
+from papi_core.worker_store import SupabaseWorkerStore
+
+# À exécuter uniquement dans un backend de confiance configuré par variables d'environnement.
+central_store = SupabaseWorkerStore(SupabaseStore())
+dashboard = build_command_center(worker_store=central_store)
+```
+
+Ne jamais exécuter ce bloc dans un navigateur, une application mobile ou un environnement d'agent non fiable.
