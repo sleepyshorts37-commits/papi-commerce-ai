@@ -43,6 +43,36 @@ class CloudflareQuotaTests(unittest.TestCase):
         self.assertEqual(len(self.calls), 1)
         self.assertNotIn("test-only-token", repr(result))
 
+    def test_generate_many_runs_bounded_batch_and_preserves_order(self):
+        jobs = [
+            {"prompt": f"page {i}", "model": "@cf/test/image",
+             "idempotency_key": f"batch-page-{i:03d}"}
+            for i in range(3)
+        ]
+        results = self.adapter.generate_many(jobs=jobs, now=self.day)
+        self.assertEqual([item["status"] for item in results],
+                         ["generated", "generated", "generated"])
+        self.assertEqual([item["idempotency_key"] for item in results],
+                         [job["idempotency_key"] for job in jobs])
+        self.assertEqual(len(self.calls), 3)
+        self.assertEqual(self.ledger.snapshot(self.day)["used_estimated_neurons"], 100)
+
+    def test_generate_many_rejects_duplicate_idempotency_before_network(self):
+        job = {"prompt": "page", "model": "@cf/test/image",
+               "idempotency_key": "same-batch-key"}
+        with self.assertRaisesRegex(ImageProviderError, "unique"):
+            self.adapter.generate_many(jobs=[job, job], now=self.day)
+        self.assertEqual(self.calls, [])
+
+    def test_generate_many_rejects_excessive_concurrency_configuration(self):
+        with self.assertRaisesRegex(ImageProviderError, "Concurrence"):
+            CloudflareImageAdapter(
+                account_id="account-123", api_token="test", ledger=self.ledger,
+                model_costs={"@cf/test/image": 10},
+                free_tier_confirmed_for_account=True, max_concurrency=17,
+                transport=lambda *a, **k: FakeResponse(),
+            )
+
     def test_quota_exhaustion_blocks_before_network(self):
         self.adapter.generate(prompt="one", model="@cf/test/image",
                               idempotency_key="first-job", now=self.day)
