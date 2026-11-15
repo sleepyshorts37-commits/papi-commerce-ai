@@ -47,7 +47,7 @@ def create_app(
         review_handler=build_postgres_asset_reviewer(factory),
         safety_review_handler=build_postgres_safety_reviewer(factory),
         metadata_saver=build_postgres_kdp_metadata_saver(factory),
-        kdp_build_handler=build_private_kdp_package_handler(storage_root),
+        kdp_build_handler=build_private_kdp_package_handler(storage_root, factory),
         library_reader=build_postgres_library_reader(factory),
     )
 
