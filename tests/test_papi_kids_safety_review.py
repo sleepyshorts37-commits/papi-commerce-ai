@@ -19,7 +19,7 @@ def manuscript(page_one):
 
 class PapiKidsSafetyReviewTests(unittest.TestCase):
     def test_flags_child_water_contact_and_hazard_handling(self):
-        source = manuscript("Nia entre dans la rivière et ramasse une seringue près de la berge.")
+        source = manuscript("Nia entre dans la rivière et Bako ramasse une seringue près de la berge.")
         result = analyze_child_safety(source)
         self.assertGreaterEqual(result["critical_issue_count"], 2)
         self.assertFalse(result["automatic_approval"])
