@@ -121,6 +121,9 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <input id="status-upload-id" type="text" inputmode="text" autocomplete="off" placeholder="PKP-UP-…">
 <button id="status-button" type="button">Vérifier l'avancement</button>
 <p id="status-result" class="muted" role="status" aria-live="polite">Saisissez la référence et le jeton serveur.</p>
+<label for="review-token">Jeton de validation humaine</label>
+<input id="review-token" type="password" autocomplete="off" placeholder="Jeton de revue distinct">
+<div id="asset-review-list" aria-live="polite"></div>
 </section>
 <section><h2>Suivi des illustrations</h2>
 <div class="filters" aria-label="Filtrer les pages">
@@ -141,6 +144,8 @@ const uploadResult=document.getElementById("upload-result");
 const statusButton=document.getElementById("status-button");
 const statusId=document.getElementById("status-upload-id");
 const statusResult=document.getElementById("status-result");
+const reviewTokenInput=document.getElementById("review-token");
+const assetReviewList=document.getElementById("asset-review-list");
 fileInput.addEventListener("change",()=>{
  const file=fileInput.files&&fileInput.files[0];
  preview.hidden=true;preview.textContent="";
@@ -189,9 +194,44 @@ statusButton.addEventListener("click",async()=>{
   statusResult.textContent="Livre : "+result.book_status+
    " — tâche : "+(job.status||"non créée")+
    " — tentatives : "+(job.attempts??0)+"/"+(job.max_attempts??0);
+  renderIllustrationReviews(result.illustrations||[],id);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
+function renderIllustrationReviews(assets,uploadId){
+ assetReviewList.replaceChildren();
+ if(!assets.length){assetReviewList.textContent="Aucune illustration enregistrée.";return;}
+ assets.forEach(asset=>{
+  const item=document.createElement("div");item.className="asset-review-item";
+  const label=document.createElement("p");
+  label.textContent="Page "+asset.page_number+" — version "+asset.version+
+   " — "+asset.width_px+"×"+asset.height_px+" — "+asset.review_status;
+  item.appendChild(label);
+  if(asset.review_status==="pending_review"||asset.review_status==="rejected"){
+   ["approved","rejected"].forEach(decision=>{
+    const button=document.createElement("button");button.type="button";
+    button.textContent=decision==="approved"?"Approuver":"Refuser";
+    button.addEventListener("click",()=>submitIllustrationReview(asset.asset_id,decision));
+    item.appendChild(button);
+   });
+  }
+  assetReviewList.appendChild(item);
+ });
+}
+async function submitIllustrationReview(assetId,decision){
+ const token=reviewTokenInput.value;
+ if(!token){statusResult.textContent="Saisissez le jeton de validation humaine.";return;}
+ try{
+  const response=await fetch("/api/papi-kids/assets/"+encodeURIComponent(assetId)+"/review",{
+   method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({decision}),credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"review_failed");
+  statusResult.textContent="Décision enregistrée : "+result.review_status;
+  statusButton.click();
+ }catch(error){statusResult.textContent="Revue non enregistrée : "+String(error.message||error);}
+}
 document.querySelectorAll("[data-filter]").forEach(button=>{
  button.addEventListener("click",()=>{
   const filter=button.dataset.filter;
