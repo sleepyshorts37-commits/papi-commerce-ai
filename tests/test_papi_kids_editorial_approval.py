@@ -2,6 +2,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from papi_core.image_provider_registry import ImageProviderRegistry, ModelProfile, ProviderProfile
@@ -96,12 +97,12 @@ class PapiKidsEditorialApprovalTests(unittest.TestCase):
             providers=[ProviderProfile("cloudflare", "Cloudflare", "https://developers.cloudflare.com/workers-ai/platform/pricing", "verified", "account_api", True)],
             models=[ModelProfile("cloudflare", MODEL_ID, "image", 58, True, True, True)],
         )
-        now = "2026-11-15T22:00:00+00:00"
+        now = datetime.now(timezone.utc)
         evidence = {
             "provider": "cloudflare", "account_ref": "a" * 32, "model_id": MODEL_ID,
             "source_url": "https://developers.cloudflare.com/workers-ai/platform/pricing",
-            "evidence_ref": "quota-snapshot-001", "verified_at": now,
-            "expires_at": "2026-11-15T23:00:00+00:00",
+            "evidence_ref": "quota-snapshot-001", "verified_at": now.isoformat(),
+            "expires_at": (now + timedelta(hours=1)).isoformat(),
             "daily_quota_units": 10000, "spend_cap_minor": 0,
         }
         prepared = prepare_pkp0001_from_project_sources(
