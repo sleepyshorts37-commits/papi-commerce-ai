@@ -66,6 +66,19 @@ def evaluate_kdp_release_gate(
     _missing(bool(rights.get("rights_holder")) and bool(rights.get("evidence_ref")),
              "Titulaire des droits ou preuve écrite manquant.", blockers)
 
+    manuscript_sha256 = manifest.get("manuscript_sha256")
+    safety_review = manifest.get("content_safety_review") or {}
+    _missing(
+        isinstance(manuscript_sha256, str) and bool(_SHA256.fullmatch(manuscript_sha256))
+        and safety_review.get("approved") is True
+        and bool(safety_review.get("reviewer_id"))
+        and bool(safety_review.get("reviewed_at"))
+        and bool(safety_review.get("evidence_ref"))
+        and safety_review.get("manuscript_sha256") == manuscript_sha256,
+        "Revue humaine de sécurité jeunesse absente ou liée à une autre version du manuscrit.",
+        blockers,
+    )
+
     try:
         page_count = int(manifest.get("page_count", 0))
     except (TypeError, ValueError):
@@ -240,4 +253,9 @@ def evaluate_kdp_release_gate(
         "spend_limit_minor": manifest.get("spend_limit_minor"),
         "publication_performed": False,
         "ebook": ebook_summary,
+        "content_safety_review": {
+            "approved": safety_review.get("approved") is True,
+            "manuscript_sha256": safety_review.get("manuscript_sha256"),
+            "reviewer_id": safety_review.get("reviewer_id"),
+        },
     }
