@@ -59,9 +59,9 @@ class PapiKidsBackupJobTests(unittest.TestCase):
                 "PAPI_KIDS_BACKUP_KEY_B64": base64.b64encode(b"Z"*32).decode(),
                 "PATH": "/usr/bin",
             }, clear=True), patch(
-                "papi_kids_backup_job.shutil.which", return_value="/usr/bin/pg_dump"
+                "papi_core.papi_kids_backup_job.shutil.which", return_value="/usr/bin/pg_dump"
             ), patch(
-                "papi_kids_backup_job.subprocess.run",
+                "papi_core.papi_kids_backup_job.subprocess.run",
                 return_value=type("Completed", (), {"returncode": 1, "stderr": b"secret token"})(),
             ):
                 with self.assertRaisesRegex(PapiKidsBackupJobError, "détails sensibles masqués"):
@@ -72,7 +72,7 @@ class PapiKidsBackupJobTests(unittest.TestCase):
             with patch.dict(os.environ, {
                 "PAPI_KIDS_DATABASE_URL": "postgresql://backup:secret@db.example.com/papi?sslmode=require",
             }, clear=True), patch(
-                "papi_kids_backup_job.shutil.which", return_value=None
+                "papi_core.papi_kids_backup_job.shutil.which", return_value=None
             ):
                 with self.assertRaises(PapiKidsBackupJobError):
                     create_encrypted_postgres_backup(root, key_id="test-key")
