@@ -26,6 +26,8 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("statusResult.textContent", html)
         self.assertIn("Jeton de validation humaine", html)
         self.assertIn("Approuver", html)
+        self.assertIn("sourceWidth", html)
+        self.assertIn("super-résolution à vérifier", html)
         self.assertIn("/review", html)
         self.assertIn("replaceChildren", html)
         self.assertIn("Mes livres", html)

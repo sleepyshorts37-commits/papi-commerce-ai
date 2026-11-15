@@ -20,6 +20,7 @@ from reportlab.platypus import Paragraph
 from reportlab.lib.utils import ImageReader
 
 from .papi_kids_asset_store import inspect_image
+from .papi_kids_print_resolution import PrintResolutionError, audit_image_resolution
 
 # Current official KDP paperback color page limits verified 2026-11-15.
 # Only trim sizes with explicit entries below are accepted by this preflight.
@@ -216,11 +217,30 @@ def build_interior_pdf(
             digest = hashlib.sha256(image_bytes).hexdigest()
             if digest != asset.get("sha256"):
                 raise KDPPreflightError(f"Empreinte SHA-256 incohérente page {number}.")
-            required_width = math.ceil(spec["pdf_width_in"] * dpi_target)
-            required_height = math.ceil(spec["pdf_height_in"] * dpi_target)
-            if width_px < required_width or height_px < required_height:
+            resolution_review = asset.get("resolution_review") or {
+                "approved": bool(asset.get("resolution_reviewed_by") and asset.get("resolution_reviewed_at")
+                                 and asset.get("resolution_review_output_sha256") == digest),
+                "reviewer_id": asset.get("resolution_reviewed_by"),
+                "approved_at": asset.get("resolution_reviewed_at"),
+                "output_sha256": asset.get("resolution_review_output_sha256"),
+            }
+            try:
+                resolution = audit_image_resolution(
+                    source_width_px=asset.get("source_width_px", width_px),
+                    source_height_px=asset.get("source_height_px", height_px),
+                    final_width_px=width_px, final_height_px=height_px,
+                    trim_width_in=trim_width_in, trim_height_in=trim_height_in,
+                    bleed=bleed, output_sha256=digest,
+                    upscaling_method=asset.get("upscaling_method", "native"),
+                    resolution_review=resolution_review, target_dpi=dpi_target,
+                )
+            except PrintResolutionError as exc:
+                raise KDPPreflightError(f"Provenance de résolution invalide page {number}.") from exc
+            if not resolution["print_ready"]:
                 raise KDPPreflightError(
-                    f"Page {number}: {width_px}×{height_px}px, minimum {required_width}×{required_height}px."
+                    f"Page {number}: résolution source {resolution['source_dpi']} DPI ; "
+                    f"résolution finale {resolution['final_pixel_dpi']} DPI ; "
+                    "super-résolution vérifiée et revue humaine requises."
                 )
             pdf.drawImage(ImageReader(str(image_path)), 0, 0, width=pdf_w, height=pdf_h, mask="auto")
 

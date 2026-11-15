@@ -239,8 +239,13 @@ function renderIllustrationReviews(assets,uploadId){
  assets.forEach(asset=>{
   const item=document.createElement("div");item.className="asset-review-item";
   const label=document.createElement("p");
-  label.textContent="Page "+asset.page_number+" — version "+asset.version+
-   " — "+asset.width_px+"×"+asset.height_px+" — "+asset.review_status;
+  const sourceWidth=asset.source_width_px||asset.width_px;
+  const sourceHeight=asset.source_height_px||asset.height_px;
+  const resolutionState=asset.upscaling_method==="native"?"source natif":
+   (asset.resolution_reviewed_by?"super-résolution revue":"super-résolution à vérifier");
+  label.textContent="Page "+asset.page_number+" — v"+asset.version+
+   " — source "+sourceWidth+"×"+sourceHeight+" → final "+asset.width_px+"×"+asset.height_px+
+   " — "+(asset.upscaling_method||"native")+" — "+resolutionState+" — "+asset.review_status;
   item.appendChild(label);
   if(asset.review_status==="pending_review"||asset.review_status==="rejected"){
    ["approved","rejected"].forEach(decision=>{

@@ -276,7 +276,9 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                     "lease_until": values["lease_until"].isoformat() if values.get("lease_until") else None,
                 }
             cursor.execute(
-                """select asset_id, page_number, version, review_status, width_px, height_px, media_type
+                """select asset_id, page_number, version, review_status, width_px, height_px, media_type,
+                           source_width_px, source_height_px, upscaling_method,
+                           resolution_reviewed_by, resolution_reviewed_at, resolution_review_output_sha256
                      from papi_kids_private.illustration_assets
                     where book_id = %s
                     order by page_number, version desc""",
@@ -286,7 +288,10 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
             illustrations = [
                 {"asset_id": row[0], "page_number": row[1], "version": row[2],
                  "review_status": row[3], "width_px": row[4], "height_px": row[5],
-                 "media_type": row[6]}
+                 "media_type": row[6], "source_width_px": row[7], "source_height_px": row[8],
+                 "upscaling_method": row[9], "resolution_reviewed_by": row[10],
+                 "resolution_reviewed_at": row[11].isoformat() if row[11] else None,
+                 "resolution_review_output_sha256": row[12]}
                 for row in asset_rows
             ]
             connection.commit()
@@ -321,6 +326,8 @@ def register_illustration_asset(
         raise ValueError("Référence ou empreinte d'illustration invalide.")
     connection = connection_factory()
     try:
+        resolution_review = metadata.get("resolution_review") or {}
+        resolution_approved = isinstance(resolution_review, dict) and resolution_review.get("approved") is True
         cursor = connection.cursor()
         cursor.execute(
             "select book_id from papi_kids_private.books where upload_id = %s for update",
@@ -334,18 +341,26 @@ def register_illustration_asset(
             """
             insert into papi_kids_private.illustration_assets(
                 asset_id, book_id, page_number, version, source_sha256, storage_key,
-                media_type, width_px, height_px, source_provider, model_id,
+                media_type, width_px, height_px, source_width_px, source_height_px,
+                upscaling_method, resolution_reviewed_by, resolution_reviewed_at,
+                resolution_review_output_sha256, source_provider, model_id,
                 prompt_sha256, generation_ref, metadata
-            ) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)
+            ) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)
             on conflict (source_sha256) do nothing
             returning asset_id
             """,
             (
                 metadata["asset_id"], book_id, metadata["page_number"], metadata["version"],
                 metadata["sha256"], metadata["storage_key"], metadata["media_type"],
-                metadata["width_px"], metadata["height_px"], metadata.get("source_provider"),
-                metadata.get("model_id"), metadata.get("prompt_sha256"),
-                metadata.get("generation_ref"),
+                metadata["width_px"], metadata["height_px"],
+                metadata.get("source_width_px", metadata["width_px"]),
+                metadata.get("source_height_px", metadata["height_px"]),
+                metadata.get("upscaling_method", "native"),
+                resolution_review.get("reviewer_id") if resolution_approved else None,
+                resolution_review.get("approved_at") if resolution_approved else None,
+                resolution_review.get("output_sha256") if resolution_approved else None,
+                metadata.get("source_provider"), metadata.get("model_id"),
+                metadata.get("prompt_sha256"), metadata.get("generation_ref"),
                 json.dumps({"review_status": "pending_review", "human_approval_required": True}),
             ),
         )
@@ -438,10 +453,19 @@ def review_illustration_asset(
                 )
         cursor.execute(
             """update papi_kids_private.illustration_assets
-                  set review_status = %s, reviewed_at = now(), reviewed_by = %s
+                  set review_status = %s, reviewed_at = now(), reviewed_by = %s,
+                   resolution_reviewed_by = case
+                       when %s = 'approved' and upscaling_method in ('ai_super_resolution','manual_retouch')
+                       then %s else resolution_reviewed_by end,
+                   resolution_reviewed_at = case
+                       when %s = 'approved' and upscaling_method in ('ai_super_resolution','manual_retouch')
+                       then now() else resolution_reviewed_at end,
+                   resolution_review_output_sha256 = case
+                       when %s = 'approved' and upscaling_method in ('ai_super_resolution','manual_retouch')
+                       then source_sha256 else resolution_review_output_sha256 end
                 where asset_id = %s and review_status in ('pending_review','rejected')
               returning asset_id""",
-            (decision, reviewer_id, asset_id),
+            (decision, reviewer_id, decision, reviewer_id, decision, decision, asset_id),
         )
         if not cursor.fetchone():
             raise PostgresEditorialQueueError("Transition de revue non autorisée.")

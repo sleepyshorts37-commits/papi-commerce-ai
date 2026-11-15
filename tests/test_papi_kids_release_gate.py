@@ -24,7 +24,9 @@ def complete_manifest(root):
         "rights": {"commercial_use_confirmed": True, "rights_holder": "Auteur", "evidence_ref": "rights-001"},
         "page_count": 24,
         "illustrations": [
-            {"page_number": i, "review_status": "approved", "sha256": f"{i:064x}", "dpi": 300}
+            {"page_number": i, "review_status": "approved", "sha256": f"{i:064x}", "dpi": 300,
+             "source_width_px": 2550, "source_height_px": 2550,
+             "width_px": 2550, "height_px": 2550, "upscaling_method": "native"}
             for i in range(1, 25)
         ],
         "pdfs": {
@@ -32,7 +34,8 @@ def complete_manifest(root):
             "cover": {"path": "cover.pdf", "sha256": digest(cover), "page_count": 1, "preflight": "passed"},
         },
         "print_spec": {
-            "trim_size": "8.5x8.5", "paper_type": "white",
+            "trim_size": "8.5x8.5", "trim_width_in": 8.5, "trim_height_in": 8.5,
+            "bleed": False, "paper_type": "white",
             "color_mode": "premium_color", "cover_template_sha256": "a" * 64,
         },
         "kdp_account": {"eligibility_verified": True, "verified_at": "2026-11-15", "evidence_ref": "account-check-001"},
@@ -78,6 +81,19 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
         self.assertFalse(result["publish_ready"])
         self.assertTrue(any("Illustration page 1" in item for item in result["blockers"]))
         self.assertTrue(any("Autorisation explicite" in item for item in result["blockers"]))
+
+    def test_lanczos_upscale_cannot_pass_print_release_gate(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            for asset in manifest["illustrations"]:
+                asset["source_width_px"] = 1024
+                asset["source_height_px"] = 1024
+                asset["upscaling_method"] = "lanczos_only"
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertFalse(result["publish_ready"])
+        self.assertTrue(any("super-résolution" in item for item in result["blockers"]))
 
     def test_pdf_hash_mismatch_blocks_release(self):
         with tempfile.TemporaryDirectory() as root:

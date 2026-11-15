@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .papi_kids_print_resolution import PrintResolutionError, audit_image_resolution
+
 _BOOK_ID = re.compile(r"^PKP-[0-9]{4,8}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -69,6 +71,10 @@ def evaluate_kdp_release_gate(
         page_count = 0
     _missing(page_count >= 24 and page_count % 2 == 0,
              "Pagination imprimée paire d'au moins 24 pages requise.", blockers)
+    print_spec = manifest.get("print_spec") or {}
+    trim_width = print_spec.get("trim_width_in")
+    trim_height = print_spec.get("trim_height_in")
+    bleed = print_spec.get("bleed") is True
     assets = manifest.get("illustrations")
     asset_pages = []
     if isinstance(assets, list):
@@ -82,8 +88,32 @@ def evaluate_kdp_release_gate(
                      f"Empreinte image manquante page {asset.get('page_number')}.", blockers)
             _missing(
                 isinstance(asset.get("dpi"), (int, float)) and asset["dpi"] >= 300,
-                f"Résolution inférieure à 300 DPI ou inconnue page {asset.get('page_number')}.", blockers,
+                f"Résolution pixel inférieure à 300 DPI ou inconnue page {asset.get('page_number')}.", blockers,
             )
+            if isinstance(trim_width, (int, float)) and isinstance(trim_height, (int, float)):
+                resolution_review = asset.get("resolution_review") or {
+                    "approved": bool(asset.get("resolution_reviewed_by") and asset.get("resolution_reviewed_at")
+                                     and asset.get("resolution_review_output_sha256") == asset.get("sha256")),
+                    "reviewer_id": asset.get("resolution_reviewed_by"),
+                    "approved_at": asset.get("resolution_reviewed_at"),
+                    "output_sha256": asset.get("resolution_review_output_sha256"),
+                }
+                try:
+                    resolution = audit_image_resolution(
+                        source_width_px=asset.get("source_width_px", asset.get("width_px", 0)),
+                        source_height_px=asset.get("source_height_px", asset.get("height_px", 0)),
+                        final_width_px=asset.get("width_px", 0),
+                        final_height_px=asset.get("height_px", 0),
+                        trim_width_in=trim_width, trim_height_in=trim_height, bleed=bleed,
+                        output_sha256=asset.get("sha256", ""),
+                        upscaling_method=asset.get("upscaling_method", "native"),
+                        resolution_review=resolution_review,
+                    )
+                    _missing(resolution["print_ready"],
+                             f"Résolution source ou revue de super-résolution insuffisante page {asset.get('page_number')}.",
+                             blockers)
+                except (PrintResolutionError, TypeError, ValueError):
+                    blockers.append(f"Provenance de résolution invalide page {asset.get('page_number')}.")
     else:
         assets = []
     _missing(
@@ -120,7 +150,8 @@ def evaluate_kdp_release_gate(
         _missing(record.get("preflight") == "passed",
                  f"Préflight final du PDF {key} non validé.", blockers)
 
-    print_spec = manifest.get("print_spec") or {}
+    _missing(isinstance(trim_width, (int, float)) and isinstance(trim_height, (int, float)),
+             "Dimensions exactes du format imprimé manquantes.", blockers)
     _missing(bool(print_spec.get("trim_size")) and bool(print_spec.get("paper_type"))
              and print_spec.get("color_mode") in {"premium_color", "standard_color"}
              and isinstance(print_spec.get("cover_template_sha256"), str)
