@@ -82,17 +82,23 @@ class PapiKidsBackupOpsTests(unittest.TestCase):
                 "encrypted_sha256": digest, "created_at": self.now.isoformat(),
             }
             Path(str(backup) + ".json").write_text(json.dumps(manifest))
+            verified_at = self.now.isoformat()
+            remote = "drive:papi-kids-backups"
+            evidence = hashlib.sha256(
+                f"{backup.name}:{digest}:{remote}:{datetime.fromisoformat(verified_at)}".encode("utf-8")
+            ).hexdigest()
             proof = {
                 "status": "offsite_copy_verified", "checksum_verified": True,
+                "verified_at": verified_at, "remote": remote,
                 "backups": [{
                     "backup_file": backup.name, "encrypted_sha256": digest,
-                    "offsite_copy_verified": True, "offsite_evidence_ref": "proof-01",
+                    "offsite_copy_verified": True, "offsite_evidence_ref": evidence,
                 }],
             }
             (Path(root) / "offsite-verification.json").write_text(json.dumps(proof))
             inventory = load_backup_health_inventory(root)
             self.assertTrue(inventory[0]["offsite_copy_verified"])
-            self.assertEqual(inventory[0]["offsite_evidence_ref"], "proof-01")
+            self.assertEqual(inventory[0]["offsite_evidence_ref"], evidence)
 
     def test_tampered_offsite_evidence_does_not_mark_backup_verified(self):
         import hashlib
@@ -108,11 +114,14 @@ class PapiKidsBackupOpsTests(unittest.TestCase):
                 "encrypted_sha256": digest, "created_at": self.now.isoformat(),
             }
             Path(str(backup) + ".json").write_text(json.dumps(manifest))
+            verified_at = self.now.isoformat()
+            remote = "drive:papi-kids-backups"
             proof = {
                 "status": "offsite_copy_verified", "checksum_verified": True,
+                "verified_at": verified_at, "remote": remote,
                 "backups": [{
                     "backup_file": backup.name, "encrypted_sha256": "0" * 64,
-                    "offsite_copy_verified": True, "offsite_evidence_ref": "proof-02",
+                    "offsite_copy_verified": True, "offsite_evidence_ref": "0" * 64,
                 }],
             }
             (Path(root) / "offsite-verification.json").write_text(json.dumps(proof))
