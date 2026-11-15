@@ -15,3 +15,10 @@ Un nouveau package invalide les attestations précédentes par version/hash. Auc
 - Panneau iPhone avec jeton distinct et liste de blocages.
 - Endpoint HTTPS GET en lecture seule ; aucun état modifié.
 - Les revues doivent correspondre aux empreintes SHA-256 exactes de la dernière version du package.
+
+## Contrôle final et endpoint iPhone
+- Évaluateur fail-closed : vérifie version/empreinte manifeste, empreintes exactes PDF/EPUB, revues humaines, sécurité jeunesse, fiche commerciale et droits.
+- Une modification d'empreinte invalide l'approbation précédente.
+- Endpoint HTTPS GET en lecture seule protégé par `PAPI_KIDS_RELEASE_GATE_TOKEN`.
+- Panneau iPhone affiche l'éligibilité à une confirmation finale et les blocages.
+- Le gate n'autorise aucune publication : téléversement KDP désactivé, dépenses zéro.
