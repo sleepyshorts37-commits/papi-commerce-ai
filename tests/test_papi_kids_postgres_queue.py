@@ -11,6 +11,7 @@ from papi_core.papi_kids_postgres_queue import (
     record_kdp_listing_metadata,
     record_kdp_package_build,
     record_kdp_package_review,
+    record_kindle_previewer_review,
 )
 
 
@@ -238,6 +239,40 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             )
         self.assertEqual(connection.cursor_obj.execute.call_count, 0)
 
+    def test_kindle_previewer_review_is_bound_to_latest_epub_hash(self):
+        upload_id = "PKP-UP-" + "3" * 32
+        digest = "c" * 64
+        manifest = {"ebook": {"sha256": digest}}
+        connection = FakeConnection(rows=[("book-uuid",), (2, manifest)])
+        result = record_kindle_previewer_review(
+            lambda: connection, upload_id=upload_id, epub_sha256=digest,
+            passed=True, reviewer_id="owner-01", evidence_ref="d" * 64,
+            notes="EPUB contrôlé dans Kindle Previewer, navigation et images validées.",
+        )
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["package_version"], 2)
+        self.assertEqual(result["epub_sha256"], digest)
+        self.assertEqual(connection.commits, 1)
+
+    def test_kindle_previewer_review_rejects_changed_epub_and_invalid_evidence(self):
+        upload_id = "PKP-UP-" + "4" * 32
+        connection = FakeConnection(rows=[("book-uuid",), (1, {"ebook": {"sha256": "a" * 64}})])
+        with self.assertRaises(PostgresEditorialQueueError):
+            record_kindle_previewer_review(
+                lambda: connection, upload_id=upload_id, epub_sha256="b" * 64,
+                passed=True, reviewer_id="owner-01", evidence_ref="c" * 64,
+                notes="Le fichier EPUB a été contrôlé correctement.",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+        connection = FakeConnection()
+        with self.assertRaises(ValueError):
+            record_kindle_previewer_review(
+                lambda: connection, upload_id=upload_id, epub_sha256="a" * 64,
+                passed=True, reviewer_id="owner-01", evidence_ref="invalid",
+                notes="Le fichier EPUB a été contrôlé correctement.",
+            )
+        self.assertEqual(connection.cursor_obj.execute.call_count, 0)
+
     def test_library_reader_returns_bounded_sanitized_book_summaries(self):
         connection = FakeConnection()
         connection.cursor_obj.fetchall.return_value = [
@@ -266,13 +301,15 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             {"title": "Nia"}, "incomplete", ["Auteur absent"],
             {"package_version": 1, "status": "generated_pending_manual_pdf_inspection"},
             {"v1:interior": {"approved": True}},
+            {"passed": True, "epub_sha256": "c" * 64},
             71, "completed", 1, 5, None, None, analysis,
         )])
         connection.cursor_obj.description = [
             ("book_id",), ("upload_id",), ("book_status",), ("created_at",),
             ("updated_at",), ("content_safety_review",), ("kdp_listing_metadata",),
             ("kdp_listing_metadata_status",), ("kdp_listing_metadata_blockers",),
-            ("kdp_package_build",), ("kdp_package_reviews",), ("job_id",),
+            ("kdp_package_build",), ("kdp_package_reviews",),
+            ("kindle_previewer_review",), ("job_id",),
             ("job_status",), ("attempts",), ("max_attempts",),
             ("available_at",), ("lease_until",), ("analysis",),
         ]
@@ -285,6 +322,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(result["kdp_listing_metadata_blockers"], ["Auteur absent"])
         self.assertEqual(result["kdp_package_build"]["package_version"], 1)
         self.assertTrue(result["kdp_package_reviews"]["v1:interior"]["approved"])
+        self.assertTrue(result["kindle_previewer_review"]["passed"])
 
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):

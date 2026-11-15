@@ -288,7 +288,10 @@ def evaluate_kdp_release_gate(
                     preview.get("passed") is True
                     and bool(preview.get("reviewer_id"))
                     and bool(preview.get("reviewed_at"))
-                    and bool(preview.get("evidence_ref"))
+                    and bool(_SHA256.fullmatch(str(preview.get("evidence_ref", ""))))
+                    and isinstance(preview.get("notes"), str)
+                    and 20 <= len(preview.get("notes", "")) <= 2000
+                    and preview.get("package_version") == package_version
                     and preview.get("epub_sha256") == ebook_digest,
                     "Validation Kindle Previewer humaine absente ou liée à une autre version EPUB.",
                     blockers,

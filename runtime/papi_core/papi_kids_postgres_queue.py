@@ -258,6 +258,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                        b.metadata->'kdp_listing_metadata_blockers' as kdp_listing_metadata_blockers,
                        b.metadata->'kdp_package_build' as kdp_package_build,
                        b.metadata->'kdp_package_reviews' as kdp_package_reviews,
+                       b.metadata->'kindle_previewer_review' as kindle_previewer_review,
                        j.job_id, j.status as job_status, j.attempts, j.max_attempts,
                        j.available_at, j.lease_until, j.payload->'analysis' as analysis
                   from papi_kids_private.books b
@@ -315,6 +316,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "kdp_listing_metadata_blockers": values.get("kdp_listing_metadata_blockers") or [],
                 "kdp_package_build": values.get("kdp_package_build"),
                 "kdp_package_reviews": values.get("kdp_package_reviews") or {},
+                "kindle_previewer_review": values.get("kindle_previewer_review"),
                 "illustrations": illustrations,
             }
         except Exception:
@@ -939,5 +941,107 @@ def build_postgres_kdp_package_reviewer(
             connection_factory, upload_id=upload_id, artifact=artifact,
             artifact_sha256=artifact_sha256, decision=decision,
             reviewer_id=reviewer_id, notes=notes,
+        )
+    return review
+
+
+def record_kindle_previewer_review(
+    connection_factory: Callable[[], Any], *,
+    upload_id: str, epub_sha256: str, passed: bool,
+    reviewer_id: str, evidence_ref: str, notes: str,
+) -> dict[str, Any]:
+    """Persist a Kindle Previewer attestation bound to the latest EPUB artifact."""
+    if not isinstance(upload_id, str) or not re.fullmatch(r"PKP-UP-[0-9a-f]{32}", upload_id):
+        raise ValueError("Référence de dépôt invalide.")
+    if not isinstance(epub_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", epub_sha256):
+        raise ValueError("SHA-256 EPUB invalide.")
+    if not isinstance(passed, bool):
+        raise ValueError("Décision Kindle Previewer invalide.")
+    if not isinstance(reviewer_id, str) or not 3 <= len(reviewer_id.strip()) <= 120:
+        raise ValueError("Identité du réviseur invalide.")
+    reviewer_id = reviewer_id.strip()
+    if not isinstance(evidence_ref, str) or not re.fullmatch(r"[0-9a-f]{64}", evidence_ref):
+        raise ValueError("Empreinte de preuve Kindle Previewer invalide.")
+    if not isinstance(notes, str) or not 20 <= len(notes.strip()) <= 2000:
+        raise ValueError("Notes de revue Kindle Previewer obligatoires.")
+    notes = notes.strip()
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """select book_id from papi_kids_private.books
+                where upload_id = %s for update""",
+            (upload_id,),
+        )
+        book = cursor.fetchone()
+        if not book:
+            raise PostgresEditorialQueueError("Manuscrit introuvable.")
+        book_id = book[0]
+        cursor.execute(
+            """select package_version, package_manifest
+                 from papi_kids_private.kdp_package_builds
+                where upload_id = %s
+                order by package_version desc limit 1""",
+            (upload_id,),
+        )
+        package = cursor.fetchone()
+        if not package:
+            raise PostgresEditorialQueueError("Aucun package KDP fabriqué.")
+        package_version, package_manifest = package
+        if isinstance(package_manifest, str):
+            package_manifest = json.loads(package_manifest)
+        ebook = package_manifest.get("ebook") if isinstance(package_manifest, dict) else None
+        if not isinstance(ebook, dict) or ebook.get("sha256") != epub_sha256:
+            raise PostgresEditorialQueueError("L'EPUB a changé depuis la fabrication.")
+        from datetime import datetime, timezone
+        reviewed_at = datetime.now(timezone.utc).isoformat()
+        review = {
+            "passed": passed,
+            "package_version": package_version,
+            "reviewer_id": reviewer_id,
+            "reviewed_at": reviewed_at,
+            "evidence_ref": evidence_ref,
+            "epub_sha256": epub_sha256,
+            "notes": notes,
+        }
+        cursor.execute(
+            """insert into papi_kids_private.kindle_previewer_reviews
+                (book_id, upload_id, package_version, epub_sha256, passed,
+                 reviewer_id, evidence_ref, notes)
+                values (%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (book_id, upload_id, package_version, epub_sha256, passed,
+             reviewer_id, evidence_ref, notes),
+        )
+        cursor.execute(
+            """update papi_kids_private.books
+                  set metadata = coalesce(metadata, '{}'::jsonb) ||
+                      jsonb_build_object('kindle_previewer_review', %s::jsonb),
+                      updated_at = now()
+                where book_id = %s""",
+            (json.dumps(review, ensure_ascii=False), book_id),
+        )
+        connection.commit()
+        return {"upload_id": upload_id, **review}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()
+
+
+def build_postgres_kindle_previewer_reviewer(
+    connection_factory: Callable[[], Any],
+) -> Callable[..., dict[str, Any]]:
+    """Build server-side callback for Kindle Previewer review attestations."""
+    def review(
+        upload_id: str, epub_sha256: str, passed: bool,
+        reviewer_id: str, evidence_ref: str, notes: str,
+    ) -> dict[str, Any]:
+        return record_kindle_previewer_review(
+            connection_factory, upload_id=upload_id,
+            epub_sha256=epub_sha256, passed=passed,
+            reviewer_id=reviewer_id, evidence_ref=evidence_ref, notes=notes,
         )
     return review

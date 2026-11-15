@@ -178,7 +178,7 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             manifest["ebook_required"] = True
             manifest["ebook"] = {
                 "path": "book.epub", "sha256": digest, "page_count": 24,
-                "preflight": "passed", "format": "EPUB 3 fixed-layout",
+                "preflight": "automated_epub_checks_passed_pending_kindle_previewer", "format": "EPUB 3 fixed-layout",
             }
             manifest["kdp_package_reviews"]["v1:ebook"] = {
                 "package_version": 1, "artifact": "ebook",
@@ -188,13 +188,14 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
                 "notes": "EPUB contrôlé dans le lecteur, navigation et illustrations vérifiées.",
             }
             manifest["kindle_previewer_review"] = {
-                "passed": True, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
-                "evidence_ref": "kindle-preview-01", "epub_sha256": digest,
+                "passed": True, "package_version": 1, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "d" * 64, "epub_sha256": digest,
+                "notes": "Kindle Previewer vérifié, navigation et rendu contrôlés.",
             }
             result = evaluate_kdp_release_gate(
                 book_id="PKP-0001", manifest=manifest, private_root=root,
             )
-        self.assertTrue(result["publish_ready"])
+        self.assertTrue(result["publish_ready"], result["blockers"])
         self.assertEqual(result["ebook"]["status"], "approved")
         self.assertFalse(result["publication_execution_enabled"])
 
@@ -207,11 +208,12 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             manifest["ebook_required"] = True
             manifest["ebook"] = {
                 "path": "book.epub", "sha256": digest, "page_count": 24,
-                "preflight": "passed", "format": "EPUB 3 fixed-layout",
+                "preflight": "automated_epub_checks_passed_pending_kindle_previewer", "format": "EPUB 3 fixed-layout",
             }
             manifest["kindle_previewer_review"] = {
-                "passed": True, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
-                "evidence_ref": "kindle-preview-01", "epub_sha256": "0" * 64,
+                "passed": True, "package_version": 1, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "d" * 64, "epub_sha256": "0" * 64,
+                "notes": "Kindle Previewer vérifié, navigation et rendu contrôlés.",
             }
             result = evaluate_kdp_release_gate(
                 book_id="PKP-0001", manifest=manifest, private_root=root,

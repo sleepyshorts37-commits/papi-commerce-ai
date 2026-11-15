@@ -15,6 +15,7 @@ from .papi_kids_postgres_queue import (
     build_postgres_safety_reviewer,
     build_postgres_kdp_metadata_saver,
     build_postgres_kdp_package_reviewer,
+    build_postgres_kindle_previewer_reviewer,
     build_postgres_status_reader,
 )
 from .papi_kids_worker_service import create_postgres_connection_factory
@@ -54,6 +55,7 @@ def create_app(
         metadata_saver=build_postgres_kdp_metadata_saver(factory),
         kdp_build_handler=build_private_kdp_package_handler(storage_root, factory),
         kdp_package_review_handler=build_postgres_kdp_package_reviewer(factory),
+        kindle_previewer_handler=build_postgres_kindle_previewer_reviewer(factory),
         kdp_package_download_handler=build_private_kdp_package_downloader(storage_root, factory),
         readiness_handler=lambda: check_papi_kids_readiness(
             storage_root=storage_root, connection_factory=factory,

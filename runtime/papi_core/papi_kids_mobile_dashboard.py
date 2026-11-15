@@ -189,6 +189,7 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <label for="kdp-review-token">Jeton distinct de revue des fichiers KDP</label>
 <input id="kdp-review-token" type="password" autocomplete="off" placeholder="Jeton de revue KDP côté serveur">
 <div id="kdp-package-review-list" aria-live="polite">Aucun package à inspecter.</div>
+<div id="kindle-previewer-section"></div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
@@ -228,6 +229,7 @@ const readinessButton=document.getElementById("readiness-button");
 const readinessResult=document.getElementById("readiness-result");
 const kdpReviewTokenInput=document.getElementById("kdp-review-token");
 const kdpPackageReviewList=document.getElementById("kdp-package-review-list");
+const kindlePreviewerSection=document.getElementById("kindle-previewer-section");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -287,9 +289,54 @@ statusButton.addEventListener("click",async()=>{
    result.content_safety_review,id);
   renderKdpMetadata(result.kdp_listing_metadata||{},result.kdp_listing_metadata_status||"",result.kdp_listing_metadata_blockers||[]);
   renderKdpPackageReview(result.kdp_package_build||{},result.kdp_package_reviews||{},id);
+  renderKindlePreviewerReview(result.kdp_package_build||{},result.kindle_previewer_review||{},id);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
+function renderKindlePreviewerReview(packageBuild,review,uploadId){
+ kindlePreviewerSection.replaceChildren();
+ if(!packageBuild||!packageBuild.ebook)return;
+ const heading=document.createElement("h3");heading.textContent="Validation Kindle Previewer";
+ kindlePreviewerSection.appendChild(heading);
+ if(review&&review.epub_sha256===packageBuild.ebook.sha256){
+  const state=document.createElement("p");
+  state.textContent="Kindle Previewer : "+(review.passed?"VALIDÉ":"REFUSÉ")+
+   " — réviseur : "+(review.reviewer_id||"")+" — "+(review.reviewed_at||"");
+  kindlePreviewerSection.appendChild(state);
+  if(review.passed)return;
+ }
+ const token=document.createElement("input");token.type="password";
+ token.id="kindle-previewer-token";token.autocomplete="off";
+ token.placeholder="Jeton Kindle Previewer distinct";
+ const evidence=document.createElement("input");evidence.type="text";
+ evidence.id="kindle-previewer-evidence";evidence.placeholder="SHA-256 de la preuve Kindle Previewer";
+ const notes=document.createElement("textarea");notes.id="kindle-previewer-notes";
+ notes.maxLength=2000;notes.placeholder="Notes de vérification (minimum 20 caractères).";
+ const passed=document.createElement("input");passed.type="checkbox";passed.id="kindle-previewer-passed";
+ const label=document.createElement("label");label.append(passed,document.createTextNode(" Test Kindle Previewer réussi"));
+ const button=document.createElement("button");button.type="button";
+ button.textContent="Enregistrer la revue Kindle Previewer";
+ button.addEventListener("click",()=>submitKindlePreviewerReview(
+  uploadId,packageBuild.ebook.sha256,token.value,evidence.value,passed.checked,notes.value
+ ));
+ kindlePreviewerSection.append(token,evidence,notes,label,button);
+}
+async function submitKindlePreviewerReview(uploadId,epubSha256,token,evidenceRef,passed,notes){
+ if(!token){kindlePreviewerSection.insertAdjacentText("afterbegin","Jeton Kindle Previewer requis.");return;}
+ if(!/^[0-9a-f]{64}$/.test(evidenceRef)){kindlePreviewerSection.insertAdjacentText("afterbegin","Fournissez le SHA-256 de la preuve.");return;}
+ if(notes.trim().length<20){kindlePreviewerSection.insertAdjacentText("afterbegin","Ajoutez au moins 20 caractères de notes.");return;}
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(uploadId)+"/kindle-previewer-review",{
+   method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({epub_sha256:epubSha256,passed,evidence_ref:evidenceRef,notes}),
+   credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"kindle_previewer_review_failed");
+  statusResult.textContent="Revue Kindle Previewer enregistrée : "+(result.passed?"validée":"refusée");
+  statusButton.click();
+ }catch(error){kindlePreviewerSection.insertAdjacentText("afterbegin","Revue Kindle Previewer impossible : "+String(error.message||error));}
+}
 function renderKdpPackageReview(packageBuild,reviews,uploadId){
  kdpPackageReviewList.replaceChildren();
  if(!packageBuild||!packageBuild.package_version){
