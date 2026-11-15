@@ -81,7 +81,12 @@ h2{font-size:18px;margin:0 0 12px}.muted{color:#64748b;font-size:13px}
 .metric span{font-size:12px;color:#526078}.bookid{font-size:12px;font-weight:700;color:#64748b}
 .progress{height:9px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin:12px 0 5px}
 .progress span{display:block;height:100%;background:#2563eb;width:0}
-input,button{font:inherit}input[type=file]{width:100%;padding:12px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc}
+input,button,textarea{font:inherit}input[type=file]{width:100%;padding:12px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid #cbd5e1;border-radius:9px}
+.safety-issue{border:1px solid #fbbf24;background:#fffbeb;padding:10px;border-radius:10px;margin:8px 0}
+.safety-issue strong{font-size:12px}.safety-issue p{font-size:13px;margin:5px 0}
+.safety-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.safety-actions button{padding:9px 12px;border:1px solid #94a3b8;border-radius:9px;background:#f8fafc}
 .notice{background:#fff7ed;border-left:4px solid #f59e0b;padding:11px;border-radius:8px;font-size:13px}
 #preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;background:#f8fafc;padding:12px;border-radius:9px;font-size:13px}
 .filters{display:flex;gap:8px;overflow:auto;padding:2px 0 12px}
@@ -125,6 +130,12 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <input id="review-token" type="password" autocomplete="off" placeholder="Jeton de revue distinct">
 <div id="asset-review-list" aria-live="polite"></div>
 <hr>
+<h2>Validation de sécurité jeunesse</h2>
+<p class="muted">Les alertes sont des signaux à examiner, pas un verdict automatique. La validation reste humaine.</p>
+<label for="safety-review-token">Jeton distinct de revue sécurité</label>
+<input id="safety-review-token" type="password" autocomplete="off" placeholder="Jeton sécurité côté serveur">
+<div id="safety-review-list" aria-live="polite"></div>
+
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
 <div id="book-list" aria-live="polite"></div>
@@ -150,6 +161,8 @@ const statusId=document.getElementById("status-upload-id");
 const statusResult=document.getElementById("status-result");
 const reviewTokenInput=document.getElementById("review-token");
 const assetReviewList=document.getElementById("asset-review-list");
+const safetyReviewTokenInput=document.getElementById("safety-review-token");
+const safetyReviewList=document.getElementById("safety-review-list");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -203,6 +216,8 @@ statusButton.addEventListener("click",async()=>{
    " — tâche : "+(job.status||"non créée")+
    " — tentatives : "+(job.attempts??0)+"/"+(job.max_attempts??0);
   renderIllustrationReviews(result.illustrations||[],id);
+  renderSafetyReview(job.analysis&&job.analysis.child_safety_screening,
+   result.content_safety_review,id);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
@@ -233,6 +248,80 @@ async function loadLibrary(){
  finally{libraryButton.disabled=false;}
 }
 libraryButton.addEventListener("click",loadLibrary);
+function renderSafetyReview(screening,review,uploadId){
+ safetyReviewList.replaceChildren();
+ if(!screening||!screening.manuscript_sha256){
+  safetyReviewList.textContent="Analyse de sécurité indisponible ou manuscrit non structuré : revue éditoriale manuelle requise.";
+  return;
+ }
+ const summary=document.createElement("p");
+ summary.textContent="Pages analysées : "+screening.page_count+
+  " — alertes : "+screening.issue_count+
+  " (critiques : "+screening.critical_issue_count+", élevées : "+screening.high_issue_count+").";
+ safetyReviewList.appendChild(summary);
+ (screening.pages||[]).forEach(page=>{
+  (page.issues||[]).forEach(issue=>{
+   const card=document.createElement("div");card.className="safety-issue";
+   const title=document.createElement("strong");
+   title.textContent="Page "+page.page_number+" — "+issue.severity;
+   const description=document.createElement("p");description.textContent=issue.description;
+   const excerpt=document.createElement("p");excerpt.textContent="Extrait : "+issue.excerpt;
+   card.append(title,description,excerpt);safetyReviewList.appendChild(card);
+  });
+ });
+ if(review&&review.manuscript_sha256!==screening.manuscript_sha256){
+  const stale=document.createElement("p");
+  stale.textContent="La revue précédente est périmée : le manuscrit a changé.";
+  safetyReviewList.appendChild(stale);
+ }
+ if(review&&review.manuscript_sha256===screening.manuscript_sha256){
+  const state=document.createElement("p");
+  state.textContent="Décision humaine : "+(review.approved?"APPROUVÉ":"REFUSÉ")+
+   " — réviseur : "+(review.reviewer_id||"non renseigné")+
+   " — date : "+(review.reviewed_at||"non renseignée");
+  safetyReviewList.appendChild(state);
+  if(review.approved)return;
+ }
+ const notes=document.createElement("textarea");
+ notes.id="safety-review-notes";
+ notes.maxLength=2000;
+ notes.placeholder=screening.issue_count>0?
+  "Expliquez la résolution des alertes (minimum 20 caractères pour approuver).":
+  "Notes de revue (facultatif si aucune alerte).";
+ safetyReviewList.appendChild(notes);
+ const actions=document.createElement("div");actions.className="safety-actions";
+ ["approved","rejected"].forEach(decision=>{
+  const button=document.createElement("button");button.type="button";
+  button.textContent=decision==="approved"?"Valider la sécurité":"Refuser / demander correction";
+  button.addEventListener("click",()=>submitSafetyReview(
+   uploadId,screening.manuscript_sha256,decision,notes.value,screening.issue_count
+  ));
+  actions.appendChild(button);
+ });
+ safetyReviewList.appendChild(actions);
+}
+async function submitSafetyReview(uploadId,manuscriptSha256,decision,notes,issueCount){
+ const token=safetyReviewTokenInput.value;
+ if(!token){statusResult.textContent="Saisissez le jeton distinct de revue sécurité.";return;}
+ if(decision==="approved"&&issueCount>0&&notes.trim().length<20){
+  statusResult.textContent="Ajoutez au moins 20 caractères de justification pour approuver les alertes.";
+  return;
+ }
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+
+   encodeURIComponent(uploadId)+"/safety-review",{
+   method:"POST",
+   headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({decision,manuscript_sha256:manuscriptSha256,notes}),
+   credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"safety_review_failed");
+  statusResult.textContent="Revue sécurité enregistrée : "+(result.approved?"approuvée":"refusée")+
+   " — "+result.evidence_ref;
+  statusButton.click();
+ }catch(error){statusResult.textContent="Revue sécurité non enregistrée : "+String(error.message||error);}
+}
 function renderIllustrationReviews(assets,uploadId){
  assetReviewList.replaceChildren();
  if(!assets.length){assetReviewList.textContent="Aucune illustration enregistrée.";return;}
