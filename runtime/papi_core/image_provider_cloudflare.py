@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+import json
 import os
 import re
 import threading
 from typing import Any, Callable
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
@@ -54,7 +55,7 @@ class InMemoryNeuronQuotaLedger:
 
     def reserve(
         self, *, idempotency_key: str, estimated_neurons: int,
-        now: datetime | None = None,
+        now: datetime | None = None, model: str | None = None,
     ) -> QuotaReservation:
         if not isinstance(idempotency_key, str) or not IDENTIFIER.fullmatch(idempotency_key):
             raise ImageProviderError("Clé d'idempotence invalide.")
@@ -140,6 +141,107 @@ class InMemoryNeuronQuotaLedger:
             }
 
 
+class SupabaseNeuronQuotaLedger:
+    """Persistent shared quota ledger using the Mission 104 PostgREST RPCs."""
+    def __init__(self, *, supabase_url: str, service_role_key: str,
+                 account_ref: str, worker_id: str,
+                 daily_limit: int = DEFAULT_DAILY_NEURON_LIMIT,
+                 timeout_seconds: int = 15) -> None:
+        if not isinstance(supabase_url, str) or not supabase_url.startswith("https://"):
+            raise ImageProviderError("URL Supabase HTTPS invalide.")
+        if not isinstance(service_role_key, str) or not service_role_key.strip():
+            raise ImageProviderError("Clé serveur Supabase absente.")
+        if not isinstance(account_ref, str) or not IDENTIFIER.fullmatch(account_ref):
+            raise ImageProviderError("Référence de compte fournisseur invalide.")
+        if not isinstance(worker_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{2,119}", worker_id):
+            raise ImageProviderError("Identifiant du worker invalide.")
+        if not isinstance(daily_limit, int) or isinstance(daily_limit, bool) or daily_limit <= 0:
+            raise ImageProviderError("Plafond quotidien Supabase invalide.")
+        if not isinstance(timeout_seconds, int) or not 1 <= timeout_seconds <= 60:
+            raise ImageProviderError("Délai Supabase invalide.")
+        self.rpc_root = supabase_url.rstrip("/") + "/rest/v1/rpc/"
+        self.key = service_role_key
+        self.account_ref = account_ref
+        self.worker_id = worker_id
+        self.daily_limit = daily_limit
+        self.timeout_seconds = timeout_seconds
+
+    @classmethod
+    def from_environment(cls) -> "SupabaseNeuronQuotaLedger":
+        return cls(
+            supabase_url=os.getenv("SUPABASE_URL", ""),
+            service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
+            account_ref=os.getenv("CLOUDFLARE_ACCOUNT_ID", ""),
+            worker_id=os.getenv("PAPI_WORKER_ID", "PAPI-IMAGE-01"),
+            daily_limit=int(os.getenv("PAPI_CLOUDFLARE_DAILY_NEURON_LIMIT", str(DEFAULT_DAILY_NEURON_LIMIT))),
+        )
+
+    def _rpc(self, function: str, payload: dict[str, Any]) -> Any:
+        request = Request(self.rpc_root + function, data=json.dumps(payload).encode("utf-8"),
+            headers={"apikey": self.key, "Authorization": "Bearer " + self.key,
+                     "Content-Type": "application/json", "Accept": "application/json"},
+            method="POST")
+        try:
+            with urlopen(request, timeout=self.timeout_seconds) as response:
+                raw = response.read()
+        except HTTPError as exc:
+            raise ImageProviderError(f"Échec RPC Supabase ({exc.code}).") from exc
+        except (URLError, TimeoutError, OSError) as exc:
+            raise ImageProviderError("Connexion Supabase incertaine ; ne pas relancer automatiquement.") from exc
+        try:
+            return json.loads(raw.decode("utf-8")) if raw else None
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ImageProviderError("Réponse RPC Supabase illisible.") from exc
+
+    @staticmethod
+    def _row(payload: Any) -> dict[str, Any]:
+        if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+            return payload[0]
+        if isinstance(payload, dict):
+            return payload
+        raise ImageProviderError("Réponse RPC Supabase incomplète.")
+
+    def reserve(self, *, idempotency_key: str, estimated_neurons: int,
+                now: datetime | None = None, model: str | None = None) -> QuotaReservation:
+        if not isinstance(model, str) or not IDENTIFIER.fullmatch(model):
+            raise ImageProviderError("Modèle requis pour le registre partagé.")
+        if not isinstance(idempotency_key, str) or not re.fullmatch(r"[A-Za-z0-9:_./-]{8,180}", idempotency_key):
+            raise ImageProviderError("Clé d'idempotence Supabase invalide.")
+        if not isinstance(estimated_neurons, int) or isinstance(estimated_neurons, bool) or estimated_neurons <= 0:
+            raise ImageProviderError("Estimation de consommation invalide.")
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None:
+            raise ImageProviderError("L'horodatage du quota doit inclure un fuseau horaire.")
+        day = current.astimezone(timezone.utc).date().isoformat()
+        row = self._row(self._rpc("papi_reserve_provider_quota", {
+            "p_idempotency_key": idempotency_key, "p_provider": "cloudflare",
+            "p_account_ref": self.account_ref, "p_model": model,
+            "p_worker_id": self.worker_id, "p_estimated_units": estimated_neurons,
+            "p_daily_limit": self.daily_limit, "p_quota_day": day}))
+        return QuotaReservation(str(row["reservation_id"]), idempotency_key,
+            str(row["quota_day"]), estimated_neurons, str(row["reservation_status"]))
+
+    def commit(self, reservation: QuotaReservation,
+               actual_neurons: int | None = None) -> QuotaReservation:
+        actual = reservation.estimated_neurons if actual_neurons is None else actual_neurons
+        if not isinstance(actual, int) or isinstance(actual, bool) or actual <= 0:
+            raise ImageProviderError("Consommation réelle invalide.")
+        self._rpc("papi_commit_provider_quota", {
+            "p_reservation_id": reservation.reservation_id, "p_actual_units": actual})
+        return QuotaReservation(reservation.reservation_id, reservation.idempotency_key,
+            reservation.utc_day, actual, "committed")
+
+    def mark_uncertain(self, reservation: QuotaReservation) -> None:
+        self._rpc("papi_mark_provider_quota_uncertain", {
+            "p_reservation_id": reservation.reservation_id})
+
+    def release(self, reservation: QuotaReservation) -> QuotaReservation:
+        self._rpc("papi_release_provider_quota", {
+            "p_reservation_id": reservation.reservation_id})
+        return QuotaReservation(reservation.reservation_id, reservation.idempotency_key,
+            reservation.utc_day, reservation.estimated_neurons, "released")
+
+
 class CloudflareImageAdapter:
     """Explicit Cloudflare REST adapter; no implicit retries or paid fallback."""
 
@@ -147,7 +249,7 @@ class CloudflareImageAdapter:
 
     def __init__(
         self, *, account_id: str, api_token: str,
-        ledger: InMemoryNeuronQuotaLedger,
+        ledger: Any,
         model_costs: dict[str, int],
         free_tier_confirmed_for_account: bool,
         transport: Callable[..., Any] | None = None,
@@ -166,8 +268,8 @@ class CloudflareImageAdapter:
                 raise ImageProviderError("Identifiant de modèle invalide.")
             if not isinstance(cost, int) or isinstance(cost, bool) or cost <= 0:
                 raise ImageProviderError("Chaque modèle doit avoir un coût estimé positif connu.")
-        if not isinstance(ledger, InMemoryNeuronQuotaLedger):
-            raise ImageProviderError("Ledger de quotas PAPI requis.")
+        if not all(callable(getattr(ledger, method, None)) for method in ("reserve", "commit", "release")):
+            raise ImageProviderError("Ledger de quotas PAPI incompatible.")
         if not isinstance(timeout_seconds, int) or timeout_seconds < 1 or timeout_seconds > 180:
             raise ImageProviderError("Délai réseau invalide.")
         self.account_id = account_id
@@ -185,6 +287,19 @@ class CloudflareImageAdapter:
         return cls(
             account_id=os.getenv("CLOUDFLARE_ACCOUNT_ID", ""),
             api_token=os.getenv("CLOUDFLARE_API_TOKEN", ""),
+            ledger=ledger, model_costs=model_costs,
+            free_tier_confirmed_for_account=free_tier_confirmed_for_account,
+            transport=transport,
+        )
+
+    @classmethod
+    def from_shared_environment(
+        cls, *, model_costs: dict[str, int], free_tier_confirmed_for_account: bool,
+        transport: Callable[..., Any] | None = None,
+    ) -> "CloudflareImageAdapter":
+        """Build the Cloudflare adapter with the cross-worker Supabase ledger."""
+        ledger = SupabaseNeuronQuotaLedger.from_environment()
+        return cls.from_environment(
             ledger=ledger, model_costs=model_costs,
             free_tier_confirmed_for_account=free_tier_confirmed_for_account,
             transport=transport,
@@ -208,7 +323,7 @@ class CloudflareImageAdapter:
             raise ImageProviderError("Modèle non autorisé ou coût inconnu : aucun appel effectué.")
         reservation = self.ledger.reserve(
             idempotency_key=idempotency_key,
-            estimated_neurons=self.model_costs[model], now=now,
+            estimated_neurons=self.model_costs[model], now=now, model=model,
         )
         if reservation.status == "committed":
             raise ImageProviderError("Cette mission a déjà été exécutée ; résultat non conservé par cet adaptateur.")
@@ -227,6 +342,11 @@ class CloudflareImageAdapter:
         except Exception as exc:
             # Timeout/network failure is ambiguous: retain reservation to avoid
             # accidentally double-spending a quota after a provider-side success.
+            if callable(getattr(self.ledger, "mark_uncertain", None)):
+                try:
+                    self.ledger.mark_uncertain(reservation)
+                except Exception:
+                    pass
             raise ImageProviderError(
                 "Échec réseau ambigu ; quota réservé conservé pour réconciliation. Aucun retry automatique."
             ) from exc
@@ -235,13 +355,31 @@ class CloudflareImageAdapter:
             status = getattr(response, "status", None)
         if not isinstance(status, int) or status < 200 or status >= 300:
             # A non-2xx response is treated conservatively as consumed/unknown.
+            if callable(getattr(self.ledger, "mark_uncertain", None)):
+                try:
+                    self.ledger.mark_uncertain(reservation)
+                except Exception:
+                    pass
             raise ImageProviderError("Réponse fournisseur non concluante ; quota réservé conservé.")
         content = getattr(response, "content", None)
         if content is None and callable(getattr(response, "read", None)):
             content = response.read()
         if not isinstance(content, (bytes, bytearray)) or not content:
+            if callable(getattr(self.ledger, "mark_uncertain", None)):
+                try:
+                    self.ledger.mark_uncertain(reservation)
+                except Exception:
+                    pass
             raise ImageProviderError("Réponse image vide/invalide ; quota réservé conservé.")
-        self.ledger.commit(reservation)
+        try:
+            self.ledger.commit(reservation)
+        except Exception as exc:
+            if callable(getattr(self.ledger, "mark_uncertain", None)):
+                try:
+                    self.ledger.mark_uncertain(reservation)
+                except Exception:
+                    pass
+            raise ImageProviderError("Image reçue mais validation du quota échouée ; réservation conservée pour rapprochement.") from exc
         return {
             "provider": "cloudflare_workers_ai",
             "model": model,

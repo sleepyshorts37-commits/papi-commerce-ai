@@ -1,8 +1,12 @@
+import json
 import unittest
+from unittest.mock import patch
+from io import BytesIO
 from datetime import datetime, timezone
 
 from papi_core.image_provider_cloudflare import (
     CloudflareImageAdapter, ImageProviderError, InMemoryNeuronQuotaLedger,
+    SupabaseNeuronQuotaLedger, QuotaReservation,
 )
 
 
@@ -111,6 +115,69 @@ class CloudflareQuotaTests(unittest.TestCase):
         for thread in threads: thread.join()
         self.assertCountEqual(outcomes, ["ok", "blocked"])
         self.assertEqual(self.ledger.snapshot(self.day)["reserved_estimated_neurons"], 60)
+
+
+
+class SupabaseQuotaLedgerTests(unittest.TestCase):
+    def setUp(self):
+        self.ledger = SupabaseNeuronQuotaLedger(
+            supabase_url="https://example.supabase.co",
+            service_role_key="local-test-secret",
+            account_ref="account-123",
+            worker_id="PAPI-IMAGE-01",
+            daily_limit=100,
+        )
+        self.responses = []
+        self.requests = []
+
+    def fake_urlopen(self, request, timeout):
+        self.requests.append(request)
+        payload = self.responses.pop(0)
+        return BytesIO(json.dumps(payload).encode("utf-8"))
+
+    def test_reserve_calls_transactional_rpc_and_returns_reservation(self):
+        self.responses.append([{
+            "reservation_id": "00000000-0000-0000-0000-000000000001",
+            "reservation_status": "reserved",
+            "quota_day": "2026-11-15",
+            "reserved_units": 60,
+            "consumed_units": 0,
+            "daily_limit": 100,
+        }])
+        with patch("papi_core.image_provider_cloudflare.urlopen", self.fake_urlopen):
+            reservation = self.ledger.reserve(
+                idempotency_key="image-job-0001", estimated_neurons=60,
+                model="@cf/test/image", now=datetime(2026, 11, 15, tzinfo=timezone.utc),
+            )
+        self.assertEqual(reservation.status, "reserved")
+        self.assertEqual(reservation.reservation_id, "00000000-0000-0000-0000-000000000001")
+        payload = json.loads(self.requests[0].data.decode("utf-8"))
+        self.assertEqual(payload["p_estimated_units"], 60)
+        self.assertEqual(payload["p_model"], "@cf/test/image")
+        self.assertNotIn("local-test-secret", repr(payload))
+
+    def test_commit_uses_shared_rpc(self):
+        self.responses.append(True)
+        reservation = QuotaReservation("00000000-0000-0000-0000-000000000001",
+                                       "image-job-0001", "2026-11-15", 60, "reserved")
+        with patch("papi_core.image_provider_cloudflare.urlopen", self.fake_urlopen):
+            result = self.ledger.commit(reservation)
+        self.assertEqual(result.status, "committed")
+        self.assertTrue(self.requests[0].full_url.endswith("/papi_commit_provider_quota"))
+
+    def test_shared_ledger_rejects_short_idempotency_key_before_network(self):
+        with self.assertRaises(ImageProviderError):
+            self.ledger.reserve(idempotency_key="short", estimated_neurons=1,
+                                model="@cf/test/image")
+        self.assertEqual(self.requests, [])
+
+    def test_configuration_requires_https_and_server_key(self):
+        with self.assertRaises(ImageProviderError):
+            SupabaseNeuronQuotaLedger(
+                supabase_url="http://example.supabase.co",
+                service_role_key="secret", account_ref="account-123",
+                worker_id="PAPI-IMAGE-01",
+            )
 
 
 if __name__ == "__main__":
