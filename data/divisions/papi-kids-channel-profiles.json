@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "division_id": "papi_kids_publishing",
+  "profiles": [
+    {
+      "platform_id": "amazon_kdp",
+      "name": "Amazon KDP",
+      "formats": [
+        "paperback",
+        "ebook"
+      ],
+      "senegal_seller_eligibility": "unknown",
+      "senegal_payout": "unknown",
+      "territory_coverage": "unknown",
+      "upfront_cost_xof": 0,
+      "subscription_required": "blocked",
+      "seller_funds_each_order": "blocked",
+      "stock_required": "blocked",
+      "direct_print_fulfilment": "verified",
+      "evidence": [
+        {
+          "title": "KDP Paperback Printing Cost",
+          "url": "https://kdp.amazon.com/en_US/help/topic/G201834340",
+          "fact": "KDP prints on demand and subtracts printing costs from royalties; no upfront printing cost or inventory required.",
+          "checked": "2026-11-15"
+        },
+        {
+          "title": "KDP Payment Options",
+          "url": "https://kdp.amazon.com/en_US/help/topic/GJD7DFFX6X88AK46",
+          "fact": "Payout methods depend on bank location; PayPal is not an offered KDP payout method. The published Africa table names South Africa, Egypt, Morocco, Tunisia, Kenya and Nigeria but does not list Senegal; Senegal payout method therefore remains unconfirmed.",
+          "checked": "2026-11-15"
+        }
+      ],
+      "last_verified": "2026-11-15"
+    },
+    {
+      "platform_id": "lulu",
+      "name": "Lulu",
+      "formats": [
+        "paperback",
+        "ebook",
+        "illustrated_book"
+      ],
+      "senegal_seller_eligibility": "unknown",
+      "senegal_payout": "verified",
+      "territory_coverage": "unknown",
+      "upfront_cost_xof": 0,
+      "subscription_required": "blocked",
+      "seller_funds_each_order": "blocked",
+      "stock_required": "blocked",
+      "direct_print_fulfilment": "verified",
+      "evidence": [
+        {
+          "title": "Lulu Print-On-Demand",
+          "url": "https://help.lulu.com/en/support/solutions/articles/64000255305-how-does-print-on-demand-work-",
+          "fact": "Lulu prints when an order is placed; readers can order individual copies.",
+          "checked": "2026-11-15"
+        },
+        {
+          "title": "Lulu Creator Revenue Guide",
+          "url": "https://help.lulu.com/en/support/solutions/articles/64000262744-creator-revenue-guide",
+          "fact": "Lulu pays by PayPal or USD paper check, no bank transfer; PayPal payments support USD/CAD/AUD/EUR/GBP with $5 accumulated revenue threshold. Lulu's revenue model deducts production and applicable share from sales.",
+          "checked": "2026-11-15"
+        },
+        {
+          "title": "PayPal supported features",
+          "url": "https://developer.paypal.com/payouts/supported-features",
+          "fact": "PayPal lists Senegal as able to send, receive and withdraw. This supports the PayPal payout route, subject to account verification and Lulu's own acceptance.",
+          "checked": "2026-11-15"
+        }
+      ],
+      "last_verified": "2026-11-15"
+    },
+    {
+      "platform_id": "ingramspark",
+      "name": "IngramSpark",
+      "formats": [
+        "paperback",
+        "illustrated_book",
+        "ebook"
+      ],
+      "senegal_seller_eligibility": "unknown",
+      "senegal_payout": "unknown",
+      "territory_coverage": "unknown",
+      "upfront_cost_xof": null,
+      "subscription_required": "unknown",
+      "seller_funds_each_order": "blocked",
+      "stock_required": "blocked",
+      "direct_print_fulfilment": "verified",
+      "evidence": [
+        {
+          "title": "IngramSpark compensation payments",
+          "url": "https://help.ingramspark.com/hc/en-us/articles/5338720329229",
+          "fact": "Print compensation is list price less wholesale discount, print cost and 1.875% global distribution fee; PayPal payout minimum $30, or bank deposits only for US, Canada, UK, Eurozone and Australia bank accounts; payout 90 days after month-end. Senegal eligibility/payment route still unconfirmed.",
+          "checked": "2026-11-15"
+        },
+        {
+          "title": "IngramSpark changes in print cost and fees",
+          "url": "https://help.ingramspark.com/hc/en-us/articles/41657495062029-Changes-in-Print-Cost-Market-Access-Fee-and-More",
+          "fact": "Official 2026 pricing/fee change notice exists; exact applicable setup and market access fees must be checked before account/title activation.",
+          "checked": "2026-11-15"
+        }
+      ],
+      "last_verified": "2026-11-15"
+    },
+    {
+      "platform_id": "bookvault",
+      "name": "Bookvault",
+      "formats": [
+        "paperback",
+        "illustrated_book",
+        "coloring_book",
+        "activity_book"
+      ],
+      "senegal_seller_eligibility": "unknown",
+      "senegal_payout": "unknown",
+      "territory_coverage": "unknown",
+      "upfront_cost_xof": null,
+      "subscription_required": "unknown",
+      "seller_funds_each_order": "verified",
+      "stock_required": "blocked",
+      "direct_print_fulfilment": "verified",
+      "evidence": [
+        {
+          "title": "Bookvault connected store payments",
+          "url": "https://help.bookvault.app/how-are-orders-from-my-connected-store-paid-for-in-bookvault",
+          "fact": "Customer pays the publisher's own store; Bookvault separately charges the publisher for printing and shipping. This requires publisher funds before fulfilment.",
+          "checked": "2026-11-15"
+        },
+        {
+          "title": "Bookvault invoice credit account",
+          "url": "https://help.bookvault.app/pay-bookvault-by-invoice",
+          "fact": "Registered businesses may apply for credit after a credit check; 30-day terms and a credit limit apply, currently only UK-facility orders. This is not a guaranteed zero-cost route and requires approved credit.",
+          "checked": "2026-11-15"
+        }
+      ],
+      "last_verified": "2026-11-15"
+    },
+    {
+      "platform_id": "blurb",
+      "name": "Blurb",
+      "formats": [
+        "paperback",
+        "illustrated_book"
+      ],
+      "senegal_seller_eligibility": "unknown",
+      "senegal_payout": "verified",
+      "territory_coverage": "unknown",
+      "upfront_cost_xof": 0,
+      "subscription_required": "blocked",
+      "seller_funds_each_order": "blocked",
+      "stock_required": "blocked",
+      "direct_print_fulfilment": "verified",
+      "evidence": [
+        {
+          "title": "Blurb Instant Store",
+          "url": "https://support.blurb.com/hc/en-us/articles/50109611244429-What-is-a-Blurb-Instant-Store",
+          "fact": "Blurb says books print on demand, nothing is paid upfront by the author; print cost is deducted from each sale.",
+          "checked": "2026-11-15"
+        },
+        {
+          "title": "Blurb payout schedule",
+          "url": "https://support.blurb.com/hc/en-us/articles/207796336-How-and-when-do-I-get-paid-for-my-book-sales",
+          "fact": "Blurb pays monthly after thresholds; PayPal supported in USD/CAD/GBP/EUR/AUD, USD check option. Fees and thresholds apply.",
+          "checked": "2026-11-15"
+        },
+        {
+          "title": "PayPal supported features",
+          "url": "https://developer.paypal.com/payouts/supported-features",
+          "fact": "PayPal lists Senegal as able to send, receive and withdraw; Blurb account eligibility and tax/payout setup for Senegal still need confirmation.",
+          "checked": "2026-11-15"
+        }
+      ],
+      "last_verified": "2026-11-15"
+    },
+    {
+      "platform_id": "jumia_senegal",
+      "name": "Jumia Sénégal",
+      "formats": [],
+      "senegal_seller_eligibility": "unknown",
+      "senegal_payout": "unknown",
+      "territory_coverage": "unknown",
+      "upfront_cost_xof": null,
+      "subscription_required": "unknown",
+      "seller_funds_each_order": "unknown",
+      "stock_required": "verified",
+      "direct_print_fulfilment": "blocked",
+      "evidence": [
+        {
+          "title": "Jumia Commissions 2026",
+          "url": "https://vendorhub.jumia.sn/commissions-2026",
+          "fact": "Official 2026 fee table lists 20% commission for Books, regardless of whether seller or Jumia stores stock; other logistics fees may apply.",
+          "checked": "2026-11-15"
+        }
+      ],
+      "last_verified": "2026-11-15"
+    }
+  ]
+}
