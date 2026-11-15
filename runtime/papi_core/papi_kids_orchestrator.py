@@ -81,17 +81,12 @@ def prepare_pkp0001_campaign(
     prompt_document = _read(prompts_path)
     scenes = _scene_sections(prompt_document)
     global_instructions = (
-        "DIRECTION ARTISTIQUE ET CONTINUITÉ — PKP-0001\n"
-        "Utiliser la bible graphique canonique ci-dessous pour conserver les personnages, "
-        "vêtements, accessoires, proportions et décors. La bible est une référence de continuité, "
-        "pas une autorisation de publication.\n\n"
+        "CONTINUITÉ PKP-0001 : appliquer la bible ci-dessous ; préserver silhouettes, "
+        "tenues, accessoires et géographie entre toutes les scènes.\n\n"
         + character_bible.strip()
-        + "\n\nCONTRAINTES COMMUNES : illustration jeunesse originale ; aucun texte, "
-        "lettre, chiffre, logo, filigrane, signature ou marque dans l'image ; ne pas imiter "
-        "un artiste, studio, franchise ou œuvre existante. Respecter strictement la sécurité "
-        "des enfants : rester sur un chemin stable, loin de l'eau et des déchets ; seuls les "
-        "adultes compétents manipulent les déchets et objets dangereux. Ne jamais suggérer "
-        "que l'apparence de l'eau prouve qu'elle est potable.\n\n"
+        + "\n\nCONTRAINTES : enfants sur chemin stable, loin de l'eau ; adultes manipulent "
+        "déchets et objets dangereux ; ne jamais suggérer que l'eau est potable. Aucun texte, "
+        "logo, filigrane ou signature ; aucune imitation d'artiste, studio ou franchise.\n\n"
     )
     pages = [
         {**page, "prompt": global_instructions + page["prompt"]}
