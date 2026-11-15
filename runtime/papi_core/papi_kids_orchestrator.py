@@ -306,6 +306,7 @@ def prepare_pkp0001_from_project_sources(
     prepared["source_bundle"] = {
         "manuscript_v2_sha256": hashlib.sha256(manuscript.encode("utf-8")).hexdigest(),
         "character_bible_sha256": hashlib.sha256(_read(bible_path).encode("utf-8")).hexdigest(),
+        "prompt_character_bible_sha256": prepared["prompt_character_bible_sha256"],
         "storyboard_v1_sha256": hashlib.sha256(storyboard.encode("utf-8")).hexdigest(),
         "illustration_prompts_v1_sha256": hashlib.sha256(prompts.encode("utf-8")).hexdigest(),
         "manuscript_pages": len(manuscript_pages),
