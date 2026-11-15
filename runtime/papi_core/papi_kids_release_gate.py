@@ -165,6 +165,35 @@ def evaluate_kdp_release_gate(
 
     root = Path(private_root).resolve()
     pdfs = manifest.get("pdfs") or {}
+    package_version = manifest.get("package_version")
+    package_reviews = manifest.get("kdp_package_reviews") or manifest.get("package_reviews") or {}
+
+    def require_package_review(artifact: str, artifact_sha256: str) -> None:
+        review = package_reviews.get(f"v{package_version}:{artifact}") if isinstance(package_reviews, dict) else None
+        _missing(isinstance(review, dict), f"Revue humaine du fichier {artifact} absente.", blockers)
+        if not isinstance(review, dict):
+            return
+        _missing(
+            review.get("decision") == "approved" and review.get("approved") is True,
+            f"Fichier {artifact} non approuvé par le réviseur.",
+            blockers,
+        )
+        _missing(
+            review.get("package_version") == package_version
+            and review.get("artifact") == artifact
+            and review.get("artifact_sha256") == artifact_sha256,
+            f"Revue {artifact} liée à une autre version ou empreinte.",
+            blockers,
+        )
+        _missing(
+            bool(review.get("reviewer_id")) and bool(review.get("reviewed_at"))
+            and bool(_SHA256.fullmatch(str(review.get("evidence_ref", ""))))
+            and isinstance(review.get("notes"), str)
+            and 20 <= len(review.get("notes", "")) <= 2000,
+            f"Preuve de revue humaine du fichier {artifact} incomplète.",
+            blockers,
+        )
+
     for key, expected_pages in (("interior", page_count), ("cover", 1)):
         record = pdfs.get(key) if isinstance(pdfs, dict) else None
         _missing(isinstance(record, dict), f"PDF {key} manquant.", blockers)
@@ -188,8 +217,9 @@ def evaluate_kdp_release_gate(
         _missing(record.get("sha256") == digest, f"SHA-256 du PDF {key} incorrect.", blockers)
         _missing(record.get("page_count") == expected_pages,
                  f"Nombre de pages PDF {key} incorrect.", blockers)
-        _missing(record.get("preflight") == "passed",
-                 f"Préflight final du PDF {key} non validé.", blockers)
+        _missing(record.get("preflight") == "automated_checks_passed_pending_human_review",
+                 f"Contrôles automatisés du PDF {key} non validés.", blockers)
+        require_package_review(key, digest)
 
     _missing(isinstance(trim_width, (int, float)) and isinstance(trim_height, (int, float)),
              "Dimensions exactes du format imprimé manquantes.", blockers)
@@ -246,8 +276,9 @@ def evaluate_kdp_release_gate(
                     blockers.append("Structure EPUB invalide ou incomplète.")
                 _missing(ebook.get("page_count") == page_count,
                          "Pagination EPUB incorrecte.", blockers)
-                _missing(ebook.get("preflight") == "passed",
-                         "Préflight structurel EPUB non validé.", blockers)
+                _missing(ebook.get("preflight") == "automated_epub_checks_passed_pending_kindle_previewer",
+                         "Contrôles automatisés EPUB non validés.", blockers)
+                require_package_review("ebook", ebook_digest)
                 _missing(ebook.get("format") == "EPUB 3 fixed-layout",
                          "Format EPUB fixed-layout non confirmé.", blockers)
                 preview = manifest.get("kindle_previewer_review") or {}
