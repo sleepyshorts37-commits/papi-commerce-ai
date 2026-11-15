@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from .papi_kids_print_resolution import PrintResolutionError, audit_image_resolution
+from .papi_kids_ebook_package import PapiKidsEPUBPackageError, validate_epub_structure
 
 _BOOK_ID = re.compile(r"^PKP-[0-9]{4,8}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -183,6 +184,47 @@ def evaluate_kdp_release_gate(
              and bool(authorization.get("authorized_at")),
              "Autorisation explicite de publication du propriétaire absente.", blockers)
 
+    ebook_required = manifest.get("ebook_required") is True
+    ebook_summary = {"required": ebook_required, "status": "not_requested"}
+    if ebook_required:
+        ebook = manifest.get("ebook") or {}
+        relative_path = ebook.get("path", "")
+        if (not isinstance(relative_path, str) or not relative_path
+                or Path(relative_path).is_absolute() or ".." in Path(relative_path).parts):
+            blockers.append("Chemin du fichier EPUB invalide.")
+        else:
+            ebook_path = (root / relative_path).resolve()
+            if root not in ebook_path.parents or not ebook_path.is_file():
+                blockers.append("Fichier EPUB absent du stockage privé.")
+            else:
+                ebook_digest = hashlib.sha256(ebook_path.read_bytes()).hexdigest()
+                _missing(ebook.get("sha256") == ebook_digest, "SHA-256 du fichier EPUB incorrect.", blockers)
+                try:
+                    ebook_preflight = validate_epub_structure(ebook_path, page_count)
+                    ebook_summary.update(ebook_preflight)
+                except PapiKidsEPUBPackageError:
+                    blockers.append("Structure EPUB invalide ou incomplète.")
+                _missing(ebook.get("page_count") == page_count,
+                         "Pagination EPUB incorrecte.", blockers)
+                _missing(ebook.get("preflight") == "passed",
+                         "Préflight structurel EPUB non validé.", blockers)
+                _missing(ebook.get("format") == "EPUB 3 fixed-layout",
+                         "Format EPUB fixed-layout non confirmé.", blockers)
+                preview = manifest.get("kindle_previewer_review") or {}
+                _missing(
+                    preview.get("passed") is True
+                    and bool(preview.get("reviewer_id"))
+                    and bool(preview.get("reviewed_at"))
+                    and bool(preview.get("evidence_ref"))
+                    and preview.get("epub_sha256") == ebook_digest,
+                    "Validation Kindle Previewer humaine absente ou liée à une autre version EPUB.",
+                    blockers,
+                )
+                ebook_summary.update({
+                    "status": "approved" if preview.get("passed") is True else "pending_kindle_previewer",
+                    "sha256": ebook_digest,
+                })
+
     _missing(manifest.get("spend_limit_minor") == 0,
              "Le plafond de dépense doit rester strictement à zéro.", blockers)
 
@@ -197,4 +239,5 @@ def evaluate_kdp_release_gate(
         "human_authorization_present": authorization.get("authorized") is True,
         "spend_limit_minor": manifest.get("spend_limit_minor"),
         "publication_performed": False,
+        "ebook": ebook_summary,
     }
