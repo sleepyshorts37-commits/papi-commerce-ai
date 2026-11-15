@@ -56,7 +56,7 @@ class KDPListingMetadataTests(unittest.TestCase):
         metadata = valid_metadata()
         metadata["isbn_strategy"] = "own_isbn"
         metadata["isbn"] = "9782070368228"
-        metadata.pop("publisher")
+        metadata.pop("publisher", None)
         result = validate_kdp_listing_metadata(metadata)
         self.assertTrue(any("Éditeur déclaré" in item for item in result["blockers"]))
 
