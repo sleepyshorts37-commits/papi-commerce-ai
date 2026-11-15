@@ -5,6 +5,8 @@ import unittest
 import zlib
 from pathlib import Path
 import reportlab
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
 
 from papi_core.papi_kids_kdp_cover import KDPCoverError, build_kdp_full_wrap_cover_pdf
 
