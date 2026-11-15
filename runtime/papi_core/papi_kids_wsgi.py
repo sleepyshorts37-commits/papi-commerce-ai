@@ -16,6 +16,7 @@ from .papi_kids_postgres_queue import (
     build_postgres_status_reader,
 )
 from .papi_kids_worker_service import create_postgres_connection_factory
+from .papi_kids_mobile_dashboard import render_papi_kids_mobile_dashboard
 
 
 def create_app(
@@ -105,7 +106,57 @@ def create_app(
         )
         return [payload]
 
-    return readiness_app
+    dashboard_book_id = os.environ.get("PAPI_KIDS_DASHBOARD_BOOK_ID", "PKP-0001")
+    dashboard_title = os.environ.get("PAPI_KIDS_DASHBOARD_TITLE", "Nia et la rivière aux mille reflets")
+    try:
+        dashboard_page_count = int(os.environ.get("PAPI_KIDS_DASHBOARD_PAGE_COUNT", "24"))
+    except ValueError as exc:
+        raise RuntimeError("PAPI_KIDS_DASHBOARD_PAGE_COUNT invalide.") from exc
+    dashboard_scenes = [
+        {"page_number": number, "heading": f"Page {number}",
+         "detail": "À préparer", "status": "not_started"}
+        for number in range(1, dashboard_page_count + 1)
+    ]
+    dashboard_html = render_papi_kids_mobile_dashboard(
+        book_id=dashboard_book_id, title=dashboard_title,
+        page_count=dashboard_page_count, scenes=dashboard_scenes,
+        overall_status="Prêt à recevoir le manuscrit",
+    ).encode("utf-8")
+
+    def application(environ: dict[str, Any], start_response: Callable[..., Any]) -> list[bytes]:
+        if environ.get("PATH_INFO") not in {"/", "/dashboard"}:
+            return readiness_app(environ, start_response)
+        if environ.get("REQUEST_METHOD") != "GET":
+            body = b"Method Not Allowed"
+            start_response("405 Method Not Allowed", [
+                ("Content-Type", "text/plain; charset=utf-8"),
+                ("Content-Length", str(len(body))),
+                ("Cache-Control", "no-store"),
+            ])
+            return [body]
+        if environ.get("wsgi.url_scheme") != "https":
+            body = b"HTTPS Required"
+            start_response("403 Forbidden", [
+                ("Content-Type", "text/plain; charset=utf-8"),
+                ("Content-Length", str(len(body))),
+                ("Cache-Control", "no-store"),
+            ])
+            return [body]
+        start_response("200 OK", [
+            ("Content-Type", "text/html; charset=utf-8"),
+            ("Content-Length", str(len(dashboard_html))),
+            ("Cache-Control", "no-store"),
+            ("X-Content-Type-Options", "nosniff"),
+            ("X-Frame-Options", "DENY"),
+            ("Referrer-Policy", "no-referrer"),
+            ("Content-Security-Policy",
+             "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+             "connect-src 'self'; img-src 'self' data:; font-src 'self' data:; "
+             "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"),
+        ])
+        return [dashboard_html]
+
+    return application
 
 
 class LazyWSGIApplication:

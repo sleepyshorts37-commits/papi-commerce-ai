@@ -81,6 +81,48 @@ class PapiKidsWSGICompositionTests(unittest.TestCase):
             self.assertEqual(payload["status"], "not_ready")
             self.assertFalse(payload["components"]["database"])
 
+    def test_serves_mobile_dashboard_over_https_with_security_headers(self):
+        with tempfile.TemporaryDirectory() as root:
+            app = create_app(
+                storage_root=Path(root) / "private",
+                connection_factory=lambda: None,
+            )
+            environ = {
+                "PATH_INFO": "/dashboard", "REQUEST_METHOD": "GET",
+                "wsgi.url_scheme": "https",
+            }
+            captured = {}
+            def start_response(status, headers):
+                captured["status"] = status
+                captured["headers"] = dict(headers)
+            payload = b"".join(app(environ, start_response))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertIn(b"Validation de s", payload)
+        self.assertIn(b"/api/papi-kids/manuscripts", payload)
+        self.assertNotIn(b"PAPI_KIDS_UPLOAD_TOKEN", payload)
+        self.assertEqual(captured["headers"]["Cache-Control"], "no-store")
+        self.assertIn("default-src 'none'", captured["headers"]["Content-Security-Policy"])
+
+    def test_dashboard_rejects_http_and_non_get_methods(self):
+        with tempfile.TemporaryDirectory() as root:
+            app = create_app(
+                storage_root=Path(root) / "private",
+                connection_factory=lambda: None,
+            )
+            captured = {}
+            def start_response(status, headers):
+                captured["status"] = status
+            b"".join(app({
+                "PATH_INFO": "/dashboard", "REQUEST_METHOD": "GET",
+                "wsgi.url_scheme": "http",
+            }, start_response))
+            self.assertEqual(captured["status"], "403 Forbidden")
+            b"".join(app({
+                "PATH_INFO": "/dashboard", "REQUEST_METHOD": "POST",
+                "wsgi.url_scheme": "https",
+            }, start_response))
+            self.assertEqual(captured["status"], "405 Method Not Allowed")
+
     def test_refuses_missing_private_storage(self):
         with self.assertRaises(RuntimeError):
             create_app(storage_root="", connection_factory=lambda: None)
