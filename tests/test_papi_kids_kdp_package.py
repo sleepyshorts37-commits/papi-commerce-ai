@@ -84,6 +84,27 @@ class PapiKidsKDPPrintPackageTests(unittest.TestCase):
                 )
             build.assert_not_called()
 
+    def test_interior_and_cover_trim_sizes_must_match(self):
+        interior, cover = self.builders()
+        args = dict(self.cover_args, trim_width_in=6.0)
+        with patch("papi_core.papi_kids_kdp_package.build_interior_pdf") as build:
+            with self.assertRaises(PapiKidsKDPPrintPackageError):
+                build_kdp_print_package(
+                    storage_root=self.root, upload_id=self.upload,
+                    interior_args=self.interior_args, cover_args=args,
+                )
+            build.assert_not_called()
+
+    def test_invalid_page_identifiers_fail_closed(self):
+        assets = [dict(item) for item in self.assets]
+        assets[0]["page_number"] = None
+        args = dict(self.interior_args, assets=assets)
+        with self.assertRaises(PapiKidsKDPPrintPackageError):
+            build_kdp_print_package(
+                storage_root=self.root, upload_id=self.upload,
+                interior_args=args, cover_args=self.cover_args,
+            )
+
     def test_template_hash_mismatch_blocks_package(self):
         interior, cover = self.builders()
         template = dict(self.template, template_sha256="0" * 64)
