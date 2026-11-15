@@ -69,7 +69,7 @@ class PapiKidsKDPCoverTests(unittest.TestCase):
                 back_art=assets[0], front_art=assets[1],
                 title="Nia et la rivière", author="Auteur confirmé",
                 blurb="Une histoire illustrée pour apprendre à observer et protéger son environnement.",
-                font_path=font, page_count=24, dpi_target=300,
+                font_path=font, page_count=24, dpi_target=100,
             )
             self.assertTrue(output.read_bytes().startswith(b"%PDF-"))
             self.assertEqual(result["page_count"], 1)
@@ -86,7 +86,7 @@ class PapiKidsKDPCoverTests(unittest.TestCase):
                     template_pdf_path=template, template_sha256=digest,
                     template_layout=layout, back_art=assets[0], front_art=assets[1],
                     title="Nia", author="Auteur", blurb="Résumé de l'histoire.",
-                    font_path=font, page_count=24, dpi_target=300,
+                    font_path=font, page_count=24, dpi_target=100,
                 )
 
     def test_rejects_unapproved_cover_art(self):
@@ -99,7 +99,7 @@ class PapiKidsKDPCoverTests(unittest.TestCase):
                     template_pdf_path=template, template_sha256=digest,
                     template_layout=layout, back_art=assets[0], front_art=assets[1],
                     title="Nia", author="Auteur", blurb="Résumé de l'histoire.",
-                    font_path=font, page_count=24, dpi_target=300,
+                    font_path=font, page_count=24, dpi_target=100,
                 )
 
     def test_rejects_spine_text_under_80_pages(self):
@@ -112,7 +112,7 @@ class PapiKidsKDPCoverTests(unittest.TestCase):
                     template_pdf_path=template, template_sha256=digest,
                     template_layout=layout, back_art=assets[0], front_art=assets[1],
                     title="Nia", author="Auteur", blurb="Résumé de l'histoire.",
-                    font_path=font, page_count=24, dpi_target=300,
+                    font_path=font, page_count=24, dpi_target=100,
                 )
 
 
