@@ -92,3 +92,4 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [ ] Vérifier les frais de titre IngramSpark 2026 dans les conditions applicables au compte avant de considérer le canal.
 
 - [x] Ajouter un calculateur de rentabilité unitaire Decimal, avec preuves datées, frais complets, conversion FX traçable et portes zéro avance (Mission 82 ; aucun tarif de plateforme inventé).
+- [x] Ajouter un protocole de validation des niches Amazon KDP inspiré des trois seuils de la capture (résultats < 2 500, top 3 BSR < 100 000, moyenne des avis < 50), avec preuves datées, échantillon de 10 à 20 concurrents et validation humaine obligatoire (Mission 83 ; aucune donnée marché inventée).
