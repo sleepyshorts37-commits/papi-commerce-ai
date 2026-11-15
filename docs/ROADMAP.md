@@ -24,15 +24,28 @@
 - [x] PAPI COMMAND CENTER local en lecture seule.
 - [x] PAPI CHAT : socle local de communication interne.
 - [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
-- [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
+- [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.
+- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
 - [x] Ajouter un prototype Ed25519, registre public versionné, révocation, rotation et tests unitaires.
 - [x] Brancher Ed25519 au contrôle d'accès et au worker ; maintenir HMAC uniquement pour compatibilité transitoire.
-- [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
-- [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).\n- [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
+- [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.
+- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
+- [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).
+- [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
-## Phase 3 — Première activité commerciale
+## Phase 3 — Premier lancement prioritaire : PAPI KIDS PUBLISHING
+- [x] Définir les trois activités et les 24 postes cibles, avec chaîne éditoriale-commerciale et garde-fous IP/financiers (PR #225).
+- [x] Ajouter le catalogue local versionné, les contrôles de fichiers SHA-256 et les portes droits/qualité/KDP/validation humaine (Mission 73 ; CI à confirmer sur SHA final).
+- [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
+- [ ] Créer les outils de briefs, génération/assemblage des manuscrits, illustrations, intérieurs PDF, couvertures et exports finaux.
+- [ ] Préparer cinq livres pilotes originaux et faire contrôler indépendamment chaque fichier.
+- [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
+- [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
+- [ ] Réaliser le premier lancement manuel contrôlé ; aucun agent, compte ou publication externe n'est activé automatiquement.
+
+## Phase 4 — Autres activités commerciales
 - [ ] Comparer les opportunités sans frais initiaux.
 - [ ] Vérifier éligibilité au Sénégal et moyens de paiement.
 - [ ] Choisir une offre et un segment client.
@@ -40,7 +53,14 @@
 - [ ] Obtenir validation avant les premiers contacts externes.
 - [ ] Mesurer les revenus réellement encaissés.
 
-## Phase 4 — Extension\n- [x] Documenter PAPI KIDS PUBLISHING : trois activités, 24 postes cibles, workflow éditorial-commercial, modèle sans stock et garde-fous IP/financiers.\n- [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.\n- [ ] Construire les outils locaux de catalogue, briefs, fichiers, contrôles qualité, coûts et rapports.\n- [ ] Réaliser un pilote de livres originaux et vérifier les exigences KDP, l'éligibilité depuis le Sénégal et les moyens de versement.\n- [ ] Obtenir une validation humaine explicite avant toute publication ou promotion externe.\n- [ ] Tester les intégrations officielles et l'automatisation contrôlée après revue de sécurité.\n
+## Phase 5 — Extension
+- [x] Documenter PAPI KIDS PUBLISHING : trois activités, 24 postes cibles, workflow éditorial-commercial, modèle sans stock et garde-fous IP/financiers.
+- [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
+- [ ] Construire les outils locaux de catalogue, briefs, fichiers, contrôles qualité, coûts et rapports.
+- [ ] Réaliser un pilote de livres originaux et vérifier les exigences KDP, l'éligibilité depuis le Sénégal et les moyens de versement.
+- [ ] Obtenir une validation humaine explicite avant toute publication ou promotion externe.
+- [ ] Tester les intégrations officielles et l'automatisation contrôlée après revue de sécurité.
+
 - [ ] PAPI BUSINESS PARTNERS.
 - [ ] PAPI SERVICES et PAPI FREELANCE.
 - [ ] PAPI AFFILIATION.
