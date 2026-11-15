@@ -1,0 +1,64 @@
+import io, json, os, tempfile, unittest
+from pathlib import Path
+from unittest.mock import patch
+from papi_core.papi_kids_manuscript_api import create_papi_kids_manuscript_app
+
+TOKEN = "test-token-" + "x" * 40
+
+def call(app, *, token=TOKEN, body=b"# Mon livre\n", filename="manuscrit.md",
+         scheme="https", method="POST", path="/api/papi-kids/manuscripts"):
+    environ = {"PATH_INFO": path, "REQUEST_METHOD": method, "wsgi.url_scheme": scheme,
+        "HTTP_AUTHORIZATION": "Bearer " + token if token else "", "HTTP_X_FILENAME": filename,
+        "CONTENT_TYPE": "text/markdown", "CONTENT_LENGTH": str(len(body)), "wsgi.input": io.BytesIO(body)}
+    captured = {}
+    def start_response(status, headers):
+        captured["status"] = status
+        captured["headers"] = dict(headers)
+    payload = b"".join(app(environ, start_response))
+    return captured, json.loads(payload)
+
+class PapiKidsManuscriptAPITests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.app = create_papi_kids_manuscript_app(storage_root=self.temp.name)
+
+    def test_upload_requires_authentication_and_tls(self):
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            response, _ = call(self.app, token="wrong")
+            self.assertEqual(response["status"], "401 Unauthorized")
+            response, _ = call(self.app, scheme="http")
+            self.assertEqual(response["status"], "403 Forbidden")
+
+    def test_upload_persists_private_file_and_hash_metadata(self):
+        content = b"# Nia\n\nUne histoire."
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            response, data = call(self.app, body=content)
+        self.assertEqual(response["status"], "201 Created")
+        folder = Path(self.temp.name) / data["upload_id"]
+        stored = folder / "manuscript.md"
+        self.assertEqual(stored.read_bytes(), content)
+        self.assertEqual(stored.stat().st_mode & 0o777, 0o600)
+        meta = json.loads((folder / "metadata.json").read_text())
+        self.assertEqual(meta["sha256"], data["sha256"])
+        self.assertEqual(meta["status"], "received_pending_editorial_analysis")
+
+    def test_rejects_bad_filename_size_and_non_utf8(self):
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            response, _ = call(self.app, filename="../evil.md")
+            self.assertEqual(response["status"], "400 Bad Request")
+            response, _ = call(self.app, body=b"x" * (2 * 1024 * 1024 + 1))
+            self.assertEqual(response["status"], "413 Payload Too Large")
+            response, _ = call(self.app, body=b"\xff")
+            self.assertEqual(response["status"], "400 Bad Request")
+
+    def test_unknown_route_and_missing_secret_fail_closed(self):
+        with patch.dict(os.environ, {}, clear=True):
+            response, _ = call(self.app)
+            self.assertEqual(response["status"], "503 Service Unavailable")
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            response, _ = call(self.app, path="/other")
+            self.assertEqual(response["status"], "404 Not Found")
+
+if __name__ == "__main__":
+    unittest.main()
