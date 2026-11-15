@@ -61,25 +61,59 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         token_env: str = "PAPI_KIDS_UPLOAD_TOKEN",
         allow_insecure_local: bool = False,
         queue_registrar: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
-        status_reader: Callable[[str], dict[str, Any] | None] | None = None) -> Callable[..., list[bytes]]:
+        status_reader: Callable[[str], dict[str, Any] | None] | None = None,
+        review_handler: Callable[[str, str, str, str], dict[str, Any]] | None = None,
+        review_token_env: str = "PAPI_KIDS_REVIEW_TOKEN",
+        reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID") -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
     def app(environ: dict[str, Any], start_response: Callable[..., Any]) -> list[bytes]:
         request_path = environ.get("PATH_INFO", "")
         upload_route = request_path == "/api/papi-kids/manuscripts"
         status_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})", request_path)
-        if not upload_route and not status_match:
+        review_match = re.fullmatch(r"/api/papi-kids/assets/(PKP-ASSET-[0-9a-f]{24})/review", request_path)
+        if not upload_route and not status_match and not review_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
-        expected_method = "POST" if upload_route else "GET"
+        expected_method = "GET" if status_match else "POST"
         if environ.get("REQUEST_METHOD") != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
-        configured_token = os.environ.get(token_env, "")
+        configured_token = os.environ.get(review_token_env if review_match else token_env, "")
         if len(configured_token) < 32:
             return _response(start_response, "503 Service Unavailable", {"error": "server_not_configured"})
         supplied = environ.get("HTTP_AUTHORIZATION", "")
         if not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:], configured_token):
             return _response(start_response, "401 Unauthorized", {"error": "unauthorized"})
+        if review_match:
+            if review_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "review_not_configured"})
+            reviewer_id = os.environ.get(reviewer_id_env, "")
+            if len(reviewer_id) < 3 or len(reviewer_id) > 120:
+                return _response(start_response, "503 Service Unavailable", {"error": "reviewer_not_configured"})
+            if environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower() != "application/json":
+                return _response(start_response, "415 Unsupported Media Type", {"error": "json_required"})
+            try:
+                review_length = int(environ.get("CONTENT_LENGTH") or "0")
+            except (TypeError, ValueError):
+                review_length = 0
+            if review_length < 1 or review_length > 4096:
+                return _response(start_response, "413 Payload Too Large", {"error": "invalid_review_size"})
+            try:
+                review_payload = json.loads(environ["wsgi.input"].read(review_length).decode("utf-8"))
+            except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_review_json"})
+            if not isinstance(review_payload, dict) or review_payload.get("decision") not in {"approved", "rejected"}:
+                return _response(start_response, "400 Bad Request", {"error": "invalid_review_decision"})
+            notes = review_payload.get("notes", "")
+            if not isinstance(notes, str) or len(notes) > 1000:
+                return _response(start_response, "400 Bad Request", {"error": "invalid_review_notes"})
+            try:
+                reviewed = review_handler(review_match.group(1), review_payload["decision"], reviewer_id, notes)
+            except ValueError:
+                return _response(start_response, "400 Bad Request", {"error": "invalid_review"})
+            except Exception:
+                return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
+            return _response(start_response, "200 OK", reviewed)
         if status_match:
             if status_reader is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "status_not_configured"})
