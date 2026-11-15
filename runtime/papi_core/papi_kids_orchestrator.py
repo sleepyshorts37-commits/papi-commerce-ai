@@ -126,6 +126,7 @@ def execute_pkp0001_campaign(
     engine: ImageProductionEngine,
     quota_evidence: dict[str, Any] | None = None,
     generation_authorized: bool = False,
+    editorial_approved: bool = False,
     spend_limit_minor: int = 0,
     max_batches_per_run: int = 1,
     start_batch_index: int = 0,
@@ -134,6 +135,8 @@ def execute_pkp0001_campaign(
     """Explicitly execute a bounded free-quota slice; paid fallback is impossible."""
     if not isinstance(prepared, dict) or prepared.get("book_id") != BOOK_ID:
         raise PapiKidsOrchestrationError("Dossier PKP-0001 invalide.")
+    if editorial_approved is not True:
+        raise PapiKidsOrchestrationError("Validation éditoriale humaine obligatoire avant génération.")
     if generation_authorized is not True:
         raise PapiKidsOrchestrationError("Génération non autorisée explicitement.")
     if spend_limit_minor != 0:
