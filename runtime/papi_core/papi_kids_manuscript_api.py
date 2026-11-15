@@ -115,7 +115,7 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
         selected_token_env = (
-            owner_release_token_env if owner_release_match or submission_bundle_match else
+            owner_release_token_env if owner_release_match or submission_bundle_match or submission_lifecycle_match else
             (kindle_previewer_token_env if kindle_previewer_match else
             (kdp_package_review_token_env if kdp_package_review_match or kdp_package_download_match else
              (readiness_token_env if readiness_match else
