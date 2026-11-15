@@ -77,6 +77,8 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         kdp_package_review_token_env: str = "PAPI_KIDS_KDP_REVIEW_TOKEN",
         kdp_package_review_handler: Callable[[str, str, str, str, str, str], dict[str, Any]] | None = None,
         kdp_package_download_handler: Callable[[str, str], dict[str, Any]] | None = None,
+        kindle_previewer_token_env: str = "PAPI_KIDS_KINDLE_PREVIEWER_TOKEN",
+        kindle_previewer_handler: Callable[[str, str, bool, str, str, str], dict[str, Any]] | None = None,
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
         library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
@@ -95,21 +97,23 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         readiness_match = request_path == "/api/papi-kids/readiness"
         kdp_package_review_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-package-review", request_path)
         kdp_package_download_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-package/(interior|cover|ebook)", request_path)
-        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match:
+        kindle_previewer_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kindle-previewer-review", request_path)
+        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match and not kindle_previewer_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
-        expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or kdp_package_review_match or (upload_route and request_method == "POST") else "GET"
+        expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or kdp_package_review_match or kindle_previewer_match or (upload_route and request_method == "POST") else "GET"
         if request_method != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
         selected_token_env = (
-            kdp_package_review_token_env if kdp_package_review_match or kdp_package_download_match else
-            (readiness_token_env if readiness_match else
+            kindle_previewer_token_env if kindle_previewer_match else
+            (kdp_package_review_token_env if kdp_package_review_match or kdp_package_download_match else
+             (readiness_token_env if readiness_match else
              (kdp_build_token_env if kdp_build_match else
              (metadata_token_env if metadata_match else
              (safety_review_token_env if safety_review_match else
-                (review_token_env if review_match else token_env)))))
+                 (review_token_env if review_match else token_env))))))
         )
         configured_token = os.environ.get(selected_token_env, "")
         if len(configured_token) < 32:
@@ -154,6 +158,45 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
                 return _response(start_response, "400 Bad Request", {"error": "invalid_review"})
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
+            return _response(start_response, "200 OK", reviewed)
+        if kindle_previewer_match:
+            if kindle_previewer_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "kindle_previewer_not_configured"})
+            reviewer_id = os.environ.get(reviewer_id_env, "")
+            if len(reviewer_id.strip()) < 3 or len(reviewer_id.strip()) > 120:
+                return _response(start_response, "503 Service Unavailable", {"error": "reviewer_not_configured"})
+            if environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower() != "application/json":
+                return _response(start_response, "415 Unsupported Media Type", {"error": "json_required"})
+            try:
+                review_length = int(environ.get("CONTENT_LENGTH") or "0")
+            except (TypeError, ValueError):
+                review_length = 0
+            if review_length < 1 or review_length > 8192:
+                return _response(start_response, "413 Payload Too Large", {"error": "invalid_review_size"})
+            try:
+                preview_payload = json.loads(environ["wsgi.input"].read(review_length).decode("utf-8"))
+            except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_preview_review"})
+            if not isinstance(preview_payload, dict):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_preview_review"})
+            epub_sha256 = preview_payload.get("epub_sha256")
+            passed = preview_payload.get("passed")
+            evidence_ref = preview_payload.get("evidence_ref")
+            notes = preview_payload.get("notes")
+            if (not isinstance(epub_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", epub_sha256)
+                    or not isinstance(passed, bool)
+                    or not isinstance(evidence_ref, str) or not re.fullmatch(r"[0-9a-f]{64}", evidence_ref)
+                    or not isinstance(notes, str) or not 20 <= len(notes.strip()) <= 2000):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_preview_review"})
+            try:
+                reviewed = kindle_previewer_handler(
+                    kindle_previewer_match.group(1), epub_sha256, passed,
+                    reviewer_id.strip(), evidence_ref, notes.strip(),
+                )
+            except ValueError:
+                return _response(start_response, "400 Bad Request", {"error": "invalid_preview_review"})
+            except Exception:
+                return _response(start_response, "409 Conflict", {"error": "preview_review_rejected"})
             return _response(start_response, "200 OK", reviewed)
         if kdp_package_download_match:
             if kdp_package_download_handler is None:
