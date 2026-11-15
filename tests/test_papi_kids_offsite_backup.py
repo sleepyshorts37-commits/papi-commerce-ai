@@ -50,6 +50,10 @@ class PapiKidsOffsiteBackupTests(unittest.TestCase):
         self.assertEqual(run.call_count, 2)
         self.assertIn("copy", run.call_args_list[0].args[0])
         self.assertIn("check", run.call_args_list[1].args[0])
+        proof = json.loads((self.root / "offsite-verification.json").read_text())
+        self.assertEqual(proof["status"], "offsite_copy_verified")
+        self.assertTrue(proof["backups"][0]["offsite_copy_verified"])
+        self.assertEqual((self.root / "offsite-verification.json").stat().st_mode & 0o777, 0o600)
 
     def test_disabled_remote_invalid_or_bad_config_fails_closed(self):
         with patch.dict(os.environ, {"RCLONE_CONFIG": str(self.config)}, clear=True):
