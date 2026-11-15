@@ -152,6 +152,26 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertNotIn("storage_key", books[0])
         self.assertEqual(connection.commits, 1)
 
+    def test_status_reader_exposes_safety_screening_and_human_attestation(self):
+        from papi_kids_postgres_queue import build_postgres_status_reader
+        upload_id = "PKP-UP-" + "d" * 32
+        analysis = {"child_safety_screening": {"issue_count": 2, "critical_issue_count": 1}}
+        review = {"approved": True, "reviewer_id": "owner-01", "manuscript_sha256": "b" * 64}
+        connection = FakeConnection(rows=[(
+            "book-uuid", upload_id, "needs_editor_review", None, None, review,
+            71, "completed", 1, 5, None, None, analysis,
+        )])
+        connection.cursor_obj.description = [
+            ("book_id",), ("upload_id",), ("book_status",), ("created_at",),
+            ("updated_at",), ("content_safety_review",), ("job_id",),
+            ("job_status",), ("attempts",), ("max_attempts",),
+            ("available_at",), ("lease_until",), ("analysis",),
+        ]
+        connection.cursor_obj.fetchall.return_value = []
+        result = build_postgres_status_reader(lambda: connection)(upload_id)
+        self.assertEqual(result["job"]["analysis"]["child_safety_screening"]["issue_count"], 2)
+        self.assertTrue(result["content_safety_review"]["approved"])
+
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):
             enqueue_manuscript(
