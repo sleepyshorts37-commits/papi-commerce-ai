@@ -41,6 +41,22 @@ class PapiKidsSafetyReviewTests(unittest.TestCase):
         self.assertTrue(attestation["approved"])
         self.assertEqual(attestation["manuscript_sha256"], result["manuscript_sha256"])
 
+    def test_french_negative_safety_instructions_are_not_flagged(self):
+        source = manuscript(
+            "Nia regarde le sol humide qui descend vers l'eau. "
+            "Les enfants ne descendent pas dans l'eau et ne ramassent jamais les déchets. "
+            "Nous ne buvons pas cette eau."
+        )
+        result = analyze_child_safety(source)
+        self.assertEqual(result["issue_count"], 0)
+
+    def test_active_child_actions_still_flagged_with_subject_and_conjugations(self):
+        source = manuscript("Nia entre dans la rivière et Bako ramasse une seringue.")
+        result = analyze_child_safety(source)
+        rules = {issue["rule_id"] for issue in result["pages"][0]["issues"]}
+        self.assertIn("child_in_water", rules)
+        self.assertIn("child_handles_hazard", rules)
+
     def test_safe_story_still_requires_human_approval(self):
         source = manuscript("Nia observe la rivière depuis le chemin avec Awa, une adulte.")
         result = analyze_child_safety(source)
