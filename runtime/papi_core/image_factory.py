@@ -74,13 +74,15 @@ def plan_book_images(
 ) -> list[ImageBatch]:
     """Create deterministic, quota-aware batches without network access."""
     book = _required_identifier(book_id, "book_id")
-    if not isinstance(model, str) or model not in model_costs:
+    if not isinstance(model_costs, dict) or not isinstance(model, str) or model not in model_costs:
         raise ImageFactoryError("Modèle absent du registre de coûts autorisés.")
     unit_cost = model_costs[model]
     if not isinstance(unit_cost, int) or isinstance(unit_cost, bool) or unit_cost <= 0:
         raise ImageFactoryError("Coût estimé du modèle invalide.")
     if not isinstance(pages, list) or not pages:
         raise ImageFactoryError("Le livre doit contenir au moins une page.")
+    if len(pages) > 1_000:
+        raise ImageFactoryError("Maximum 1 000 pages par plan de production.")
     if not isinstance(max_batch_size, int) or isinstance(max_batch_size, bool) or not 1 <= max_batch_size <= 100:
         raise ImageFactoryError("Taille de lot invalide (1 à 100).")
     if not isinstance(max_batch_units, int) or isinstance(max_batch_units, bool) or max_batch_units < unit_cost:
@@ -100,7 +102,7 @@ def plan_book_images(
             raise ImageFactoryError("Numéro de page invalide.")
         if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 12_000:
             raise ImageFactoryError("Prompt vide ou trop long.")
-        if priority not in PRIORITY:
+        if not isinstance(priority, str) or priority not in PRIORITY:
             raise ImageFactoryError("Priorité inconnue.")
         if page_id in seen_page_ids or page_number in seen_page_numbers:
             raise ImageFactoryError("Identifiant ou numéro de page dupliqué.")
@@ -169,6 +171,9 @@ def build_asset_manifest(
     for planned, result in zip(batch.jobs, results):
         if not isinstance(result, dict):
             raise ImageFactoryError("Résultat d'image invalide.")
+        returned_key = result.get("idempotency_key")
+        if returned_key is not None and returned_key != planned.idempotency_key:
+            raise ImageFactoryError("Le résultat ne correspond pas à la clé d'idempotence planifiée.")
         status = result.get("status")
         if status not in {"generated", "failed"}:
             raise ImageFactoryError("Statut de génération inconnu.")
