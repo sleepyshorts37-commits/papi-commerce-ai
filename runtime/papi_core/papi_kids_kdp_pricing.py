@@ -131,11 +131,14 @@ def calculate_paperback_price(
 
     # Determine the lowest price that covers print cost in either royalty tier.
     unit = Decimal("1") if config["currency"] == "JPY" else Decimal("0.01")
-    minimum_50 = print_cost / Decimal("0.50")
-    if minimum_50 <= threshold_50:
-        minimum_price = minimum_50
+    if expanded_distribution:
+        minimum_price = print_cost / Decimal("0.40")
     else:
-        minimum_price = max(threshold_60, print_cost / Decimal("0.60"))
+        minimum_50 = print_cost / Decimal("0.50")
+        if minimum_50 <= threshold_50:
+            minimum_price = minimum_50
+        else:
+            minimum_price = max(threshold_60, print_cost / Decimal("0.60"))
     minimum_price = (minimum_price / unit).to_integral_value(rounding=ROUND_CEILING) * unit
     if price < minimum_price:
         raise KDPPriceError(f"Prix inférieur au minimum estimé KDP ({minimum_price} {config['currency']}).")
