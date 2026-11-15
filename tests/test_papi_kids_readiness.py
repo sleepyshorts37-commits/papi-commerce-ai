@@ -33,6 +33,7 @@ class PapiKidsReadinessTests(unittest.TestCase):
                 "books", "editorial_jobs", "manuscript_safety_reviews",
                 "kdp_listing_metadata_versions", "kdp_package_builds",
                 "kdp_package_reviews", "kindle_previewer_reviews",
+                "kdp_owner_release_authorizations",
             )]
             connection = MagicMock()
             connection.cursor.return_value = cursor
@@ -46,6 +47,8 @@ class PapiKidsReadinessTests(unittest.TestCase):
                 "PAPI_KIDS_KDP_BUILD_TOKEN": "b" * 40,
                 "PAPI_KIDS_KDP_REVIEW_TOKEN": "k" * 40,
                 "PAPI_KIDS_KINDLE_PREVIEWER_TOKEN": "p" * 40,
+                "PAPI_KIDS_OWNER_RELEASE_TOKEN": "o" * 40,
+                "PAPI_KIDS_RELEASE_OWNER_ID": "owner-01",
                 "PAPI_KIDS_REVIEWER_ID": "owner-01",
                 "PAPI_KIDS_METADATA_EDITOR_ID": "owner-01",
                 "CLOUDFLARE_ACCOUNT_ID": "a" * 32,
