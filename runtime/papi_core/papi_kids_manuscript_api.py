@@ -69,6 +69,10 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
     def app(environ: dict[str, Any], start_response: Callable[..., Any]) -> list[bytes]:
         request_path = environ.get("PATH_INFO", "")
+        if request_path == "/healthz":
+            if environ.get("REQUEST_METHOD") != "GET":
+                return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
+            return _response(start_response, "200 OK", {"status": "ok", "service": "papi-kids"})
         upload_route = request_path == "/api/papi-kids/manuscripts"
         status_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})", request_path)
         review_match = re.fullmatch(r"/api/papi-kids/assets/(PKP-ASSET-[0-9a-f]{24})/review", request_path)
