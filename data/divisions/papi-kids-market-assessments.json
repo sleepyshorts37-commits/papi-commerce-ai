@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "division_id": "papi_kids_publishing",
+  "assessments": [
+    {
+      "book_id": "PKP-0001",
+      "title": "Nia et la rivière aux mille reflets",
+      "criteria": {
+        "demand_evidence": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "competition_position": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "differentiation": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "kdp_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "jumia_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "editorial_feasibility": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "rights_and_child_safety": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "source_reliability": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "book_id": "PKP-0002",
+      "title": "Le marché des nombres de Sami",
+      "criteria": {
+        "demand_evidence": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "competition_position": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "differentiation": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "kdp_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "jumia_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "editorial_feasibility": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "rights_and_child_safety": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "source_reliability": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "book_id": "PKP-0003",
+      "title": "Le petit atlas de mes émotions",
+      "criteria": {
+        "demand_evidence": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "competition_position": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "differentiation": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "kdp_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "jumia_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "editorial_feasibility": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "rights_and_child_safety": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "source_reliability": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "book_id": "PKP-0004",
+      "title": "Les missions futées de la savane",
+      "criteria": {
+        "demand_evidence": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "competition_position": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "differentiation": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "kdp_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "jumia_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "editorial_feasibility": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "rights_and_child_safety": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "source_reliability": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        }
+      }
+    },
+    {
+      "book_id": "PKP-0005",
+      "title": "Jardins de formes : mon grand coloriage",
+      "criteria": {
+        "demand_evidence": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "competition_position": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "differentiation": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "kdp_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "jumia_unit_economics": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "editorial_feasibility": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "rights_and_child_safety": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        },
+        "source_reliability": {
+          "status": "pending",
+          "score": null,
+          "rationale": "",
+          "evidence": []
+        }
+      }
+    }
+  ]
+}
