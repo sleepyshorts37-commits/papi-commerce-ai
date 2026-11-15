@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import re
+import json
+from pathlib import Path
 from typing import Any
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -152,3 +154,52 @@ def evaluate_backup_health(
         "restore_drill_fresh": restore_fresh,
         "destructive_actions_performed": False,
     }
+
+
+def load_backup_health_inventory(backup_dir: str | Path) -> list[dict[str, Any]]:
+    """Load local backup manifests and attach only matching offsite verification evidence."""
+    directory = Path(backup_dir).resolve()
+    if not directory.is_dir():
+        raise PapiKidsBackupOpsError("Dossier de sauvegarde introuvable.")
+    verification_path = directory / "offsite-verification.json"
+    verification = {}
+    if verification_path.is_file():
+        try:
+            document = json.loads(verification_path.read_text(encoding="utf-8"))
+            if document.get("status") == "offsite_copy_verified" and document.get("checksum_verified") is True:
+                verification = {
+                    item.get("backup_file"): item
+                    for item in document.get("backups", [])
+                    if isinstance(item, dict)
+                }
+        except Exception:
+            verification = {}
+    inventory = []
+    for encrypted in sorted(directory.glob("*.pgdump.aesgcm")):
+        manifest_path = Path(str(encrypted) + ".json")
+        if not manifest_path.is_file():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise PapiKidsBackupOpsError("Manifeste de sauvegarde illisible.") from exc
+        if manifest.get("backup_file") != encrypted.name or manifest.get("encrypted") is not True:
+            raise PapiKidsBackupOpsError("Manifeste non lié à la sauvegarde.")
+        digest = hashlib.sha256(encrypted.read_bytes()).hexdigest()
+        if digest != manifest.get("encrypted_sha256"):
+            raise PapiKidsBackupOpsError("SHA-256 local incorrect.")
+        proof = verification.get(encrypted.name, {})
+        verified = (
+            proof.get("offsite_copy_verified") is True
+            and proof.get("encrypted_sha256") == digest
+            and isinstance(proof.get("offsite_evidence_ref"), str)
+            and bool(proof.get("offsite_evidence_ref"))
+        )
+        inventory.append({
+            "backup_file": encrypted.name,
+            "created_at": manifest.get("created_at"),
+            "encrypted_sha256": digest,
+            "offsite_copy_verified": verified,
+            "offsite_evidence_ref": proof.get("offsite_evidence_ref") if verified else None,
+        })
+    return inventory
