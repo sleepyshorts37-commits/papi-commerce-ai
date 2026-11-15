@@ -5,6 +5,10 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from .papi_kids_editorial_approval import (
+    build_pkp0001_editorial_preview_reader,
+    build_postgres_editorial_approval_handler,
+)
 from .papi_kids_manuscript_api import create_papi_kids_manuscript_app
 from .papi_kids_postgres_queue import (
     build_postgres_asset_reviewer,
@@ -34,12 +38,21 @@ def create_app(
     os.chmod(root, 0o700)
 
     factory = connection_factory or create_postgres_connection_factory()
+    preview_reader = build_pkp0001_editorial_preview_reader(
+        root, project_root=Path(__file__).resolve().parents[2],
+    )
+    approval_handler = build_postgres_editorial_approval_handler(
+        factory, preview_reader=preview_reader, storage_root=root,
+        reviewer_id=os.environ.get("PAPI_KIDS_REVIEWER_ID", ""),
+    )
     return create_papi_kids_manuscript_app(
         storage_root=root,
         queue_registrar=build_postgres_queue_registrar(factory),
         status_reader=build_postgres_status_reader(factory),
         review_handler=build_postgres_asset_reviewer(factory),
         library_reader=build_postgres_library_reader(factory),
+        editorial_preview_reader=preview_reader,
+        editorial_approval_handler=approval_handler,
     )
 
 
