@@ -39,7 +39,8 @@
 - [x] Définir les trois activités et les 24 postes cibles, avec chaîne éditoriale-commerciale et garde-fous IP/financiers (PR #225).
 - [x] Ajouter le catalogue local versionné, les contrôles de fichiers SHA-256 et les portes droits/qualité/KDP/validation humaine (Mission 73 ; 180 tests unitaires et trois workflows CI réussis sur le SHA d'implémentation).
 - [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
-- [ ] Créer les outils de briefs, génération/assemblage des manuscrits, illustrations, intérieurs PDF, couvertures et exports finaux.
+- [x] Ajouter un générateur local de kits de production vierges : brief, canevas de manuscrit, métadonnées, checklist et rapport qualité initial (Mission 74).
+- [ ] Construire les outils de rédaction/assemblage des manuscrits, illustrations originales, intérieurs PDF, couvertures et exports finaux.
 - [ ] Préparer cinq livres pilotes originaux et faire contrôler indépendamment chaque fichier.
 - [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
 - [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
@@ -56,7 +57,8 @@
 ## Phase 5 — Extension
 - [x] Documenter PAPI KIDS PUBLISHING : trois activités, 24 postes cibles, workflow éditorial-commercial, modèle sans stock et garde-fous IP/financiers.
 - [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
-- [ ] Construire les outils locaux de catalogue, briefs, fichiers, contrôles qualité, coûts et rapports.
+- [x] Ajouter les premiers outils locaux de catalogue, briefs vierges, dossiers de fichiers et contrôles initiaux (Missions 73–74).
+- [ ] Compléter les outils de rédaction, illustrations, mise en page PDF, coûts et rapports.
 - [ ] Réaliser un pilote de livres originaux et vérifier les exigences KDP, l'éligibilité depuis le Sénégal et les moyens de versement.
 - [ ] Obtenir une validation humaine explicite avant toute publication ou promotion externe.
 - [ ] Tester les intégrations officielles et l'automatisation contrôlée après revue de sécurité.
