@@ -1,6 +1,14 @@
 name: PAPI shared quota PostgreSQL tests
 
 on:
+  push:
+    branches:
+      - "mission-107-postgres-ci-validation"
+    paths:
+      - "infra/supabase/migrations/013_shared_provider_quota_ledger.sql"
+      - "infra/supabase/tests/013_shared_provider_quota_ledger.sql"
+      - "scripts/test_shared_quota_concurrency.py"
+      - ".github/workflows/papi-shared-quota-postgres.yml"
   pull_request:
     paths:
       - "infra/supabase/migrations/013_shared_provider_quota_ledger.sql"
