@@ -64,22 +64,49 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         root = Path(root_value)
         try:
             root.mkdir(parents=True, exist_ok=True)
-            upload_id = "PKP-UP-" + uuid.uuid4().hex
+            digest = hashlib.sha256(raw).hexdigest()
+            upload_id = "PKP-UP-" + digest[:32]
             book_dir = root / upload_id
-            book_dir.mkdir(mode=0o700)
-            manuscript_path = book_dir / ("manuscript" + Path(filename).suffix.lower())
-            temporary = book_dir / ".upload.tmp"
-            temporary.write_bytes(raw)
-            os.chmod(temporary, 0o600)
-            temporary.replace(manuscript_path)
+            if book_dir.exists():
+                existing = json.loads((book_dir / "metadata.json").read_text(encoding="utf-8"))
+                if existing.get("sha256") != digest:
+                    raise OSError("upload identifier collision")
+                return _response(start_response, "200 OK", {"upload_id": upload_id,
+                    "status": existing.get("status", "queued_for_analysis"),
+                    "sha256": digest, "size_bytes": len(raw), "deduplicated": True})
+            import shutil, tempfile
+            staging = Path(tempfile.mkdtemp(prefix=".papi-kids-intake-", dir=root))
+            os.chmod(staging, 0o700)
+            manuscript_name = "manuscript" + Path(filename).suffix.lower()
+            manuscript_path = staging / manuscript_name
+            manuscript_path.write_bytes(raw)
+            os.chmod(manuscript_path, 0o600)
+            received_at = datetime.now(timezone.utc).isoformat()
             metadata = {"upload_id": upload_id, "original_filename": filename,
-                "size_bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
-                "received_at": datetime.now(timezone.utc).isoformat(),
-                "status": "received_pending_editorial_analysis", "storage_visibility": "private"}
-            metadata_path = book_dir / "metadata.json"
-            metadata_path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
-            os.chmod(metadata_path, 0o600)
-        except OSError:
+                "size_bytes": len(raw), "sha256": digest, "received_at": received_at,
+                "status": "queued_for_analysis", "storage_visibility": "private"}
+            job = {"upload_id": upload_id, "job_type": "editorial_structure_analysis",
+                "status": "queued_for_analysis", "stored_filename": manuscript_name,
+                "source_sha256": digest, "attempts": 0, "created_at": received_at,
+                "updated_at": received_at, "ai_invoked": False, "provider_invoked": False}
+            for name, payload in (("metadata.json", metadata), ("job.json", job)):
+                target = staging / name
+                target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+                os.chmod(target, 0o600)
+            try:
+                os.rename(staging, book_dir)
+            except OSError:
+                if book_dir.is_dir():
+                    existing = json.loads((book_dir / "metadata.json").read_text(encoding="utf-8"))
+                    if existing.get("sha256") == digest:
+                        shutil.rmtree(staging, ignore_errors=True)
+                        return _response(start_response, "200 OK", {"upload_id": upload_id,
+                            "status": existing.get("status", "queued_for_analysis"),
+                            "sha256": digest, "size_bytes": len(raw), "deduplicated": True})
+                raise
+        except (OSError, ValueError, json.JSONDecodeError):
+            if "staging" in locals():
+                shutil.rmtree(staging, ignore_errors=True)
             return _response(start_response, "500 Internal Server Error", {"error": "private_storage_failed"})
         return _response(start_response, "201 Created", {"upload_id": upload_id,
             "status": metadata["status"], "sha256": metadata["sha256"], "size_bytes": metadata["size_bytes"]})
