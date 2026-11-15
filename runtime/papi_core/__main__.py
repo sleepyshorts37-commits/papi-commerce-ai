@@ -13,6 +13,7 @@ from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
 from .kids_publishing import KidsPublishingError, build_catalog_report, check_book, load_catalog, validate_catalog
+from .kids_project import KidsProjectError, create_project
 
 
 def main() -> int:
@@ -37,6 +38,14 @@ def main() -> int:
     sub.add_parser("kids-report", help="Afficher le portefeuille de livres PAPI KIDS en lecture seule")
     kids_check = sub.add_parser("kids-check", help="Contrôler la préparation locale d'un livre")
     kids_check.add_argument("book_id")
+    kids_init = sub.add_parser("kids-init", help="Créer un kit de travail local vierge pour un nouveau livre")
+    kids_init.add_argument("book_id")
+    kids_init.add_argument("--title", required=True)
+    kids_init.add_argument("--language", default="fr")
+    kids_init.add_argument("--product-type", choices=["coloring_book", "illustrated_story", "educational_book", "activity_book", "ebook"], default="illustrated_story")
+    kids_init.add_argument("--format", choices=["paperback", "ebook", "both"], default="paperback")
+    kids_init.add_argument("--age-min", type=int, default=5)
+    kids_init.add_argument("--age-max", type=int, default=8)
     args = parser.parse_args()
     try:
         if args.command == "agent-check":
@@ -68,6 +77,12 @@ def main() -> int:
         if args.command == "security-check":
             print(json.dumps(check_security(), ensure_ascii=False, indent=2))
             return 0
+        if args.command == "kids-init":
+            print(json.dumps(create_project(
+                args.book_id, args.title, args.language, args.product_type,
+                args.format, args.age_min, args.age_max
+            ), ensure_ascii=False, indent=2))
+            return 0
         if args.command == "kids-validate":
             errors = validate_catalog(load_catalog())
             if errors:
@@ -94,7 +109,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, KidsPublishingError, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, KidsPublishingError, KidsProjectError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
