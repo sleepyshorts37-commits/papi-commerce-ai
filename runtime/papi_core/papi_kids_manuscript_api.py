@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import hashlib, hmac, json, os
 from pathlib import Path
 import re, uuid
+from urllib.parse import unquote
 from typing import Any, Callable
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
@@ -33,7 +34,7 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         supplied = environ.get("HTTP_AUTHORIZATION", "")
         if not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:], configured_token):
             return _response(start_response, "401 Unauthorized", {"error": "unauthorized"})
-        filename = environ.get("HTTP_X_FILENAME", "")
+        filename = unquote(environ.get("HTTP_X_FILENAME", ""))
         if (not isinstance(filename, str) or len(filename) > 180 or Path(filename).name != filename
             or Path(filename).suffix.lower() not in _ALLOWED_EXTENSIONS
             or not re.fullmatch(r"[\w .()\-]+", filename, flags=re.UNICODE)):
@@ -57,9 +58,10 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             return _response(start_response, "400 Bad Request", {"error": "invalid_utf8"})
         if not manuscript.strip():
             return _response(start_response, "400 Bad Request", {"error": "empty_manuscript"})
-        root = Path(storage_root or os.environ.get("PAPI_KIDS_PRIVATE_STORAGE_DIR", ""))
-        if not str(root):
+        root_value = storage_root or os.environ.get("PAPI_KIDS_PRIVATE_STORAGE_DIR")
+        if not root_value:
             return _response(start_response, "503 Service Unavailable", {"error": "storage_not_configured"})
+        root = Path(root_value)
         try:
             root.mkdir(parents=True, exist_ok=True)
             upload_id = "PKP-UP-" + uuid.uuid4().hex
