@@ -160,6 +160,35 @@ class PapiKidsImageWiringTests(unittest.TestCase):
             self.assertFalse(report["network_called"])
             transport.assert_not_called()
 
+
+    def test_generation_requires_separate_editorial_approval(self):
+        with tempfile.TemporaryDirectory() as root:
+            (Path(root) / UPLOAD_ID).mkdir()
+            registry = ImageProviderRegistry(
+                providers=[ProviderProfile("cloudflare", "Cloudflare", "https://developers.cloudflare.com/workers-ai/platform/pricing", "verified", "account_api", True)],
+                models=[ModelProfile("cloudflare", MODEL_ID, "image", 58, True, True, True)],
+            )
+            transport = Mock()
+            reservation = FakeReservationStore()
+            engine, prepared, report = build_pkp0001_zero_spend_pipeline(
+                upload_id=UPLOAD_ID, storage_root=root, registry=registry,
+                account_refs={"cloudflare": "a" * 32},
+                quota_evidence_by_model={MODEL_ID: free_evidence()},
+                operator_confirmed_free_tier=True, generation_authorized=False,
+                account_id="a" * 32, api_token="server-secret",
+                reservation_store=reservation, asset_registrar=lambda metadata: None,
+                transport=transport, project_root=root,
+            )
+            with self.assertRaises(Exception):
+                execute_pkp0001_campaign(
+                    prepared=prepared, engine=engine,
+                    quota_evidence=report["registry_quota_evidence"],
+                    generation_authorized=True, editorial_approved=False,
+                    spend_limit_minor=0,
+                )
+            transport.assert_not_called()
+            self.assertEqual(reservation.reservations, [])
+
     def test_authorized_engine_generates_and_registers_a_small_batch_with_mock_transport(self):
         with tempfile.TemporaryDirectory() as root:
             (Path(root) / UPLOAD_ID).mkdir()
@@ -186,7 +215,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
             result = execute_pkp0001_campaign(
                 prepared=prepared, engine=engine,
                 quota_evidence=report["registry_quota_evidence"],
-                generation_authorized=True, spend_limit_minor=0,
+                generation_authorized=True, editorial_approved=True, spend_limit_minor=0,
                 max_batches_per_run=1,
             )
             execution = result["execution"]
