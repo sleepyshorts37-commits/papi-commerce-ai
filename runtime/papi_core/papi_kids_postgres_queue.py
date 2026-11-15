@@ -250,7 +250,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
             cursor = connection.cursor()
             cursor.execute(
                 """
-                select b.upload_id, b.status as book_status, b.created_at, b.updated_at,
+                select b.book_id, b.upload_id, b.status as book_status, b.created_at, b.updated_at,
                        j.job_id, j.status as job_status, j.attempts, j.max_attempts,
                        j.available_at, j.lease_until
                   from papi_kids_private.books b
@@ -275,6 +275,20 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                     "available_at": values["available_at"].isoformat() if values.get("available_at") else None,
                     "lease_until": values["lease_until"].isoformat() if values.get("lease_until") else None,
                 }
+            cursor.execute(
+                """select asset_id, page_number, version, review_status, width_px, height_px, media_type
+                     from papi_kids_private.illustration_assets
+                    where book_id = %s
+                    order by page_number, version desc""",
+                (values["book_id"],),
+            )
+            asset_rows = cursor.fetchall()
+            illustrations = [
+                {"asset_id": row[0], "page_number": row[1], "version": row[2],
+                 "review_status": row[3], "width_px": row[4], "height_px": row[5],
+                 "media_type": row[6]}
+                for row in asset_rows
+            ]
             connection.commit()
             return {
                 "upload_id": values["upload_id"],
@@ -282,6 +296,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "created_at": values["created_at"].isoformat() if values.get("created_at") else None,
                 "updated_at": values["updated_at"].isoformat() if values.get("updated_at") else None,
                 "job": job,
+                "illustrations": illustrations,
             }
         except Exception:
             connection.rollback()
@@ -371,3 +386,84 @@ def build_postgres_asset_registrar(connection_factory: Callable[[], Any]) -> Cal
     def register(metadata: dict[str, Any]) -> dict[str, Any]:
         return register_illustration_asset(connection_factory, metadata)
     return register
+
+
+
+def review_illustration_asset(
+    connection_factory: Callable[[], Any], *, asset_id: str, decision: str,
+    reviewer_id: str, notes: str = "",
+) -> dict[str, Any]:
+    """Record a human approval/rejection and supersede older approved page versions."""
+    if not isinstance(asset_id, str) or not re.fullmatch(r"PKP-ASSET-[0-9a-f]{24}", asset_id):
+        raise ValueError("Identifiant d'illustration invalide.")
+    if decision not in {"approved", "rejected"}:
+        raise ValueError("Décision de revue invalide.")
+    if not isinstance(reviewer_id, str) or not 3 <= len(reviewer_id) <= 120:
+        raise ValueError("Identifiant du réviseur invalide.")
+    if not isinstance(notes, str) or len(notes) > 1000:
+        raise ValueError("Commentaire de revue trop long.")
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """select book_id, page_number, review_status
+                 from papi_kids_private.illustration_assets
+                where asset_id = %s for update""",
+            (asset_id,),
+        )
+        asset = cursor.fetchone()
+        if not asset:
+            raise PostgresEditorialQueueError("Illustration introuvable.")
+        book_id, page_number, current_status = asset
+        if current_status == "superseded":
+            raise PostgresEditorialQueueError("Cette version a été remplacée.")
+        if decision == "approved":
+            cursor.execute(
+                """update papi_kids_private.illustration_assets
+                      set review_status = 'superseded'
+                    where book_id = %s and page_number = %s
+                      and review_status = 'approved' and asset_id <> %s
+                  returning asset_id""",
+                (book_id, page_number, asset_id),
+            )
+            for row in cursor.fetchall():
+                cursor.execute(
+                    """insert into papi_kids_private.illustration_review_events
+                        (asset_id, event_type, actor, details)
+                        values (%s, 'superseded', %s, %s::jsonb)""",
+                    (row[0], reviewer_id, json.dumps({"reason": "newer_version_approved"})),
+                )
+        cursor.execute(
+            """update papi_kids_private.illustration_assets
+                  set review_status = %s, reviewed_at = now(), reviewed_by = %s
+                where asset_id = %s and review_status in ('pending_review','rejected')
+              returning asset_id""",
+            (decision, reviewer_id, asset_id),
+        )
+        if not cursor.fetchone():
+            raise PostgresEditorialQueueError("Transition de revue non autorisée.")
+        cursor.execute(
+            """insert into papi_kids_private.illustration_review_events
+                (asset_id, event_type, actor, details)
+                values (%s, %s, %s, %s::jsonb)""",
+            (asset_id, decision, reviewer_id, json.dumps({"notes": notes})),
+        )
+        connection.commit()
+        return {"asset_id": asset_id, "review_status": decision, "reviewer_id": reviewer_id}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()
+
+
+def build_postgres_asset_reviewer(connection_factory: Callable[[], Any]) -> Callable[..., dict[str, Any]]:
+    """Build the server-side human-review callback."""
+    def review(asset_id: str, decision: str, reviewer_id: str, notes: str = "") -> dict[str, Any]:
+        return review_illustration_asset(
+            connection_factory, asset_id=asset_id, decision=decision,
+            reviewer_id=reviewer_id, notes=notes,
+        )
+    return review
