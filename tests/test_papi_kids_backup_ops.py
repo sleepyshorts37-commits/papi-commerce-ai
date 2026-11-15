@@ -85,7 +85,7 @@ class PapiKidsBackupOpsTests(unittest.TestCase):
             verified_at = self.now.isoformat()
             remote = "drive:papi-kids-backups"
             evidence = hashlib.sha256(
-                f"{backup.name}:{digest}:{remote}:{datetime.fromisoformat(verified_at)}".encode("utf-8")
+                f"{backup.name}:{digest}:{remote}:{verified_at}".encode("utf-8")
             ).hexdigest()
             proof = {
                 "status": "offsite_copy_verified", "checksum_verified": True,
