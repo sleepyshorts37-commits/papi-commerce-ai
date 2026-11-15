@@ -41,7 +41,22 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertEqual(stored.stat().st_mode & 0o777, 0o600)
         meta = json.loads((folder / "metadata.json").read_text())
         self.assertEqual(meta["sha256"], data["sha256"])
-        self.assertEqual(meta["status"], "received_pending_editorial_analysis")
+        self.assertEqual(meta["status"], "queued_for_analysis")
+        job = json.loads((folder / "job.json").read_text())
+        self.assertEqual(job["status"], "queued_for_analysis")
+        self.assertFalse(job["ai_invoked"])
+        self.assertFalse(job["provider_invoked"])
+
+    def test_identical_upload_is_idempotent(self):
+        content = b"# Same manuscript"
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            first_response, first = call(self.app, body=content)
+            second_response, second = call(self.app, body=content)
+        self.assertEqual(first_response["status"], "201 Created")
+        self.assertEqual(second_response["status"], "200 OK")
+        self.assertEqual(first["upload_id"], second["upload_id"])
+        self.assertTrue(second["deduplicated"])
+        self.assertEqual(len(list(Path(self.temp.name).glob("PKP-UP-*"))), 1)
 
     def test_rejects_bad_filename_size_and_non_utf8(self):
         with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
