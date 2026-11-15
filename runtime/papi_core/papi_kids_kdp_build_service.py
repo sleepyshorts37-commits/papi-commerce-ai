@@ -127,3 +127,41 @@ def build_private_kdp_package_handler(
         result["persisted_package_build"] = persisted
         return result
     return build
+
+
+def build_private_kdp_package_downloader(
+    storage_root: str | Path,
+    connection_factory,
+):
+    """Build an authenticated download callback for the latest package artifacts."""
+    from .papi_kids_postgres_queue import build_postgres_status_reader
+
+    status_reader = build_postgres_status_reader(connection_factory)
+    root = Path(storage_root).resolve()
+
+    def download(upload_id: str, artifact: str) -> dict[str, Any]:
+        if artifact not in {"interior", "cover", "ebook"}:
+            raise PapiKidsKDPBuildServiceError("Type de fichier KDP invalide.")
+        status = status_reader(upload_id)
+        package = status.get("kdp_package_build") or {}
+        if artifact in {"interior", "cover"}:
+            record = (package.get("pdfs") or {}).get(artifact)
+        else:
+            record = package.get("ebook")
+        if not isinstance(record, dict):
+            raise PapiKidsKDPBuildServiceError("Fichier absent du dernier package.")
+        relative = record.get("path")
+        if not isinstance(relative, str) or Path(relative).is_absolute() or ".." in Path(relative).parts:
+            raise PapiKidsKDPBuildServiceError("Chemin de package invalide.")
+        path = (root / relative).resolve()
+        if root not in path.parents or path.is_symlink() or not path.is_file():
+            raise PapiKidsKDPBuildServiceError("Fichier privé introuvable.")
+        if path.stat().st_size > 650 * 1024 * 1024:
+            raise PapiKidsKDPBuildServiceError("Fichier trop volumineux pour le téléchargement web.")
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != record.get("sha256"):
+            raise PapiKidsKDPBuildServiceError("Empreinte du fichier incorrecte.")
+        if artifact == "ebook":
+            return {"data": data, "content_type": "application/epub+zip", "filename": "book.epub"}
+        return {"data": data, "content_type": "application/pdf", "filename": f"{artifact}.pdf"}
+    return download
