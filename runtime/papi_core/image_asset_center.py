@@ -15,6 +15,7 @@ import tempfile
 from typing import Any
 
 _SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$")
+_MODEL_ID = re.compile(r"^@[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$|^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$")
 _MAGIC = {
     "image/png": lambda b: b.startswith(b"\x89PNG\r\n\x1a\n"),
     "image/jpeg": lambda b: b.startswith(b"\xff\xd8\xff"),
@@ -86,7 +87,9 @@ class LocalImageAssetCenter:
         """Persist one generated image; identical replay is idempotent."""
         book = _safe(book_id, "book_id")
         page = _safe(page_id, "page_id")
-        model_name = _safe(model, "model")
+        if not isinstance(model, str) or not _MODEL_ID.fullmatch(model) or "//" in model or ".." in model:
+            raise AssetCenterError("Identifiant de modèle invalide.")
+        model_name = model
         if not isinstance(page_number, int) or isinstance(page_number, bool) or page_number < 1:
             raise AssetCenterError("Numéro de page invalide.")
         if not isinstance(image_bytes, bytes) or not image_bytes:
