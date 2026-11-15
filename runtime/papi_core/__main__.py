@@ -1,4 +1,4 @@
-"CLI de contrôle du registre et de planification PAPI."""
+"""CLI de contrôle du registre et de planification PAPI."""
 import argparse
 import json
 import sys
