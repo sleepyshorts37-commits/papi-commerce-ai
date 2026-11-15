@@ -39,6 +39,12 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("renderSafetyReview", html)
         self.assertIn("manuscript_sha256", html)
         self.assertIn("Valider la sécurité", html)
+        self.assertIn("Fiche commerciale Amazon KDP", html)
+        self.assertIn("Jeton distinct des métadonnées KDP", html)
+        self.assertIn("/kdp-metadata", html)
+        self.assertIn("readKdpMetadataForm", html)
+        self.assertIn("categories", html)
+        self.assertIn("isbn_strategy", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(
