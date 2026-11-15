@@ -87,7 +87,7 @@ class KidsPublishingTests(unittest.TestCase):
             book = self.make_book(root)
             result = inspect_book(book, root)
         self.assertTrue(result["valid"])
-        self.assertFalse(result["ready_for_human_review"])
+        self.assertTrue(result["ready_for_human_review"])
         self.assertIn("human_publication_approval_pending", result["blockers"])
         self.assertFalse(result["external_submission_performed"])
         self.assertFalse(result["external_publication_performed"])
@@ -100,7 +100,8 @@ class KidsPublishingTests(unittest.TestCase):
                 "approved_at": "2026-11-15T12:00:00Z", "reference": "manual-review-001"
             })
             result = inspect_book(book, root)
-        self.assertTrue(result["ready_for_human_review"])
+        self.assertFalse(result["ready_for_human_review"])
+        self.assertTrue(result["approved_for_manual_submission"])
         self.assertTrue(result["human_approval_recorded"])
         self.assertFalse(result["external_submission_performed"])
 
@@ -144,6 +145,17 @@ class KidsPublishingTests(unittest.TestCase):
             result = inspect_book(book, root)
         self.assertNotIn("asset_cover_pdf_missing_reference", result["blockers"])
         self.assertNotIn("asset_interior_pdf_missing_reference", result["blockers"])
+
+    def test_malformed_enum_types_are_rejected_without_type_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            book = self.make_book(root, product_type=[], format={}, workflow_stage=[])
+            errors = validate_catalog({
+                "schema_version": 1, "division_id": "papi_kids_publishing", "books": [book]
+            })
+        self.assertTrue(any("product_type invalide" in error for error in errors))
+        self.assertTrue(any("format invalide" in error for error in errors))
+        self.assertTrue(any("workflow_stage invalide" in error for error in errors))
 
     def test_catalog_report_and_lookup(self):
         with tempfile.TemporaryDirectory() as directory:
