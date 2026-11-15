@@ -75,3 +75,7 @@ Package builds are recorded in the private PostgreSQL `kdp_package_builds` audit
 ## Runtime readiness diagnostics
 
 `GET /api/papi-kids/readiness` is protected by a separate `PAPI_KIDS_READINESS_TOKEN`. It checks storage permissions, database connectivity, required migrations, configured workflow tokens and provider credential presence. It never returns secret values and does not contact image providers or verify quota. A configured Cloudflare token does not prove a free quota is available.
+
+## Human review of KDP package files
+
+The owner can download the latest private PDF/EPUB using the authenticated `/api/papi-kids/manuscripts/{upload_id}/kdp-package/{interior|cover|ebook}` endpoint and record a hash-bound decision with `/kdp-package-review`. Configure the separate `PAPI_KIDS_KDP_REVIEW_TOKEN`. Reviews require notes and are stored append-only in PostgreSQL. The download service checks the current package hash and refuses path traversal, symlinks and changed files.
