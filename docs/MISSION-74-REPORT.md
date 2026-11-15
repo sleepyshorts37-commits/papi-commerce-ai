@@ -20,5 +20,13 @@ PYTHONPATH=runtime python -m papi_core kids-init PKP-0001 \
 
 Le dossier est créé sous `workspace/papi-kids/PKP-0001`. Une collision entraîne un refus sans écrasement.
 
+## Validation CI sur le SHA final
+- SHA : `7bfc392e729b9358b00fd35f55ce512193334b22`.
+- Workflow PAPI core tests #1693 (run `43715100461`) : succès.
+- **187 tests unitaires réussis** en 0,225 s, dont les 7 nouveaux tests du générateur.
+- Application du schéma Supabase à PostgreSQL jetable : succès.
+- Validation des registres #768 (run `43715100453`) : succès.
+- Vérification documentaire #740 (run `43715100469`) : succès.
+
 ## État
-Les tests et la CI sont à vérifier sur le SHA final. Cette mission fournit un kit de production, pas un livre achevé. Les cinq livres pilotes ne sont pas encore produits.
+PR #236 ouverte en brouillon, non fusionnée. La PR #235 Mission 73 reste également ouverte en brouillon. Cette mission fournit un kit de production, pas un livre achevé. Les cinq livres pilotes ne sont pas encore produits.
