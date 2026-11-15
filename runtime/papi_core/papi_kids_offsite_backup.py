@@ -8,6 +8,8 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import tempfile
+from datetime import datetime, timezone
 import subprocess
 from typing import Any
 
@@ -119,6 +121,45 @@ def copy_encrypted_backups_offsite(
             raise PapiKidsOffsiteBackupError(
                 "La copie hors site ou sa vérification a échoué ; détails sensibles masqués."
             )
+    verified_at = datetime.now(timezone.utc).isoformat()
+    backup_records = []
+    for encrypted in sorted(directory.glob("*.pgdump.aesgcm")):
+        manifest_path = Path(str(encrypted) + ".json")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        evidence_ref = hashlib.sha256(
+            f"{encrypted.name}:{manifest['encrypted_sha256']}:{remote}:{verified_at}".encode("utf-8")
+        ).hexdigest()
+        backup_records.append({
+            "backup_file": encrypted.name,
+            "encrypted_sha256": manifest["encrypted_sha256"],
+            "offsite_copy_verified": True,
+            "offsite_evidence_ref": evidence_ref,
+        })
+    verification = {
+        "schema_version": 1,
+        "status": "offsite_copy_verified",
+        "verified_at": verified_at,
+        "remote": remote,
+        "checksum_verified": True,
+        "backups": backup_records,
+        "files_copied_and_checked": len(filenames),
+        "remote_deletions_performed": False,
+    }
+    report_path = directory / "offsite-verification.json"
+    fd, temporary = tempfile.mkstemp(prefix=".offsite-proof-", suffix=".tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(verification, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, report_path)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
     return {
         "status": "offsite_copy_verified",
         "remote": remote,
@@ -127,4 +168,6 @@ def copy_encrypted_backups_offsite(
         "checksum_verified": True,
         "remote_deletions_performed": False,
         "source_files_deleted": False,
+        "verification_report_path": str(report_path),
+        "verification_report": verification,
     }
