@@ -66,6 +66,14 @@ class KDPListingMetadataTests(unittest.TestCase):
         result = validate_kdp_listing_metadata(metadata, paperback=False)
         self.assertTrue(any("ISBN imprimé" in item for item in result["blockers"]))
 
+    def test_short_description_and_non_finite_price_are_rejected(self):
+        metadata = valid_metadata()
+        metadata["description"] = "Trop court."
+        metadata["list_price"] = float("nan")
+        result = validate_kdp_listing_metadata(metadata)
+        self.assertTrue(any("Description" in item for item in result["blockers"]))
+        self.assertTrue(any("Prix catalogue" in item for item in result["blockers"]))
+
     def test_invalid_metadata_type_is_rejected(self):
         with self.assertRaises(KDPListingMetadataError):
             validate_kdp_listing_metadata(None)
