@@ -155,13 +155,13 @@ def build_kdp_print_package(
                     "path": f"{upload_id}/kdp-print-package-v{package_version:03d}/interior.pdf",
                     "sha256": interior_sha,
                     "page_count": page_count,
-                    "preflight": "pending_manual_pdf_inspection",
+                    "preflight": "automated_checks_passed_pending_human_review",
                 },
                 "cover": {
                     "path": f"{upload_id}/kdp-print-package-v{package_version:03d}/cover.pdf",
                     "sha256": cover_sha,
                     "page_count": 1,
-                    "preflight": "pending_manual_pdf_inspection",
+                    "preflight": "automated_checks_passed_pending_human_review",
                 },
             },
             "print_spec": {
@@ -181,7 +181,7 @@ def build_kdp_print_package(
                 "path": f"{upload_id}/kdp-print-package-v{package_version:03d}/book.epub",
                 "sha256": _sha256(ebook_path),
                 "page_count": page_count,
-                "preflight": "pending_kindle_previewer",
+                "preflight": "automated_epub_checks_passed_pending_kindle_previewer",
                 "format": "EPUB 3 fixed-layout",
                 "structural_checks": ebook_preflight,
             }
