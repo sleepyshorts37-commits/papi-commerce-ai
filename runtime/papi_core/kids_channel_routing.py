@@ -62,8 +62,8 @@ def validate_profiles(data: Any) -> list[str]:
                       "direct_print_fulfilment"):
             if profile[field] not in FACT_STATES:
                 errors.append(f"{label}: {field} doit être verified, blocked ou unknown.")
-        if not _is_nonnegative_number(profile["upfront_cost_xof"]):
-            errors.append(f"{label}: upfront_cost_xof doit être un nombre positif ou nul.")
+        if profile["upfront_cost_xof"] is not None and not _is_nonnegative_number(profile["upfront_cost_xof"]):
+            errors.append(f"{label}: upfront_cost_xof doit être null (inconnu) ou un nombre positif ou nul.")
         if not isinstance(profile["evidence"], list):
             errors.append(f"{label}: evidence doit être une liste.")
         if not isinstance(profile["last_verified"], str):
@@ -103,7 +103,7 @@ def assess_channel(profile: dict[str, Any], book_format: str, target_country: st
         "no_per_order_advance": "blocked" if profile["seller_funds_each_order"] == "verified" else profile["seller_funds_each_order"],
         "no_stock": "blocked" if profile["stock_required"] == "verified" else profile["stock_required"],
         "direct_print_fulfilment": profile["direct_print_fulfilment"],
-        "zero_upfront_cost": "verified" if profile["upfront_cost_xof"] == 0 else "blocked",
+        "zero_upfront_cost": "unknown" if profile["upfront_cost_xof"] is None else "verified" if profile["upfront_cost_xof"] == 0 else "blocked",
     }
     blocked = [name for name, state in gates.items() if state == "blocked"]
     unknown = [name for name, state in gates.items() if state == "unknown"]
