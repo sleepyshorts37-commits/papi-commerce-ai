@@ -114,7 +114,10 @@ begin
         select * into v_bucket from public.papi_provider_daily_quotas as bucket
          where bucket.provider = v_existing.provider and bucket.account_ref = v_existing.account_ref
            and bucket.model = v_existing.model and bucket.quota_day = v_existing.quota_day;
-        return query select v_existing.reservation_id, v_existing.status,
+        -- A replay of an existing reservation must never authorize a second
+        -- provider submission. Distinguish it from the one call that created it.
+        return query select v_existing.reservation_id,
+            case when v_existing.status = 'reserved' then 'reused_reserved' else v_existing.status end,
             v_bucket.quota_day, v_bucket.reserved_units, v_bucket.consumed_units, v_bucket.daily_limit;
         return;
     end if;

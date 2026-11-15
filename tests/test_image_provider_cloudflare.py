@@ -165,7 +165,7 @@ class CloudflareQuotaTests(unittest.TestCase):
             def release(self, reservation):
                 raise AssertionError("release must not run for a closed reservation")
 
-        for state in ("uncertain", "released", "committed"):
+        for state in ("uncertain", "released", "committed", "reused_reserved"):
             with self.subTest(state=state):
                 calls = []
                 adapter = CloudflareImageAdapter(
@@ -230,6 +230,33 @@ class SupabaseQuotaLedgerTests(unittest.TestCase):
             result = self.ledger.commit(reservation)
         self.assertEqual(result.status, "committed")
         self.assertTrue(self.requests[0].full_url.endswith("/papi_commit_provider_quota"))
+
+    def test_reserve_preserves_replay_status_from_shared_rpc(self):
+        self.responses.append([{
+            "reservation_id": "00000000-0000-0000-0000-000000000001",
+            "reservation_status": "reused_reserved",
+            "quota_day": "2026-11-15",
+            "reserved_units": 60,
+            "consumed_units": 0,
+            "daily_limit": 100,
+        }])
+        with patch("papi_core.image_provider_cloudflare.urlopen", self.fake_urlopen):
+            reservation = self.ledger.reserve(
+                idempotency_key="image-job-replay-001", estimated_neurons=60,
+                model="@cf/test/image", now=datetime(2026, 11, 15, tzinfo=timezone.utc),
+            )
+        self.assertEqual(reservation.status, "reused_reserved")
+
+    def test_mark_uncertain_and_release_use_dedicated_rpc_endpoints(self):
+        reservation = QuotaReservation("00000000-0000-0000-0000-000000000001",
+                                       "image-job-0002", "2026-11-15", 20, "reserved")
+        self.responses.extend([True, True])
+        with patch("papi_core.image_provider_cloudflare.urlopen", self.fake_urlopen):
+            self.ledger.mark_uncertain(reservation)
+            released = self.ledger.release(reservation)
+        self.assertEqual(released.status, "released")
+        self.assertTrue(self.requests[0].full_url.endswith("/papi_mark_provider_quota_uncertain"))
+        self.assertTrue(self.requests[1].full_url.endswith("/papi_release_provider_quota"))
 
     def test_shared_ledger_rejects_short_idempotency_key_before_network(self):
         with self.assertRaises(ImageProviderError):

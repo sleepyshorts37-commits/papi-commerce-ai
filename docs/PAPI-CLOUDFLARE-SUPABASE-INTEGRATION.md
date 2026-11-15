@@ -34,6 +34,8 @@ Le coût par modèle doit être vérifié et configuré avant l'activation. Le p
 2. PostgreSQL verrouille la clé et le compartiment ; une réservation concurrente excédentaire est rejetée.
 3. Cloudflare est appelé uniquement après confirmation de la réservation.
 4. Après réponse image, le backend commit la consommation estimée.
+
+**Protection contre les rejeux :** la première réservation renvoie le statut `reserved`. Un nouvel appel RPC avec la même clé et la même intention renvoie `reused_reserved` si la réservation existe encore sans être clôturée. L'adaptateur refuse tout statut autre que `reserved` avant l'appel Cloudflare : un redémarrage ou une répétition ne soumet donc pas une seconde fois une demande déjà réservée. Les statuts `uncertain`, `committed` et `released` restent également non réutilisables.
 5. Timeout, réponse non concluante ou échec de commit : le backend marque la réservation incertaine lorsque possible et conserve le quota jusqu'au rapprochement.
 
 ## Sécurité et limites

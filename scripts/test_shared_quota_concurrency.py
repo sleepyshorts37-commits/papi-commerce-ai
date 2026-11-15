@@ -75,6 +75,44 @@ def main() -> int:
         return audit.returncode
     print("OK: requête d’audit de rapprochement (lecture seule).")
 
+    # Replaying the same idempotency key from independent sessions must
+    # create one reservation and mark every other response as a replay.
+    replay_account = "mission118-idempotency"
+    replay_key = "m118-idempotency-duplicate-001"
+    replay_sql = (
+        "select reservation_status from public.papi_reserve_provider_quota("
+        f"'{replay_key}', 'cloudflare', '{replay_account}', 'test-model', "
+        "'PAPI-WORKER-REPLAY', 10, 100, date '2099-01-01');"
+    )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+        replay_results = list(pool.map(lambda _: run_psql(database_url, replay_sql), range(12)))
+    replay_states = []
+    for result in replay_results:
+        if result.returncode:
+            sys.stderr.write(result.stdout + result.stderr)
+            return result.returncode
+        replay_states.append(result.stdout.strip())
+    if replay_states.count("reserved") != 1 or replay_states.count("reused_reserved") != 11:
+        raise SystemExit(
+            "ÉCHEC rejeu concurrent : attendu 1 réservation créée et 11 rejeux, "
+            f"obtenu {replay_states!r}."
+        )
+    replay_verify = run_psql(database_url, (
+        "select bucket.reserved_units || ',' || count(reservation.reservation_id) "
+        "from public.papi_provider_daily_quotas as bucket "
+        "join public.papi_provider_quota_reservations as reservation "
+        "using (provider, account_ref, model, quota_day) "
+        f"where bucket.provider='cloudflare' and bucket.account_ref='{replay_account}' "
+        "and bucket.model='test-model' and bucket.quota_day=date '2099-01-01' "
+        "group by bucket.reserved_units;"
+    ))
+    if replay_verify.returncode or replay_verify.stdout.strip() != "10,1":
+        raise SystemExit(
+            "ÉCHEC comptabilité du rejeu concurrent : "
+            f"reçu {replay_verify.stdout.strip()!r}, attendu '10,1'. {replay_verify.stderr}"
+        )
+    print("OK: 12 sessions, même clé — 1 réservation créée, 11 rejeux, quota réservé=10/100.")
+
     for agents in (10, 20, 50):
         account = f"mission106-{agents}"
         sql_calls = []
