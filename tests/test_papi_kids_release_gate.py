@@ -249,6 +249,25 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
         self.assertFalse(result["publish_ready"])
         self.assertTrue(any("divergent" in item for item in result["blockers"]))
 
+    def test_missing_or_stale_pdf_inspection_attestation_blocks_release(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            manifest["kdp_package_reviews"].pop("v1:interior")
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertFalse(result["publish_ready"])
+        self.assertTrue(any("Revue humaine du fichier interior absente" in item for item in result["blockers"]))
+
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            manifest["kdp_package_reviews"]["v1:cover"]["artifact_sha256"] = "0" * 64
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertFalse(result["publish_ready"])
+        self.assertTrue(any("autre version ou empreinte" in item for item in result["blockers"]))
+
     def test_pdf_hash_mismatch_blocks_release(self):
         with tempfile.TemporaryDirectory() as root:
             manifest = complete_manifest(root)
