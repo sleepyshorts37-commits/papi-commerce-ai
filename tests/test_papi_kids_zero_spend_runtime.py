@@ -10,7 +10,9 @@ from unittest.mock import Mock
 from PIL import Image
 
 from papi_core.image_campaign import plan_image_campaign
-from papi_core.papi_kids_orchestrator import execute_pkp0001_campaign
+from papi_core.papi_kids_orchestrator import (
+    execute_pkp0001_campaign, prepare_pkp0001_from_project_sources,
+)
 from papi_core.image_provider_registry import (
     ImageProviderRegistry, ModelProfile, ProviderProfile,
 )
@@ -179,21 +181,11 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 asset_registrar=lambda metadata: registered.append(metadata["asset_id"]),
                 transport=transport, max_batch_size=4,
             )
-            pages = [{
-                "page_id": f"page-{i:02d}", "page_number": i,
-                "prompt": f"Child-friendly river illustration, page {i}",
-            } for i in range(1, 5)]
-            campaign = plan_image_campaign(
-                campaign_id="PKP-0001-TEST-CAMPAIGN",
-                books=[{"book_id": "PKP-0001", "pages": pages}],
-                model=MODEL_ID, model_costs={MODEL_ID: 58},
-                max_batch_size=4, max_batch_units=2000,
+            prepared = prepare_pkp0001_from_project_sources(
+                project_root=root, registry=registry,
+                account_refs={"cloudflare": "a" * 32},
+                quota_evidence_by_model={MODEL_ID: report["registry_quota_evidence"]},
             )
-            prepared = {
-                "book_id": "PKP-0001", "page_count": 4, "model": MODEL_ID,
-                "quota_evidence": {"evidence_ref": report["quota_evidence_ref"]},
-                "campaign": campaign,
-            }
             result = execute_pkp0001_campaign(
                 prepared=prepared, engine=engine,
                 quota_evidence=report["registry_quota_evidence"],
