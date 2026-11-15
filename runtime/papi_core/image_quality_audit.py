@@ -1,13 +1,11 @@
 """Append-only audit trail for image quality reviews.
 
-Stores immutable, content-addressed JSON events on a private persistent volume.
-It records automated review outcomes but can never approve an image or replace
-an explicit human review decision.
+Stores immutable JSON events on a private persistent volume. Automated review
+outcomes are recorded separately from explicit human approval decisions.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -41,7 +39,7 @@ def _atomic_create(path: Path, payload: bytes) -> None:
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-        # Hard-link creation is atomic and fails if the immutable event exists.
+        # Atomic create-if-absent: never overwrite a previously recorded event.
         os.link(temporary, path)
     finally:
         try:
@@ -51,14 +49,14 @@ def _atomic_create(path: Path, payload: bytes) -> None:
 
 
 class ImageQualityAuditLog:
-    """Persist immutable review events; use a private durable storage volume."""
+    """Persist immutable automated-review events on a private durable volume."""
 
     def __init__(self, root: str | Path):
         self.root = Path(root).expanduser().resolve()
 
     def append(
         self, *, event_id: str, book_id: str, page_id: str,
-        content_sha256: str, report: dict[str, Any], reviewer_kind: str,
+        content_sha256: str, report: dict[str, Any],
     ) -> dict[str, Any]:
         for value, field in ((event_id, "event_id"), (book_id, "book_id"), (page_id, "page_id")):
             if not isinstance(value, str) or not _SAFE_ID.fullmatch(value):
@@ -71,8 +69,6 @@ class ImageQualityAuditLog:
             raise ImageQualityAuditError("Le rapport ne correspond pas à l'empreinte de l'image.")
         if report.get("human_approved") is not False or report.get("approval_required") is not True:
             raise ImageQualityAuditError("Un rapport automatisé ne peut pas approuver une image.")
-        if reviewer_kind not in {"automated", "human"}:
-            raise ImageQualityAuditError("Type de réviseur invalide.")
 
         event = {
             "schema_version": 1,
@@ -80,7 +76,7 @@ class ImageQualityAuditLog:
             "book_id": book_id,
             "page_id": page_id,
             "content_sha256": content_sha256,
-            "reviewer_kind": reviewer_kind,
+            "reviewer_kind": "automated",
             "recorded_at": _utc_now(),
             "report": report,
             "human_approval_granted": False,
