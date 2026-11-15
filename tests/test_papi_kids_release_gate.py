@@ -51,9 +51,26 @@ def complete_manifest(root):
              "width_px": 2550, "height_px": 2550, "upscaling_method": "native"}
             for i in range(1, 25)
         ],
+        "package_version": 1,
+        "kdp_package_reviews": {
+            "v1:interior": {
+                "package_version": 1, "artifact": "interior",
+                "artifact_sha256": digest(interior), "decision": "approved", "approved": True,
+                "reviewer_id": "owner-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "a" * 64,
+                "notes": "PDF intérieur inspecté page par page, marges et images vérifiées.",
+            },
+            "v1:cover": {
+                "package_version": 1, "artifact": "cover",
+                "artifact_sha256": digest(cover), "decision": "approved", "approved": True,
+                "reviewer_id": "owner-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "b" * 64,
+                "notes": "Couverture inspectée, dos, fonds perdus et textes contrôlés.",
+            },
+        },
         "pdfs": {
-            "interior": {"path": "interior.pdf", "sha256": digest(interior), "page_count": 24, "preflight": "passed"},
-            "cover": {"path": "cover.pdf", "sha256": digest(cover), "page_count": 1, "preflight": "passed"},
+            "interior": {"path": "interior.pdf", "sha256": digest(interior), "page_count": 24, "preflight": "automated_checks_passed_pending_human_review"},
+            "cover": {"path": "cover.pdf", "sha256": digest(cover), "page_count": 1, "preflight": "automated_checks_passed_pending_human_review"},
         },
         "print_spec": {
             "trim_size": "8.5x8.5", "trim_width_in": 8.5, "trim_height_in": 8.5,
@@ -144,7 +161,7 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             manifest["ebook_required"] = True
             manifest["ebook"] = {
                 "path": "book.epub", "sha256": digest, "page_count": 24,
-                "preflight": "passed", "format": "EPUB 3 fixed-layout",
+                "preflight": "automated_epub_checks_passed_pending_kindle_previewer", "format": "EPUB 3 fixed-layout",
             }
             result = evaluate_kdp_release_gate(
                 book_id="PKP-0001", manifest=manifest, private_root=root,
@@ -162,6 +179,13 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             manifest["ebook"] = {
                 "path": "book.epub", "sha256": digest, "page_count": 24,
                 "preflight": "passed", "format": "EPUB 3 fixed-layout",
+            }
+            manifest["kdp_package_reviews"]["v1:ebook"] = {
+                "package_version": 1, "artifact": "ebook",
+                "artifact_sha256": digest, "decision": "approved", "approved": True,
+                "reviewer_id": "owner-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "c" * 64,
+                "notes": "EPUB contrôlé dans le lecteur, navigation et illustrations vérifiées.",
             }
             manifest["kindle_previewer_review"] = {
                 "passed": True, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
