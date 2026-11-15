@@ -15,6 +15,7 @@ from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from pypdf import PdfReader
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph
 from reportlab.lib.utils import ImageReader
@@ -91,6 +92,17 @@ def build_kdp_full_wrap_cover_pdf(
     template_bytes = template_path.read_bytes()
     if not template_bytes.startswith(b"%PDF-") or hashlib.sha256(template_bytes).hexdigest() != template_sha256:
         raise KDPCoverError("Le gabarit PDF ne correspond pas à son empreinte SHA-256.")
+    try:
+        template_reader = PdfReader(str(template_path), strict=True)
+        if template_reader.is_encrypted or len(template_reader.pages) != 1:
+            raise KDPCoverError("Le gabarit KDP doit être un PDF non chiffré d'une seule page.")
+        template_page = template_reader.pages[0]
+        actual_template_width = float(template_page.mediabox.width)
+        actual_template_height = float(template_page.mediabox.height)
+    except KDPCoverError:
+        raise
+    except Exception as exc:
+        raise KDPCoverError("Le gabarit PDF officiel ne peut pas être lu.") from exc
     if not isinstance(template_layout, dict) or template_layout.get("source_template_sha256") != template_sha256:
         raise KDPCoverError("La géométrie fournie n'est pas liée au gabarit KDP vérifié.")
     if not isinstance(page_count, int) or isinstance(page_count, bool) or page_count < 24:
@@ -109,6 +121,8 @@ def build_kdp_full_wrap_cover_pdf(
     if not (0 < width_in < 30 and 0 < height_in < 30):
         raise KDPCoverError("Dimensions du gabarit hors limites.")
     page_w, page_h = width_in * inch, height_in * inch
+    if abs(actual_template_width - page_w) > 0.5 or abs(actual_template_height - page_h) > 0.5:
+        raise KDPCoverError("Les dimensions de maquette ne correspondent pas à la MediaBox du gabarit KDP.")
     panels = template_layout.get("panels", {})
     back = _rect(panels.get("back"), "back", page_w, page_h)
     front = _rect(panels.get("front"), "front", page_w, page_h)
