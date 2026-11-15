@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib, hmac, json, os
 from pathlib import Path
-import re, uuid
+import re, tempfile
 from urllib.parse import unquote
 from typing import Any, Callable
 
@@ -17,9 +17,49 @@ def _response(start_response: Callable[..., Any], status: str, payload: dict[str
         ("X-Content-Type-Options", "nosniff")])
     return [body]
 
+def _save_metadata(book_dir: Path, metadata: dict[str, Any]) -> None:
+    fd, temporary_name = tempfile.mkstemp(prefix=".metadata-", suffix=".tmp", dir=book_dir)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(metadata, stream, ensure_ascii=False, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary_name, 0o600)
+        os.replace(temporary_name, book_dir / "metadata.json")
+    finally:
+        try:
+            os.unlink(temporary_name)
+        except FileNotFoundError:
+            pass
+
+
+def _register_queue(book_dir: Path, metadata: dict[str, Any],
+                    queue_registrar: Callable[[dict[str, Any]], dict[str, Any]] | None) -> str | None:
+    if queue_registrar is None:
+        metadata.setdefault("persistence_status", "local_only")
+        return None
+    try:
+        registered = queue_registrar(metadata)
+        if not isinstance(registered, dict) or not registered.get("job_id"):
+            raise ValueError("Réponse PostgreSQL invalide.")
+        metadata["persistence_status"] = "registered"
+        metadata["postgres_queue"] = {
+            "book_id": registered.get("book_id"),
+            "job_id": registered["job_id"],
+            "status": registered.get("status", "queued_for_analysis"),
+        }
+        _save_metadata(book_dir, metadata)
+        return None
+    except Exception:
+        metadata["persistence_status"] = "pending_retry"
+        _save_metadata(book_dir, metadata)
+        return "database_queue_unavailable"
+
+
 def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         token_env: str = "PAPI_KIDS_UPLOAD_TOKEN",
-        allow_insecure_local: bool = False) -> Callable[..., list[bytes]]:
+        allow_insecure_local: bool = False,
+        queue_registrar: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
     def app(environ: dict[str, Any], start_response: Callable[..., Any]) -> list[bytes]:
         if environ.get("PATH_INFO") != "/api/papi-kids/manuscripts":
@@ -71,9 +111,14 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
                 existing = json.loads((book_dir / "metadata.json").read_text(encoding="utf-8"))
                 if existing.get("sha256") != digest:
                     raise OSError("upload identifier collision")
+                queue_error = _register_queue(book_dir, existing, queue_registrar)
+                if queue_error:
+                    return _response(start_response, "503 Service Unavailable", {
+                        "error": queue_error, "upload_id": upload_id, "retryable": True})
                 return _response(start_response, "200 OK", {"upload_id": upload_id,
                     "status": existing.get("status", "queued_for_analysis"),
-                    "sha256": digest, "size_bytes": len(raw), "deduplicated": True})
+                    "sha256": digest, "size_bytes": len(raw), "deduplicated": True,
+                    "persistence_status": existing.get("persistence_status", "local_only")})
             import shutil, tempfile
             staging = Path(tempfile.mkdtemp(prefix=".papi-kids-intake-", dir=root))
             os.chmod(staging, 0o700)
@@ -100,14 +145,24 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
                     existing = json.loads((book_dir / "metadata.json").read_text(encoding="utf-8"))
                     if existing.get("sha256") == digest:
                         shutil.rmtree(staging, ignore_errors=True)
+                        queue_error = _register_queue(book_dir, existing, queue_registrar)
+                        if queue_error:
+                            return _response(start_response, "503 Service Unavailable", {
+                                "error": queue_error, "upload_id": upload_id, "retryable": True})
                         return _response(start_response, "200 OK", {"upload_id": upload_id,
                             "status": existing.get("status", "queued_for_analysis"),
-                            "sha256": digest, "size_bytes": len(raw), "deduplicated": True})
+                            "sha256": digest, "size_bytes": len(raw), "deduplicated": True,
+                            "persistence_status": existing.get("persistence_status", "local_only")})
                 raise
         except (OSError, ValueError, json.JSONDecodeError):
             if "staging" in locals():
                 shutil.rmtree(staging, ignore_errors=True)
             return _response(start_response, "500 Internal Server Error", {"error": "private_storage_failed"})
+        queue_error = _register_queue(book_dir, metadata, queue_registrar)
+        if queue_error:
+            return _response(start_response, "503 Service Unavailable", {
+                "error": queue_error, "upload_id": upload_id, "retryable": True})
         return _response(start_response, "201 Created", {"upload_id": upload_id,
-            "status": metadata["status"], "sha256": metadata["sha256"], "size_bytes": metadata["size_bytes"]})
+            "status": metadata["status"], "sha256": metadata["sha256"], "size_bytes": metadata["size_bytes"],
+            "persistence_status": metadata.get("persistence_status", "local_only")})
     return app
