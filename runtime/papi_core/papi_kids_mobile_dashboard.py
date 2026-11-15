@@ -269,6 +269,11 @@ function renderSafetyReview(screening,review,uploadId){
    card.append(title,description,excerpt);safetyReviewList.appendChild(card);
   });
  });
+ if(review&&review.manuscript_sha256!==screening.manuscript_sha256){
+  const stale=document.createElement("p");
+  stale.textContent="La revue précédente est périmée : le manuscrit a changé.";
+  safetyReviewList.appendChild(stale);
+ }
  if(review&&review.manuscript_sha256===screening.manuscript_sha256){
   const state=document.createElement("p");
   state.textContent="Décision humaine : "+(review.approved?"APPROUVÉ":"REFUSÉ")+
@@ -289,18 +294,16 @@ function renderSafetyReview(screening,review,uploadId){
   const button=document.createElement("button");button.type="button";
   button.textContent=decision==="approved"?"Valider la sécurité":"Refuser / demander correction";
   button.addEventListener("click",()=>submitSafetyReview(
-   uploadId,screening.manuscript_sha256,decision,notes.value
+   uploadId,screening.manuscript_sha256,decision,notes.value,screening.issue_count
   ));
   actions.appendChild(button);
  });
  safetyReviewList.appendChild(actions);
 }
-async function submitSafetyReview(uploadId,manuscriptSha256,decision,notes){
+async function submitSafetyReview(uploadId,manuscriptSha256,decision,notes,issueCount){
  const token=safetyReviewTokenInput.value;
  if(!token){statusResult.textContent="Saisissez le jeton distinct de revue sécurité.";return;}
- if(decision==="approved"&&notes.trim().length<20&&
-   safetyReviewList.textContent.includes("alertes :")&&
-   !safetyReviewList.textContent.includes("alertes : 0")){
+ if(decision==="approved"&&issueCount>0&&notes.trim().length<20){
   statusResult.textContent="Ajoutez au moins 20 caractères de justification pour approuver les alertes.";
   return;
  }
