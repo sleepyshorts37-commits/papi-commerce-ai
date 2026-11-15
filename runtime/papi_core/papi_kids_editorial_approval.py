@@ -161,6 +161,7 @@ def build_postgres_editorial_approval_handler(
                        '{editorial_approval}', %s::jsonb, true),
                        updated_at = now()
                  where upload_id = %s
+                   and status = 'analysis_ready'
                 returning book_id
                 """,
                 (json.dumps(approval), upload_id),
