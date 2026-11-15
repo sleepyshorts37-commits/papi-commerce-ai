@@ -6,6 +6,8 @@ import unittest
 import zlib
 from pathlib import Path
 import reportlab
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
 
 from papi_core.papi_kids_kdp_package import KDPPrintPackageError, build_kdp_print_package
 
@@ -58,7 +60,9 @@ class PapiKidsKDPPrintPackageTests(unittest.TestCase):
                 "sha256": hashlib.sha256(png).hexdigest(),
             })
         template = book_dir / "official-template.pdf"
-        template.write_bytes(b"%PDF-1.7\nOFFICIAL TEMPLATE TEST FIXTURE")
+        template_pdf = canvas.Canvas(str(template), pagesize=(17.5 * inch, 8.75 * inch), invariant=1)
+        template_pdf.showPage()
+        template_pdf.save()
         template_hash = hashlib.sha256(template.read_bytes()).hexdigest()
         layout = {
             "source_template_sha256": template_hash,
