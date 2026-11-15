@@ -63,6 +63,10 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("openKdpPackageArtifact", html)
         self.assertIn("submitKdpPackageReview", html)
         self.assertIn("kdp_package_reviews", html)
+        self.assertIn("Validation Kindle Previewer", html)
+        self.assertIn("/kindle-previewer-review", html)
+        self.assertIn("submitKindlePreviewerReview", html)
+        self.assertIn("kindle_previewer_review", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(
