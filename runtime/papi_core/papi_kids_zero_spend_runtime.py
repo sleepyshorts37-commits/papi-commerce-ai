@@ -179,4 +179,5 @@ def build_pkp0001_zero_spend_pipeline(
             MODEL_ID: runtime_info["registry_quota_evidence"],
         },
     )
+    prepared["upload_id"] = upload_id
     return engine, prepared, runtime_info
