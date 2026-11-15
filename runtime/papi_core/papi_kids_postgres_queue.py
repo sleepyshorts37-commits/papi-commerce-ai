@@ -237,3 +237,57 @@ def build_postgres_queue_registrar(connection_factory: Callable[[], Any]) -> Cal
             },
         )
     return register
+
+
+
+def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Callable[[str], dict[str, Any] | None]:
+    """Build a read-only status callback that returns no manuscript text or secrets."""
+    def read_status(upload_id: str) -> dict[str, Any] | None:
+        if not isinstance(upload_id, str) or not _UPLOAD_ID.fullmatch(upload_id):
+            raise ValueError("Référence de dépôt invalide.")
+        connection = connection_factory()
+        try:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                select b.upload_id, b.status as book_status, b.created_at, b.updated_at,
+                       j.job_id, j.status as job_status, j.attempts, j.max_attempts,
+                       j.available_at, j.lease_until
+                  from papi_kids_private.books b
+                  left join papi_kids_private.editorial_jobs j on j.book_id = b.book_id
+                 where b.upload_id = %s
+                """,
+                (upload_id,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                connection.commit()
+                return None
+            names = [item[0] for item in cursor.description]
+            values = dict(zip(names, row))
+            job = None
+            if values.get("job_id") is not None:
+                job = {
+                    "job_id": values["job_id"],
+                    "status": values["job_status"],
+                    "attempts": values["attempts"],
+                    "max_attempts": values["max_attempts"],
+                    "available_at": values["available_at"].isoformat() if values.get("available_at") else None,
+                    "lease_until": values["lease_until"].isoformat() if values.get("lease_until") else None,
+                }
+            connection.commit()
+            return {
+                "upload_id": values["upload_id"],
+                "book_status": values["book_status"],
+                "created_at": values["created_at"].isoformat() if values.get("created_at") else None,
+                "updated_at": values["updated_at"].isoformat() if values.get("updated_at") else None,
+                "job": job,
+            }
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            close = getattr(connection, "close", None)
+            if callable(close):
+                close()
+    return read_status

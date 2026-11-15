@@ -116,6 +116,12 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <p id="upload-result" class="muted" role="status" aria-live="polite">Aucun fichier envoyé.</p>
 <div class="notice">L'envoi utilise HTTPS et un jeton Bearer saisi ici. Le jeton n'est pas enregistré par cette interface. L'envoi ne déclenche pas la génération IA.</div>
 <pre id="preview" hidden></pre></section>
+<section><h2>Consulter l'état d'un manuscrit</h2>
+<label for="status-upload-id">Référence du dépôt</label>
+<input id="status-upload-id" type="text" inputmode="text" autocomplete="off" placeholder="PKP-UP-…">
+<button id="status-button" type="button">Vérifier l'avancement</button>
+<p id="status-result" class="muted" role="status" aria-live="polite">Saisissez la référence et le jeton serveur.</p>
+</section>
 <section><h2>Suivi des illustrations</h2>
 <div class="filters" aria-label="Filtrer les pages">
 <button type="button" data-filter="all" aria-pressed="true">Toutes</button>
@@ -132,6 +138,9 @@ const preview=document.getElementById("preview");
 const tokenInput=document.getElementById("upload-token");
 const uploadButton=document.getElementById("upload-button");
 const uploadResult=document.getElementById("upload-result");
+const statusButton=document.getElementById("status-button");
+const statusId=document.getElementById("status-upload-id");
+const statusResult=document.getElementById("status-result");
 fileInput.addEventListener("change",()=>{
  const file=fileInput.files&&fileInput.files[0];
  preview.hidden=true;preview.textContent="";
@@ -162,6 +171,26 @@ uploadButton.addEventListener("click",async()=>{
   tokenInput.value="";
  }catch(error){uploadResult.textContent="Échec de l'envoi : "+String(error.message||error);}
  finally{uploadButton.disabled=false;}
+});
+statusButton.addEventListener("click",async()=>{
+ const id=statusId.value.trim();
+ const token=tokenInput.value;
+ if(!/^PKP-UP-[0-9a-f]{32}$/.test(id)||!token){
+  statusResult.textContent="Référence ou jeton invalide.";return;
+ }
+ statusButton.disabled=true;statusResult.textContent="Consultation sécurisée…";
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(id),{
+   method:"GET",headers:{"Authorization":"Bearer "+token},credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"status_failed");
+  const job=result.job||{};
+  statusResult.textContent="Livre : "+result.book_status+
+   " — tâche : "+(job.status||"non créée")+
+   " — tentatives : "+(job.attempts??0)+"/"+(job.max_attempts??0);
+ }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
+ finally{statusButton.disabled=false;}
 });
 document.querySelectorAll("[data-filter]").forEach(button=>{
  button.addEventListener("click",()=>{

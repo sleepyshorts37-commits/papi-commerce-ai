@@ -77,6 +77,27 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         metadata = json.loads((Path(self.temp.name) / second["upload_id"] / "metadata.json").read_text())
         self.assertEqual(metadata["postgres_queue"]["job_id"], 19)
 
+    def test_authenticated_status_endpoint_returns_sanitized_record(self):
+        upload_id = "PKP-UP-" + "a" * 32
+        reader_calls = []
+        def reader(value):
+            reader_calls.append(value)
+            return {"upload_id": value, "book_status": "queued_for_analysis",
+                    "job": {"job_id": 23, "status": "queued", "attempts": 0, "max_attempts": 5}}
+        app = create_papi_kids_manuscript_app(storage_root=self.temp.name, status_reader=reader)
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            response, payload = call(app, method="GET", path="/api/papi-kids/manuscripts/" + upload_id)
+        self.assertEqual(response["status"], "200 OK")
+        self.assertEqual(payload["job"]["job_id"], 23)
+        self.assertEqual(reader_calls, [upload_id])
+
+    def test_status_endpoint_fails_closed_when_reader_missing(self):
+        upload_id = "PKP-UP-" + "b" * 32
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            response, payload = call(self.app, method="GET", path="/api/papi-kids/manuscripts/" + upload_id)
+        self.assertEqual(response["status"], "503 Service Unavailable")
+        self.assertEqual(payload["error"], "status_not_configured")
+
     def test_rejects_bad_filename_size_and_non_utf8(self):
         with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
             response, _ = call(self.app, filename="../evil.md")

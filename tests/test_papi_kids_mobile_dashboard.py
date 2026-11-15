@@ -21,6 +21,9 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn('data-filter="pending_visual_review"', html)
         self.assertEqual(html.count('class="scene"'), 24)
         self.assertIn("jeton Bearer", html)
+        self.assertIn("Consulter l'état d'un manuscrit", html)
+        self.assertIn("/api/papi-kids/manuscripts/", html)
+        self.assertIn("statusResult.textContent", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(
