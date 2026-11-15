@@ -10,17 +10,26 @@ from .papi_kids_asset_store import store_illustration_asset
 
 
 class PapiKidsIllustrationAssetCenter:
-    def __init__(self, storage_root: str | Path, *,
-                 asset_registrar: Callable[[dict[str, Any]], Any]):
+    def __init__(self, storage_root: str | Path, *, upload_id: str,
+                 asset_registrar: Callable[[dict[str, Any]], Any],
+                 logical_book_id: str = "PKP-0001"):
         self.root = Path(storage_root).resolve()
+        self.upload_id = upload_id
+        self.logical_book_id = logical_book_id
         self.asset_registrar = asset_registrar
         if not self.root.is_dir():
             raise ValueError("Volume privé PAPI KIDS absent.")
-
-    def _book_dir(self, upload_id: str) -> Path:
         if not re.fullmatch(r"PKP-UP-[0-9a-f]{32}", upload_id):
             raise ValueError("Référence de dépôt invalide.")
-        path = (self.root / upload_id).resolve()
+        if not re.fullmatch(r"PKP-[A-Z0-9-]{1,40}", logical_book_id):
+            raise ValueError("Identifiant logique de livre invalide.")
+        if not (self.root / upload_id).is_dir():
+            raise ValueError("Dossier privé du manuscrit absent.")
+
+    def _book_dir(self, book_id: str) -> Path:
+        if book_id not in {self.logical_book_id, self.upload_id}:
+            raise ValueError("Le moteur a fourni un identifiant de livre non associé au dépôt.")
+        path = (self.root / self.upload_id).resolve()
         if path.parent != self.root or not path.is_dir():
             raise ValueError("Dossier privé du manuscrit absent.")
         return path
@@ -53,7 +62,7 @@ class PapiKidsIllustrationAssetCenter:
                 raise ValueError("Asset orphelin : rapprochement manuel requis.")
             image_bytes = storage_path.read_bytes()
             retried = store_illustration_asset(
-                self.root, upload_id=book_id, page_number=page_number, version=version,
+                self.root, upload_id=self.upload_id, page_number=page_number, version=version,
                 image_bytes=image_bytes, media_type=metadata["media_type"],
                 source_provider=metadata.get("source_provider"),
                 model_id=metadata.get("model_id"),
@@ -86,7 +95,7 @@ class PapiKidsIllustrationAssetCenter:
         if version > 1000:
             raise ValueError("Limite de versions d'illustration atteinte.")
         stored = store_illustration_asset(
-            self.root, upload_id=book_id, page_number=page_number, version=version,
+            self.root, upload_id=self.upload_id, page_number=page_number, version=version,
             image_bytes=image_bytes, media_type=(content_type or ""),
             source_provider="cloudflare_workers_ai", model_id=model,
             prompt_sha256=prompt_sha256, generation_ref=idempotency_key,
