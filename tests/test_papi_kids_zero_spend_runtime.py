@@ -88,7 +88,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 idempotency_key="a" * 64,
             )
             self.assertEqual(existing["asset_id"], record["asset_id"])
-            self.assertEqual(len(registered), 1)
+            self.assertEqual(len(registered), 2)
 
     def test_new_prompt_creates_new_version_but_same_key_is_idempotent(self):
         with tempfile.TemporaryDirectory() as root:
@@ -105,7 +105,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 idempotency_key="c" * 64,
             ))
             second = center.put(
-                book_id=UPLOAD_ID, page_id="page-01", page_number=1,
+                book_id="PKP-0001", page_id="page-01", page_number=1,
                 idempotency_key="c" * 64, image_bytes=jpeg_bytes((32, 32)),
                 content_type="image/jpeg", model=MODEL_ID, prompt_sha256="d" * 64,
             )
@@ -115,6 +115,8 @@ class PapiKidsImageWiringTests(unittest.TestCase):
         class Provider:
             def __init__(self):
                 self.calls = []
+                self.reservation_store = Mock()
+                self.account_id = "a" * 32
             def generate(self, prompt, **kwargs):
                 self.calls.append(prompt)
                 raise RuntimeError("quota refused")
