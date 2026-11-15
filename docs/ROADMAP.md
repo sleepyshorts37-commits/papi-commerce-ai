@@ -90,3 +90,5 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Confirmer que PayPal prend en charge l'envoi, la réception et le retrait au Sénégal ; l'utiliser comme preuve de possibilité de versement Lulu/Blurb, sans présumer l'éligibilité des comptes éditeurs.
 - [ ] Obtenir une confirmation directe de l'éligibilité vendeur Sénégal, des paiements, des territoires et des frais obligatoires pour KDP, Lulu et Blurb avant tout statut ELIGIBLE.
 - [ ] Vérifier les frais de titre IngramSpark 2026 dans les conditions applicables au compte avant de considérer le canal.
+
+- [x] Ajouter un calculateur de rentabilité unitaire Decimal, avec preuves datées, frais complets, conversion FX traçable et portes zéro avance (Mission 82 ; aucun tarif de plateforme inventé).

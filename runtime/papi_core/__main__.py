@@ -16,6 +16,7 @@ from .kids_publishing import KidsPublishingError, build_catalog_report, check_bo
 from .kids_project import KidsProjectError, create_project
 from .kids_market_scoring import KidsMarketScoringError, build_market_report
 from .kids_channel_routing import KidsChannelRoutingError, build_routing_report
+from .kids_profitability import KidsProfitabilityError, build_profitability_report
 
 
 def main() -> int:
@@ -44,6 +45,8 @@ def main() -> int:
     kids_route = sub.add_parser("kids-channel-route", help="Évaluer les canaux POD selon la règle zéro avance de trésorerie")
     kids_route.add_argument("--format", choices=["paperback", "ebook", "coloring_book", "illustrated_book", "activity_book"], required=True)
     kids_route.add_argument("--country", default="SN")
+    kids_profit = sub.add_parser("kids-profitability", help="Calculer la marge unitaire à partir de coûts et preuves datées")
+    kids_profit.add_argument("input_json", help="Chemin vers le fichier JSON de coûts documentés")
     kids_init = sub.add_parser("kids-init", help="Créer un kit de travail local vierge pour un nouveau livre")
     kids_init.add_argument("book_id")
     kids_init.add_argument("--title", required=True)
@@ -89,6 +92,10 @@ def main() -> int:
         if args.command == "kids-channel-route":
             print(json.dumps(build_routing_report(args.format, args.country), ensure_ascii=False, indent=2))
             return 0
+        if args.command == "kids-profitability":
+            from pathlib import Path
+            print(json.dumps(build_profitability_report(Path(args.input_json)), ensure_ascii=False, indent=2))
+            return 0
         if args.command == "kids-init":
             print(json.dumps(create_project(
                 args.book_id, args.title, args.language, args.product_type,
@@ -121,7 +128,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, KidsPublishingError, KidsProjectError, KidsMarketScoringError, KidsChannelRoutingError, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, KidsPublishingError, KidsProjectError, KidsMarketScoringError, KidsChannelRoutingError, KidsProfitabilityError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
