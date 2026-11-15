@@ -45,7 +45,13 @@ def create_app(
     approval_reader = build_postgres_editorial_approval_reader(factory)
     def preview_reader(upload_id: str) -> dict[str, Any]:
         preview = base_preview_reader(upload_id)
-        preview["editorial_approval"] = approval_reader(upload_id)
+        approval = approval_reader(upload_id)
+        if approval and (
+            approval.get("upload_id") != upload_id
+            or approval.get("source_bundle_sha256") != preview.get("source_bundle_sha256")
+        ):
+            approval = None
+        preview["editorial_approval"] = approval
         return preview
     approval_handler = build_postgres_editorial_approval_handler(
         factory, preview_reader=preview_reader, storage_root=root,
