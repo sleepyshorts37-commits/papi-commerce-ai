@@ -97,6 +97,10 @@ def review_generated_image(
     if not isinstance(checks, dict):
         raise ImageQualityError("Réponse du réviseur sans dictionnaire checks.")
 
+    missing = [name for name in REQUIRED_CHECKS if name not in checks]
+    if missing:
+        raise ImageQualityError("Contrôles obligatoires absents : " + ", ".join(missing))
+
     semantic: dict[str, dict[str, Any]] = {}
     blockers: list[str] = []
     for name in REQUIRED_CHECKS:
@@ -125,7 +129,7 @@ def review_generated_image(
         "content_sha256": digest,
         "byte_length": len(image_bytes),
         "overall_score": (
-            sum(item["score"] for item in semantic.values()) / len(REQUIRED_CHECKS)
+            round(sum(item["score"] for item in semantic.values()) / len(REQUIRED_CHECKS), 4)
             if len(semantic) == len(REQUIRED_CHECKS) else None
         ),
         "blocking_reasons": blockers,
