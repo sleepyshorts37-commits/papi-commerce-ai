@@ -219,7 +219,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
             self.assertEqual(len(registered), 4)
             self.assertEqual(len(reservation.reservations), 4)
             self.assertEqual(len(reservation.settlements), 4)
-            self.assertEqual(result["human_review_required"], True)
+            self.assertEqual(result["human_approval_required"], True)
 
 
 if __name__ == "__main__":
