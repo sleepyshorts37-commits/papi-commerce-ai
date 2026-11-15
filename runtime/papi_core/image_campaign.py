@@ -77,6 +77,7 @@ def execute_image_campaign(
     engine: ImageProductionEngine,
     max_batches_per_run: int = 10,
     blocked_batch_ids: set[str] | None = None,
+    start_batch_index: int = 0,
 ) -> dict[str, Any]:
     """Execute a bounded slice; rerun the same plan to resume stored assets.
 
@@ -91,6 +92,8 @@ def execute_image_campaign(
         raise ImageCampaignError("La campagne ne contient aucun lot.")
     if not isinstance(max_batches_per_run, int) or isinstance(max_batches_per_run, bool) or not 1 <= max_batches_per_run <= 100:
         raise ImageCampaignError("Nombre de lots par exécution invalide (1 à 100).")
+    if not isinstance(start_batch_index, int) or isinstance(start_batch_index, bool) or not 0 <= start_batch_index <= len(batches):
+        raise ImageCampaignError("Index de reprise invalide.")
     blocked = blocked_batch_ids or set()
     if not isinstance(blocked, set) or any(not isinstance(item, str) for item in blocked):
         raise ImageCampaignError("Liste des lots bloqués invalide.")
@@ -99,9 +102,10 @@ def execute_image_campaign(
     executed = 0
     halted_batch_ids: list[str] = []
     skipped_blocked: list[str] = []
-    next_batch_index = 0
+    next_batch_index = start_batch_index
 
-    for index, batch in enumerate(batches):
+    for index in range(start_batch_index, len(batches)):
+        batch = batches[index]
         next_batch_index = index
         if batch.batch_id in blocked:
             skipped_blocked.append(batch.batch_id)
