@@ -153,8 +153,11 @@ def build_private_kdp_package_downloader(
         relative = record.get("path")
         if not isinstance(relative, str) or Path(relative).is_absolute() or ".." in Path(relative).parts:
             raise PapiKidsKDPBuildServiceError("Chemin de package invalide.")
-        path = (root / relative).resolve()
-        if root not in path.parents or path.is_symlink() or not path.is_file():
+        candidate = root / relative
+        if candidate.is_symlink():
+            raise PapiKidsKDPBuildServiceError("Fichier symbolique interdit.")
+        path = candidate.resolve()
+        if root not in path.parents or not path.is_file():
             raise PapiKidsKDPBuildServiceError("Fichier privé introuvable.")
         if path.stat().st_size > 650 * 1024 * 1024:
             raise PapiKidsKDPBuildServiceError("Fichier trop volumineux pour le téléchargement web.")
