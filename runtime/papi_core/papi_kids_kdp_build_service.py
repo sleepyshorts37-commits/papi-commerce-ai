@@ -95,3 +95,12 @@ def build_kdp_package_from_private_profile(
         "publication_performed": False,
         "spend_limit_minor": 0,
     }
+
+
+def build_private_kdp_package_handler(
+    storage_root: str | Path,
+):
+    """Create a callback whose storage root is fixed by server configuration."""
+    def build(upload_id: str) -> dict[str, Any]:
+        return build_kdp_package_from_private_profile(storage_root, upload_id)
+    return build
