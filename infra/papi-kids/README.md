@@ -91,3 +91,7 @@ Configure `PAPI_KIDS_OWNER_RELEASE_TOKEN` and `PAPI_KIDS_RELEASE_OWNER_ID` on th
 ## ZIP de soumission manuelle
 
 Après confirmation finale du propriétaire, le tableau de bord iPhone propose un ZIP de soumission manuelle via `GET /api/papi-kids/manuscripts/{upload_id}/kdp-submission-bundle`, protégé par le jeton propriétaire distinct. Le service revalide le hash du manifeste, l'autorisation persistée, les revues et les hashes des fichiers avant de créer le ZIP en mémoire. Le ZIP comprend les PDFs, l'EPUB s'il existe, le manifeste, les métadonnées KDP normalisées, les attestations et les sommes SHA-256. Il n'est pas stocké sur le serveur et n'est jamais envoyé à Amazon.
+
+## Suivi manuel de la soumission KDP
+
+Après téléchargement du ZIP et soumission manuelle par le propriétaire, le tableau de bord peut consigner les étapes via `POST /api/papi-kids/manuscripts/{upload_id}/kdp-submission-status`. Les événements append-only sont liés au package autorisé, au propriétaire et à un SHA-256 de preuve. Les transitions sont contrôlées ; la déclaration de mise en ligne exige un ASIN et une URL Amazon HTTPS concordants. Ces informations sont déclaratives : PAPI KIDS ne consulte pas Amazon et ne vérifie pas indépendamment la disponibilité publique.
