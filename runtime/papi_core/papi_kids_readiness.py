@@ -44,8 +44,12 @@ def check_papi_kids_readiness(
     elif not storage_private:
         blockers.append("Le stockage privé doit être accessible uniquement au compte serveur (mode 0700).")
 
-    core_env = ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "PAPI_KIDS_UPLOAD_TOKEN")
-    core_missing = [name for name in core_env if not _secret_present(name)]
+    core_missing = []
+    if not os.environ.get("SUPABASE_URL", "").startswith("https://"):
+        core_missing.append("SUPABASE_URL")
+    for name in ("SUPABASE_SERVICE_ROLE_KEY", "PAPI_KIDS_UPLOAD_TOKEN"):
+        if not _secret_present(name):
+            core_missing.append(name)
     checks["core_secrets"] = {
         "configured": not core_missing,
         "missing": core_missing,
