@@ -67,6 +67,14 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("/kindle-previewer-review", html)
         self.assertIn("submitKindlePreviewerReview", html)
         self.assertIn("kindle_previewer_review", html)
+        self.assertIn("owner-final-confirmation", html)
+        self.assertIn("I AUTHORIZE MANUAL KDP SUBMISSION", html)
+        self.assertIn("kdp-submission-bundle", html)
+        self.assertIn("Télécharger le dossier KDP (ZIP)", html)
+        self.assertIn("kdp-submission-status", html)
+        self.assertIn("Suivi après soumission manuelle à Amazon KDP", html)
+        self.assertIn("live_verified_by_owner", html)
+        self.assertIn("n'est pas vérifiée automatiquement par Amazon", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(
