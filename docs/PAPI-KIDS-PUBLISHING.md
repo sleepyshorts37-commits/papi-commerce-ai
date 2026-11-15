@@ -134,3 +134,24 @@ Ces commandes n'écrivent pas dans le catalogue et ne contactent aucun service. 
 ## Priorité du premier lancement
 
 PAPI KIDS PUBLISHING est le premier département commercial à préparer. Les cinq premiers titres constituent le lot pilote cible, pas une promesse de publication automatique. Chaque titre doit passer les contrôles de droits, qualité, conformité de plateforme et approbation humaine. L'éligibilité Amazon KDP depuis le Sénégal, les modalités de versement et les conditions en vigueur restent à vérifier avant toute soumission.
+
+
+## Kit de production local — Mission 74
+
+La commande `kids-init` crée un dossier de travail vierge sous `workspace/papi-kids/<BOOK_ID>/` avec six fichiers :
+- `README.md` : repères et statut du dossier ;
+- `brief.md` : public, besoin, différenciation, concept et direction artistique ;
+- `manuscript.md` : canevas éditorial vierge ;
+- `metadata.json` : paramètres descriptifs initiaux, sans soumission ;
+- `production-checklist.md` : droits, sécurité du contenu, production et contrôles ;
+- `quality-report.json` : grille de contrôle en attente, sans résultat prérempli.
+
+Exemple :
+```bash
+PYTHONPATH=runtime python -m papi_core kids-init PKP-0001 \
+  --title "Titre du livre" --language fr \
+  --product-type illustrated_story --format paperback \
+  --age-min 5 --age-max 8
+```
+
+Le générateur refuse les identifiants invalides, les destinations symboliques et les dossiers déjà existants. Il ne remplace jamais un dossier. Il ne modifie pas le catalogue central, ne génère pas le contenu final ou les illustrations et ne contacte aucun service. Les six fichiers sont des modèles de travail, pas un livre prêt à publier.
