@@ -65,7 +65,9 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         review_handler: Callable[[str, str, str, str], dict[str, Any]] | None = None,
         review_token_env: str = "PAPI_KIDS_REVIEW_TOKEN",
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
-        library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
+        library_reader: Callable[[], list[dict[str, Any]]] | None = None,
+        editorial_preview_reader: Callable[[str], dict[str, Any]] | None = None,
+        editorial_approval_handler: Callable[[str, dict[str, Any]], dict[str, Any]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
     def app(environ: dict[str, Any], start_response: Callable[..., Any]) -> list[bytes]:
         request_path = environ.get("PATH_INFO", "")
@@ -76,15 +78,22 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         upload_route = request_path == "/api/papi-kids/manuscripts"
         status_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})", request_path)
         review_match = re.fullmatch(r"/api/papi-kids/assets/(PKP-ASSET-[0-9a-f]{24})/review", request_path)
-        if not upload_route and not status_match and not review_match:
+        editorial_preview_match = re.fullmatch(
+            r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/editorial-preview", request_path
+        )
+        editorial_approval_match = re.fullmatch(
+            r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/editorial-approval", request_path
+        )
+        if not upload_route and not status_match and not review_match and not editorial_preview_match and not editorial_approval_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
-        expected_method = "POST" if review_match or (upload_route and request_method == "POST") else "GET"
+        expected_method = "POST" if review_match or editorial_approval_match or (upload_route and request_method == "POST") else "GET"
         if request_method != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
-        configured_token = os.environ.get(review_token_env if review_match else token_env, "")
+        requires_review_token = bool(review_match or editorial_preview_match or editorial_approval_match)
+        configured_token = os.environ.get(review_token_env if requires_review_token else token_env, "")
         if len(configured_token) < 32:
             return _response(start_response, "503 Service Unavailable", {"error": "server_not_configured"})
         supplied = environ.get("HTTP_AUTHORIZATION", "")
@@ -98,6 +107,43 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             except Exception:
                 return _response(start_response, "503 Service Unavailable", {"error": "library_unavailable"})
             return _response(start_response, "200 OK", {"books": books})
+        if editorial_preview_match:
+            if editorial_preview_reader is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "editorial_preview_not_configured"})
+            try:
+                editorial_preview = editorial_preview_reader(editorial_preview_match.group(1))
+            except ValueError:
+                return _response(start_response, "400 Bad Request", {"error": "editorial_preview_invalid"})
+            except Exception:
+                return _response(start_response, "503 Service Unavailable", {"error": "editorial_preview_unavailable"})
+            return _response(start_response, "200 OK", editorial_preview)
+        if editorial_approval_match:
+            if editorial_approval_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "editorial_approval_not_configured"})
+            reviewer_id = os.environ.get(reviewer_id_env, "")
+            if len(reviewer_id) < 3 or len(reviewer_id) > 120:
+                return _response(start_response, "503 Service Unavailable", {"error": "reviewer_not_configured"})
+            if environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower() != "application/json":
+                return _response(start_response, "415 Unsupported Media Type", {"error": "json_required"})
+            try:
+                approval_length = int(environ.get("CONTENT_LENGTH") or "0")
+            except (TypeError, ValueError):
+                approval_length = 0
+            if approval_length < 1 or approval_length > 4096:
+                return _response(start_response, "413 Payload Too Large", {"error": "invalid_approval_size"})
+            try:
+                approval_payload = json.loads(environ["wsgi.input"].read(approval_length).decode("utf-8"))
+            except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_approval_json"})
+            if not isinstance(approval_payload, dict) or approval_payload.get("approved") is not True:
+                return _response(start_response, "400 Bad Request", {"error": "approval_confirmation_required"})
+            try:
+                approval = editorial_approval_handler(editorial_approval_match.group(1), approval_payload)
+            except ValueError:
+                return _response(start_response, "400 Bad Request", {"error": "editorial_approval_invalid"})
+            except Exception:
+                return _response(start_response, "409 Conflict", {"error": "editorial_approval_rejected"})
+            return _response(start_response, "200 OK", approval)
         if review_match:
             if review_handler is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "review_not_configured"})

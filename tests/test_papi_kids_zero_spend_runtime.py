@@ -210,7 +210,14 @@ class PapiKidsImageWiringTests(unittest.TestCase):
             result = execute_pkp0001_campaign(
                 prepared=prepared, engine=engine,
                 quota_evidence=report["registry_quota_evidence"],
-                generation_authorized=True, editorial_approved=True, spend_limit_minor=0,
+                generation_authorized=True,
+                editorial_approval={
+                    "approved": True, "upload_id": UPLOAD_ID,
+                    "source_bundle_sha256": prepared["source_bundle_sha256"],
+                    "reviewer_id": "editor-01", "approved_at": "2026-11-15T22:00:00+00:00",
+                },
+                editorial_approval_verifier=lambda approval: approval["source_bundle_sha256"] == prepared["source_bundle_sha256"],
+                spend_limit_minor=0,
                 max_batches_per_run=1,
             )
             execution = result["execution"]

@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from pathlib import Path
 import os
+import json
 import re
-from typing import Any
+from typing import Any, Callable
 
 from .image_campaign import execute_image_campaign, plan_image_campaign
 from .image_production_engine import ImageProductionEngine
@@ -127,6 +128,8 @@ def execute_pkp0001_campaign(
     quota_evidence: dict[str, Any] | None = None,
     generation_authorized: bool = False,
     editorial_approved: bool = False,
+    editorial_approval: dict[str, Any] | None = None,
+    editorial_approval_verifier: Callable[[dict[str, Any]], bool] | None = None,
     spend_limit_minor: int = 0,
     max_batches_per_run: int = 1,
     start_batch_index: int = 0,
@@ -167,7 +170,21 @@ def execute_pkp0001_campaign(
         raise PapiKidsOrchestrationError(str(exc)) from exc
     if current_quota["evidence_ref"] != prepared.get("quota_evidence", {}).get("evidence_ref"):
         raise PapiKidsOrchestrationError("La preuve de quota a changé depuis la planification ; refaire le plan.")
-    if editorial_approved is not True:
+    if prepared.get("upload_id"):
+        approval = editorial_approval or {}
+        if (
+            approval.get("approved") is not True
+            or approval.get("upload_id") != prepared.get("upload_id")
+            or approval.get("source_bundle_sha256") != prepared.get("source_bundle_sha256")
+            or not approval.get("reviewer_id")
+            or not approval.get("approved_at")
+            or not callable(editorial_approval_verifier)
+            or editorial_approval_verifier(approval) is not True
+        ):
+            raise PapiKidsOrchestrationError(
+                "Approbation éditoriale persistée et liée aux sources obligatoire."
+            )
+    elif editorial_approved is not True:
         raise PapiKidsOrchestrationError("Validation éditoriale humaine obligatoire avant génération.")
     authorize_generation = getattr(provider, "authorize_generation", None)
     if callable(authorize_generation):
@@ -289,11 +306,22 @@ def prepare_pkp0001_from_project_sources(
     prepared["source_bundle"] = {
         "manuscript_v2_sha256": hashlib.sha256(manuscript.encode("utf-8")).hexdigest(),
         "character_bible_sha256": hashlib.sha256(_read(bible_path).encode("utf-8")).hexdigest(),
+        "prompt_character_bible_sha256": prepared["prompt_character_bible_sha256"],
         "storyboard_v1_sha256": hashlib.sha256(storyboard.encode("utf-8")).hexdigest(),
         "illustration_prompts_v1_sha256": hashlib.sha256(prompts.encode("utf-8")).hexdigest(),
         "manuscript_pages": len(manuscript_pages),
         "storyboard_pages": len(storyboard_pages),
         "source_status": "editorial_v2_not_human_approved",
     }
+    source_hashes = {
+        "manuscript_sha256": prepared["source_bundle"]["manuscript_v2_sha256"],
+        "character_bible_sha256": prepared["source_bundle"]["character_bible_sha256"],
+        "prompt_character_bible_sha256": prepared["source_bundle"]["prompt_character_bible_sha256"],
+        "storyboard_sha256": prepared["source_bundle"]["storyboard_v1_sha256"],
+        "illustration_prompts_sha256": prepared["source_bundle"]["illustration_prompts_v1_sha256"],
+    }
+    prepared["source_bundle_sha256"] = hashlib.sha256(
+        json.dumps(source_hashes, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
     prepared["human_editorial_approval_required"] = True
     return prepared

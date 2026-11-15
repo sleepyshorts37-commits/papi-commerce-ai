@@ -123,6 +123,8 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <p id="status-result" class="muted" role="status" aria-live="polite">Saisissez la référence et le jeton serveur.</p>
 <label for="review-token">Jeton de validation humaine</label>
 <input id="review-token" type="password" autocomplete="off" placeholder="Jeton de revue distinct">
+<button id="editorial-preview-button" type="button">Examiner le plan éditorial</button>
+<div id="editorial-preview" aria-live="polite"></div>
 <div id="asset-review-list" aria-live="polite"></div>
 <hr>
 <h2>Mes livres</h2>
@@ -149,6 +151,8 @@ const statusButton=document.getElementById("status-button");
 const statusId=document.getElementById("status-upload-id");
 const statusResult=document.getElementById("status-result");
 const reviewTokenInput=document.getElementById("review-token");
+const editorialPreviewButton=document.getElementById("editorial-preview-button");
+const editorialPreview=document.getElementById("editorial-preview");
 const assetReviewList=document.getElementById("asset-review-list");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
@@ -206,6 +210,89 @@ statusButton.addEventListener("click",async()=>{
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
+
+editorialPreviewButton.addEventListener("click",async()=>{
+ const id=statusId.value.trim();
+ const token=reviewTokenInput.value;
+ if(!/^PKP-UP-[0-9a-f]{32}$/.test(id)||!token){
+  editorialPreview.textContent="Référence de dépôt ou jeton de validation invalide.";return;
+ }
+ editorialPreviewButton.disabled=true;
+ editorialPreview.textContent="Chargement du plan éditorial…";
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(id)+"/editorial-preview",{
+   method:"GET",headers:{"Authorization":"Bearer "+token},credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"editorial_preview_failed");
+  renderEditorialPreview(result);
+ }catch(error){editorialPreview.textContent="Aperçu indisponible : "+String(error.message||error);}
+ finally{editorialPreviewButton.disabled=false;}
+});
+function renderEditorialPreview(result){
+ editorialPreview.replaceChildren();
+ const heading=document.createElement("h3");heading.textContent=result.title||"Plan éditorial PKP-0001";
+ const status=document.createElement("p");
+ status.textContent="Analyse : "+result.analysis_status+" — manuscrit canonique : "+(result.source_match?"correspondance confirmée":"différent de la V2 PKP-0001");
+ editorialPreview.append(heading,status);
+ const bible=document.createElement("details");
+ const bibleSummary=document.createElement("summary");bibleSummary.textContent="Bible des personnages";
+ const bibleText=document.createElement("pre");bibleText.textContent=result.character_bible||"";
+ bible.append(bibleSummary,bibleText);editorialPreview.appendChild(bible);
+ const promptBible=document.createElement("details");
+ const promptBibleSummary=document.createElement("summary");promptBibleSummary.textContent="Référence compacte réellement injectée dans les prompts";
+ const promptBibleText=document.createElement("pre");promptBibleText.textContent=result.prompt_character_bible||"";
+ promptBible.append(promptBibleSummary,promptBibleText);editorialPreview.appendChild(promptBible);
+ const storyboard=document.createElement("details");
+ const storyboardSummary=document.createElement("summary");storyboardSummary.textContent="Storyboard";
+ const storyboardText=document.createElement("pre");storyboardText.textContent=result.storyboard||"";
+ storyboard.append(storyboardSummary,storyboardText);editorialPreview.appendChild(storyboard);
+ (result.prompts||[]).forEach(prompt=>{
+  const details=document.createElement("details");
+  const summary=document.createElement("summary");
+  summary.textContent="Page "+prompt.page_number+" — "+prompt.title;
+  const body=document.createElement("pre");body.textContent=prompt.prompt;
+  details.append(summary,body);editorialPreview.appendChild(details);
+ });
+ if(result.editorial_approval&&result.editorial_approval.approved){
+  const approved=document.createElement("p");
+  approved.textContent="Plan déjà approuvé par "+result.editorial_approval.reviewer_id+
+   " le "+result.editorial_approval.approved_at+".";
+  editorialPreview.appendChild(approved);
+ }else if(result.approval_eligible){
+  const approve=document.createElement("button");approve.type="button";
+  approve.textContent="Approuver les 24 prompts et la bible graphique";
+  approve.addEventListener("click",()=>submitEditorialApproval(result));
+  editorialPreview.appendChild(approve);
+ }else{
+  const warning=document.createElement("p");
+  warning.textContent=(result.warnings||["Plan non admissible à l'approbation."]).join(" ");
+  editorialPreview.appendChild(warning);
+ }
+}
+async function submitEditorialApproval(preview){
+ const token=reviewTokenInput.value;
+ if(!token)return;
+ const approveButton=editorialPreview.querySelector("button");
+ if(approveButton)approveButton.disabled=true;
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(preview.upload_id)+"/editorial-approval",{
+   method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({approved:true,source_bundle_sha256:preview.source_bundle_sha256}),
+   credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"editorial_approval_failed");
+  const status=document.createElement("p");
+  status.textContent="Plan éditorial approuvé par "+result.reviewer_id+" le "+result.approved_at+". La génération reste désactivée jusqu'à une autorisation distincte.";
+  editorialPreview.appendChild(status);
+ }catch(error){
+  const status=document.createElement("p");status.textContent="Approbation refusée : "+String(error.message||error);
+  editorialPreview.appendChild(status);
+  if(approveButton)approveButton.disabled=false;
+ }
+}
+
 async function loadLibrary(){
  const token=tokenInput.value;
  if(!token){bookList.textContent="Saisissez le jeton de dépôt pour consulter vos livres.";return;}
