@@ -315,6 +315,7 @@ def prepare_pkp0001_from_project_sources(
     source_hashes = {
         "manuscript_sha256": prepared["source_bundle"]["manuscript_v2_sha256"],
         "character_bible_sha256": prepared["source_bundle"]["character_bible_sha256"],
+        "prompt_character_bible_sha256": prepared["source_bundle"]["prompt_character_bible_sha256"],
         "storyboard_sha256": prepared["source_bundle"]["storyboard_v1_sha256"],
         "illustration_prompts_sha256": prepared["source_bundle"]["illustration_prompts_v1_sha256"],
     }
