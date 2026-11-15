@@ -79,3 +79,7 @@ Package builds are recorded in the private PostgreSQL `kdp_package_builds` audit
 ## Human review of KDP package files
 
 The owner can download the latest private PDF/EPUB using the authenticated `/api/papi-kids/manuscripts/{upload_id}/kdp-package/{interior|cover|ebook}` endpoint and record a hash-bound decision with `/kdp-package-review`. Configure the separate `PAPI_KIDS_KDP_REVIEW_TOKEN`. Reviews require notes and are stored append-only in PostgreSQL. The download service checks the current package hash and refuses path traversal, symlinks and changed files.
+
+## Kindle Previewer attestation
+
+When an EPUB is required, the owner must inspect the exact EPUB hash in Kindle Previewer and submit a separate attestation through `/api/papi-kids/manuscripts/{upload_id}/kindle-previewer-review`. The endpoint uses `PAPI_KIDS_KINDLE_PREVIEWER_TOKEN`, server-side `PAPI_KIDS_REVIEWER_ID`, an evidence SHA-256 and review notes. A new EPUB hash invalidates the previous attestation.
