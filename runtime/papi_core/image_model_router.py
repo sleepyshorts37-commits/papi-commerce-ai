@@ -99,6 +99,10 @@ class FreeImageModelRouter:
                 "prompt": prompt,
                 "model": selected.model_id,
                 "idempotency_key": key,
+                "book_id": job.get("book_id"),
+                "page_id": job.get("page_id"),
+                "page_number": job.get("page_number"),
+                "batch_id": job.get("batch_id"),
             })
         started = self.clock()
         results = self.provider.generate_many(jobs=routed, now=now)
