@@ -20,7 +20,7 @@ class ImageQualityAuditTests(unittest.TestCase):
         }
         self.args = dict(
             event_id="event-001", book_id="book-001", page_id="page-01",
-            content_sha256=self.digest, report=self.report, reviewer_kind="automated",
+            content_sha256=self.digest, report=self.report,
         )
 
     def tearDown(self):
