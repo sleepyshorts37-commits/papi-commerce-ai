@@ -204,6 +204,52 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertEqual(payload["status"], "incomplete")
         self.assertEqual(received, [(upload_id, metadata, "owner-01")])
 
+    def test_kdp_release_gate_endpoint_uses_distinct_token_and_is_read_only(self):
+        upload_id = "PKP-UP-" + "6" * 32
+        calls = []
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name,
+            kdp_release_gate_handler=lambda value: (
+                calls.append(value) or {
+                    "status": "blocked", "eligible_for_final_owner_confirmation": False,
+                    "blockers": ["Revue humaine manquante."], "kdp_upload_enabled": False,
+                    "publication_performed": False,
+                }
+            ),
+        )
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kdp-release-check",
+            "REQUEST_METHOD": "GET", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN, "wsgi.input": io.BytesIO(b""),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {"PAPI_KIDS_RELEASE_GATE_TOKEN": TOKEN}, clear=True):
+            payload = json.loads(b"".join(app(environ, start_response)))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertEqual(calls, [upload_id])
+        self.assertFalse(payload["kdp_upload_enabled"])
+        self.assertFalse(payload["publication_performed"])
+
+    def test_kdp_release_gate_does_not_reuse_package_review_token(self):
+        upload_id = "PKP-UP-" + "7" * 32
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name,
+            kdp_release_gate_handler=lambda value: {"status": "blocked"},
+        )
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kdp-release-check",
+            "REQUEST_METHOD": "GET", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN, "wsgi.input": io.BytesIO(b""),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {"PAPI_KIDS_KDP_REVIEW_TOKEN": TOKEN}, clear=True):
+            b"".join(app(environ, start_response))
+        self.assertEqual(captured["status"], "503 Service Unavailable")
+
     def test_kdp_package_review_endpoint_uses_owner_identity_and_hash(self):
         upload_id = "PKP-UP-" + "3" * 32
         received = []
