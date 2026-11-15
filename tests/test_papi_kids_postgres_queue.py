@@ -91,6 +91,24 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.cursor_obj.execute.call_count, 1)
 
+    def test_library_reader_returns_bounded_sanitized_book_summaries(self):
+        connection = FakeConnection()
+        connection.cursor_obj.fetchall.return_value = [
+            ("PKP-UP-" + "a" * 32, "Nia", "queued_for_analysis", None, None,
+             "queued", 0, 5, 24, 20)
+        ]
+        connection.cursor_obj.description = [
+            ("upload_id",), ("display_title",), ("book_status",), ("created_at",),
+            ("updated_at",), ("job_status",), ("attempts",), ("max_attempts",),
+            ("illustration_count",), ("approved_illustration_count",),
+        ]
+        from papi_core.papi_kids_postgres_queue import build_postgres_library_reader
+        books = build_postgres_library_reader(lambda: connection)()
+        self.assertEqual(books[0]["title"], "Nia")
+        self.assertEqual(books[0]["approved_illustration_count"], 20)
+        self.assertNotIn("storage_key", books[0])
+        self.assertEqual(connection.commits, 1)
+
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):
             enqueue_manuscript(
