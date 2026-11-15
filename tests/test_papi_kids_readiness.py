@@ -33,7 +33,7 @@ class PapiKidsReadinessTests(unittest.TestCase):
                 "books", "editorial_jobs", "manuscript_safety_reviews",
                 "kdp_listing_metadata_versions", "kdp_package_builds",
                 "kdp_package_reviews", "kindle_previewer_reviews",
-                "kdp_owner_release_authorizations",
+                "kdp_owner_release_authorizations", "kdp_submission_lifecycle_events",
             )]
             connection = MagicMock()
             connection.cursor.return_value = cursor
