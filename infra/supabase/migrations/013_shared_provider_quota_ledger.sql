@@ -99,8 +99,8 @@ begin
     perform pg_advisory_xact_lock(hashtextextended('papi-quota:' || p_idempotency_key, 0));
 
     select * into v_existing
-      from public.papi_provider_quota_reservations
-     where idempotency_key = p_idempotency_key;
+      from public.papi_provider_quota_reservations as reservation
+     where reservation.idempotency_key = p_idempotency_key;
 
     if found then
         if v_existing.provider <> p_provider
@@ -111,9 +111,9 @@ begin
            or v_existing.estimated_units <> p_estimated_units then
             raise exception 'Idempotency key reused with different quota intent' using errcode = '23505';
         end if;
-        select * into v_bucket from public.papi_provider_daily_quotas
-         where provider = v_existing.provider and account_ref = v_existing.account_ref
-           and model = v_existing.model and quota_day = v_existing.quota_day;
+        select * into v_bucket from public.papi_provider_daily_quotas as bucket
+         where bucket.provider = v_existing.provider and bucket.account_ref = v_existing.account_ref
+           and bucket.model = v_existing.model and bucket.quota_day = v_existing.quota_day;
         return query select v_existing.reservation_id, v_existing.status,
             v_bucket.quota_day, v_bucket.reserved_units, v_bucket.consumed_units, v_bucket.daily_limit;
         return;
@@ -121,12 +121,12 @@ begin
 
     insert into public.papi_provider_daily_quotas(provider, account_ref, model, quota_day, daily_limit)
     values (p_provider, p_account_ref, p_model, p_quota_day, p_daily_limit)
-    on conflict (provider, account_ref, model, quota_day) do nothing;
+    on conflict on constraint papi_provider_daily_quotas_pkey do nothing;
 
     select * into v_bucket
-      from public.papi_provider_daily_quotas
-     where provider = p_provider and account_ref = p_account_ref
-       and model = p_model and quota_day = p_quota_day
+      from public.papi_provider_daily_quotas as bucket
+     where bucket.provider = p_provider and bucket.account_ref = p_account_ref
+       and bucket.model = p_model and bucket.quota_day = p_quota_day
      for update;
 
     if v_bucket.daily_limit <> p_daily_limit then
@@ -144,10 +144,10 @@ begin
         p_worker_id, p_estimated_units, 'reserved'
     ) returning public.papi_provider_quota_reservations.reservation_id into v_id;
 
-    update public.papi_provider_daily_quotas
-       set reserved_units = reserved_units + p_estimated_units, updated_at = now()
-     where provider = p_provider and account_ref = p_account_ref
-       and model = p_model and quota_day = p_quota_day
+    update public.papi_provider_daily_quotas as bucket
+       set reserved_units = bucket.reserved_units + p_estimated_units, updated_at = now()
+     where bucket.provider = p_provider and bucket.account_ref = p_account_ref
+       and bucket.model = p_model and bucket.quota_day = p_quota_day
     returning * into v_bucket;
 
     return query select v_id, 'reserved'::text, v_bucket.quota_day,
