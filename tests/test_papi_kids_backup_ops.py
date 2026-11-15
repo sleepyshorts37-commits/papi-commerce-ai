@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from papi_core.papi_kids_backup_ops import (
     PapiKidsBackupOpsError,
     evaluate_backup_health,
+    load_backup_health_inventory,
     plan_backup_retention,
 )
 
@@ -66,6 +67,57 @@ class PapiKidsBackupOpsTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "unhealthy")
         self.assertEqual(len(result["blockers"]), 2)
+
+    def test_health_inventory_uses_only_matching_offsite_proof(self):
+        import hashlib
+        import json
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as root:
+            backup = Path(root) / "backup-01.pgdump.aesgcm"
+            backup.write_bytes(b"encrypted archive")
+            digest = hashlib.sha256(backup.read_bytes()).hexdigest()
+            manifest = {
+                "backup_file": backup.name, "encrypted": True,
+                "encrypted_sha256": digest, "created_at": self.now.isoformat(),
+            }
+            Path(str(backup) + ".json").write_text(json.dumps(manifest))
+            proof = {
+                "status": "offsite_copy_verified", "checksum_verified": True,
+                "backups": [{
+                    "backup_file": backup.name, "encrypted_sha256": digest,
+                    "offsite_copy_verified": True, "offsite_evidence_ref": "proof-01",
+                }],
+            }
+            (Path(root) / "offsite-verification.json").write_text(json.dumps(proof))
+            inventory = load_backup_health_inventory(root)
+            self.assertTrue(inventory[0]["offsite_copy_verified"])
+            self.assertEqual(inventory[0]["offsite_evidence_ref"], "proof-01")
+
+    def test_tampered_offsite_evidence_does_not_mark_backup_verified(self):
+        import hashlib
+        import json
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as root:
+            backup = Path(root) / "backup-02.pgdump.aesgcm"
+            backup.write_bytes(b"encrypted archive")
+            digest = hashlib.sha256(backup.read_bytes()).hexdigest()
+            manifest = {
+                "backup_file": backup.name, "encrypted": True,
+                "encrypted_sha256": digest, "created_at": self.now.isoformat(),
+            }
+            Path(str(backup) + ".json").write_text(json.dumps(manifest))
+            proof = {
+                "status": "offsite_copy_verified", "checksum_verified": True,
+                "backups": [{
+                    "backup_file": backup.name, "encrypted_sha256": "0" * 64,
+                    "offsite_copy_verified": True, "offsite_evidence_ref": "proof-02",
+                }],
+            }
+            (Path(root) / "offsite-verification.json").write_text(json.dumps(proof))
+            inventory = load_backup_health_inventory(root)
+            self.assertFalse(inventory[0]["offsite_copy_verified"])
 
     def test_empty_inventory_is_unhealthy(self):
         result = evaluate_backup_health([], last_restore_drill_at=None, now=self.now)
