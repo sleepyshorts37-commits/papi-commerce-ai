@@ -41,7 +41,8 @@
 - [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
 - [x] Ajouter un générateur local de kits de production vierges : brief, canevas de manuscrit, métadonnées, checklist et rapport qualité initial (Mission 74 ; 187 tests et trois workflows CI réussis sur le SHA de code testé 7bfc392e ; les commits suivants n'ont modifié que le rapport et la roadmap).
 - [ ] Construire les outils de rédaction/assemblage des manuscrits, illustrations originales, intérieurs PDF, couvertures et exports finaux.
-- [ ] Préparer cinq livres pilotes originaux et faire contrôler indépendamment chaque fichier.
+- [x] Définir cinq concepts originaux et leurs plans éditoriaux détaillés (Mission 75 ; dossier `docs/MISSION-75-PILOT-CATALOG.md`). Aucun manuscrit final ni fichier prêt à publier n'est revendiqué.
+- [ ] Rédiger les cinq manuscrits, produire les illustrations et faire contrôler indépendamment chaque fichier.
 - [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
 - [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
 - [ ] Réaliser le premier lancement manuel contrôlé ; aucun agent, compte ou publication externe n'est activé automatiquement.
@@ -59,7 +60,8 @@
 - [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
 - [x] Ajouter les premiers outils locaux de catalogue, briefs vierges, dossiers de fichiers et contrôles initiaux (Missions 73–74).
 - [ ] Compléter les outils de rédaction, illustrations, mise en page PDF, coûts et rapports.
-- [ ] Réaliser un pilote de livres originaux et vérifier les exigences KDP, l'éligibilité depuis le Sénégal et les moyens de versement.
+- [x] Définir le lot éditorial de cinq concepts et plans (Mission 75 ; sans étude de marché validée ni contenu final).
+- [ ] Réaliser un pilote complet de livre original et vérifier les exigences KDP, l'éligibilité depuis le Sénégal et les moyens de versement.
 - [ ] Obtenir une validation humaine explicite avant toute publication ou promotion externe.
 - [ ] Tester les intégrations officielles et l'automatisation contrôlée après revue de sécurité.
 
