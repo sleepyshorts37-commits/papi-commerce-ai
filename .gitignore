@@ -20,3 +20,10 @@ htmlcov/
 *.db
 *.jsonl
 logs/
+
+# PAPI KIDS offsite credentials and backup artifacts
+**/rclone.conf
+**/rclone-cache/
+**/*.pgdump.aesgcm
+**/*.pgdump.aesgcm.json
+**/backups/
