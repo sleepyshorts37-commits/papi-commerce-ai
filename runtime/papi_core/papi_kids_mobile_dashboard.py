@@ -129,7 +129,7 @@ fileInput.addEventListener("change",()=>{
  const file=fileInput.files&&fileInput.files[0];
  preview.hidden=true;preview.textContent="";
  if(!file)return;
- if(!/\\.(md|txt)$/i.test(file.name)||file.size>2*1024*1024){
+ if(/\.(md|txt)$/i.test(file.name)||file.size>2*1024*1024){
   preview.hidden=false;preview.textContent="Fichier refusé : choisissez un .md ou .txt de 2 Mo maximum.";return;
  }
  const reader=new FileReader();
