@@ -246,10 +246,10 @@ def prepare_pkp0001_from_project_sources(
     storyboard = _read(storyboard_path)
     prompts = _read(prompts_path)
     manuscript_pages = [
-        int(value) for value in re.findall(r"^### Page (\\d+)\\s+[—-]", manuscript, re.MULTILINE)
+        int(value) for value in re.findall(r"^### Page (\d+)\s+[—-]", manuscript, re.MULTILINE)
     ]
     storyboard_pages = [
-        int(value) for value in re.findall(r"^\\|\\s*(\\d+)\\s*\\|", storyboard, re.MULTILINE)
+        int(value) for value in re.findall(r"^\\|\s*(\d+)\s*\\|", storyboard, re.MULTILINE)
     ]
     if manuscript_pages != list(range(1, EXPECTED_SCENES + 1)):
         raise PapiKidsOrchestrationError(
