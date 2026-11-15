@@ -37,7 +37,7 @@
 
 ## Phase 3 — Premier lancement prioritaire : PAPI KIDS PUBLISHING
 - [x] Définir les trois activités et les 24 postes cibles, avec chaîne éditoriale-commerciale et garde-fous IP/financiers (PR #225).
-- [x] Ajouter le catalogue local versionné, les contrôles de fichiers SHA-256 et les portes droits/qualité/KDP/validation humaine (Mission 73 ; CI à confirmer sur SHA final).
+- [x] Ajouter le catalogue local versionné, les contrôles de fichiers SHA-256 et les portes droits/qualité/KDP/validation humaine (Mission 73 ; 180 tests unitaires et trois workflows CI réussis sur le SHA d'implémentation).
 - [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
 - [ ] Créer les outils de briefs, génération/assemblage des manuscrits, illustrations, intérieurs PDF, couvertures et exports finaux.
 - [ ] Préparer cinq livres pilotes originaux et faire contrôler indépendamment chaque fichier.
