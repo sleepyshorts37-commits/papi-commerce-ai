@@ -170,6 +170,8 @@ def build_asset_manifest(
         if not isinstance(result, dict):
             raise ImageFactoryError("Résultat d'image invalide.")
         status = result.get("status")
+        if status not in {"generated", "failed"}:
+            raise ImageFactoryError("Statut de génération inconnu.")
         record: dict[str, Any] = {
             "book_id": book_id,
             "page_id": planned.page_id,
@@ -185,7 +187,7 @@ def build_asset_manifest(
                 raise ImageFactoryError("Image générée sans octets exploitables.")
             record["content_sha256"] = hashlib.sha256(image_bytes).hexdigest()
             record["byte_length"] = len(image_bytes)
-            record["mime_type"] = result.get("mime_type", "image/unknown")
+            record["mime_type"] = result.get("content_type", "application/octet-stream")
         assets.append(record)
     return {
         "schema_version": 1,
