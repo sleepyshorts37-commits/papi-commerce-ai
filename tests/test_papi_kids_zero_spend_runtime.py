@@ -82,14 +82,12 @@ class PapiKidsImageWiringTests(unittest.TestCase):
             )
             image = jpeg_bytes((32, 32))
             record = center.put(
-                book_id="PKP-0001", page_id="page-01", page_number=1,
-                idempotency_key="a" * 64, image_bytes=image,
+                book_id="PKP-0001", page_id="page-01", idempotency_key="a" * 64, image_bytes=image,
                 content_type="image/jpeg", model=MODEL_ID, prompt_sha256="b" * 64,
             )
             self.assertEqual(record["persistence_status"], "registered")
             existing = center.get(
-                book_id="PKP-0001", page_id="page-01", page_number=1,
-                idempotency_key="a" * 64,
+                book_id="PKP-0001", page_id="page-01", idempotency_key="a" * 64,
             )
             self.assertEqual(existing["asset_id"], record["asset_id"])
             self.assertEqual(len(registered), 2)
@@ -100,17 +98,14 @@ class PapiKidsImageWiringTests(unittest.TestCase):
             center = PapiKidsIllustrationAssetCenter(root, upload_id=UPLOAD_ID,
                                                      asset_registrar=lambda metadata: None)
             center.put(
-                book_id="PKP-0001", page_id="page-01", page_number=1,
-                idempotency_key="a" * 64, image_bytes=jpeg_bytes((32, 32)),
+                book_id="PKP-0001", page_id="page-01", idempotency_key="a" * 64, image_bytes=jpeg_bytes((32, 32)),
                 content_type="image/jpeg", model=MODEL_ID, prompt_sha256="b" * 64,
             )
             self.assertIsNone(center.get(
-                book_id="PKP-0001", page_id="page-01", page_number=1,
-                idempotency_key="c" * 64,
+                book_id="PKP-0001", page_id="page-01", idempotency_key="c" * 64,
             ))
             second = center.put(
-                book_id="PKP-0001", page_id="page-01", page_number=1,
-                idempotency_key="c" * 64, image_bytes=jpeg_bytes((32, 32)),
+                book_id="PKP-0001", page_id="page-01", idempotency_key="c" * 64, image_bytes=jpeg_bytes((32, 32)),
                 content_type="image/jpeg", model=MODEL_ID, prompt_sha256="d" * 64,
             )
             self.assertEqual(second["version"], 2)
@@ -177,7 +172,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 operator_confirmed_free_tier=True, generation_authorized=False,
                 account_id="a" * 32, api_token="server-secret",
                 reservation_store=reservation, asset_registrar=lambda metadata: None,
-                transport=transport, project_root=root,
+                transport=transport, project_root=Path(__file__).resolve().parents[1],
             )
             with self.assertRaises(PapiKidsOrchestrationError):
                 execute_pkp0001_campaign(
@@ -210,7 +205,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 account_id="a" * 32, api_token="server-secret",
                 reservation_store=reservation,
                 asset_registrar=lambda metadata: registered.append(metadata["asset_id"]),
-                transport=transport, max_batch_size=4, project_root=root,
+                transport=transport, max_batch_size=4, project_root=Path(__file__).resolve().parents[1],
             )
             result = execute_pkp0001_campaign(
                 prepared=prepared, engine=engine,
