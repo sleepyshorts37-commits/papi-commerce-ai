@@ -69,3 +69,5 @@ The WSGI app serves the mobile dashboard at `/dashboard` (and `/`) over HTTPS. T
 ## Explicit KDP package build
 
 The iPhone dashboard exposes a build button backed by `POST /api/papi-kids/manuscripts/{upload_id}/build-kdp-package`. It requires a separate `PAPI_KIDS_KDP_BUILD_TOKEN` and `PAPI_KIDS_KDP_BUILD_ENABLED=true`; the default is false. The service reads `kdp-build-config.json` from the manuscript's private storage directory (mode 0600). That server-side JSON profile contains only the interior, cover and optional ebook build arguments; it must never contain credentials. The build runs only after the owner confirms in the dashboard and only creates local files. PDF inspection, Kindle Previewer, release gate and manual KDP submission remain mandatory.
+
+Package builds are recorded in the private PostgreSQL `kdp_package_builds` audit table and exposed in manuscript status. The package manifest hash is stored with each immutable version; a DB persistence failure removes the just-created package directory.

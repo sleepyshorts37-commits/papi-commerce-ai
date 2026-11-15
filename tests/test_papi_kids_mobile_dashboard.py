@@ -52,6 +52,7 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("/build-kdp-package", html)
         self.assertIn("window.confirm", html)
         self.assertIn("publication ne sera effectuée", html)
+        self.assertIn("packageBuild.status", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(

@@ -256,6 +256,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                        b.metadata->'kdp_listing_metadata' as kdp_listing_metadata,
                        b.metadata->>'kdp_listing_metadata_status' as kdp_listing_metadata_status,
                        b.metadata->'kdp_listing_metadata_blockers' as kdp_listing_metadata_blockers,
+                       b.metadata->'kdp_package_build' as kdp_package_build,
                        j.job_id, j.status as job_status, j.attempts, j.max_attempts,
                        j.available_at, j.lease_until, j.payload->'analysis' as analysis
                   from papi_kids_private.books b
@@ -311,6 +312,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "kdp_listing_metadata": values.get("kdp_listing_metadata"),
                 "kdp_listing_metadata_status": values.get("kdp_listing_metadata_status"),
                 "kdp_listing_metadata_blockers": values.get("kdp_listing_metadata_blockers") or [],
+                "kdp_package_build": values.get("kdp_package_build"),
                 "illustrations": illustrations,
             }
         except Exception:
@@ -752,3 +754,74 @@ def build_postgres_kdp_metadata_saver(
             metadata=metadata, editor_id=editor_id,
         )
     return save
+
+
+def record_kdp_package_build(
+    connection_factory: Callable[[], Any], *,
+    upload_id: str, package_manifest: dict[str, Any],
+    package_manifest_sha256: str, build_status: str,
+) -> dict[str, Any]:
+    """Persist an immutable KDP package manifest and latest-book pointer."""
+    if not isinstance(upload_id, str) or not re.fullmatch(r"PKP-UP-[0-9a-f]{32}", upload_id):
+        raise ValueError("Référence de dépôt invalide.")
+    if not isinstance(package_manifest, dict) or package_manifest.get("upload_id") != upload_id:
+        raise ValueError("Manifeste KDP invalide ou lié à un autre livre.")
+    if not isinstance(package_manifest_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", package_manifest_sha256):
+        raise ValueError("SHA-256 du manifeste invalide.")
+    if build_status not in {
+        "generated_pending_manual_pdf_inspection",
+        "generated_pending_manual_multiformat_review",
+    }:
+        raise ValueError("Statut de fabrication KDP invalide.")
+    version = package_manifest.get("package_version")
+    if not isinstance(version, int) or isinstance(version, bool) or not 1 <= version <= 999:
+        raise ValueError("Version du package invalide.")
+    canonical = json.dumps(package_manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    if hashlib.sha256(canonical.encode("utf-8")).hexdigest() != package_manifest_sha256:
+        raise ValueError("Empreinte du manifeste KDP incohérente.")
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """select book_id from papi_kids_private.books
+                where upload_id = %s for update""",
+            (upload_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise PostgresEditorialQueueError("Manuscrit introuvable.")
+        book_id = row[0]
+        cursor.execute(
+            """insert into papi_kids_private.kdp_package_builds
+                (book_id, upload_id, package_version, package_manifest,
+                 package_manifest_sha256, build_status)
+                values (%s,%s,%s,%s::jsonb,%s,%s)""",
+            (book_id, upload_id, version, canonical, package_manifest_sha256, build_status),
+        )
+        summary = {
+            "package_version": version,
+            "manifest_sha256": package_manifest_sha256,
+            "status": build_status,
+            "pdfs": package_manifest.get("pdfs"),
+            "ebook": package_manifest.get("ebook"),
+            "print_spec": package_manifest.get("print_spec"),
+            "created_by": "server_package_builder",
+        }
+        cursor.execute(
+            """update papi_kids_private.books
+                  set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+                      'kdp_package_build', %s::jsonb
+                  ),
+                  updated_at = now()
+                where book_id = %s""",
+            (json.dumps(summary, ensure_ascii=False), book_id),
+        )
+        connection.commit()
+        return {"upload_id": upload_id, **summary}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()

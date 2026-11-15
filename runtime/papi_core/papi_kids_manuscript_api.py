@@ -170,7 +170,36 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
                 return _response(start_response, "409 Conflict", {"error": "kdp_package_build_blocked"})
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "kdp_package_build_failed"})
-            return _response(start_response, "200 OK", built)
+            manifest = built.get("manifest", {}) if isinstance(built, dict) else {}
+            pdfs = manifest.get("pdfs", {}) if isinstance(manifest, dict) else {}
+            safe_pdfs = {
+                key: {
+                    "sha256": record.get("sha256"),
+                    "page_count": record.get("page_count"),
+                    "preflight": record.get("preflight"),
+                }
+                for key, record in pdfs.items() if key in {"interior", "cover"} and isinstance(record, dict)
+            }
+            ebook = manifest.get("ebook") if isinstance(manifest, dict) else None
+            safe_ebook = None
+            if isinstance(ebook, dict):
+                safe_ebook = {
+                    "sha256": ebook.get("sha256"),
+                    "page_count": ebook.get("page_count"),
+                    "preflight": ebook.get("preflight"),
+                    "format": ebook.get("format"),
+                }
+            return _response(start_response, "200 OK", {
+                "upload_id": kdp_build_match.group(1),
+                "status": built.get("status"),
+                "package_version": manifest.get("package_version"),
+                "package_manifest_sha256": built.get("package_manifest_sha256"),
+                "pdfs": safe_pdfs,
+                "ebook": safe_ebook,
+                "kdp_upload_ready": False,
+                "publication_performed": False,
+                "spend_limit_minor": 0,
+            })
         if metadata_match:
             if metadata_saver is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "metadata_saver_not_configured"})

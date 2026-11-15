@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import re
 import stat
+import hashlib
+import shutil
 from typing import Any
 
 from .papi_kids_kdp_package import (
@@ -99,8 +101,29 @@ def build_kdp_package_from_private_profile(
 
 def build_private_kdp_package_handler(
     storage_root: str | Path,
+    connection_factory,
 ):
-    """Create a callback whose storage root is fixed by server configuration."""
+    """Create a callback that builds locally and persists the manifest transactionally."""
+    from .papi_kids_postgres_queue import record_kdp_package_build
+
     def build(upload_id: str) -> dict[str, Any]:
-        return build_kdp_package_from_private_profile(storage_root, upload_id)
+        result = build_kdp_package_from_private_profile(storage_root, upload_id)
+        canonical = json.dumps(result["manifest"], ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        manifest_sha256 = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        try:
+            persisted = record_kdp_package_build(
+                connection_factory, upload_id=upload_id,
+                package_manifest=result["manifest"],
+                package_manifest_sha256=manifest_sha256,
+                build_status=result["status"],
+            )
+        except Exception:
+            package_dir = Path(result["package_dir"]).resolve()
+            book_dir = (Path(storage_root).resolve() / upload_id).resolve()
+            if package_dir.parent == book_dir and package_dir.name.startswith("kdp-print-package-v"):
+                shutil.rmtree(package_dir, ignore_errors=True)
+            raise
+        result["package_manifest_sha256"] = manifest_sha256
+        result["persisted_package_build"] = persisted
+        return result
     return build

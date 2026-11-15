@@ -209,7 +209,15 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         received = []
         def handler(upload):
             received.append(upload)
-            return {"status": "generated_pending_manual_pdf_inspection", "kdp_upload_ready": False}
+            return {
+                "status": "generated_pending_manual_pdf_inspection", "kdp_upload_ready": False,
+                "package_dir": "/private/secret/path", "manifest_path": "/private/secret/path/package-manifest.json",
+                "package_manifest_sha256": "a" * 64,
+                "manifest": {"package_version": 1, "pdfs": {
+                    "interior": {"sha256": "b" * 64, "page_count": 24, "preflight": "pending_manual_pdf_inspection"},
+                    "cover": {"sha256": "c" * 64, "page_count": 1, "preflight": "pending_manual_pdf_inspection"},
+                }},
+            }
         app = create_papi_kids_manuscript_app(
             storage_root=self.temp.name, kdp_build_handler=handler,
         )
@@ -231,6 +239,9 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
             payload = json.loads(b"".join(app(environ, start_response)))
         self.assertEqual(captured["status"], "200 OK")
         self.assertFalse(payload["kdp_upload_ready"])
+        self.assertEqual(payload["package_version"], 1)
+        self.assertNotIn("package_dir", payload)
+        self.assertNotIn("manifest_path", payload)
         self.assertEqual(received, [upload_id])
 
     def test_kdp_package_build_is_disabled_by_default_and_requires_confirm_true(self):
