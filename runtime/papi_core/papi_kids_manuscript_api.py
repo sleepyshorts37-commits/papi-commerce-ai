@@ -69,6 +69,9 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         metadata_token_env: str = "PAPI_KIDS_METADATA_TOKEN",
         metadata_saver: Callable[[str, dict[str, Any], str], dict[str, Any]] | None = None,
         metadata_editor_id_env: str = "PAPI_KIDS_METADATA_EDITOR_ID",
+        kdp_build_token_env: str = "PAPI_KIDS_KDP_BUILD_TOKEN",
+        kdp_build_enabled_env: str = "PAPI_KIDS_KDP_BUILD_ENABLED",
+        kdp_build_handler: Callable[[str], dict[str, Any]] | None = None,
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
         library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
@@ -83,18 +86,20 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         review_match = re.fullmatch(r"/api/papi-kids/assets/(PKP-ASSET-[0-9a-f]{24})/review", request_path)
         safety_review_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/safety-review", request_path)
         metadata_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-metadata", request_path)
-        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match:
+        kdp_build_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/build-kdp-package", request_path)
+        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
-        expected_method = "POST" if review_match or safety_review_match or metadata_match or (upload_route and request_method == "POST") else "GET"
+        expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or (upload_route and request_method == "POST") else "GET"
         if request_method != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
         selected_token_env = (
-            metadata_token_env if metadata_match else
-            (safety_review_token_env if safety_review_match else
-             (review_token_env if review_match else token_env))
+            kdp_build_token_env if kdp_build_match else
+            (metadata_token_env if metadata_match else
+             (safety_review_token_env if safety_review_match else
+              (review_token_env if review_match else token_env)))
         )
         configured_token = os.environ.get(selected_token_env, "")
         if len(configured_token) < 32:
@@ -140,6 +145,32 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
             return _response(start_response, "200 OK", reviewed)
+        if kdp_build_match:
+            if os.environ.get(kdp_build_enabled_env, "false").lower() != "true":
+                return _response(start_response, "403 Forbidden", {"error": "kdp_build_disabled"})
+            if kdp_build_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "kdp_build_not_configured"})
+            if environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower() != "application/json":
+                return _response(start_response, "415 Unsupported Media Type", {"error": "json_required"})
+            try:
+                build_length = int(environ.get("CONTENT_LENGTH") or "0")
+            except (TypeError, ValueError):
+                build_length = 0
+            if build_length < 1 or build_length > 1024:
+                return _response(start_response, "413 Payload Too Large", {"error": "invalid_build_confirmation"})
+            try:
+                build_payload = json.loads(environ["wsgi.input"].read(build_length).decode("utf-8"))
+            except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_build_confirmation"})
+            if not isinstance(build_payload, dict) or build_payload.get("confirm") is not True:
+                return _response(start_response, "400 Bad Request", {"error": "explicit_confirmation_required"})
+            try:
+                built = kdp_build_handler(kdp_build_match.group(1))
+            except ValueError:
+                return _response(start_response, "409 Conflict", {"error": "kdp_package_build_blocked"})
+            except Exception:
+                return _response(start_response, "409 Conflict", {"error": "kdp_package_build_failed"})
+            return _response(start_response, "200 OK", built)
         if metadata_match:
             if metadata_saver is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "metadata_saver_not_configured"})
