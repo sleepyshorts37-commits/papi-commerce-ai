@@ -17,6 +17,9 @@ on:
       - "infra/supabase/migrations/013_shared_provider_quota_ledger.sql"
       - "infra/supabase/tests/013_shared_provider_quota_ledger.sql"
       - "scripts/test_shared_quota_concurrency.py"
+      - "scripts/audit_shared_quota_ledger.sql"
+      - "runtime/papi_core/image_provider_cloudflare.py"
+      - "tests/test_image_provider_cloudflare.py"
       - ".github/workflows/papi-shared-quota-postgres.yml"
   workflow_dispatch:
 
