@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import re
 from typing import Any
@@ -99,5 +100,5 @@ def validate_reconciliation_report(report: Any) -> None:
         raise IdentityReconciliationReportContractError("Digest SHA-256 mal formé.")
     payload = {key: value for key, value in report.items() if key != "report_sha256"}
     expected = hashlib.sha256(_canonical(payload)).hexdigest()
-    if not hashlib.compare_digest(digest, expected):
+    if not hmac.compare_digest(digest, expected):
         raise IdentityReconciliationReportContractError("Digest du rapport invalide.")
