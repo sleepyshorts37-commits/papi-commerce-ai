@@ -77,7 +77,10 @@ class ImageCampaignTests(unittest.TestCase):
         first = execute_image_campaign(plan=self.plan, engine=engine, max_batches_per_run=1)
         self.assertFalse(first["complete"])
         self.assertEqual(first["remaining_batch_count"], 1)
-        second = execute_image_campaign(plan=self.plan, engine=engine, max_batches_per_run=1)
+        second = execute_image_campaign(
+            plan=self.plan, engine=engine, max_batches_per_run=1,
+            start_batch_index=first["next_batch_index"],
+        )
         self.assertTrue(second["complete"])
         self.assertEqual(generator.calls, 2)
         self.assertEqual(len(assets.items), 4)
