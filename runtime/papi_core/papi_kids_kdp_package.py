@@ -80,6 +80,13 @@ def build_kdp_print_package(
             raise PapiKidsKDPPrintPackageError("La pagination ebook doit correspondre à l'intérieur imprimé.")
         if not isinstance(ebook_assets, list) or len(ebook_assets) != page_count:
             raise PapiKidsKDPPrintPackageError("Une illustration ebook est requise pour chaque page.")
+        for print_page, ebook_page in zip(pages, ebook_pages):
+            if (not isinstance(ebook_page, dict)
+                    or ebook_page.get("page_number") != print_page.get("page_number")
+                    or ebook_page.get("text") != print_page.get("text")):
+                raise PapiKidsKDPPrintPackageError("Le texte et l'ordre des pages ebook doivent correspondre à l'intérieur.")
+        if ebook_args.get("title") != cover_args.get("title") or ebook_args.get("author") != cover_args.get("author"):
+            raise PapiKidsKDPPrintPackageError("Titre/auteur de l'ebook et de la couverture divergents.")
         if any(not isinstance(asset, dict) or asset.get("review_status") != "approved" for asset in ebook_assets):
             raise PapiKidsKDPPrintPackageError("Toutes les illustrations ebook doivent être approuvées.")
         ebook_cover = ebook_args.get("cover_asset")
