@@ -9,7 +9,7 @@ from pathlib import Path
 import os
 import json
 import re
-from typing import Any
+from typing import Any, Callable
 
 from .image_campaign import execute_image_campaign, plan_image_campaign
 from .image_production_engine import ImageProductionEngine
@@ -129,6 +129,7 @@ def execute_pkp0001_campaign(
     generation_authorized: bool = False,
     editorial_approved: bool = False,
     editorial_approval: dict[str, Any] | None = None,
+    editorial_approval_verifier: Callable[[dict[str, Any]], bool] | None = None,
     spend_limit_minor: int = 0,
     max_batches_per_run: int = 1,
     start_batch_index: int = 0,
@@ -177,6 +178,8 @@ def execute_pkp0001_campaign(
             or approval.get("source_bundle_sha256") != prepared.get("source_bundle_sha256")
             or not approval.get("reviewer_id")
             or not approval.get("approved_at")
+            or not callable(editorial_approval_verifier)
+            or editorial_approval_verifier(approval) is not True
         ):
             raise PapiKidsOrchestrationError(
                 "Approbation éditoriale persistée et liée aux sources obligatoire."
