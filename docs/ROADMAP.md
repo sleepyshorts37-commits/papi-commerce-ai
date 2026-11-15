@@ -84,3 +84,9 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+
+
+- [x] Vérifier les pages officielles POD et paiements pour Amazon KDP, Lulu, IngramSpark, Bookvault, Blurb et Jumia Sénégal ; enregistrer les preuves et dates (Mission 81).
+- [x] Confirmer que PayPal prend en charge l'envoi, la réception et le retrait au Sénégal ; l'utiliser comme preuve de possibilité de versement Lulu/Blurb, sans présumer l'éligibilité des comptes éditeurs.
+- [ ] Obtenir une confirmation directe de l'éligibilité vendeur Sénégal, des paiements, des territoires et des frais obligatoires pour KDP, Lulu et Blurb avant tout statut ELIGIBLE.
+- [ ] Vérifier les frais de titre IngramSpark 2026 dans les conditions applicables au compte avant de considérer le canal.
