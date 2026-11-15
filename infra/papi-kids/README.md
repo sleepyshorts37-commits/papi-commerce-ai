@@ -83,3 +83,7 @@ The owner can download the latest private PDF/EPUB using the authenticated `/api
 ## Kindle Previewer attestation
 
 When an EPUB is required, the owner must inspect the exact EPUB hash in Kindle Previewer and submit a separate attestation through `/api/papi-kids/manuscripts/{upload_id}/kindle-previewer-review`. The endpoint uses `PAPI_KIDS_KINDLE_PREVIEWER_TOKEN`, server-side `PAPI_KIDS_REVIEWER_ID`, an evidence SHA-256 and review notes. A new EPUB hash invalidates the previous attestation.
+
+## Owner final release authorization
+
+Configure `PAPI_KIDS_OWNER_RELEASE_TOKEN` and `PAPI_KIDS_RELEASE_OWNER_ID` on the server. The iPhone dashboard then permits an explicit, phrase-bound owner confirmation for the latest package. The server rechecks all current PDF/EPUB approvals, Kindle Previewer evidence when an EPUB exists, child-safety approval, commercial-use rights, listing metadata and zero-spend policy before persisting the authorization. This authorizes manual KDP submission only; automated upload and publication remain disabled.
