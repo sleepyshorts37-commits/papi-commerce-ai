@@ -151,11 +151,13 @@ def build_private_kdp_package_downloader(
         if not isinstance(record, dict):
             raise PapiKidsKDPBuildServiceError("Fichier absent du dernier package.")
         relative = record.get("path")
-        if not isinstance(relative, str) or Path(relative).is_absolute() or ".." in Path(relative).parts:
+        if (not isinstance(relative, str) or Path(relative).is_absolute()
+                or ".." in Path(relative).parts or not Path(relative).parts
+                or Path(relative).parts[0] != upload_id):
             raise PapiKidsKDPBuildServiceError("Chemin de package invalide.")
         candidate = root / relative
-        if candidate.is_symlink():
-            raise PapiKidsKDPBuildServiceError("Fichier symbolique interdit.")
+        if any(parent.is_symlink() for parent in [candidate, *candidate.parents] if parent != root):
+            raise PapiKidsKDPBuildServiceError("Lien symbolique interdit dans le chemin privé.")
         path = candidate.resolve()
         if root not in path.parents or not path.is_file():
             raise PapiKidsKDPBuildServiceError("Fichier privé introuvable.")
