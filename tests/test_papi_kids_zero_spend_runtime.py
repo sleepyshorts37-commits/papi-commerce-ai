@@ -9,7 +9,8 @@ from unittest.mock import Mock
 
 from PIL import Image
 
-from papi_core.image_factory import plan_book_images
+from papi_core.image_campaign import plan_image_campaign
+from papi_core.papi_kids_orchestrator import execute_pkp0001_campaign
 from papi_core.image_provider_registry import (
     ImageProviderRegistry, ModelProfile, ProviderProfile,
 )
@@ -72,17 +73,18 @@ class PapiKidsImageWiringTests(unittest.TestCase):
             (Path(root) / UPLOAD_ID).mkdir()
             registered = []
             center = PapiKidsIllustrationAssetCenter(
-                root, asset_registrar=lambda metadata: registered.append(metadata["asset_id"]),
+                root, upload_id=UPLOAD_ID,
+                asset_registrar=lambda metadata: registered.append(metadata["asset_id"]),
             )
             image = jpeg_bytes((32, 32))
             record = center.put(
-                book_id=UPLOAD_ID, page_id="page-01", page_number=1,
+                book_id="PKP-0001", page_id="page-01", page_number=1,
                 idempotency_key="a" * 64, image_bytes=image,
                 content_type="image/jpeg", model=MODEL_ID, prompt_sha256="b" * 64,
             )
             self.assertEqual(record["persistence_status"], "registered")
             existing = center.get(
-                book_id=UPLOAD_ID, page_id="page-01", page_number=1,
+                book_id="PKP-0001", page_id="page-01", page_number=1,
                 idempotency_key="a" * 64,
             )
             self.assertEqual(existing["asset_id"], record["asset_id"])
@@ -91,14 +93,15 @@ class PapiKidsImageWiringTests(unittest.TestCase):
     def test_new_prompt_creates_new_version_but_same_key_is_idempotent(self):
         with tempfile.TemporaryDirectory() as root:
             (Path(root) / UPLOAD_ID).mkdir()
-            center = PapiKidsIllustrationAssetCenter(root, asset_registrar=lambda metadata: None)
+            center = PapiKidsIllustrationAssetCenter(root, upload_id=UPLOAD_ID,
+                                                     asset_registrar=lambda metadata: None)
             center.put(
-                book_id=UPLOAD_ID, page_id="page-01", page_number=1,
+                book_id="PKP-0001", page_id="page-01", page_number=1,
                 idempotency_key="a" * 64, image_bytes=jpeg_bytes((32, 32)),
                 content_type="image/jpeg", model=MODEL_ID, prompt_sha256="b" * 64,
             )
             self.assertIsNone(center.get(
-                book_id=UPLOAD_ID, page_id="page-01", page_number=1,
+                book_id="PKP-0001", page_id="page-01", page_number=1,
                 idempotency_key="c" * 64,
             ))
             second = center.put(
@@ -168,7 +171,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 upload_id=UPLOAD_ID, storage_root=root, registry=registry,
                 account_refs={"cloudflare": "a" * 32},
                 quota_evidence_by_model={MODEL_ID: free_evidence()},
-                operator_confirmed_free_tier=True, generation_authorized=True,
+                operator_confirmed_free_tier=True, generation_authorized=False,
                 account_id="a" * 32, api_token="server-secret",
                 reservation_store=reservation,
                 asset_registrar=lambda metadata: registered.append(metadata["asset_id"]),
@@ -178,12 +181,25 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 "page_id": f"page-{i:02d}", "page_number": i,
                 "prompt": f"Child-friendly river illustration, page {i}",
             } for i in range(1, 5)]
-            batch = plan_book_images(
-                book_id=UPLOAD_ID, pages=pages, model=MODEL_ID,
-                model_costs={MODEL_ID: 58},
-            )[0]
-            result = engine.execute_batch(batch)
-            self.assertEqual(result["stored_count"], 4)
+            campaign = plan_image_campaign(
+                campaign_id="PKP-0001-TEST-CAMPAIGN",
+                books=[{"book_id": "PKP-0001", "pages": pages}],
+                model=MODEL_ID, model_costs={MODEL_ID: 58},
+                max_batch_size=4, max_batch_units=2000,
+            )
+            prepared = {
+                "book_id": "PKP-0001", "page_count": 4, "model": MODEL_ID,
+                "quota_evidence": {"evidence_ref": report["quota_evidence_ref"]},
+                "campaign": campaign,
+            }
+            result = execute_pkp0001_campaign(
+                prepared=prepared, engine=engine,
+                quota_evidence=report["registry_quota_evidence"],
+                generation_authorized=True, spend_limit_minor=0,
+                max_batches_per_run=1,
+            )
+            execution = result["execution"]
+            self.assertEqual(execution["batch_reports"][0]["stored_count"], 4)
             self.assertEqual(transport.call_count, 4)
             self.assertEqual(len(registered), 4)
             self.assertEqual(len(reservation.reservations), 4)
