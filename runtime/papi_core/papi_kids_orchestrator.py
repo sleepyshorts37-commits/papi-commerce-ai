@@ -181,3 +181,48 @@ def execute_pkp0001_campaign(
         "quota_evidence": current_quota,
         "human_approval_required": True,
     }
+
+
+def prepare_pkp0001_campaign_from_registry(
+    *,
+    registry: Any,
+    prompts_path: str | Path,
+    character_bible_path: str | Path,
+    account_refs: dict[str, str],
+    quota_evidence_by_model: dict[str, dict[str, Any]],
+    max_batch_size: int = 4,
+    max_batch_units: int = 2_000,
+) -> dict[str, Any]:
+    """Select an eligible model from the governed registry, then plan offline."""
+    from .image_provider_registry import ProviderRegistryError
+
+    try:
+        selected = registry.choose(
+            account_refs=account_refs,
+            quota_evidence_by_model=quota_evidence_by_model,
+            required_images=EXPECTED_SCENES,
+            spend_cap_minor=0,
+        )
+    except (ProviderRegistryError, AttributeError, TypeError) as exc:
+        raise PapiKidsOrchestrationError(
+            "Aucun fournisseur/modèle éligible dans le registre PAPI KIDS."
+        ) from exc
+    if selected.get("provider_id") != "cloudflare":
+        raise PapiKidsOrchestrationError(
+            "Le moteur d'exécution PKP-0001 ne prend actuellement en charge que Cloudflare."
+        )
+    model_id = selected["model_id"]
+    evidence = quota_evidence_by_model.get(model_id)
+    account_ref = account_refs.get("cloudflare")
+    prepared = prepare_pkp0001_campaign(
+        prompts_path=prompts_path,
+        character_bible_path=character_bible_path,
+        model=model_id,
+        model_costs={model_id: selected["estimated_units_per_image"]},
+        account_ref=account_ref,
+        quota_evidence=evidence,
+        max_batch_size=max_batch_size,
+        max_batch_units=max_batch_units,
+    )
+    prepared["provider_selection"] = selected
+    return prepared
