@@ -166,6 +166,9 @@ def execute_pkp0001_campaign(
         raise PapiKidsOrchestrationError(str(exc)) from exc
     if current_quota["evidence_ref"] != prepared.get("quota_evidence", {}).get("evidence_ref"):
         raise PapiKidsOrchestrationError("La preuve de quota a changé depuis la planification ; refaire le plan.")
+    authorize_generation = getattr(provider, "authorize_generation", None)
+    if callable(authorize_generation):
+        authorize_generation(True)
     report = execute_image_campaign(
         plan=prepared["campaign"],
         engine=engine,
