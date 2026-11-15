@@ -49,3 +49,7 @@ A separate one-shot runner is available under the Compose `backup` profile. It i
 ## Optional offsite copy
 
 A separate `offsite` Compose profile copies only encrypted `.pgdump.aesgcm` files and their JSON manifests using rclone, then runs a checksum verification. It uses `rclone copy`, never `sync`, so it does not delete remote files. Keep the rclone configuration outside the repository. Mount it read-only and grant only the backup container's dedicated UID/GID 10001 access (for example, host group 10001 and mode 0640; no access for other users), through `PAPI_KIDS_RCLONE_CONFIG_FILE`. Set `PAPI_KIDS_OFFSITE_ENABLED=true` and a remote such as `drive:papi-kids-backups` only after configuring and testing that remote. Run manually with `docker compose --profile offsite run --rm papi-kids-offsite`. This is not scheduled automatically.
+
+## Optional systemd schedules
+
+Templates for a daily encrypted backup (02:00 UTC) and offsite copy/check (03:00 UTC) are in `systemd/`. They are not installed or enabled automatically. Edit the deployment path in both service units, copy the four unit files to `/etc/systemd/system`, run `systemctl daemon-reload`, test the manual Compose commands first, and only then enable the timers if desired. The backup/offsite environment flags remain independent fail-closed gates.
