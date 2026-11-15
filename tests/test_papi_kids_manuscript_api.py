@@ -23,6 +23,41 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.app = create_papi_kids_manuscript_app(storage_root=self.temp.name)
 
+    def test_editorial_preview_and_approval_require_review_token(self):
+        upload_id = "PKP-UP-" + "a" * 32
+        preview = {"upload_id": upload_id, "approval_eligible": True,
+                   "source_bundle_sha256": "b" * 64, "prompts": []}
+        approved = {"approved": True, "upload_id": upload_id}
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name,
+            editorial_preview_reader=lambda value: preview,
+            editorial_approval_handler=lambda value, payload: approved,
+        )
+        path = "/api/papi-kids/manuscripts/" + upload_id + "/editorial-preview"
+        with patch.dict(os.environ, {"PAPI_KIDS_REVIEW_TOKEN": TOKEN}, clear=True):
+            response, payload = call(app, method="GET", path=path, token="wrong")
+            self.assertEqual(response["status"], "401 Unauthorized")
+            response, payload = call(app, method="GET", path=path, token=TOKEN)
+            self.assertEqual(response["status"], "200 OK")
+            self.assertEqual(payload["source_bundle_sha256"], "b" * 64)
+
+            body = json.dumps({"approved": True, "source_bundle_sha256": "b" * 64}).encode()
+            environ = {
+                "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/editorial-approval",
+                "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+                "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+                "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+                "wsgi.input": io.BytesIO(body),
+            }
+            with patch.dict(os.environ, {"PAPI_KIDS_REVIEW_TOKEN": TOKEN,
+                                         "PAPI_KIDS_REVIEWER_ID": "editor-01"}, clear=True):
+                captured = {}
+                def start_response(status, headers):
+                    captured["status"] = status
+                payload = b"".join(app(environ, start_response))
+            self.assertEqual(captured["status"], "200 OK")
+            self.assertEqual(json.loads(payload)["approved"], True)
+
     def test_upload_requires_authentication_and_tls(self):
         with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
             response, _ = call(self.app, token="wrong")
