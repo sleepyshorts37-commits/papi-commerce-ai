@@ -79,6 +79,9 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         kdp_package_download_handler: Callable[[str, str], dict[str, Any]] | None = None,
         kindle_previewer_token_env: str = "PAPI_KIDS_KINDLE_PREVIEWER_TOKEN",
         kindle_previewer_handler: Callable[[str, str, bool, str, str, str], dict[str, Any]] | None = None,
+        owner_release_token_env: str = "PAPI_KIDS_OWNER_RELEASE_TOKEN",
+        owner_release_handler: Callable[[str, str, str, str], dict[str, Any]] | None = None,
+        owner_release_id_env: str = "PAPI_KIDS_RELEASE_OWNER_ID",
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
         library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
@@ -98,22 +101,24 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         kdp_package_review_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-package-review", request_path)
         kdp_package_download_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-package/(interior|cover|ebook)", request_path)
         kindle_previewer_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kindle-previewer-review", request_path)
-        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match and not kindle_previewer_match:
+        owner_release_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/owner-final-confirmation", request_path)
+        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match and not kindle_previewer_match and not owner_release_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
-        expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or kdp_package_review_match or kindle_previewer_match or (upload_route and request_method == "POST") else "GET"
+        expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or kdp_package_review_match or kindle_previewer_match or owner_release_match or (upload_route and request_method == "POST") else "GET"
         if request_method != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
         selected_token_env = (
-            kindle_previewer_token_env if kindle_previewer_match else
+            owner_release_token_env if owner_release_match else
+            (kindle_previewer_token_env if kindle_previewer_match else
             (kdp_package_review_token_env if kdp_package_review_match or kdp_package_download_match else
              (readiness_token_env if readiness_match else
              (kdp_build_token_env if kdp_build_match else
              (metadata_token_env if metadata_match else
              (safety_review_token_env if safety_review_match else
-                 (review_token_env if review_match else token_env))))))
+                 (review_token_env if review_match else token_env)))))))
         )
         configured_token = os.environ.get(selected_token_env, "")
         if len(configured_token) < 32:
@@ -159,6 +164,40 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
             return _response(start_response, "200 OK", reviewed)
+        if owner_release_match:
+            if owner_release_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "owner_release_not_configured"})
+            owner_id = os.environ.get(owner_release_id_env, "").strip()
+            if not 3 <= len(owner_id) <= 120:
+                return _response(start_response, "503 Service Unavailable", {"error": "owner_identity_not_configured"})
+            if environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower() != "application/json":
+                return _response(start_response, "415 Unsupported Media Type", {"error": "json_required"})
+            try:
+                body_length = int(environ.get("CONTENT_LENGTH") or "0")
+            except (TypeError, ValueError):
+                body_length = 0
+            if body_length < 1 or body_length > 8192:
+                return _response(start_response, "413 Payload Too Large", {"error": "invalid_confirmation_size"})
+            try:
+                confirmation = json.loads(environ["wsgi.input"].read(body_length).decode("utf-8"))
+            except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_confirmation_json"})
+            if not isinstance(confirmation, dict):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_confirmation_json"})
+            phrase = confirmation.get("confirmation_phrase")
+            notes = confirmation.get("notes")
+            if (phrase != "I AUTHORIZE MANUAL KDP SUBMISSION"
+                    or not isinstance(notes, str) or not 20 <= len(notes.strip()) <= 2000):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_owner_confirmation"})
+            try:
+                result = owner_release_handler(
+                    owner_release_match.group(1), owner_id, phrase, notes.strip()
+                )
+            except ValueError:
+                return _response(start_response, "400 Bad Request", {"error": "invalid_owner_confirmation"})
+            except Exception:
+                return _response(start_response, "409 Conflict", {"error": "owner_release_blocked"})
+            return _response(start_response, "200 OK", result)
         if kindle_previewer_match:
             if kindle_previewer_handler is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "kindle_previewer_not_configured"})

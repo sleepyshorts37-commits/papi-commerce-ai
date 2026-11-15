@@ -12,6 +12,7 @@ from papi_core.papi_kids_postgres_queue import (
     record_kdp_package_build,
     record_kdp_package_review,
     record_kindle_previewer_review,
+    record_kdp_owner_release_authorization,
 )
 
 
@@ -239,6 +240,89 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             )
         self.assertEqual(connection.cursor_obj.execute.call_count, 0)
 
+    def test_owner_release_authorization_requires_every_hash_bound_review(self):
+        upload_id = "PKP-UP-" + "a" * 32
+        hashes = {"interior": "1" * 64, "cover": "2" * 64, "ebook": "3" * 64}
+        manifest = {
+            "upload_id": upload_id, "package_version": 1, "spend_limit_minor": 0,
+            "pdfs": {
+                "interior": {"sha256": hashes["interior"]},
+                "cover": {"sha256": hashes["cover"]},
+            },
+            "ebook": {"sha256": hashes["ebook"]},
+        }
+        import hashlib, json
+        manifest_hash = hashlib.sha256(json.dumps(
+            manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")).hexdigest()
+        metadata = {
+            "kdp_package_reviews": {
+                f"v1:{kind}": {
+                    "approved": True, "decision": "approved", "package_version": 1,
+                    "artifact_sha256": digest,
+                } for kind, digest in hashes.items()
+            },
+            "kindle_previewer_review": {
+                "passed": True, "package_version": 1, "epub_sha256": hashes["ebook"],
+                "evidence_ref": "4" * 64, "notes": "EPUB ouvert et parcouru dans Kindle Previewer."
+            },
+            "content_safety_review": {"approved": True},
+            "kdp_listing_metadata_status": "ready_for_owner_review",
+            "kdp_listing_metadata_blockers": [],
+            "kdp_listing_metadata": {
+                "commercial_use_confirmed": True, "rights_holder": "Auteur",
+                "rights_evidence_ref": "contrat-01",
+            },
+        }
+        connection = FakeConnection(rows=[
+            ("book-uuid", metadata), (1, manifest, manifest_hash),
+        ])
+        result = record_kdp_owner_release_authorization(
+            lambda: connection, upload_id=upload_id, owner_id="owner-01",
+            confirmation_phrase="I AUTHORIZE MANUAL KDP SUBMISSION",
+            notes="Je confirme après contrôle de toutes les pièces du dossier.",
+        )
+        self.assertEqual(result["manifest_sha256"], manifest_hash)
+        self.assertTrue(result["manual_submission_only"])
+        self.assertFalse(result["kdp_upload_enabled"])
+        self.assertEqual(connection.commits, 1)
+        sql = " ".join(call.args[0] for call in connection.cursor_obj.execute.call_args_list)
+        self.assertIn("kdp_owner_release_authorizations", sql)
+
+    def test_owner_release_authorization_rejects_stale_review_and_wrong_phrase(self):
+        upload_id = "PKP-UP-" + "b" * 32
+        manifest = {
+            "upload_id": upload_id, "package_version": 1, "spend_limit_minor": 0,
+            "pdfs": {"interior": {"sha256": "1" * 64}, "cover": {"sha256": "2" * 64}},
+        }
+        import hashlib, json
+        digest = hashlib.sha256(json.dumps(
+            manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")).hexdigest()
+        metadata = {
+            "kdp_package_reviews": {},
+            "content_safety_review": {"approved": True},
+            "kdp_listing_metadata_status": "ready_for_owner_review",
+            "kdp_listing_metadata": {
+                "commercial_use_confirmed": True, "rights_holder": "Auteur",
+                "rights_evidence_ref": "contrat-01",
+            },
+        }
+        connection = FakeConnection(rows=[("book-uuid", metadata), (1, manifest, digest)])
+        with self.assertRaises(PostgresEditorialQueueError):
+            record_kdp_owner_release_authorization(
+                lambda: connection, upload_id=upload_id, owner_id="owner-01",
+                confirmation_phrase="I AUTHORIZE MANUAL KDP SUBMISSION",
+                notes="Confirmation propriétaire après inspection complète.",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+        with self.assertRaises(ValueError):
+            record_kdp_owner_release_authorization(
+                lambda: FakeConnection(), upload_id=upload_id, owner_id="owner-01",
+                confirmation_phrase="YES",
+                notes="Confirmation propriétaire après inspection complète.",
+            )
+
     def test_kindle_previewer_review_is_bound_to_latest_epub_hash(self):
         upload_id = "PKP-UP-" + "3" * 32
         digest = "c" * 64
@@ -302,6 +386,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             {"package_version": 1, "status": "generated_pending_manual_pdf_inspection"},
             {"v1:interior": {"approved": True}},
             {"passed": True, "epub_sha256": "c" * 64},
+            {"owner_id": "owner-01", "package_version": 1},
             71, "completed", 1, 5, None, None, analysis,
         )])
         connection.cursor_obj.description = [
@@ -309,7 +394,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             ("updated_at",), ("content_safety_review",), ("kdp_listing_metadata",),
             ("kdp_listing_metadata_status",), ("kdp_listing_metadata_blockers",),
             ("kdp_package_build",), ("kdp_package_reviews",),
-            ("kindle_previewer_review",), ("job_id",),
+            ("kindle_previewer_review",), ("kdp_owner_release_authorization",), ("job_id",),
             ("job_status",), ("attempts",), ("max_attempts",),
             ("available_at",), ("lease_until",), ("analysis",),
         ]
@@ -323,6 +408,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(result["kdp_package_build"]["package_version"], 1)
         self.assertTrue(result["kdp_package_reviews"]["v1:interior"]["approved"])
         self.assertTrue(result["kindle_previewer_review"]["passed"])
+        self.assertEqual(result["kdp_owner_release_authorization"]["owner_id"], "owner-01")
 
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):
