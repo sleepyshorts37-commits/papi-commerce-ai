@@ -20,5 +20,11 @@ Socle local de catalogue et de contrôle de production PAPI KIDS PUBLISHING ajou
 - Le catalogue et les commandes restent des outils locaux en lecture seule ; aucune mutation de projet n'est exposée par CLI.
 - La validation « prêt pour revue humaine » est un contrôle technique et non une garantie juridique ou une approbation Amazon.
 
-## Validation
-À compléter après lecture des résultats CI sur le SHA final exact.
+## Validation CI de l'implémentation
+- SHA testé : `fbb67d64936ea19c09fde0d044f58a44ca84b405`.
+- Workflow PAPI core tests #1691 (run `43708999011`) : succès.
+- **180 tests unitaires réussis**, dont les 14 tests PAPI KIDS.
+- Application du schéma Supabase à PostgreSQL jetable : succès.
+- Workflow documentation #738 (run `43708998975`) : succès.
+- Workflow validation registre #766 (run `43708998988`) : succès.
+- La PR reste en brouillon et non fusionnée ; aucun déploiement ni lancement réel.
