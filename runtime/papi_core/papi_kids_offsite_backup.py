@@ -16,6 +16,14 @@ class PapiKidsOffsiteBackupError(ValueError):
     """Offsite copy is not configured or verification failed."""
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _inventory(backup_dir: Path) -> list[str]:
     pairs = []
     for encrypted in sorted(backup_dir.glob("*.pgdump.aesgcm")):
@@ -28,7 +36,7 @@ def _inventory(backup_dir: Path) -> list[str]:
             raise PapiKidsOffsiteBackupError("Manifeste de sauvegarde illisible.") from exc
         if manifest.get("backup_file") != encrypted.name or manifest.get("encrypted") is not True:
             raise PapiKidsOffsiteBackupError("Manifeste non lié à la sauvegarde.")
-        digest = hashlib.sha256(encrypted.read_bytes()).hexdigest()
+        digest = _sha256(encrypted)
         if digest != manifest.get("encrypted_sha256"):
             raise PapiKidsOffsiteBackupError("SHA-256 chiffré incorrect ; copie refusée.")
         pairs.extend([encrypted.name, manifest_path.name])
@@ -65,8 +73,11 @@ def copy_encrypted_backups_offsite(
     config_raw = Path(config_value)
     if config_raw.is_symlink() or not config_raw.is_file():
         raise PapiKidsOffsiteBackupError("Fichier de configuration rclone absent ou symbolique.")
-    if stat.S_IMODE(config_raw.stat().st_mode) & 0o077:
-        raise PapiKidsOffsiteBackupError("Le fichier rclone doit être privé (mode 0600).")
+    config_stat = config_raw.stat()
+    if stat.S_IMODE(config_stat.st_mode) & 0o027:
+        raise PapiKidsOffsiteBackupError("Le fichier rclone doit être privé (mode 0600 ou 0640).")
+    if config_stat.st_uid != os.getuid() and config_stat.st_gid != os.getgid():
+        raise PapiKidsOffsiteBackupError("Le fichier rclone n'est pas lisible par l'utilisateur du conteneur.")
     executable = shutil.which(rclone_binary)
     if not executable:
         raise PapiKidsOffsiteBackupError("Binaire rclone introuvable.")
