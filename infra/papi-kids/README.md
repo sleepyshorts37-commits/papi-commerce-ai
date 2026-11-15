@@ -65,3 +65,7 @@ The WSGI app serves the mobile dashboard at `/dashboard` (and `/`) over HTTPS. T
 ## KDP listing metadata drafts
 
 `POST /api/papi-kids/manuscripts/{upload_id}/kdp-metadata` saves a versioned listing draft in PostgreSQL. Use the separate server-side `PAPI_KIDS_METADATA_TOKEN`; the editor identity comes from `PAPI_KIDS_METADATA_EDITOR_ID`. Incomplete drafts are accepted and returned with explicit blockers so the owner can complete them later. Each version is append-only, SHA-256 tracked, and does not enable KDP upload or publication.
+
+## Explicit KDP package build
+
+The iPhone dashboard exposes a build button backed by `POST /api/papi-kids/manuscripts/{upload_id}/build-kdp-package`. It requires a separate `PAPI_KIDS_KDP_BUILD_TOKEN` and `PAPI_KIDS_KDP_BUILD_ENABLED=true`; the default is false. The service reads `kdp-build-config.json` from the manuscript's private storage directory (mode 0600). That server-side JSON profile contains only the interior, cover and optional ebook build arguments; it must never contain credentials. The build runs only after the owner confirms in the dashboard and only creates local files. PDF inspection, Kindle Previewer, release gate and manual KDP submission remain mandatory.
