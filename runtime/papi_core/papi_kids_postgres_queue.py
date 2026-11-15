@@ -291,3 +291,83 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
             if callable(close):
                 close()
     return read_status
+
+
+
+def register_illustration_asset(
+    connection_factory: Callable[[], Any], metadata: dict[str, Any]
+) -> dict[str, Any]:
+    """Persist asset metadata and its initial audit event in one DB transaction."""
+    required = ("asset_id", "upload_id", "page_number", "version", "sha256",
+                "storage_key", "media_type", "width_px", "height_px")
+    if not isinstance(metadata, dict) or any(key not in metadata for key in required):
+        raise ValueError("Métadonnées d'illustration incomplètes.")
+    if not _UPLOAD_ID.fullmatch(str(metadata["upload_id"])) or not _SHA256.fullmatch(str(metadata["sha256"])):
+        raise ValueError("Référence ou empreinte d'illustration invalide.")
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "select book_id from papi_kids_private.books where upload_id = %s for update",
+            (metadata["upload_id"],),
+        )
+        book = cursor.fetchone()
+        if not book:
+            raise PostgresEditorialQueueError("Livre parent introuvable.")
+        book_id = book[0]
+        cursor.execute(
+            """
+            insert into papi_kids_private.illustration_assets(
+                asset_id, book_id, page_number, version, source_sha256, storage_key,
+                media_type, width_px, height_px, source_provider, model_id,
+                prompt_sha256, generation_ref, metadata
+            ) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)
+            on conflict (source_sha256) do nothing
+            returning asset_id
+            """,
+            (
+                metadata["asset_id"], book_id, metadata["page_number"], metadata["version"],
+                metadata["sha256"], metadata["storage_key"], metadata["media_type"],
+                metadata["width_px"], metadata["height_px"], metadata.get("source_provider"),
+                metadata.get("model_id"), metadata.get("prompt_sha256"),
+                metadata.get("generation_ref"),
+                json.dumps({"review_status": "pending_review", "human_approval_required": True}),
+            ),
+        )
+        inserted = cursor.fetchone()
+        if inserted:
+            asset_id = inserted[0]
+            cursor.execute(
+                """insert into papi_kids_private.illustration_review_events
+                    (asset_id, event_type, actor, details)
+                    values (%s, 'uploaded', 'papi-kids-intake', %s::jsonb)""",
+                (asset_id, json.dumps({"upload_id": metadata["upload_id"], "page_number": metadata["page_number"]})),
+            )
+        else:
+            cursor.execute(
+                """select asset_id, book_id, page_number, version
+                     from papi_kids_private.illustration_assets where source_sha256 = %s""",
+                (metadata["sha256"],),
+            )
+            existing = cursor.fetchone()
+            if not existing or (existing[1], existing[2], existing[3]) != (
+                book_id, metadata["page_number"], metadata["version"]
+            ):
+                raise PostgresEditorialQueueError("Collision de version ou de contenu d'illustration.")
+            asset_id = existing[0]
+        connection.commit()
+        return {"asset_id": asset_id, "book_id": str(book_id), "review_status": "pending_review"}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()
+
+
+def build_postgres_asset_registrar(connection_factory: Callable[[], Any]) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Build the server-side asset registrar callback."""
+    def register(metadata: dict[str, Any]) -> dict[str, Any]:
+        return register_illustration_asset(connection_factory, metadata)
+    return register
