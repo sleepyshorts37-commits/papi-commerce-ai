@@ -66,7 +66,7 @@ def analyze_queued_manuscript(storage_root: str | Path, upload_id: str) -> dict[
     if manuscript_name not in {"manuscript.md", "manuscript.txt"}:
         raise EditorialQueueError("Nom de manuscrit stocké invalide.")
     try:
-        source = (folder / manuscript_name).read_text(encoding="utf-8")
+        source = (folder / manuscript_name).read_bytes().decode("utf-8")
     except OSError as exc:
         raise EditorialQueueError("Manuscrit privé inaccessible.") from exc
     headings = [match.group(2).strip() for match in _HEADING.finditer(source)]
