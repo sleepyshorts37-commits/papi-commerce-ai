@@ -188,8 +188,9 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
                 "notes": "EPUB contrôlé dans le lecteur, navigation et illustrations vérifiées.",
             }
             manifest["kindle_previewer_review"] = {
-                "passed": True, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
-                "evidence_ref": "kindle-preview-01", "epub_sha256": digest,
+                "passed": True, "package_version": 1, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "d" * 64, "epub_sha256": digest,
+                "notes": "Kindle Previewer vérifié, navigation et rendu contrôlés.",
             }
             result = evaluate_kdp_release_gate(
                 book_id="PKP-0001", manifest=manifest, private_root=root,
@@ -210,8 +211,9 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
                 "preflight": "passed", "format": "EPUB 3 fixed-layout",
             }
             manifest["kindle_previewer_review"] = {
-                "passed": True, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
-                "evidence_ref": "kindle-preview-01", "epub_sha256": "0" * 64,
+                "passed": True, "package_version": 1, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "d" * 64, "epub_sha256": "0" * 64,
+                "notes": "Kindle Previewer vérifié, navigation et rendu contrôlés.",
             }
             result = evaluate_kdp_release_gate(
                 book_id="PKP-0001", manifest=manifest, private_root=root,
