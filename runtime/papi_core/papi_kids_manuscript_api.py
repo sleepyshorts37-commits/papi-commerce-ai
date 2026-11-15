@@ -66,6 +66,9 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         review_token_env: str = "PAPI_KIDS_REVIEW_TOKEN",
         safety_review_token_env: str = "PAPI_KIDS_SAFETY_REVIEW_TOKEN",
         safety_review_handler: Callable[[str, str, str, str, str], dict[str, Any]] | None = None,
+        metadata_token_env: str = "PAPI_KIDS_METADATA_TOKEN",
+        metadata_saver: Callable[[str, dict[str, Any], str], dict[str, Any]] | None = None,
+        metadata_editor_id_env: str = "PAPI_KIDS_METADATA_EDITOR_ID",
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
         library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
@@ -79,15 +82,20 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         status_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})", request_path)
         review_match = re.fullmatch(r"/api/papi-kids/assets/(PKP-ASSET-[0-9a-f]{24})/review", request_path)
         safety_review_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/safety-review", request_path)
-        if not upload_route and not status_match and not review_match and not safety_review_match:
+        metadata_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-metadata", request_path)
+        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
-        expected_method = "POST" if review_match or safety_review_match or (upload_route and request_method == "POST") else "GET"
+        expected_method = "POST" if review_match or safety_review_match or metadata_match or (upload_route and request_method == "POST") else "GET"
         if request_method != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
-        selected_token_env = safety_review_token_env if safety_review_match else (review_token_env if review_match else token_env)
+        selected_token_env = (
+            metadata_token_env if metadata_match else
+            (safety_review_token_env if safety_review_match else
+             (review_token_env if review_match else token_env))
+        )
         configured_token = os.environ.get(selected_token_env, "")
         if len(configured_token) < 32:
             return _response(start_response, "503 Service Unavailable", {"error": "server_not_configured"})
@@ -132,6 +140,36 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
             return _response(start_response, "200 OK", reviewed)
+        if metadata_match:
+            if metadata_saver is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "metadata_saver_not_configured"})
+            editor_id = os.environ.get(metadata_editor_id_env, "")
+            if len(editor_id.strip()) < 3 or len(editor_id.strip()) > 120:
+                return _response(start_response, "503 Service Unavailable", {"error": "metadata_editor_not_configured"})
+            if environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower() != "application/json":
+                return _response(start_response, "415 Unsupported Media Type", {"error": "json_required"})
+            try:
+                metadata_length = int(environ.get("CONTENT_LENGTH") or "0")
+            except (TypeError, ValueError):
+                metadata_length = 0
+            if metadata_length < 1 or metadata_length > 20000:
+                return _response(start_response, "413 Payload Too Large", {"error": "invalid_metadata_size"})
+            try:
+                metadata_payload = json.loads(environ["wsgi.input"].read(metadata_length).decode("utf-8"))
+            except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_metadata_json"})
+            metadata = metadata_payload.get("metadata") if isinstance(metadata_payload, dict) else None
+            if not isinstance(metadata, dict):
+                return _response(start_response, "400 Bad Request", {"error": "metadata_object_required"})
+            try:
+                saved = metadata_saver(
+                    metadata_match.group(1), metadata, editor_id.strip()
+                )
+            except ValueError:
+                return _response(start_response, "400 Bad Request", {"error": "invalid_metadata"})
+            except Exception:
+                return _response(start_response, "409 Conflict", {"error": "metadata_save_rejected"})
+            return _response(start_response, "200 OK", saved)
         if safety_review_match:
             if safety_review_handler is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "safety_review_not_configured"})
