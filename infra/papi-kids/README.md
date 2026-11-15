@@ -45,3 +45,7 @@ The worker processes structural editorial analysis only. Image/LLM generation re
 ## Manual encrypted database backup
 
 A separate one-shot runner is available under the Compose `backup` profile. It is disabled by default. Configure `PAPI_KIDS_BACKUP_ENABLED=true`, a private 0700 backup volume, `PAPI_KIDS_BACKUP_KEY_B64` (32 random bytes, Base64), and a key ID only on the server. Build and run manually with `docker compose --profile backup run --rm papi-kids-backup`. The runner uses TLS PostgreSQL, encrypts the pg_dump archive with AES-256-GCM, removes its plaintext staging file, and prints only non-sensitive file names. No schedule or offsite transfer is configured; copy encrypted artifacts to a separately secured offsite destination and verify the manifest.
+
+## Optional offsite copy
+
+A separate `offsite` Compose profile copies only encrypted `.pgdump.aesgcm` files and their JSON manifests using rclone, then runs a checksum verification. It uses `rclone copy`, never `sync`, so it does not delete remote files. Keep the rclone configuration outside the repository, mode 0600, and mount it through `PAPI_KIDS_RCLONE_CONFIG_FILE`. Set `PAPI_KIDS_OFFSITE_ENABLED=true` and a remote such as `drive:papi-kids-backups` only after configuring and testing that remote. Run manually with `docker compose --profile offsite run --rm papi-kids-offsite`. This is not scheduled automatically.
