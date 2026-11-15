@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "infra/supabase/migrations/013_shared_provider_quota_ledger.sql"
 CONTRACT_TEST = ROOT / "infra/supabase/tests/013_shared_provider_quota_ledger.sql"
+AUDIT_QUERY = ROOT / "scripts/audit_shared_quota_ledger.sql"
 DAY = "2099-01-01"
 DAILY_LIMIT = 100
 ESTIMATE = 10
@@ -67,6 +68,12 @@ def main() -> int:
         sys.stderr.write(contract.stdout + contract.stderr)
         return contract.returncode
     print("OK: contrat SQL (idempotence, dépassement, commit, incertitude).")
+
+    audit = run_psql(database_url, "", file=AUDIT_QUERY)
+    if audit.returncode:
+        sys.stderr.write(audit.stdout + audit.stderr)
+        return audit.returncode
+    print("OK: requête d’audit de rapprochement (lecture seule).")
 
     for agents in (10, 20, 50):
         account = f"mission106-{agents}"
