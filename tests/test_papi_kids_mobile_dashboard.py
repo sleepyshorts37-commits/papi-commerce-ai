@@ -28,6 +28,9 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("Approuver", html)
         self.assertIn("/review", html)
         self.assertIn("replaceChildren", html)
+        self.assertIn("Mes livres", html)
+        self.assertIn("/api/papi-kids/manuscripts", html)
+        self.assertIn("Actualiser ma bibliothèque", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(

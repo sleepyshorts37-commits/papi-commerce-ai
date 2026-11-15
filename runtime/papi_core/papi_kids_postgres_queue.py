@@ -470,3 +470,55 @@ def build_postgres_asset_reviewer(connection_factory: Callable[[], Any]) -> Call
             reviewer_id=reviewer_id, notes=notes,
         )
     return review
+
+
+
+def build_postgres_library_reader(connection_factory: Callable[[], Any]) -> Callable[[], list[dict[str, Any]]]:
+    """Return a bounded list of book summaries without manuscript contents or storage paths."""
+    def read_library() -> list[dict[str, Any]]:
+        connection = connection_factory()
+        try:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                select b.upload_id,
+                       coalesce(nullif(b.metadata->>'title', ''), b.original_filename) as display_title,
+                       b.status as book_status, b.created_at, b.updated_at,
+                       j.status as job_status, j.attempts, j.max_attempts,
+                       count(a.asset_id) as illustration_count,
+                       count(a.asset_id) filter (where a.review_status = 'approved') as approved_illustration_count
+                  from papi_kids_private.books b
+                  left join papi_kids_private.editorial_jobs j on j.book_id = b.book_id
+                  left join papi_kids_private.illustration_assets a on a.book_id = b.book_id
+                 group by b.book_id, j.job_id
+                 order by b.updated_at desc
+                 limit 50
+                """
+            )
+            rows = cursor.fetchall()
+            columns = [item[0] for item in cursor.description]
+            books = []
+            for row in rows:
+                values = dict(zip(columns, row))
+                books.append({
+                    "upload_id": values["upload_id"],
+                    "title": values["display_title"],
+                    "book_status": values["book_status"],
+                    "job_status": values["job_status"],
+                    "attempts": values["attempts"] or 0,
+                    "max_attempts": values["max_attempts"] or 0,
+                    "illustration_count": values["illustration_count"],
+                    "approved_illustration_count": values["approved_illustration_count"],
+                    "created_at": values["created_at"].isoformat() if values.get("created_at") else None,
+                    "updated_at": values["updated_at"].isoformat() if values.get("updated_at") else None,
+                })
+            connection.commit()
+            return books
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            close = getattr(connection, "close", None)
+            if callable(close):
+                close()
+    return read_library
