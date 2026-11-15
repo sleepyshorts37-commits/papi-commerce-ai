@@ -71,6 +71,67 @@ class PapiKidsKDPPrintPackageTests(unittest.TestCase):
         self.assertFalse(result["publication_performed"])
         self.assertEqual((Path(result["package_dir"]) / "package-manifest.json").stat().st_mode & 0o777, 0o600)
 
+    def ebook_args(self):
+        return {
+            "title": "Nia", "author": "Auteur confirmé", "language": "fr",
+            "identifier": "urn:papi:PKP-0001",
+            "modified_at": "2026-11-15T12:00:00Z",
+            "pages": self.pages,
+            "page_assets": [{"review_status": "approved"} for _ in range(24)],
+            "cover_asset": {"review_status": "approved"},
+            "canvas_width_px": 9, "canvas_height_px": 9, "font_path": "/font.ttf",
+        }
+
+    def test_builds_print_and_ebook_together_with_shared_manifest(self):
+        interior, cover = self.builders()
+        def ebook(root, output, upload_id, **kwargs):
+            Path(output).write_bytes(b"PK\x03\x04fake-epub")
+            return {"output_path": str(output), "page_count": 24}
+        with patch("papi_core.papi_kids_kdp_package.build_interior_pdf", side_effect=interior), patch(
+            "papi_core.papi_kids_kdp_package.build_kdp_cover_pdf", side_effect=cover
+        ), patch(
+            "papi_core.papi_kids_kdp_package.build_kdp_fixed_layout_epub", side_effect=ebook
+        ), patch(
+            "papi_core.papi_kids_kdp_package.validate_epub_structure",
+            return_value={"fixed_layout": True, "kindle_previewer_passed": False}
+        ):
+            result = build_kdp_print_package(
+                storage_root=self.root, upload_id=self.upload,
+                interior_args=self.interior_args, cover_args=self.cover_args,
+                ebook_args=self.ebook_args(), ebook_required=True,
+            )
+        manifest = json.loads(Path(result["manifest_path"]).read_text())
+        self.assertTrue(manifest["ebook_required"])
+        self.assertEqual(manifest["ebook"]["page_count"], 24)
+        self.assertEqual(manifest["ebook"]["preflight"], "pending_kindle_previewer")
+        self.assertTrue((Path(result["package_dir"]) / "book.epub").is_file())
+        self.assertFalse(result["kdp_upload_ready"])
+
+    def test_required_ebook_without_assets_blocks_package(self):
+        interior, cover = self.builders()
+        with patch("papi_core.papi_kids_kdp_package.build_interior_pdf") as build:
+            with self.assertRaises(PapiKidsKDPPrintPackageError):
+                build_kdp_print_package(
+                    storage_root=self.root, upload_id=self.upload,
+                    interior_args=self.interior_args, cover_args=self.cover_args,
+                    ebook_required=True,
+                )
+            build.assert_not_called()
+
+    def test_ebook_page_text_must_match_print_interior(self):
+        interior, cover = self.builders()
+        ebook = self.ebook_args()
+        ebook["pages"] = [dict(page) for page in self.pages]
+        ebook["pages"][0]["text"] = "Texte différent"
+        with patch("papi_core.papi_kids_kdp_package.build_interior_pdf") as build:
+            with self.assertRaises(PapiKidsKDPPrintPackageError):
+                build_kdp_print_package(
+                    storage_root=self.root, upload_id=self.upload,
+                    interior_args=self.interior_args, cover_args=self.cover_args,
+                    ebook_args=ebook,
+                )
+            build.assert_not_called()
+
     def test_unapproved_asset_blocks_before_any_pdf_builder(self):
         interior, cover = self.builders()
         assets = [dict(item) for item in self.assets]
