@@ -7,6 +7,8 @@ from pathlib import Path
 import reportlab
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
 
 from papi_core.papi_kids_kdp_cover import KDPCoverError, build_kdp_full_wrap_cover_pdf
 
@@ -43,7 +45,9 @@ class PapiKidsKDPCoverTests(unittest.TestCase):
                 "target_rect_in": [0, 0, 3, 3],
             })
         template = Path(root) / "official-kdp-template.pdf"
-        template.write_bytes(b"%PDF-1.7\nKDP TEMPLATE FIXTURE\n")
+        template_pdf = canvas.Canvas(str(template), pagesize=(17.5 * inch, 8.75 * inch), invariant=1)
+        template_pdf.showPage()
+        template_pdf.save()
         template_hash = hashlib.sha256(template.read_bytes()).hexdigest()
         layout = {
             "source_template_sha256": template_hash,
