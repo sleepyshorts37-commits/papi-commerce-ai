@@ -8,6 +8,7 @@ from papi_core.papi_kids_postgres_queue import (
     complete_editorial_job,
     fail_editorial_job,
     record_manuscript_safety_review,
+    record_kdp_listing_metadata,
 )
 
 
@@ -134,6 +135,35 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             )
         self.assertEqual(connection.rollbacks, 1)
 
+    def test_kdp_listing_metadata_draft_is_versioned_and_persisted_even_when_incomplete(self):
+        upload_id = "PKP-UP-" + "e" * 32
+        connection = FakeConnection(rows=[("book-uuid",), (3,)])
+        metadata = {
+            "title": "Nia et la rivière aux mille reflets",
+            "language": "fr",
+        }
+        result = record_kdp_listing_metadata(
+            lambda: connection, upload_id=upload_id,
+            metadata=metadata, editor_id="owner-01",
+        )
+        self.assertEqual(result["version"], 3)
+        self.assertEqual(result["status"], "incomplete")
+        self.assertGreater(result["blocker_count"], 0)
+        self.assertEqual(len(result["metadata_sha256"]), 64)
+        self.assertEqual(connection.commits, 1)
+        statements = " ".join(call.args[0] for call in connection.cursor_obj.execute.call_args_list)
+        self.assertIn("kdp_listing_metadata_versions", statements)
+        self.assertIn("kdp_listing_metadata_status", statements)
+
+    def test_kdp_listing_metadata_rejects_invalid_editor_identity_before_database(self):
+        connection = FakeConnection()
+        with self.assertRaises(ValueError):
+            record_kdp_listing_metadata(
+                lambda: connection, upload_id="PKP-UP-" + "f" * 32,
+                metadata={"title": "Nia"}, editor_id="x",
+            )
+        self.assertEqual(connection.cursor_obj.execute.call_count, 0)
+
     def test_library_reader_returns_bounded_sanitized_book_summaries(self):
         connection = FakeConnection()
         connection.cursor_obj.fetchall.return_value = [
@@ -159,11 +189,13 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         review = {"approved": True, "reviewer_id": "owner-01", "manuscript_sha256": "b" * 64}
         connection = FakeConnection(rows=[(
             "book-uuid", upload_id, "needs_editor_review", None, None, review,
+            {"title": "Nia"}, "incomplete",
             71, "completed", 1, 5, None, None, analysis,
         )])
         connection.cursor_obj.description = [
             ("book_id",), ("upload_id",), ("book_status",), ("created_at",),
-            ("updated_at",), ("content_safety_review",), ("job_id",),
+            ("updated_at",), ("content_safety_review",), ("kdp_listing_metadata",),
+            ("kdp_listing_metadata_status",), ("job_id",),
             ("job_status",), ("attempts",), ("max_attempts",),
             ("available_at",), ("lease_until",), ("analysis",),
         ]
@@ -171,6 +203,8 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         result = build_postgres_status_reader(lambda: connection)(upload_id)
         self.assertEqual(result["job"]["analysis"]["child_safety_screening"]["issue_count"], 2)
         self.assertTrue(result["content_safety_review"]["approved"])
+        self.assertEqual(result["kdp_listing_metadata"]["title"], "Nia")
+        self.assertEqual(result["kdp_listing_metadata_status"], "incomplete")
 
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):

@@ -174,6 +174,56 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
             "Le passage a été vérifié et validé par un adulte.",
         )])
 
+    def test_kdp_metadata_endpoint_uses_separate_token_and_server_editor(self):
+        upload_id = "PKP-UP-" + "a" * 32
+        received = []
+        def saver(upload, metadata, editor):
+            received.append((upload, metadata, editor))
+            return {"upload_id": upload, "status": "incomplete", "blocker_count": 4}
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name, metadata_saver=saver,
+        )
+        metadata = {"title": "Nia et la rivière", "language": "fr"}
+        body = json.dumps({"metadata": metadata}).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kdp-metadata",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_METADATA_TOKEN": TOKEN,
+            "PAPI_KIDS_METADATA_EDITOR_ID": "owner-01",
+        }, clear=True):
+            payload = json.loads(b"".join(app(environ, start_response)))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertEqual(payload["status"], "incomplete")
+        self.assertEqual(received, [(upload_id, metadata, "owner-01")])
+
+    def test_metadata_endpoint_does_not_reuse_safety_review_token(self):
+        upload_id = "PKP-UP-" + "b" * 32
+        body = json.dumps({"metadata": {"title": "Nia"}}).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kdp-metadata",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_SAFETY_REVIEW_TOKEN": TOKEN,
+            "PAPI_KIDS_METADATA_EDITOR_ID": "owner-01",
+        }, clear=True):
+            b"".join(self.app(environ, start_response))
+        self.assertEqual(captured["status"], "503 Service Unavailable")
+
     def test_safety_review_token_is_distinct_from_illustration_review_token(self):
         upload_id = "PKP-UP-" + "b" * 32
         body = json.dumps({
