@@ -41,7 +41,6 @@ class ImageProductionEngine:
         for planned in jobs:
             existing = self.asset_center.get(
                 book_id=planned.book_id, page_id=planned.page_id,
-                page_number=planned.page_number,
                 idempotency_key=planned.idempotency_key,
             )
             if existing is not None:
