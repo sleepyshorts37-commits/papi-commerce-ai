@@ -296,6 +296,25 @@ statusButton.addEventListener("click",async()=>{
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
+async function downloadKdpSubmissionBundle(uploadId,tokenInput,button){
+ const token=tokenInput.value;
+ if(!token){ownerReleaseSection.insertAdjacentText("afterbegin","Jeton propriétaire requis pour le téléchargement.");return;}
+ button.disabled=true;
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(uploadId)+"/kdp-submission-bundle",{
+   method:"GET",headers:{"Authorization":"Bearer "+token},credentials:"same-origin"
+  });
+  if(!response.ok)throw new Error("submission_bundle_not_ready");
+  const blob=await response.blob(),url=URL.createObjectURL(blob);
+  const link=document.createElement("a");link.href=url;
+  link.download="papi-kids-kdp-submission.zip";
+  document.body.appendChild(link);link.click();link.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+  tokenInput.value="";
+  statusResult.textContent="Dossier ZIP téléchargé. La soumission Amazon KDP reste manuelle.";
+ }catch(error){ownerReleaseSection.insertAdjacentText("afterbegin","ZIP indisponible : "+String(error.message||error));}
+ finally{button.disabled=false;}
+}
 function renderOwnerFinalAuthorization(packageBuild,authorization,uploadId){
  ownerReleaseSection.replaceChildren();
  if(!packageBuild||!packageBuild.package_version)return;
@@ -309,7 +328,13 @@ function renderOwnerFinalAuthorization(packageBuild,authorization,uploadId){
   ownerReleaseSection.appendChild(state);
   const note=document.createElement("p");
   note.textContent="Cette autorisation concerne uniquement une soumission manuelle. Aucun téléversement ni publication automatique.";
-  ownerReleaseSection.appendChild(note);return;
+  ownerReleaseSection.appendChild(note);
+  const bundleToken=document.createElement("input");bundleToken.type="password";
+  bundleToken.autocomplete="off";bundleToken.placeholder="Jeton propriétaire pour télécharger le ZIP";
+  const bundleButton=document.createElement("button");bundleButton.type="button";
+  bundleButton.textContent="Télécharger le dossier KDP (ZIP)";
+  bundleButton.addEventListener("click",()=>downloadKdpSubmissionBundle(uploadId,bundleToken,bundleButton));
+  ownerReleaseSection.append(bundleToken,bundleButton);return;
  }
  const warning=document.createElement("p");
  warning.textContent="Dernière étape : confirmer personnellement l'autorisation de soumettre manuellement le package KDP. Les prérequis seront revérifiés côté serveur.";
