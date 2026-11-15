@@ -17,7 +17,7 @@ class FakeImageAdapter:
             return self.results
         return [
             {"status": "generated", "image_bytes": b"png-" + job["idempotency_key"].encode(),
-             "mime_type": "image/png"}
+             "content_type": "image/png"}
             for job in jobs
         ]
 
