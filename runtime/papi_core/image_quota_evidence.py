@@ -55,8 +55,9 @@ def validate_quota_evidence(
     if evidence["model_id"] != model_id:
         raise QuotaEvidenceError("L'attestation ne correspond pas au modèle demandé.")
     parsed_url = urlparse(evidence["source_url"]) if isinstance(evidence["source_url"], str) else None
-    if parsed_url is None or parsed_url.scheme != "https" or not parsed_url.netloc:
-        raise QuotaEvidenceError("Source officielle HTTPS obligatoire pour la preuve.")
+    if (parsed_url is None or parsed_url.scheme != "https"
+            or parsed_url.hostname not in {"developers.cloudflare.com"}):
+        raise QuotaEvidenceError("Source officielle Cloudflare HTTPS obligatoire pour la preuve.")
     if not isinstance(evidence["evidence_ref"], str) or not evidence["evidence_ref"].strip():
         raise QuotaEvidenceError("Référence de preuve manquante.")
     current = now or datetime.now(timezone.utc)
