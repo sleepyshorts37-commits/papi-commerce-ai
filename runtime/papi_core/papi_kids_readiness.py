@@ -16,6 +16,7 @@ REQUIRED_TABLES = {
     "kdp_package_reviews",
     "kindle_previewer_reviews",
     "kdp_owner_release_authorizations",
+    "kdp_submission_lifecycle_events",
 }
 
 
