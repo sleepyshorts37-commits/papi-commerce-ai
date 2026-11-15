@@ -1,12 +1,13 @@
-# Mission 172 — Service de fabrication KDP à déclenchement explicite
+# Mission 172 — Déclenchement explicite de fabrication KDP depuis l'iPhone
 
 ## Livrable
-- Service lit un profil JSON privé \`kdp-build-config.json\` dans le dossier du manuscrit.
-- Profil limité à 256 Kio, fichier non symbolique, permissions 0600.
-- Rejette propriétés inconnues, secrets, tokens, chemins d'exécution et identifiants contrôlés.
-- Exécute l'orchestrateur atomique broché + ebook uniquement après appel explicite du service.
-- Retourne le manifeste et les chemins privés ; n'autorise jamais l'upload ou la publication.
-- Tests offline sur profil absent, permissions, secrets, propriétés inconnues et invocation.
+- Service de fabrication lit un profil \`kdp-build-config.json\` privé par manuscrit, mode 0600, max 256 Kio.
+- Rejette profils avec secrets/tokens, champs inconnus ou chemins contrôlés.
+- Endpoint HTTPS \`POST /api/papi-kids/manuscripts/{upload_id}/build-kdp-package\`.
+- Jeton distinct \`PAPI_KIDS_KDP_BUILD_TOKEN\` et drapeau serveur \`PAPI_KIDS_KDP_BUILD_ENABLED=false\` par défaut.
+- Exige un corps JSON avec \`confirm: true\` et une confirmation explicite dans le tableau de bord.
+- Utilise l'orchestrateur atomique broché + ebook ; retourne les chemins/manifeste, sans upload ni publication.
+- Bouton iPhone ajouté, jeton effacé après succès.
 
-## Mise en service
-Le profil doit être créé côté serveur par un opérateur ou un processus de mise en page approuvé. Il contient uniquement les arguments de fabrication (positions, images approuvées, gabarit KDP, police, paramètres de coupe). Aucun profil ni secret n'est envoyé depuis le navigateur.
+## Limites opérationnelles
+Le profil serveur doit être préparé avec les illustrations approuvées, le gabarit officiel KDP, les zones de texte, les polices et les paramètres d'impression. Aucun profil réel n'est installé, aucune génération réelle ni déploiement n'a été effectué.
