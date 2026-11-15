@@ -67,7 +67,7 @@ def validate_reconciliation_report(report: Any) -> None:
             raise IdentityReconciliationReportContractError("Identité d'écart invalide.")
         if not isinstance(code, str) or not code:
             raise IdentityReconciliationReportContractError("Code d'écart invalide.")
-        if severity not in {"critical", "high"}:
+        if not isinstance(severity, str) or severity not in {"critical", "high"}:
             raise IdentityReconciliationReportContractError("Sévérité d'écart invalide.")
         if not isinstance(message, str) or not message:
             raise IdentityReconciliationReportContractError("Message d'écart invalide.")
