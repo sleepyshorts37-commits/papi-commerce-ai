@@ -42,7 +42,8 @@
 - [x] Ajouter un générateur local de kits de production vierges : brief, canevas de manuscrit, métadonnées, checklist et rapport qualité initial (Mission 74 ; 187 tests et trois workflows CI réussis sur le SHA de code testé 7bfc392e ; les commits suivants n'ont modifié que le rapport et la roadmap).
 - [ ] Construire les outils de rédaction/assemblage des manuscrits, illustrations originales, intérieurs PDF, couvertures et exports finaux.
 - [x] Définir cinq concepts originaux et leurs plans éditoriaux détaillés (Mission 75 ; dossier `docs/MISSION-75-PILOT-CATALOG.md`). Aucun manuscrit final ni fichier prêt à publier n'est revendiqué.
-- [ ] Rédiger les cinq manuscrits, produire les illustrations et faire contrôler indépendamment chaque fichier.
+- [x] Rédiger une première version complète du manuscrit PKP-0001 (24 pages narratives) et son brief d'illustration (Mission 76 ; en attente de relecture, droits et tests de lecture).
+- [ ] Rédiger les quatre autres manuscrits, produire les illustrations originales et faire contrôler indépendamment chaque fichier.
 - [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
 - [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
 - [ ] Réaliser le premier lancement manuel contrôlé ; aucun agent, compte ou publication externe n'est activé automatiquement.
@@ -61,6 +62,7 @@
 - [x] Ajouter les premiers outils locaux de catalogue, briefs vierges, dossiers de fichiers et contrôles initiaux (Missions 73–74).
 - [ ] Compléter les outils de rédaction, illustrations, mise en page PDF, coûts et rapports.
 - [x] Définir le lot éditorial de cinq concepts et plans (Mission 75 ; sans étude de marché validée ni contenu final).
+- [x] Produire une première version manuscrite du pilote PKP-0001 et un brief d'illustration (Mission 76 ; pas encore de maquette ni de fichiers prêts à publier).
 - [ ] Réaliser un pilote complet de livre original et vérifier les exigences KDP, l'éligibilité depuis le Sénégal et les moyens de versement.
 - [ ] Obtenir une validation humaine explicite avant toute publication ou promotion externe.
 - [ ] Tester les intégrations officielles et l'automatisation contrôlée après revue de sécurité.
