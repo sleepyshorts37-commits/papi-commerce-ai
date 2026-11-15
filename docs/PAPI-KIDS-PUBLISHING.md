@@ -113,3 +113,24 @@ Aucun agent ne peut s'accorder de nouvelles permissions, contourner un refus, pa
 **Étape 5 — Automatisation contrôlée :** envisager les intégrations officielles et les tâches récurrentes après revue de sécurité, tests reproductibles, permissions minimales et procédure d'arrêt.
 
 Aucune étape ultérieure n'est réputée accomplie simplement parce qu'elle figure dans cette feuille de route.
+
+
+## Socle opérationnel local — Mission 73
+
+Le dépôt comprend maintenant un catalogue JSON versionné et des contrôles locaux en lecture seule :
+- identifiants uniques de livres, langues, tranches d'âge, formats et étapes éditoriales ;
+- suivi séparé des contrôles de droits, de qualité et de conformité KDP ;
+- inventaire des pièces attendues selon le format : manuscrit, intérieur PDF et couverture PDF pour le broché, métadonnées et rapport qualité ;
+- vérification des chemins, refus des liens symboliques, limite de taille et contrôle SHA-256 des fichiers ;
+- contrôle de préparation d'un livre et rapport du portefeuille.
+
+Commandes disponibles :
+- `PYTHONPATH=runtime python -m papi_core kids-validate`
+- `PYTHONPATH=runtime python -m papi_core kids-report`
+- `PYTHONPATH=runtime python -m papi_core kids-check PKP-XXXX`
+
+Ces commandes n'écrivent pas dans le catalogue et ne contactent aucun service. La porte de contrôle peut déclarer un dossier prêt pour revue humaine ; elle ne soumet ni ne publie un livre. Le catalogue est initialisé vide : aucun livre pilote n'est présenté comme terminé.
+
+## Priorité du premier lancement
+
+PAPI KIDS PUBLISHING est le premier département commercial à préparer. Les cinq premiers titres constituent le lot pilote cible, pas une promesse de publication automatique. Chaque titre doit passer les contrôles de droits, qualité, conformité de plateforme et approbation humaine. L'éligibilité Amazon KDP depuis le Sénégal, les modalités de versement et les conditions en vigueur restent à vérifier avant toute soumission.
