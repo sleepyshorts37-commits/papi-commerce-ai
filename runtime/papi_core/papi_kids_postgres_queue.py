@@ -255,6 +255,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                        b.metadata->'content_safety_review' as content_safety_review,
                        b.metadata->'kdp_listing_metadata' as kdp_listing_metadata,
                        b.metadata->>'kdp_listing_metadata_status' as kdp_listing_metadata_status,
+                       b.metadata->'kdp_listing_metadata_blockers' as kdp_listing_metadata_blockers,
                        j.job_id, j.status as job_status, j.attempts, j.max_attempts,
                        j.available_at, j.lease_until, j.payload->'analysis' as analysis
                   from papi_kids_private.books b
@@ -309,6 +310,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "content_safety_review": values.get("content_safety_review"),
                 "kdp_listing_metadata": values.get("kdp_listing_metadata"),
                 "kdp_listing_metadata_status": values.get("kdp_listing_metadata_status"),
+                "kdp_listing_metadata_blockers": values.get("kdp_listing_metadata_blockers") or [],
                 "illustrations": illustrations,
             }
         except Exception:
@@ -712,11 +714,13 @@ def record_kdp_listing_metadata(
                   set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
                       'kdp_listing_metadata', %s::jsonb,
                       'kdp_listing_metadata_status', %s,
-                      'kdp_listing_metadata_sha256', %s
+                      'kdp_listing_metadata_sha256', %s,
+                      'kdp_listing_metadata_blockers', %s::jsonb
                   ),
                   updated_at = now()
                 where book_id = %s""",
-            (canonical, validation["status"], metadata_sha256, book_id),
+            (canonical, validation["status"], metadata_sha256,
+             json.dumps(validation["blockers"], ensure_ascii=False), book_id),
         )
         connection.commit()
         return {

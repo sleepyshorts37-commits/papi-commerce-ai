@@ -82,7 +82,11 @@ h2{font-size:18px;margin:0 0 12px}.muted{color:#64748b;font-size:13px}
 .progress{height:9px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin:12px 0 5px}
 .progress span{display:block;height:100%;background:#2563eb;width:0}
 input,button,textarea{font:inherit}input[type=file]{width:100%;padding:12px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc}
+label{display:block;font-size:13px;font-weight:650;margin:12px 0 5px}
+input:not([type=checkbox]):not([type=file]),select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:white}
+input[type=checkbox]{width:auto;min-height:18px}
 textarea{width:100%;min-height:88px;padding:10px;border:1px solid #cbd5e1;border-radius:9px}
+#kdp-metadata-result{overflow-wrap:anywhere}
 .safety-issue{border:1px solid #fbbf24;background:#fffbeb;padding:10px;border-radius:10px;margin:8px 0}
 .safety-issue strong{font-size:12px}.safety-issue p{font-size:13px;margin:5px 0}
 .safety-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -135,6 +139,36 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <label for="safety-review-token">Jeton distinct de revue sécurité</label>
 <input id="safety-review-token" type="password" autocomplete="off" placeholder="Jeton sécurité côté serveur">
 <div id="safety-review-list" aria-live="polite"></div>
+<hr>
+<h2>Fiche commerciale Amazon KDP</h2>
+<p class="muted">Complétez les champs connus. Les champs manquants restent explicitement bloquants ; aucune donnée commerciale n'est inventée.</p>
+<label for="metadata-token">Jeton distinct des métadonnées KDP</label>
+<input id="metadata-token" type="password" autocomplete="off" placeholder="Jeton KDP côté serveur">
+<label for="kdp-title">Titre</label><input id="kdp-title" type="text" maxlength="200">
+<label for="kdp-author">Auteur</label><input id="kdp-author" type="text" maxlength="100">
+<label for="kdp-description">Description commerciale</label><textarea id="kdp-description" maxlength="4000"></textarea>
+<label for="kdp-language">Langue (code, ex. fr)</label><input id="kdp-language" type="text" maxlength="5" value="fr">
+<label for="kdp-keywords">Mots-clés (un par ligne, maximum 7)</label><textarea id="kdp-keywords"></textarea>
+<label for="kdp-categories">Catégories KDP (une par ligne, maximum 3)</label><textarea id="kdp-categories"></textarea>
+<div class="metrics">
+<div><label for="kdp-age-min">Âge minimum</label><input id="kdp-age-min" type="number" min="3" max="18"></div>
+<div><label for="kdp-age-max">Âge maximum</label><input id="kdp-age-max" type="number" min="3" max="18"></div>
+<div><label for="kdp-price">Prix catalogue</label><input id="kdp-price" type="number" min="0" step="0.01"></div>
+</div>
+<label for="kdp-rights-holder">Titulaire des droits</label><input id="kdp-rights-holder" type="text">
+<label for="kdp-rights-evidence">Référence de preuve des droits</label><input id="kdp-rights-evidence" type="text">
+<label><input id="kdp-rights-confirmed" type="checkbox"> J'atteste disposer des droits commerciaux</label>
+<label for="kdp-territories">Territoires (worldwide ou codes pays séparés par virgule)</label><input id="kdp-territories" type="text">
+<label for="kdp-isbn-strategy">ISBN broché</label>
+<select id="kdp-isbn-strategy"><option value="">À choisir</option><option value="kdp_free_isbn">ISBN gratuit KDP</option><option value="own_isbn">Mon ISBN personnel</option></select>
+<label for="kdp-isbn">ISBN-13 personnel (si choisi)</label><input id="kdp-isbn" type="text">
+<label for="kdp-publisher">Éditeur (si ISBN personnel)</label><input id="kdp-publisher" type="text">
+<label for="kdp-marketplace">Marketplace</label><input id="kdp-marketplace" type="text">
+<label for="kdp-currency">Devise (ex. EUR, USD)</label><input id="kdp-currency" type="text" maxlength="3">
+<label for="kdp-pricing-date">Date de vérification du prix</label><input id="kdp-pricing-date" type="date">
+<label><input id="kdp-pricing-verified" type="checkbox"> Prix et redevance vérifiés</label>
+<button id="kdp-metadata-save" type="button">Enregistrer le brouillon KDP</button>
+<div id="kdp-metadata-result" class="muted" role="status" aria-live="polite">Aucune fiche enregistrée.</div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
@@ -163,6 +197,9 @@ const reviewTokenInput=document.getElementById("review-token");
 const assetReviewList=document.getElementById("asset-review-list");
 const safetyReviewTokenInput=document.getElementById("safety-review-token");
 const safetyReviewList=document.getElementById("safety-review-list");
+const metadataTokenInput=document.getElementById("metadata-token");
+const metadataSaveButton=document.getElementById("kdp-metadata-save");
+const metadataResult=document.getElementById("kdp-metadata-result");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -218,8 +255,94 @@ statusButton.addEventListener("click",async()=>{
   renderIllustrationReviews(result.illustrations||[],id);
   renderSafetyReview(job.analysis&&job.analysis.child_safety_screening,
    result.content_safety_review,id);
+  renderKdpMetadata(result.kdp_listing_metadata||{},result.kdp_listing_metadata_status||"",result.kdp_listing_metadata_blockers||[]);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
+});
+function renderKdpMetadata(metadata,status,blockers){
+ const fields={
+  "kdp-title":metadata.title||"",
+  "kdp-author":metadata.author||"",
+  "kdp-description":metadata.description||"",
+  "kdp-language":metadata.language||"fr",
+  "kdp-keywords":Array.isArray(metadata.keywords)?metadata.keywords.join("\n"):"",
+  "kdp-categories":Array.isArray(metadata.categories)?metadata.categories.join("\n"):"",
+  "kdp-age-min":metadata.reading_age_min??"",
+  "kdp-age-max":metadata.reading_age_max??"",
+  "kdp-rights-holder":metadata.rights_holder||"",
+  "kdp-rights-evidence":metadata.rights_evidence_ref||"",
+  "kdp-territories":Array.isArray(metadata.territories)?metadata.territories.join(", "):(metadata.territories||""),
+  "kdp-isbn-strategy":metadata.isbn_strategy||"",
+  "kdp-isbn":metadata.isbn||"",
+  "kdp-publisher":metadata.publisher||"",
+  "kdp-marketplace":metadata.marketplace||"",
+  "kdp-currency":metadata.currency||"",
+  "kdp-price":metadata.list_price??"",
+  "kdp-pricing-date":metadata.pricing_verified_at||""
+ };
+ Object.entries(fields).forEach(([id,value])=>{document.getElementById(id).value=String(value);});
+ document.getElementById("kdp-rights-confirmed").checked=metadata.commercial_use_confirmed===true;
+ document.getElementById("kdp-pricing-verified").checked=metadata.pricing_verified===true;
+ metadataResult.replaceChildren();
+ if(status){
+  metadataResult.textContent="Fiche enregistrée : "+status;
+  if(blockers&&blockers.length){
+   const list=document.createElement("ul");
+   blockers.forEach(item=>{const li=document.createElement("li");li.textContent=item;list.appendChild(li);});
+   metadataResult.appendChild(list);
+  }
+ }else{metadataResult.textContent="Aucune fiche enregistrée.";}
+}
+function readKdpMetadataForm(){
+ const lines=id=>document.getElementById(id).value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
+ const integer=id=>{const value=document.getElementById(id).value;return value===""?null:Number.parseInt(value,10);};
+ const price=document.getElementById("kdp-price").value;
+ const territories=document.getElementById("kdp-territories").value.trim();
+ return {
+  title:document.getElementById("kdp-title").value,
+  author:document.getElementById("kdp-author").value,
+  description:document.getElementById("kdp-description").value,
+  language:document.getElementById("kdp-language").value.trim(),
+  keywords:lines("kdp-keywords"),
+  categories:lines("kdp-categories"),
+  reading_age_min:integer("kdp-age-min"),
+  reading_age_max:integer("kdp-age-max"),
+  commercial_use_confirmed:document.getElementById("kdp-rights-confirmed").checked,
+  rights_holder:document.getElementById("kdp-rights-holder").value,
+  rights_evidence_ref:document.getElementById("kdp-rights-evidence").value,
+  territories:territories.toLowerCase()==="worldwide"?"worldwide":territories.split(",").map(v=>v.trim()).filter(Boolean),
+  isbn_strategy:document.getElementById("kdp-isbn-strategy").value,
+  isbn:document.getElementById("kdp-isbn").value,
+  publisher:document.getElementById("kdp-publisher").value,
+  marketplace:document.getElementById("kdp-marketplace").value,
+  currency:document.getElementById("kdp-currency").value.trim().toUpperCase(),
+  list_price:price===""?null:Number(price),
+  pricing_verified:document.getElementById("kdp-pricing-verified").checked,
+  pricing_verified_at:document.getElementById("kdp-pricing-date").value
+ };
+}
+metadataSaveButton.addEventListener("click",async()=>{
+ const id=statusId.value.trim(),token=metadataTokenInput.value;
+ if(!/^PKP-UP-[0-9a-f]{32}$/.test(id)){metadataResult.textContent="Vérifiez d'abord le statut pour sélectionner un manuscrit.";return;}
+ if(!token){metadataResult.textContent="Saisissez le jeton distinct des métadonnées KDP.";return;}
+ metadataSaveButton.disabled=true;metadataResult.textContent="Enregistrement du brouillon…";
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(id)+"/kdp-metadata",{
+   method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({metadata:readKdpMetadataForm()}),credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"metadata_save_failed");
+  metadataTokenInput.value="";
+  metadataResult.textContent="Version "+result.version+" — "+result.status+
+   " — blocages : "+result.blocker_count;
+  if(result.blockers&&result.blockers.length){
+   const list=document.createElement("ul");
+   result.blockers.forEach(item=>{const li=document.createElement("li");li.textContent=item;list.appendChild(li);});
+   metadataResult.appendChild(list);
+  }
+ }catch(error){metadataResult.textContent="Fiche non enregistrée : "+String(error.message||error);}
+ finally{metadataSaveButton.disabled=false;}
 });
 async function loadLibrary(){
  const token=tokenInput.value;
