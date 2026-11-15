@@ -78,7 +78,7 @@ class FreeImageModelRouter:
         with self._metrics_lock:
             return dict(self._last_metrics) if self._last_metrics else None
 
-    def generate_many(self, *, jobs: list[dict[str, str]], now: Any = None) -> list[dict[str, Any]]:
+    def generate_many(self, *, jobs: list[dict[str, Any]], now: Any = None) -> list[dict[str, Any]]:
         if not isinstance(jobs, list) or not jobs:
             raise ImageModelRoutingError("Le lot doit contenir au moins une image.")
         if len(jobs) > self.max_batch_size:
