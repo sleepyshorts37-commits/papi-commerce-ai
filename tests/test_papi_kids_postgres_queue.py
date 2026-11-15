@@ -11,6 +11,7 @@ from papi_core.papi_kids_postgres_queue import (
     record_kdp_listing_metadata,
     record_kdp_package_build,
     record_kdp_package_review,
+    record_kindle_previewer_review,
 )
 
 
@@ -235,6 +236,40 @@ class PostgresEditorialQueueTests(unittest.TestCase):
                 lambda: connection, upload_id=upload_id, artifact="cover",
                 artifact_sha256="a" * 64, decision="approved", reviewer_id="owner-01",
                 notes="trop court",
+            )
+        self.assertEqual(connection.cursor_obj.execute.call_count, 0)
+
+    def test_kindle_previewer_review_is_bound_to_latest_epub_hash(self):
+        upload_id = "PKP-UP-" + "3" * 32
+        digest = "c" * 64
+        manifest = {"ebook": {"sha256": digest}}
+        connection = FakeConnection(rows=[("book-uuid",), (2, manifest)])
+        result = record_kindle_previewer_review(
+            lambda: connection, upload_id=upload_id, epub_sha256=digest,
+            passed=True, reviewer_id="owner-01", evidence_ref="d" * 64,
+            notes="EPUB contrôlé dans Kindle Previewer, navigation et images validées.",
+        )
+        self.assertTrue(result["passed"])
+        self.assertEqual(result["package_version"], 2)
+        self.assertEqual(result["epub_sha256"], digest)
+        self.assertEqual(connection.commits, 1)
+
+    def test_kindle_previewer_review_rejects_changed_epub_and_invalid_evidence(self):
+        upload_id = "PKP-UP-" + "4" * 32
+        connection = FakeConnection(rows=[("book-uuid",), (1, {"ebook": {"sha256": "a" * 64}})])
+        with self.assertRaises(PostgresEditorialQueueError):
+            record_kindle_previewer_review(
+                lambda: connection, upload_id=upload_id, epub_sha256="b" * 64,
+                passed=True, reviewer_id="owner-01", evidence_ref="c" * 64,
+                notes="Le fichier EPUB a été contrôlé correctement.",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+        connection = FakeConnection()
+        with self.assertRaises(ValueError):
+            record_kindle_previewer_review(
+                lambda: connection, upload_id=upload_id, epub_sha256="a" * 64,
+                passed=True, reviewer_id="owner-01", evidence_ref="invalid",
+                notes="Le fichier EPUB a été contrôlé correctement.",
             )
         self.assertEqual(connection.cursor_obj.execute.call_count, 0)
 
