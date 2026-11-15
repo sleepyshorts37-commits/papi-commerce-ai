@@ -77,6 +77,8 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         kdp_package_review_token_env: str = "PAPI_KIDS_KDP_REVIEW_TOKEN",
         kdp_package_review_handler: Callable[[str, str, str, str, str, str], dict[str, Any]] | None = None,
         kdp_package_download_handler: Callable[[str, str], dict[str, Any]] | None = None,
+        kdp_release_gate_token_env: str = "PAPI_KIDS_RELEASE_GATE_TOKEN",
+        kdp_release_gate_handler: Callable[[str], dict[str, Any]] | None = None,
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
         library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
@@ -95,7 +97,8 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         readiness_match = request_path == "/api/papi-kids/readiness"
         kdp_package_review_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-package-review", request_path)
         kdp_package_download_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-package/(interior|cover|ebook)", request_path)
-        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match:
+        kdp_release_gate_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-release-check", request_path)
+        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match and not kdp_release_gate_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
         expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or kdp_package_review_match or (upload_route and request_method == "POST") else "GET"
@@ -104,12 +107,13 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
         selected_token_env = (
-            kdp_package_review_token_env if kdp_package_review_match or kdp_package_download_match else
+            kdp_release_gate_token_env if kdp_release_gate_match else
+            (kdp_package_review_token_env if kdp_package_review_match or kdp_package_download_match else
             (readiness_token_env if readiness_match else
              (kdp_build_token_env if kdp_build_match else
              (metadata_token_env if metadata_match else
              (safety_review_token_env if safety_review_match else
-                (review_token_env if review_match else token_env)))))
+                (review_token_env if review_match else token_env))))))
         )
         configured_token = os.environ.get(selected_token_env, "")
         if len(configured_token) < 32:
@@ -155,6 +159,14 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
             return _response(start_response, "200 OK", reviewed)
+        if kdp_release_gate_match:
+            if kdp_release_gate_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "kdp_release_gate_not_configured"})
+            try:
+                gate = kdp_release_gate_handler(kdp_release_gate_match.group(1))
+            except Exception:
+                return _response(start_response, "503 Service Unavailable", {"error": "kdp_release_gate_unavailable"})
+            return _response(start_response, "200 OK", gate)
         if kdp_package_download_match:
             if kdp_package_download_handler is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "kdp_package_download_not_configured"})

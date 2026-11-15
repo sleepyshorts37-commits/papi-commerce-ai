@@ -66,7 +66,7 @@ class PapiKidsKDPPrintPackageTests(unittest.TestCase):
         manifest = json.loads(Path(result["manifest_path"]).read_text())
         self.assertEqual(manifest["pdfs"]["interior"]["page_count"], 24)
         self.assertEqual(manifest["pdfs"]["cover"]["page_count"], 1)
-        self.assertEqual(manifest["pdfs"]["interior"]["preflight"], "pending_manual_pdf_inspection")
+        self.assertEqual(manifest["pdfs"]["interior"]["preflight"], "automated_checks_passed_pending_human_review")
         self.assertFalse(result["kdp_upload_ready"])
         self.assertFalse(result["publication_performed"])
         self.assertEqual((Path(result["package_dir"]) / "package-manifest.json").stat().st_mode & 0o777, 0o600)
@@ -103,7 +103,7 @@ class PapiKidsKDPPrintPackageTests(unittest.TestCase):
         manifest = json.loads(Path(result["manifest_path"]).read_text())
         self.assertTrue(manifest["ebook_required"])
         self.assertEqual(manifest["ebook"]["page_count"], 24)
-        self.assertEqual(manifest["ebook"]["preflight"], "pending_kindle_previewer")
+        self.assertEqual(manifest["ebook"]["preflight"], "automated_epub_checks_passed_pending_kindle_previewer")
         self.assertTrue((Path(result["package_dir"]) / "book.epub").is_file())
         self.assertFalse(result["kdp_upload_ready"])
 

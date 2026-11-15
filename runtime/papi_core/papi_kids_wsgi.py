@@ -24,6 +24,7 @@ from .papi_kids_kdp_build_service import (
     build_private_kdp_package_downloader,
 )
 from .papi_kids_readiness import check_papi_kids_readiness
+from .papi_kids_kdp_release_gate import evaluate_kdp_release_gate
 
 
 def create_app(
@@ -55,6 +56,9 @@ def create_app(
         kdp_build_handler=build_private_kdp_package_handler(storage_root, factory),
         kdp_package_review_handler=build_postgres_kdp_package_reviewer(factory),
         kdp_package_download_handler=build_private_kdp_package_downloader(storage_root, factory),
+        kdp_release_gate_handler=lambda upload_id: evaluate_kdp_release_gate(
+            build_postgres_status_reader(factory)(upload_id)
+        ),
         readiness_handler=lambda: check_papi_kids_readiness(
             storage_root=storage_root, connection_factory=factory,
         ),

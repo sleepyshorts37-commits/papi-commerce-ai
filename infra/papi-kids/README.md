@@ -79,3 +79,7 @@ Package builds are recorded in the private PostgreSQL `kdp_package_builds` audit
 ## Human review of KDP package files
 
 The owner can download the latest private PDF/EPUB using the authenticated `/api/papi-kids/manuscripts/{upload_id}/kdp-package/{interior|cover|ebook}` endpoint and record a hash-bound decision with `/kdp-package-review`. Configure the separate `PAPI_KIDS_KDP_REVIEW_TOKEN`. Reviews require notes and are stored append-only in PostgreSQL. The download service checks the current package hash and refuses path traversal, symlinks and changed files.
+
+## Final KDP readiness check
+
+The iPhone dashboard can call `GET /api/papi-kids/manuscripts/{upload_id}/kdp-release-check` with a separate `PAPI_KIDS_RELEASE_GATE_TOKEN`. The fail-closed gate verifies that each required PDF/EPUB review matches the exact SHA-256 and package version, that the child-safety review is approved, and that the listing metadata and commercial-use rights are complete. It only reports eligibility for the owner's final confirmation. KDP upload and publication remain disabled.

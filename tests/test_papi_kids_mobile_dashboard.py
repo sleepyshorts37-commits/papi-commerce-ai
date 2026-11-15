@@ -55,8 +55,18 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("packageBuild.status", html)
         self.assertIn("État de l'infrastructure", html)
         self.assertIn("/api/papi-kids/readiness", html)
+        self.assertIn("/api/papi-kids/manuscripts/", html)
+        self.assertIn("/kdp-release-check", html)
+        self.assertIn("Confirmation finale du propriétaire", html)
+        self.assertIn("Téléversement KDP désactivé", html)
         self.assertIn("Aucun secret affiché", html)
         self.assertIn("readinessTokenInput.value=\"\"", html)
+        self.assertIn("Inspection humaine des fichiers KDP", html)
+        self.assertIn("/kdp-package/", html)
+        self.assertIn("/kdp-package-review", html)
+        self.assertIn("openKdpPackageArtifact", html)
+        self.assertIn("submitKdpPackageReview", html)
+        self.assertIn("kdp_package_reviews", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(
