@@ -18,6 +18,7 @@ from .papi_kids_postgres_queue import (
 )
 from .papi_kids_worker_service import create_postgres_connection_factory
 from .papi_kids_mobile_dashboard import render_papi_kids_mobile_dashboard
+from .papi_kids_kdp_build_service import build_private_kdp_package_handler
 
 
 def create_app(
@@ -46,6 +47,7 @@ def create_app(
         review_handler=build_postgres_asset_reviewer(factory),
         safety_review_handler=build_postgres_safety_reviewer(factory),
         metadata_saver=build_postgres_kdp_metadata_saver(factory),
+        kdp_build_handler=build_private_kdp_package_handler(storage_root),
         library_reader=build_postgres_library_reader(factory),
     )
 
