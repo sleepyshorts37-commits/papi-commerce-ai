@@ -266,13 +266,15 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             {"title": "Nia"}, "incomplete", ["Auteur absent"],
             {"package_version": 1, "status": "generated_pending_manual_pdf_inspection"},
             {"v1:interior": {"approved": True}},
+            {"passed": True, "epub_sha256": "c" * 64},
             71, "completed", 1, 5, None, None, analysis,
         )])
         connection.cursor_obj.description = [
             ("book_id",), ("upload_id",), ("book_status",), ("created_at",),
             ("updated_at",), ("content_safety_review",), ("kdp_listing_metadata",),
             ("kdp_listing_metadata_status",), ("kdp_listing_metadata_blockers",),
-            ("kdp_package_build",), ("kdp_package_reviews",), ("job_id",),
+            ("kdp_package_build",), ("kdp_package_reviews",),
+            ("kindle_previewer_review",), ("job_id",),
             ("job_status",), ("attempts",), ("max_attempts",),
             ("available_at",), ("lease_until",), ("analysis",),
         ]
@@ -285,6 +287,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(result["kdp_listing_metadata_blockers"], ["Auteur absent"])
         self.assertEqual(result["kdp_package_build"]["package_version"], 1)
         self.assertTrue(result["kdp_package_reviews"]["v1:interior"]["approved"])
+        self.assertTrue(result["kindle_previewer_review"]["passed"])
 
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):
