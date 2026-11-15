@@ -190,6 +190,7 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <input id="kdp-review-token" type="password" autocomplete="off" placeholder="Jeton de revue KDP côté serveur">
 <div id="kdp-package-review-list" aria-live="polite">Aucun package à inspecter.</div>
 <div id="kindle-previewer-section"></div>
+<div id="owner-release-section"></div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
@@ -230,6 +231,7 @@ const readinessResult=document.getElementById("readiness-result");
 const kdpReviewTokenInput=document.getElementById("kdp-review-token");
 const kdpPackageReviewList=document.getElementById("kdp-package-review-list");
 const kindlePreviewerSection=document.getElementById("kindle-previewer-section");
+const ownerReleaseSection=document.getElementById("owner-release-section");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -290,9 +292,60 @@ statusButton.addEventListener("click",async()=>{
   renderKdpMetadata(result.kdp_listing_metadata||{},result.kdp_listing_metadata_status||"",result.kdp_listing_metadata_blockers||[]);
   renderKdpPackageReview(result.kdp_package_build||{},result.kdp_package_reviews||{},id);
   renderKindlePreviewerReview(result.kdp_package_build||{},result.kindle_previewer_review||{},id);
+  renderOwnerFinalAuthorization(result.kdp_package_build||{},result.kdp_owner_release_authorization||{},id);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
+function renderOwnerFinalAuthorization(packageBuild,authorization,uploadId){
+ ownerReleaseSection.replaceChildren();
+ if(!packageBuild||!packageBuild.package_version)return;
+ const heading=document.createElement("h3");heading.textContent="Confirmation finale du propriétaire";
+ ownerReleaseSection.appendChild(heading);
+ if(authorization&&authorization.manifest_sha256===packageBuild.manifest_sha256){
+  const state=document.createElement("p");
+  state.textContent="Autorisation manuelle enregistrée pour le package v"+
+   authorization.package_version+" — propriétaire : "+authorization.owner_id+
+   " — "+authorization.confirmed_at+".";
+  ownerReleaseSection.appendChild(state);
+  const note=document.createElement("p");
+  note.textContent="Cette autorisation concerne uniquement une soumission manuelle. Aucun téléversement ni publication automatique.";
+  ownerReleaseSection.appendChild(note);return;
+ }
+ const warning=document.createElement("p");
+ warning.textContent="Dernière étape : confirmer personnellement l'autorisation de soumettre manuellement le package KDP. Les prérequis seront revérifiés côté serveur.";
+ ownerReleaseSection.appendChild(warning);
+ const token=document.createElement("input");token.type="password";token.autocomplete="off";
+ token.placeholder="Jeton propriétaire de confirmation (distinct)";
+ const notes=document.createElement("textarea");notes.maxLength=2000;
+ notes.placeholder="Notes et réserves du propriétaire (minimum 20 caractères).";
+ const phrase=document.createElement("p");
+ phrase.textContent="Phrase obligatoire : I AUTHORIZE MANUAL KDP SUBMISSION";
+ const button=document.createElement("button");button.type="button";
+ button.textContent="Confirmer l'autorisation de soumission manuelle";
+ button.addEventListener("click",async()=>{
+  if(!token.value||notes.value.trim().length<20){
+   ownerReleaseSection.insertAdjacentText("afterbegin","Jeton et notes de 20 caractères minimum obligatoires.");return;
+  }
+  if(!window.confirm("Vous autorisez uniquement la soumission manuelle de ce package à Amazon KDP ? Aucune publication automatique ne sera effectuée."))return;
+  button.disabled=true;
+  try{
+   const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(uploadId)+"/owner-final-confirmation",{
+    method:"POST",headers:{"Authorization":"Bearer "+token.value,"Content-Type":"application/json"},
+    body:JSON.stringify({
+     confirmation_phrase:"I AUTHORIZE MANUAL KDP SUBMISSION",
+     notes:notes.value.trim()
+    }),credentials:"same-origin"
+   });
+   const result=await response.json();
+   if(!response.ok)throw new Error(result.error||"owner_confirmation_blocked");
+   token.value="";
+   statusResult.textContent="Autorisation propriétaire enregistrée. Soumission KDP toujours manuelle.";
+   statusButton.click();
+  }catch(error){ownerReleaseSection.insertAdjacentText("afterbegin","Confirmation refusée : "+String(error.message||error));}
+  finally{button.disabled=false;}
+ });
+ ownerReleaseSection.append(token,notes,phrase,button);
+}
 function renderKindlePreviewerReview(packageBuild,review,uploadId){
  kindlePreviewerSection.replaceChildren();
  if(!packageBuild||!packageBuild.ebook)return;
