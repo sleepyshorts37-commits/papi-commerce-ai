@@ -46,7 +46,8 @@
 - [x] Rédiger une première version complète du manuscrit PKP-0001 (24 pages narratives) et son brief d'illustration (Mission 76 ; en attente de relecture, droits et tests de lecture).
 - [ ] Rédiger les quatre autres manuscrits, produire les illustrations originales et faire contrôler indépendamment chaque fichier.
 - [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
-- [x] Définir une stratégie de validation de la demande et un processus commercial par étapes, sans ventes garanties (Mission 78).\n- [x] Ajouter Jumia Sénégal comme canal distinct pour les livres physiques, avec vérification KYC, commissions et logistique (Mission 78).\n- [ ] Vérifier les coûts complets et l'éligibilité réelle des comptes KDP et Jumia avant toute mise en vente.\n- [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
+- [x] Définir une stratégie de validation de la demande et un processus commercial par étapes, sans ventes garanties (Mission 78).
+- [x] Ajouter un moteur de scoring marché à huit critères, preuves datées obligatoires et blocage du classement si les données sont incomplètes (Mission 79 ; cinq concepts laissés non évalués faute de preuves).\n- [x] Ajouter Jumia Sénégal comme canal distinct pour les livres physiques, avec vérification KYC, commissions et logistique (Mission 78).\n- [ ] Vérifier les coûts complets et l'éligibilité réelle des comptes KDP et Jumia avant toute mise en vente.\n- [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
 - [ ] Réaliser le premier lancement manuel contrôlé ; aucun agent, compte ou publication externe n'est activé automatiquement.
 
 ## Phase 4 — Autres activités commerciales
