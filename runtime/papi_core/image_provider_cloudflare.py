@@ -15,6 +15,7 @@ import threading
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from concurrent.futures import ThreadPoolExecutor
 
 
 class ImageProviderError(RuntimeError):
@@ -22,6 +23,7 @@ class ImageProviderError(RuntimeError):
 
 
 IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,199}$")
+MODEL_IDENTIFIER = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._:/@-]{0,199}$")
 DEFAULT_DAILY_NEURON_LIMIT = 10_000
 
 
@@ -203,7 +205,7 @@ class SupabaseNeuronQuotaLedger:
 
     def reserve(self, *, idempotency_key: str, estimated_neurons: int,
                 now: datetime | None = None, model: str | None = None) -> QuotaReservation:
-        if not isinstance(model, str) or not IDENTIFIER.fullmatch(model):
+        if not isinstance(model, str) or not MODEL_IDENTIFIER.fullmatch(model):
             raise ImageProviderError("Modèle requis pour le registre partagé.")
         if not isinstance(idempotency_key, str) or not re.fullmatch(r"[A-Za-z0-9:_./-]{8,180}", idempotency_key):
             raise ImageProviderError("Clé d'idempotence Supabase invalide.")
@@ -254,6 +256,7 @@ class CloudflareImageAdapter:
         free_tier_confirmed_for_account: bool,
         transport: Callable[..., Any] | None = None,
         timeout_seconds: int = 60,
+        max_concurrency: int = 4,
     ) -> None:
         if not isinstance(account_id, str) or not IDENTIFIER.fullmatch(account_id):
             raise ImageProviderError("Identifiant de compte Cloudflare invalide.")
@@ -264,7 +267,7 @@ class CloudflareImageAdapter:
         if not isinstance(model_costs, dict) or not model_costs:
             raise ImageProviderError("Aucun coût estimé de modèle explicitement configuré.")
         for model, cost in model_costs.items():
-            if not isinstance(model, str) or not IDENTIFIER.fullmatch(model):
+            if not isinstance(model, str) or not MODEL_IDENTIFIER.fullmatch(model):
                 raise ImageProviderError("Identifiant de modèle invalide.")
             if not isinstance(cost, int) or isinstance(cost, bool) or cost <= 0:
                 raise ImageProviderError("Chaque modèle doit avoir un coût estimé positif connu.")
@@ -272,11 +275,14 @@ class CloudflareImageAdapter:
             raise ImageProviderError("Ledger de quotas PAPI incompatible.")
         if not isinstance(timeout_seconds, int) or timeout_seconds < 1 or timeout_seconds > 180:
             raise ImageProviderError("Délai réseau invalide.")
+        if not isinstance(max_concurrency, int) or isinstance(max_concurrency, bool) or not 1 <= max_concurrency <= 16:
+            raise ImageProviderError("Concurrence image invalide : choisir entre 1 et 16 workers.")
         self.account_id = account_id
         self._api_token = api_token
         self.ledger = ledger
         self.model_costs = dict(model_costs)
         self.timeout_seconds = timeout_seconds
+        self.max_concurrency = max_concurrency
         self._transport = transport or self._https_transport
 
     @classmethod
@@ -312,6 +318,43 @@ class CloudflareImageAdapter:
         request = Request(url, data=body, headers=headers, method="POST")
         with urlopen(request, timeout=timeout) as response:
             return response
+
+    def generate_many(
+        self, *, jobs: list[dict[str, str]], now: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """Generate a bounded batch concurrently; results preserve input order.
+
+        Each job must provide prompt, model and a unique idempotency_key. A failed
+        item is reported independently; successful siblings are not discarded.
+        Shared quota reservations remain the final authority across workers.
+        """
+        if not isinstance(jobs, list) or not jobs:
+            raise ImageProviderError("Le lot doit contenir au moins une image.")
+        if len(jobs) > 500:
+            raise ImageProviderError("Lot trop volumineux : maximum 500 images par appel.")
+        seen: set[str] = set()
+        normalized: list[dict[str, str]] = []
+        for index, job in enumerate(jobs):
+            if not isinstance(job, dict):
+                raise ImageProviderError(f"Mission image {index} invalide.")
+            prompt, model, key = job.get("prompt"), job.get("model"), job.get("idempotency_key")
+            if not all(isinstance(value, str) and value.strip() for value in (prompt, model, key)):
+                raise ImageProviderError(f"Mission image {index} : prompt, modèle et clé requis.")
+            if key in seen:
+                raise ImageProviderError("Chaque image du lot doit avoir une clé d'idempotence unique.")
+            seen.add(key)
+            normalized.append({"prompt": prompt, "model": model, "idempotency_key": key})
+
+        def run_one(job: dict[str, str]) -> dict[str, Any]:
+            try:
+                result = self.generate(**job, now=now)
+                return {"status": "generated", "idempotency_key": job["idempotency_key"], **result}
+            except Exception as exc:
+                return {"status": "failed", "model": job["model"],
+                        "idempotency_key": job["idempotency_key"], "error": str(exc)}
+
+        with ThreadPoolExecutor(max_workers=self.max_concurrency) as executor:
+            return list(executor.map(run_one, normalized))
 
     def generate(
         self, *, prompt: str, model: str, idempotency_key: str,
