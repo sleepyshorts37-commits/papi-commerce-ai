@@ -32,9 +32,9 @@ def _validate_input(book_id: str, title: str, language: str, product_type: str,
         raise KidsProjectError("Le titre doit contenir entre 1 et 200 caractères.")
     if not isinstance(language, str) or not LANGUAGE_RE.fullmatch(language):
         raise KidsProjectError("Code de langue invalide, exemple : fr ou en.")
-    if product_type not in PRODUCT_TYPES:
+    if not isinstance(product_type, str) or product_type not in PRODUCT_TYPES:
         raise KidsProjectError("Type de livre non pris en charge.")
-    if book_format not in FORMATS:
+    if not isinstance(book_format, str) or book_format not in FORMATS:
         raise KidsProjectError("Format non pris en charge.")
     if isinstance(age_min, bool) or isinstance(age_max, bool) or not isinstance(age_min, int) or not isinstance(age_max, int):
         raise KidsProjectError("Les âges doivent être des entiers.")
