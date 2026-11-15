@@ -45,7 +45,7 @@ class IdentityReconciliationArtifactTests(unittest.TestCase):
 
     def test_rejects_invalid_utf8(self):
         with self.assertRaises(IdentityReconciliationArtifactError):
-            load_reconciliation_report(b"\\xff")
+            load_reconciliation_report(b"\xff")
 
     def test_rejects_duplicate_keys(self):
         with self.assertRaises(IdentityReconciliationArtifactError):
