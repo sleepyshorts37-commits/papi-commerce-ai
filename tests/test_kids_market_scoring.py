@@ -86,6 +86,25 @@ class KidsMarketScoringTests(unittest.TestCase):
         with self.assertRaises(KidsMarketScoringError):
             score_assessment(item)
 
+    def test_invalid_calendar_date_is_rejected(self):
+        item = make_assessment()
+        add_evidence(item, "demand_evidence")
+        item["criteria"]["demand_evidence"]["evidence"][0]["observed_at"] = "2026-02-31"
+        errors = validate_assessments({
+            "schema_version": 1, "division_id": "papi_kids_publishing",
+            "assessments": [item],
+        })
+        self.assertTrue(any("date observée invalide" in error for error in errors))
+
+    def test_malformed_status_type_is_rejected_without_type_error(self):
+        item = make_assessment()
+        item["criteria"]["demand_evidence"]["status"] = []
+        errors = validate_assessments({
+            "schema_version": 1, "division_id": "papi_kids_publishing",
+            "assessments": [item],
+        })
+        self.assertTrue(any("status doit être" in error for error in errors))
+
     def test_duplicate_ids_are_rejected(self):
         item = make_assessment()
         data = {"schema_version": 1, "division_id": "papi_kids_publishing",
