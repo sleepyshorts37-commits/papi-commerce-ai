@@ -563,6 +563,7 @@ def record_manuscript_safety_review(
         raise ValueError("Décision de revue de sécurité invalide.")
     if not isinstance(reviewer_id, str) or not 3 <= len(reviewer_id.strip()) <= 120:
         raise ValueError("Identité du réviseur invalide.")
+    reviewer_id = reviewer_id.strip()
     if not isinstance(notes, str) or len(notes) > 2000:
         raise ValueError("Notes de revue trop longues.")
     connection = connection_factory()
@@ -599,7 +600,7 @@ def record_manuscript_safety_review(
         from datetime import datetime, timezone
         reviewed_at = datetime.now(timezone.utc).isoformat()
         evidence_ref = hashlib.sha256(
-            f"{upload_id}:{manuscript_sha256}:{decision}:{reviewer_id}:{reviewed_at}:{notes}".encode("utf-8")
+            f"{upload_id}:{manuscript_sha256}:{decision}:{reviewer_id}:{reviewed_at}:{notes.strip()}".encode("utf-8")
         ).hexdigest()
         review = {
             "approved": decision == "approved",
