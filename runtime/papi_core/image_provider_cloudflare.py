@@ -292,6 +292,19 @@ class CloudflareImageAdapter:
             transport=transport,
         )
 
+    @classmethod
+    def from_shared_environment(
+        cls, *, model_costs: dict[str, int], free_tier_confirmed_for_account: bool,
+        transport: Callable[..., Any] | None = None,
+    ) -> "CloudflareImageAdapter":
+        """Build the Cloudflare adapter with the cross-worker Supabase ledger."""
+        ledger = SupabaseNeuronQuotaLedger.from_environment()
+        return cls.from_environment(
+            ledger=ledger, model_costs=model_costs,
+            free_tier_confirmed_for_account=free_tier_confirmed_for_account,
+            transport=transport,
+        )
+
     @staticmethod
     def _https_transport(url: str, *, headers: dict[str, str], json_body: dict[str, Any], timeout: int):
         import json
