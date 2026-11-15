@@ -59,8 +59,8 @@ def _required_identifier(value: Any, field: str) -> str:
 def _stable_key(book_id: str, page_id: str, model: str, prompt: str) -> str:
     digest = hashlib.sha256(
         "\x1f".join((book_id, page_id, model, prompt)).encode("utf-8")
-    ).hexdigest()[:32]
-    return f"papi-image:{book_id}:{page_id}:{digest}"
+    ).hexdigest()
+    return f"papi-image:{digest}"
 
 
 def plan_book_images(
