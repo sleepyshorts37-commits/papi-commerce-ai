@@ -27,7 +27,9 @@ _FORBIDDEN_KEYS = {
 def _reject_secrets(value: Any) -> None:
     if isinstance(value, dict):
         for key, child in value.items():
-            if str(key).casefold() in _FORBIDDEN_KEYS:
+            normalized_key = str(key).casefold()
+            if (normalized_key in _FORBIDDEN_KEYS
+                    or any(fragment in normalized_key for fragment in ("token", "secret", "password", "api_key", "authorization"))):
                 raise PapiKidsKDPBuildServiceError("Le profil de fabrication contient un champ interdit.")
             _reject_secrets(child)
     elif isinstance(value, list):
