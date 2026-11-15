@@ -24,15 +24,36 @@
 - [x] PAPI COMMAND CENTER local en lecture seule.
 - [x] PAPI CHAT : socle local de communication interne.
 - [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
-- [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
+- [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.
+- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
 - [x] Ajouter un prototype Ed25519, registre public versionné, révocation, rotation et tests unitaires.
 - [x] Brancher Ed25519 au contrôle d'accès et au worker ; maintenir HMAC uniquement pour compatibilité transitoire.
-- [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.\n- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
-- [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).\n- [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
+- [x] Préparer dans le schéma SQL le registre central de clés publiques et l'anti-rejeu transactionnel partagé.
+- [x] Lier la preuve signée à la tâche et au handler ; vérification avant exécution worker.
+- [x] Implémenter un adaptateur runtime Supabase injectable pour vérifier les clés publiques et consommer les nonces via RPC (tests simulés).
+- [ ] Exécuter les tests d'intégration sur un projet Supabase de test et valider les politiques/permissions avant production.
 - [ ] Synchroniser mémoire et messages entre instances.
 - [ ] Déployer et tester orchestration, scheduler et worker.
 
-## Phase 3 — Première activité commerciale
+## Phase 3 — Premier lancement prioritaire : PAPI KIDS PUBLISHING
+- [x] Définir les trois activités et les 24 postes cibles, avec chaîne éditoriale-commerciale et garde-fous IP/financiers (PR #225).
+- [x] Ajouter le catalogue local versionné, les contrôles de fichiers SHA-256 et les portes droits/qualité/KDP/validation humaine (Mission 73 ; 180 tests unitaires et trois workflows CI réussis sur le SHA d'implémentation).
+- [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
+- [x] Ajouter un générateur local de kits de production vierges : brief, canevas de manuscrit, métadonnées, checklist et rapport qualité initial (Mission 74 ; 187 tests et trois workflows CI réussis sur le SHA de code testé 7bfc392e ; les commits suivants n'ont modifié que le rapport et la roadmap).
+- [ ] Construire les outils de rédaction/assemblage des manuscrits, illustrations originales, intérieurs PDF, couvertures et exports finaux.
+- [x] Spécifier la bible graphique des quatre personnages et le storyboard visuel des 24 pages de PKP-0001 (Mission 77 ; documents de production textuels, aucune illustration finale).
+- [x] Définir cinq concepts originaux et leurs plans éditoriaux détaillés (Mission 75 ; dossier `docs/MISSION-75-PILOT-CATALOG.md`). Aucun manuscrit final ni fichier prêt à publier n'est revendiqué.
+- [x] Rédiger une première version complète du manuscrit PKP-0001 (24 pages narratives) et son brief d'illustration (Mission 76 ; en attente de relecture, droits et tests de lecture).
+- [ ] Rédiger les quatre autres manuscrits, produire les illustrations originales et faire contrôler indépendamment chaque fichier.
+- [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
+- [x] Définir une stratégie de validation de la demande et un processus commercial par étapes, sans ventes garanties (Mission 78).
+- [x] Ajouter un moteur de scoring marché à huit critères, preuves datées obligatoires et blocage du classement si les données sont incomplètes (Mission 79 ; cinq concepts laissés non évalués faute de preuves).\n- [x] Ajouter Jumia Sénégal comme canal distinct pour les livres physiques, avec vérification KYC, commissions et logistique (Mission 78).
+- [x] Définir la politique PAPI KIDS zéro avance de trésorerie pour tous les livres et canaux (Mission 80).
+- [x] Ajouter un registre des six canaux (Amazon KDP, Lulu, IngramSpark, Bookvault, Blurb, Jumia) et un moteur de routage bloquant si éligibilité Sénégal, versement, format, territoires ou coûts ne sont pas prouvés (Mission 80).
+- [ ] Vérifier avec des sources officielles datées les coûts complets, l'éligibilité Sénégal, les paiements, les formats et l'absence d'avance pour chaque canal ; aucun canal n'est actuellement certifié zéro coût.\n- [ ] Vérifier les coûts complets et l'éligibilité réelle des comptes sur chaque canal avant toute mise en vente.\n- [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
+- [ ] Réaliser le premier lancement manuel contrôlé ; aucun agent, compte ou publication externe n'est activé automatiquement.
+
+## Phase 4 — Autres activités commerciales
 - [ ] Comparer les opportunités sans frais initiaux.
 - [ ] Vérifier éligibilité au Sénégal et moyens de paiement.
 - [ ] Choisir une offre et un segment client.
@@ -40,7 +61,17 @@
 - [ ] Obtenir validation avant les premiers contacts externes.
 - [ ] Mesurer les revenus réellement encaissés.
 
-## Phase 4 — Extension
+## Phase 5 — Extension
+- [x] Documenter PAPI KIDS PUBLISHING : trois activités, 24 postes cibles, workflow éditorial-commercial, modèle sans stock et garde-fous IP/financiers.
+- [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
+- [x] Ajouter les premiers outils locaux de catalogue, briefs vierges, dossiers de fichiers et contrôles initiaux (Missions 73–74).
+- [ ] Compléter les outils de rédaction, illustrations, mise en page PDF, coûts et rapports.
+- [x] Définir le lot éditorial de cinq concepts et plans (Mission 75 ; sans étude de marché validée ni contenu final).
+- [x] Produire une première version manuscrite du pilote PKP-0001 et un brief d'illustration (Mission 76 ; pas encore de maquette ni de fichiers prêts à publier).
+- [ ] Réaliser un pilote complet de livre original et vérifier les exigences KDP, l'éligibilité depuis le Sénégal et les moyens de versement.
+- [ ] Obtenir une validation humaine explicite avant toute publication ou promotion externe.
+- [ ] Tester les intégrations officielles et l'automatisation contrôlée après revue de sécurité.
+
 - [ ] PAPI BUSINESS PARTNERS.
 - [ ] PAPI SERVICES et PAPI FREELANCE.
 - [ ] PAPI AFFILIATION.
@@ -53,3 +84,15 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+
+
+- [x] Vérifier les pages officielles POD et paiements pour Amazon KDP, Lulu, IngramSpark, Bookvault, Blurb et Jumia Sénégal ; enregistrer les preuves et dates (Mission 81).
+- [x] Confirmer que PayPal prend en charge l'envoi, la réception et le retrait au Sénégal ; l'utiliser comme preuve de possibilité de versement Lulu/Blurb, sans présumer l'éligibilité des comptes éditeurs.
+- [ ] Obtenir une confirmation directe de l'éligibilité vendeur Sénégal, des paiements, des territoires et des frais obligatoires pour KDP, Lulu et Blurb avant tout statut ELIGIBLE.
+- [ ] Vérifier les frais de titre IngramSpark 2026 dans les conditions applicables au compte avant de considérer le canal.
+
+- [x] Ajouter un calculateur de rentabilité unitaire Decimal, avec preuves datées, frais complets, conversion FX traçable et portes zéro avance (Mission 82 ; aucun tarif de plateforme inventé).
+- [x] Ajouter un protocole de validation des niches Amazon KDP inspiré des trois seuils de la capture (résultats < 2 500, top 3 BSR < 100 000, moyenne des avis < 50), avec preuves datées, échantillon de 10 à 20 concurrents et validation humaine obligatoire (Mission 83 ; aucune donnée marché inventée).
+
+- [x] Ajouter un comparateur transparent des cinq concepts pilotes PAPI KIDS, réutilisant les preuves de niche Mission 83 et exigeant une revue humaine (Mission 84 ; aucun classement réel sans collecte).
+- [x] Étendre PAPI PUBLISHING à trois lignes éditoriales séparées : PAPI KIDS, PAPI SCI-FI et PAPI MANGA, avec chaînes de production et contrôles distincts (Mission 85 ; aucun agent activé ni titre publié).
