@@ -53,6 +53,9 @@ begin
     if v.reservation_id <> v_again.reservation_id or v_again.reserved_units <> 60 then
         raise exception 'idempotency contract failed';
     end if;
+    if v_again.reservation_status <> 'reused_reserved' then
+        raise exception 'replayed reserved key was not marked as reused_reserved';
+    end if;
 
     -- Different intent on the same key must be rejected.
     v_failed := false;
