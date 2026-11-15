@@ -82,6 +82,7 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         owner_release_token_env: str = "PAPI_KIDS_OWNER_RELEASE_TOKEN",
         owner_release_handler: Callable[[str, str, str, str], dict[str, Any]] | None = None,
         owner_release_id_env: str = "PAPI_KIDS_RELEASE_OWNER_ID",
+        kdp_submission_bundle_handler: Callable[[str], dict[str, Any]] | None = None,
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
         library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
@@ -102,7 +103,8 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         kdp_package_download_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-package/(interior|cover|ebook)", request_path)
         kindle_previewer_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kindle-previewer-review", request_path)
         owner_release_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/owner-final-confirmation", request_path)
-        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match and not kindle_previewer_match and not owner_release_match:
+        submission_bundle_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-submission-bundle", request_path)
+        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match and not kindle_previewer_match and not owner_release_match and not submission_bundle_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
         expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or kdp_package_review_match or kindle_previewer_match or owner_release_match or (upload_route and request_method == "POST") else "GET"
@@ -111,7 +113,7 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
         selected_token_env = (
-            owner_release_token_env if owner_release_match else
+            owner_release_token_env if owner_release_match or submission_bundle_match else
             (kindle_previewer_token_env if kindle_previewer_match else
             (kdp_package_review_token_env if kdp_package_review_match or kdp_package_download_match else
              (readiness_token_env if readiness_match else
@@ -164,6 +166,26 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
             return _response(start_response, "200 OK", reviewed)
+        if submission_bundle_match:
+            if kdp_submission_bundle_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "submission_bundle_not_configured"})
+            try:
+                bundle = kdp_submission_bundle_handler(submission_bundle_match.group(1))
+            except Exception:
+                return _response(start_response, "409 Conflict", {"error": "submission_bundle_not_ready"})
+            data = bundle.get("data") if isinstance(bundle, dict) else None
+            if (not isinstance(data, bytes) or bundle.get("content_type") != "application/zip"
+                    or bundle.get("filename") != "papi-kids-kdp-submission.zip"):
+                return _response(start_response, "409 Conflict", {"error": "submission_bundle_invalid"})
+            start_response("200 OK", [
+                ("Content-Type", "application/zip"),
+                ("Content-Length", str(len(data))),
+                ("Content-Disposition", 'attachment; filename="papi-kids-kdp-submission.zip"'),
+                ("Cache-Control", "no-store"),
+                ("X-Content-Type-Options", "nosniff"),
+                ("Referrer-Policy", "no-referrer"),
+            ])
+            return [data]
         if owner_release_match:
             if owner_release_handler is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "owner_release_not_configured"})

@@ -26,6 +26,7 @@ from .papi_kids_kdp_build_service import (
     build_private_kdp_package_downloader,
 )
 from .papi_kids_readiness import check_papi_kids_readiness
+from .papi_kids_submission_bundle import build_private_kdp_submission_bundle
 
 
 def create_app(

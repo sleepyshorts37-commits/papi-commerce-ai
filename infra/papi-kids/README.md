@@ -87,3 +87,7 @@ When an EPUB is required, the owner must inspect the exact EPUB hash in Kindle P
 ## Owner final release authorization
 
 Configure `PAPI_KIDS_OWNER_RELEASE_TOKEN` and `PAPI_KIDS_RELEASE_OWNER_ID` on the server. The iPhone dashboard then permits an explicit, phrase-bound owner confirmation for the latest package. The server rechecks all current PDF/EPUB approvals, Kindle Previewer evidence when an EPUB exists, child-safety approval, commercial-use rights, listing metadata and zero-spend policy before persisting the authorization. This authorizes manual KDP submission only; automated upload and publication remain disabled.
+
+## ZIP de soumission manuelle
+
+Après confirmation finale du propriétaire, le tableau de bord iPhone propose un ZIP de soumission manuelle via `GET /api/papi-kids/manuscripts/{upload_id}/kdp-submission-bundle`, protégé par le jeton propriétaire distinct. Le service revalide le hash du manifeste, l'autorisation persistée, les revues et les hashes des fichiers avant de créer le ZIP en mémoire. Le ZIP comprend les PDFs, l'EPUB s'il existe, le manifeste, les métadonnées KDP normalisées, les attestations et les sommes SHA-256. Il n'est pas stocké sur le serveur et n'est jamais envoyé à Amazon.
