@@ -155,3 +155,16 @@ PYTHONPATH=runtime python -m papi_core kids-init PKP-0001 \
 ```
 
 Le générateur refuse les identifiants invalides, les destinations symboliques et les dossiers déjà existants. Il ne remplace jamais un dossier. Il ne modifie pas le catalogue central, ne génère pas le contenu final ou les illustrations et ne contacte aucun service. Les six fichiers sont des modèles de travail, pas un livre prêt à publier.
+
+
+## Commercialisation multi-canal — Mission 78
+
+Le processus commercial doit commencer par une validation de la demande, pas par une production massive. NOVA et MAYA documentent les tendances, concurrents, acheteurs et preuves disponibles ; des prototypes légers sont testés auprès d'adultes du public cible ; PROFIT calcule la marge avant tout GO. Un intérêt déclaré n'est pas une vente garantie.
+
+Deux canaux sont désormais prévus avec des opérations séparées :
+- **Amazon KDP :** impression à la demande lorsque le compte et le territoire sont éligibles ; pas de stock PAPI pour les ventes POD.
+- **Jumia Sénégal :** vente de livres physiques ; le flux Dropship suppose que le vendeur détient le stock et dépose les colis après commande, tandis que Jumia Express implique l'entreposage par Jumia. Un exemplaire imprimé à la demande sur KDP n'est pas automatiquement disponible pour une commande Jumia.
+
+La page officielle Jumia VendorHub consultée pour le barème 2026 affiche 20 % de commission sur la catégorie Livres. Le coût d'expédition, les frais additionnels et les conditions doivent être reconfirmés dans le Vendor Center. Les exigences KYC, la formation vendeur, le contrôle qualité et le compte bancaire de versement sont à vérifier avant toute ouverture.
+
+Le dossier détaillé de validation commerciale, de calcul de marge et de mise en œuvre Jumia est dans `docs/PAPI-KIDS-COMMERCIAL-STRATEGY.md`. Aucun compte, stock, annonce ou campagne n'est activé par cette documentation.
