@@ -21,7 +21,9 @@ from papi_core.papi_kids_image_batch_adapter import CloudflareFluxSchnellBatchAd
 from papi_core.papi_kids_image_provider import (
     MODEL_ID, CloudflareFluxSchnellProvider,
 )
-from papi_core.papi_kids_zero_spend_runtime import build_pkp0001_zero_spend_runtime_engine
+from papi_core.papi_kids_zero_spend_runtime import (
+    build_pkp0001_zero_spend_pipeline, build_pkp0001_zero_spend_runtime_engine,
+)
 
 
 UPLOAD_ID = "PKP-UP-" + "a" * 32
@@ -171,7 +173,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
             }).encode()))
             reservation = FakeReservationStore()
             registered = []
-            engine, report = build_pkp0001_zero_spend_runtime_engine(
+            engine, prepared, report = build_pkp0001_zero_spend_pipeline(
                 upload_id=UPLOAD_ID, storage_root=root, registry=registry,
                 account_refs={"cloudflare": "a" * 32},
                 quota_evidence_by_model={MODEL_ID: free_evidence()},
@@ -179,12 +181,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 account_id="a" * 32, api_token="server-secret",
                 reservation_store=reservation,
                 asset_registrar=lambda metadata: registered.append(metadata["asset_id"]),
-                transport=transport, max_batch_size=4,
-            )
-            prepared = prepare_pkp0001_from_project_sources(
-                project_root=root, registry=registry,
-                account_refs={"cloudflare": "a" * 32},
-                quota_evidence_by_model={MODEL_ID: report["registry_quota_evidence"]},
+                transport=transport, max_batch_size=4, project_root=root,
             )
             result = execute_pkp0001_campaign(
                 prepared=prepared, engine=engine,
