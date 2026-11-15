@@ -32,9 +32,10 @@ class KDPCoverError(ValueError):
 def _rect(value: Any, name: str, page_w: float, page_h: float) -> tuple[float, float, float, float]:
     if not isinstance(value, (list, tuple)) or len(value) != 4:
         raise KDPCoverError(f"Rectangle {name} invalide.")
-    x, y, width, height = (float(item) for item in value)
-    if not all(math.isfinite(item) for item in (x, y, width, height)):
+    x_in, y_in, width_in, height_in = (float(item) for item in value)
+    if not all(math.isfinite(item) for item in (x_in, y_in, width_in, height_in)):
         raise KDPCoverError(f"Coordonnées {name} non finies.")
+    x, y, width, height = (item * inch for item in (x_in, y_in, width_in, height_in))
     if x < 0 or y < 0 or width <= 0 or height <= 0 or x + width > page_w or y + height > page_h:
         raise KDPCoverError(f"Rectangle {name} hors du gabarit.")
     return x, y, width, height
@@ -57,7 +58,7 @@ def _image(storage_root: Path, upload_id: str, asset: dict[str, Any], target_rec
     if hashlib.sha256(data).hexdigest() != asset.get("sha256"):
         raise KDPCoverError("Empreinte SHA-256 de couverture incorrecte.")
     _, _, target_w, target_h = target_rect
-    if width < math.ceil(target_w * dpi) or height < math.ceil(target_h * dpi):
+    if width < math.ceil(target_w / inch * dpi) or height < math.ceil(target_h / inch * dpi):
         raise KDPCoverError(f"Image de couverture sous le seuil {dpi} DPI.")
     return path
 
