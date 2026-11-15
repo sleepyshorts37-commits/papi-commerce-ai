@@ -13,6 +13,7 @@ from .papi_kids_postgres_queue import (
     build_postgres_library_reader,
     build_postgres_queue_registrar,
     build_postgres_safety_reviewer,
+    build_postgres_kdp_metadata_saver,
     build_postgres_status_reader,
 )
 from .papi_kids_worker_service import create_postgres_connection_factory
@@ -44,6 +45,7 @@ def create_app(
         status_reader=build_postgres_status_reader(factory),
         review_handler=build_postgres_asset_reviewer(factory),
         safety_review_handler=build_postgres_safety_reviewer(factory),
+        metadata_saver=build_postgres_kdp_metadata_saver(factory),
         library_reader=build_postgres_library_reader(factory),
     )
 
