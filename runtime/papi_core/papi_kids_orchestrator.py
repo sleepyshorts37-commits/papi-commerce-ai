@@ -185,6 +185,7 @@ def execute_pkp0001_campaign(
         "spend_limit_minor": 0,
         "paid_fallback": False,
         "quota_evidence": current_quota,
+        "editorial_approved": True,
         "human_approval_required": True,
     }
 
