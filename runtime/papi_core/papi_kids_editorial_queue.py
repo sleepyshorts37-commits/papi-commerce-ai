@@ -9,6 +9,8 @@ import re
 import tempfile
 from typing import Any
 
+from .papi_kids_safety_review import analyze_child_safety, PapiKidsSafetyReviewError
+
 _UPLOAD_ID = re.compile(r"^PKP-UP-[0-9a-f]{32}$")
 _HEADING = re.compile(r"^(#{1,3})\s+(.+?)\s*#*\s*$", re.MULTILINE)
 
@@ -68,9 +70,28 @@ def analyze_queued_manuscript(storage_root: str | Path, upload_id: str) -> dict[
     except OSError as exc:
         raise EditorialQueueError("Manuscrit privé inaccessible.") from exc
     headings = [match.group(2).strip() for match in _HEADING.finditer(source)]
+    page_headings = list(re.finditer(r"^###\\s+Page\\s+(\\d+)\\s+[—-]", source, re.MULTILINE | re.IGNORECASE))
+    safety_screening: dict[str, Any] = {
+        "status": "not_run_unstructured_manuscript",
+        "automatic_approval": False,
+        "human_review_required": True,
+    }
+    safety_flagged = False
+    if page_headings:
+        try:
+            safety_screening = analyze_child_safety(source, expected_pages=len(page_headings))
+            safety_flagged = safety_screening["issue_count"] > 0
+        except PapiKidsSafetyReviewError as exc:
+            safety_screening = {
+                "status": "needs_manual_safety_review",
+                "error_type": type(exc).__name__,
+                "automatic_approval": False,
+                "human_review_required": True,
+            }
+            safety_flagged = True
     now = datetime.now(timezone.utc).isoformat()
     record.update({
-        "status": "analysis_ready" if headings else "needs_editor_review",
+        "status": "analysis_ready" if headings and not safety_flagged else "needs_editor_review",
         "analysis": {
             "method": "deterministic_offline_structure_scan",
             "ai_invoked": False,
@@ -80,6 +101,7 @@ def analyze_queued_manuscript(storage_root: str | Path, upload_id: str) -> dict[
             "character_count": len(source),
             "completed_at": now,
             "editorial_approval_required": True,
+            "child_safety_screening": safety_screening,
         },
         "updated_at": now,
     })
