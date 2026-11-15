@@ -157,6 +157,16 @@ class KidsPublishingTests(unittest.TestCase):
         self.assertTrue(any("format invalide" in error for error in errors))
         self.assertTrue(any("workflow_stage invalide" in error for error in errors))
 
+    def test_unhashable_asset_kind_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            book = self.make_book(root)
+            book["assets"][0]["kind"] = []
+            errors = validate_catalog({
+                "schema_version": 1, "division_id": "papi_kids_publishing", "books": [book]
+            })
+        self.assertTrue(any("Type d'asset inconnu" in error for error in errors))
+
     def test_catalog_report_and_lookup(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
