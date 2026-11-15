@@ -249,11 +249,15 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         with patch.dict(os.environ, {"PAPI_KIDS_KDP_BUILD_TOKEN": TOKEN}, clear=True):
             b"".join(self.app(environ, start_response))
         self.assertEqual(captured["status"], "403 Forbidden")
+        configured_app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name,
+            kdp_build_handler=lambda upload: {"upload_id": upload},
+        )
         with patch.dict(os.environ, {
             "PAPI_KIDS_KDP_BUILD_ENABLED": "true",
             "PAPI_KIDS_KDP_BUILD_TOKEN": TOKEN,
         }, clear=True):
-            b"".join(self.app(environ, start_response))
+            b"".join(configured_app(environ, start_response))
         self.assertEqual(captured["status"], "400 Bad Request")
 
     def test_metadata_endpoint_does_not_reuse_safety_review_token(self):
