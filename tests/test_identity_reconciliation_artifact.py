@@ -45,7 +45,7 @@ class IdentityReconciliationArtifactTests(unittest.TestCase):
 
     def test_rejects_invalid_utf8(self):
         with self.assertRaises(IdentityReconciliationArtifactError):
-            load_reconciliation_report(b"\xff")
+            load_reconciliation_report(b"\\xff")
 
     def test_rejects_duplicate_keys(self):
         with self.assertRaises(IdentityReconciliationArtifactError):
@@ -64,6 +64,14 @@ class IdentityReconciliationArtifactTests(unittest.TestCase):
         # its configured digit limit; callers must still receive the stable
         # artifact-boundary exception.
         raw = b'{"unexpected":' + (b"9" * 5000) + b"}"
+        with self.assertRaises(IdentityReconciliationArtifactError):
+            load_reconciliation_report(raw)
+
+    def test_rejects_excessive_json_nesting_with_stable_error(self):
+        # The document is well below the byte limit but exceeds the parser's
+        # recursion capacity. The public boundary must normalize that failure.
+        raw = (b"[" * 2000) + b"0" + (b"]" * 2000)
+        self.assertLess(len(raw), MAX_RECONCILIATION_REPORT_BYTES)
         with self.assertRaises(IdentityReconciliationArtifactError):
             load_reconciliation_report(raw)
 
