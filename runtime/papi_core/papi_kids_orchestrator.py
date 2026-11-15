@@ -91,6 +91,10 @@ def prepare_pkp0001_campaign(
         {**page, "prompt": global_instructions + page["prompt"]}
         for page in scenes
     ]
+    if any(len(page["prompt"]) > 2048 for page in pages):
+        raise PapiKidsOrchestrationError(
+            "Un prompt dépasse la limite de 2 048 caractères du connecteur FLUX."
+        )
     campaign = plan_image_campaign(
         campaign_id="PKP-0001-ILLUSTRATIONS-V1",
         books=[{"book_id": BOOK_ID, "pages": pages}],
