@@ -40,12 +40,13 @@
 - [x] Ajouter le catalogue local versionné, les contrôles de fichiers SHA-256 et les portes droits/qualité/KDP/validation humaine (Mission 73 ; 180 tests unitaires et trois workflows CI réussis sur le SHA d'implémentation).
 - [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
 - [x] Ajouter un générateur local de kits de production vierges : brief, canevas de manuscrit, métadonnées, checklist et rapport qualité initial (Mission 74 ; 187 tests et trois workflows CI réussis sur le SHA de code testé 7bfc392e ; les commits suivants n'ont modifié que le rapport et la roadmap).
-- [ ] Construire les outils de rédaction/assemblage des manuscrits, illustrations originales, intérieurs PDF, couvertures et exports finaux.\n- [x] Spécifier la bible graphique des quatre personnages et le storyboard visuel des 24 pages de PKP-0001 (Mission 77 ; documents de production textuels, aucune illustration finale).
+- [ ] Construire les outils de rédaction/assemblage des manuscrits, illustrations originales, intérieurs PDF, couvertures et exports finaux.
+- [x] Spécifier la bible graphique des quatre personnages et le storyboard visuel des 24 pages de PKP-0001 (Mission 77 ; documents de production textuels, aucune illustration finale).
 - [x] Définir cinq concepts originaux et leurs plans éditoriaux détaillés (Mission 75 ; dossier `docs/MISSION-75-PILOT-CATALOG.md`). Aucun manuscrit final ni fichier prêt à publier n'est revendiqué.
 - [x] Rédiger une première version complète du manuscrit PKP-0001 (24 pages narratives) et son brief d'illustration (Mission 76 ; en attente de relecture, droits et tests de lecture).
 - [ ] Rédiger les quatre autres manuscrits, produire les illustrations originales et faire contrôler indépendamment chaque fichier.
 - [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
-- [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
+- [x] Définir une stratégie de validation de la demande et un processus commercial par étapes, sans ventes garanties (Mission 78).\n- [x] Ajouter Jumia Sénégal comme canal distinct pour les livres physiques, avec vérification KYC, commissions et logistique (Mission 78).\n- [ ] Vérifier les coûts complets et l'éligibilité réelle des comptes KDP et Jumia avant toute mise en vente.\n- [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
 - [ ] Réaliser le premier lancement manuel contrôlé ; aucun agent, compte ou publication externe n'est activé automatiquement.
 
 ## Phase 4 — Autres activités commerciales
