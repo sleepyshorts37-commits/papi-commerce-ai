@@ -204,6 +204,60 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertEqual(payload["status"], "incomplete")
         self.assertEqual(received, [(upload_id, metadata, "owner-01")])
 
+    def test_kindle_previewer_endpoint_uses_distinct_token_and_exact_epub_hash(self):
+        upload_id = "PKP-UP-" + "6" * 32
+        received = []
+        def handler(*args):
+            received.append(args)
+            return {"passed": args[2], "epub_sha256": args[1]}
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name, kindle_previewer_handler=handler,
+        )
+        body = json.dumps({
+            "epub_sha256": "a" * 64, "passed": True,
+            "evidence_ref": "b" * 64,
+            "notes": "Kindle Previewer vérifié, navigation et affichage contrôlés.",
+        }).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kindle-previewer-review",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_KINDLE_PREVIEWER_TOKEN": TOKEN,
+            "PAPI_KIDS_REVIEWER_ID": "owner-01",
+        }, clear=True):
+            payload = json.loads(b"".join(app(environ, start_response)))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertTrue(payload["passed"])
+        self.assertEqual(received[0][0], upload_id)
+        self.assertEqual(received[0][3], "owner-01")
+
+    def test_kindle_previewer_endpoint_does_not_reuse_package_review_token(self):
+        upload_id = "PKP-UP-" + "7" * 32
+        body = json.dumps({
+            "epub_sha256": "a" * 64, "passed": True,
+            "evidence_ref": "b" * 64, "notes": "Kindle Previewer vérifié, navigation contrôlée.",
+        }).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kindle-previewer-review",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {"PAPI_KIDS_KDP_REVIEW_TOKEN": TOKEN}, clear=True):
+            b"".join(self.app(environ, start_response))
+        self.assertEqual(captured["status"], "503 Service Unavailable")
+
     def test_kdp_package_review_endpoint_uses_owner_identity_and_hash(self):
         upload_id = "PKP-UP-" + "3" * 32
         received = []
