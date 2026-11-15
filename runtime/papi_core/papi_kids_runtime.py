@@ -13,7 +13,6 @@ from .image_model_router import FreeImageModel, FreeImageModelRouter
 from .image_production_engine import ImageProductionEngine
 from .image_provider_cloudflare import CloudflareImageAdapter
 from .image_provider_registry import ProviderRegistryError
-from .papi_kids_orchestrator import PapiKidsOrchestrationError
 
 
 class PapiKidsRuntimeError(ValueError):
@@ -46,6 +45,20 @@ def build_pkp0001_runtime_engine(
         raise PapiKidsRuntimeError(
             "Configuration serveur incomplète : " + ", ".join(missing)
         )
+
+    configured_account_ref = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
+    requested_account_ref = (
+        account_refs.get("cloudflare") if isinstance(account_refs, dict) else None
+    )
+    if (
+        not isinstance(requested_account_ref, str)
+        or not requested_account_ref
+        or requested_account_ref != configured_account_ref
+    ):
+        raise PapiKidsRuntimeError(
+            "La référence du compte Cloudflare ne correspond pas au compte serveur configuré."
+        )
+
     try:
         selected = registry.choose(
             account_refs=account_refs,
