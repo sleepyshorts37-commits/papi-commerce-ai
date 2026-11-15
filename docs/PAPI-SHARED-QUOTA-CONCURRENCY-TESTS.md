@@ -20,6 +20,12 @@ python scripts/test_shared_quota_concurrency.py --skip-migration
 ```
 
 ## Scénarios et résultat attendu
+- 12 sessions : même clé d'idempotence — une seule réservation créée, 11 réponses `reused_reserved`, une seule ligne de réservation et 10 unités réservées.
+- 10 agents : 10 réservations acceptées, quota 100/100.
+- 20 agents : 10 acceptées, 10 refusées.
+- 50 agents : 10 acceptées, 40 refusées.
+
+
 - 10 agents : 10 réservations acceptées, quota 100/100.
 - 20 agents : 10 acceptées, 10 refusées.
 - 50 agents : 10 acceptées, 40 refusées.
