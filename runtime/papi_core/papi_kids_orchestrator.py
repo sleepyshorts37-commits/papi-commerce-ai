@@ -80,17 +80,12 @@ def prepare_pkp0001_campaign(
     prompt_document = _read(prompts_path)
     scenes = _scene_sections(prompt_document)
     global_instructions = (
-        "DIRECTION ARTISTIQUE ET CONTINUITÉ — PKP-0001\n"
-        "Utiliser la bible graphique canonique ci-dessous pour conserver les personnages, "
-        "vêtements, accessoires, proportions et décors. La bible est une référence de continuité, "
-        "pas une autorisation de publication.\n\n"
+        "CONTINUITÉ PKP-0001 : appliquer la bible ci-dessous ; préserver silhouettes, "
+        "tenues, accessoires et géographie entre toutes les scènes.\n\n"
         + character_bible.strip()
-        + "\n\nCONTRAINTES COMMUNES : illustration jeunesse originale ; aucun texte, "
-        "lettre, chiffre, logo, filigrane, signature ou marque dans l'image ; ne pas imiter "
-        "un artiste, studio, franchise ou œuvre existante. Respecter strictement la sécurité "
-        "des enfants : rester sur un chemin stable, loin de l'eau et des déchets ; seuls les "
-        "adultes compétents manipulent les déchets et objets dangereux. Ne jamais suggérer "
-        "que l'apparence de l'eau prouve qu'elle est potable.\n\n"
+        + "\n\nCONTRAINTES : enfants sur chemin stable, loin de l'eau ; adultes manipulent "
+        "déchets et objets dangereux ; ne jamais suggérer que l'eau est potable. Aucun texte, "
+        "logo, filigrane ou signature ; aucune imitation d'artiste, studio ou franchise.\n\n"
     )
     pages = [
         {**page, "prompt": global_instructions + page["prompt"]}
@@ -250,6 +245,9 @@ def prepare_pkp0001_from_project_sources(
         source_dir = Path(__file__).parent / "resources" / BOOK_ID
     manuscript_path = source_dir / "manuscript-v2.md"
     bible_path = source_dir / "character-bible-v1.md"
+    prompt_bible_path = source_dir / "character-bible-prompt-compact-v1.md"
+    if not prompt_bible_path.is_file():
+        prompt_bible_path = bible_path
     storyboard_path = source_dir / "storyboard-v1.md"
     prompts_path = source_dir / "illustration-prompts-24-v1.md"
     manuscript = _read(manuscript_path)
@@ -273,11 +271,17 @@ def prepare_pkp0001_from_project_sources(
     prepared = prepare_pkp0001_campaign_from_registry(
         registry=registry,
         prompts_path=prompts_path,
-        character_bible_path=bible_path,
+        character_bible_path=prompt_bible_path,
         account_refs=account_refs,
         quota_evidence_by_model=quota_evidence_by_model,
     )
     import hashlib
+    prepared["character_bible_sha256"] = hashlib.sha256(
+        _read(bible_path).encode("utf-8")
+    ).hexdigest()
+    prepared["prompt_character_bible_sha256"] = hashlib.sha256(
+        _read(prompt_bible_path).encode("utf-8")
+    ).hexdigest()
     prepared["source_bundle"] = {
         "manuscript_v2_sha256": hashlib.sha256(manuscript.encode("utf-8")).hexdigest(),
         "character_bible_sha256": hashlib.sha256(_read(bible_path).encode("utf-8")).hexdigest(),
