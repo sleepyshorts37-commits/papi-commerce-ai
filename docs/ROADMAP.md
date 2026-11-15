@@ -95,3 +95,4 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Ajouter un protocole de validation des niches Amazon KDP inspiré des trois seuils de la capture (résultats < 2 500, top 3 BSR < 100 000, moyenne des avis < 50), avec preuves datées, échantillon de 10 à 20 concurrents et validation humaine obligatoire (Mission 83 ; aucune donnée marché inventée).
 
 - [x] Ajouter un comparateur transparent des cinq concepts pilotes PAPI KIDS, réutilisant les preuves de niche Mission 83 et exigeant une revue humaine (Mission 84 ; aucun classement réel sans collecte).
+- [x] Étendre PAPI PUBLISHING à trois lignes éditoriales séparées : PAPI KIDS, PAPI SCI-FI et PAPI MANGA, avec chaînes de production et contrôles distincts (Mission 85 ; aucun agent activé ni titre publié).
