@@ -49,13 +49,19 @@ class CloudflareQuotaTests(unittest.TestCase):
              "idempotency_key": f"batch-page-{i:03d}"}
             for i in range(3)
         ]
-        results = self.adapter.generate_many(jobs=jobs, now=self.day)
+        batch_adapter = CloudflareImageAdapter(
+            account_id="account-123", api_token="test-only-token",
+            ledger=self.ledger, model_costs={"@cf/test/image": 30},
+            free_tier_confirmed_for_account=True, transport=self.adapter._transport,
+            max_concurrency=2,
+        )
+        results = batch_adapter.generate_many(jobs=jobs, now=self.day)
         self.assertEqual([item["status"] for item in results],
                          ["generated", "generated", "generated"])
         self.assertEqual([item["idempotency_key"] for item in results],
                          [job["idempotency_key"] for job in jobs])
         self.assertEqual(len(self.calls), 3)
-        self.assertEqual(self.ledger.snapshot(self.day)["used_estimated_neurons"], 100)
+        self.assertEqual(self.ledger.snapshot(self.day)["used_estimated_neurons"], 90)
 
     def test_generate_many_rejects_duplicate_idempotency_before_network(self):
         job = {"prompt": "page", "model": "@cf/test/image",
