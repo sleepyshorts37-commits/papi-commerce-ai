@@ -253,6 +253,8 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 """
                 select b.book_id, b.upload_id, b.status as book_status, b.created_at, b.updated_at,
                        b.metadata->'content_safety_review' as content_safety_review,
+                       b.metadata->'kdp_listing_metadata' as kdp_listing_metadata,
+                       b.metadata->>'kdp_listing_metadata_status' as kdp_listing_metadata_status,
                        j.job_id, j.status as job_status, j.attempts, j.max_attempts,
                        j.available_at, j.lease_until, j.payload->'analysis' as analysis
                   from papi_kids_private.books b
@@ -305,6 +307,8 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "updated_at": values["updated_at"].isoformat() if values.get("updated_at") else None,
                 "job": job,
                 "content_safety_review": values.get("content_safety_review"),
+                "kdp_listing_metadata": values.get("kdp_listing_metadata"),
+                "kdp_listing_metadata_status": values.get("kdp_listing_metadata_status"),
                 "illustrations": illustrations,
             }
         except Exception:
@@ -657,3 +661,90 @@ def build_postgres_safety_reviewer(
             reviewer_id=reviewer_id, notes=notes,
         )
     return review
+
+
+def record_kdp_listing_metadata(
+    connection_factory: Callable[[], Any], *,
+    upload_id: str, metadata: dict[str, Any], editor_id: str,
+) -> dict[str, Any]:
+    """Append an owner-entered KDP metadata version and persist the latest draft."""
+    if not isinstance(upload_id, str) or not re.fullmatch(r"PKP-UP-[0-9a-f]{32}", upload_id):
+        raise ValueError("Référence de dépôt invalide.")
+    if not isinstance(metadata, dict):
+        raise ValueError("Métadonnées KDP invalides.")
+    if not isinstance(editor_id, str) or not 3 <= len(editor_id.strip()) <= 120:
+        raise ValueError("Identité de l'éditeur invalide.")
+    editor_id = editor_id.strip()
+    from .papi_kids_kdp_metadata import validate_kdp_listing_metadata
+    validation = validate_kdp_listing_metadata(metadata, paperback=True)
+    canonical = json.dumps(metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    metadata_sha256 = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """select book_id from papi_kids_private.books
+                where upload_id = %s for update""",
+            (upload_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise PostgresEditorialQueueError("Manuscrit introuvable.")
+        book_id = row[0]
+        cursor.execute(
+            """select coalesce(max(version), 0) + 1
+                 from papi_kids_private.kdp_listing_metadata_versions
+                where upload_id = %s""",
+            (upload_id,),
+        )
+        version_row = cursor.fetchone()
+        version = int(version_row[0])
+        cursor.execute(
+            """insert into papi_kids_private.kdp_listing_metadata_versions
+                (book_id, upload_id, version, metadata_json, metadata_sha256,
+                 validation_status, blocker_count, updated_by)
+                values (%s,%s,%s,%s::jsonb,%s,%s,%s,%s)""",
+            (book_id, upload_id, version, canonical, metadata_sha256,
+             validation["status"], validation["blocker_count"], editor_id),
+        )
+        cursor.execute(
+            """update papi_kids_private.books
+                  set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+                      'kdp_listing_metadata', %s::jsonb,
+                      'kdp_listing_metadata_status', %s,
+                      'kdp_listing_metadata_sha256', %s
+                  ),
+                  updated_at = now()
+                where book_id = %s""",
+            (canonical, validation["status"], metadata_sha256, book_id),
+        )
+        connection.commit()
+        return {
+            "upload_id": upload_id,
+            "version": version,
+            "metadata_sha256": metadata_sha256,
+            "status": validation["status"],
+            "blockers": validation["blockers"],
+            "blocker_count": validation["blocker_count"],
+            "normalized_draft": validation["normalized_draft"],
+            "updated_by": editor_id,
+        }
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()
+
+
+def build_postgres_kdp_metadata_saver(
+    connection_factory: Callable[[], Any],
+) -> Callable[..., dict[str, Any]]:
+    """Build server-side callback for authenticated KDP listing metadata drafts."""
+    def save(upload_id: str, metadata: dict[str, Any], editor_id: str) -> dict[str, Any]:
+        return record_kdp_listing_metadata(
+            connection_factory, upload_id=upload_id,
+            metadata=metadata, editor_id=editor_id,
+        )
+    return save
