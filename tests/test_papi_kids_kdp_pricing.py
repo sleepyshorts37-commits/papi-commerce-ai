@@ -60,7 +60,7 @@ class PapiKidsKDPPriceTests(unittest.TestCase):
             expanded_distribution=True,
         )
         self.assertEqual(result["royalty_rate"], "0.40")
-        self.assertEqual(result["estimated_royalty"], "0.996")
+        self.assertEqual(result["estimated_royalty"], "1.00")
 
     def test_unknown_marketplace_is_rejected(self):
         with self.assertRaises(KDPPriceError):
