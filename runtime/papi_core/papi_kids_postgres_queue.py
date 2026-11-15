@@ -326,6 +326,8 @@ def register_illustration_asset(
         raise ValueError("Référence ou empreinte d'illustration invalide.")
     connection = connection_factory()
     try:
+        resolution_review = metadata.get("resolution_review") or {}
+        resolution_approved = isinstance(resolution_review, dict) and resolution_review.get("approved") is True
         cursor = connection.cursor()
         cursor.execute(
             "select book_id from papi_kids_private.books where upload_id = %s for update",
@@ -354,9 +356,9 @@ def register_illustration_asset(
                 metadata.get("source_width_px", metadata["width_px"]),
                 metadata.get("source_height_px", metadata["height_px"]),
                 metadata.get("upscaling_method", "native"),
-                (metadata.get("resolution_review") or {}).get("reviewer_id"),
-                (metadata.get("resolution_review") or {}).get("approved_at"),
-                (metadata.get("resolution_review") or {}).get("output_sha256"),
+                resolution_review.get("reviewer_id") if resolution_approved else None,
+                resolution_review.get("approved_at") if resolution_approved else None,
+                resolution_review.get("output_sha256") if resolution_approved else None,
                 metadata.get("source_provider"), metadata.get("model_id"),
                 metadata.get("prompt_sha256"), metadata.get("generation_ref"),
                 json.dumps({"review_status": "pending_review", "human_approval_required": True}),
