@@ -21,7 +21,7 @@ Créer une frontière d'ingestion sûre pour les rapports de rapprochement séri
 Le composant traite les octets en mémoire uniquement. Il n'ouvre aucun fichier, n'effectue aucun accès réseau ou base de données, ne prouve pas l'origine du rapport et ne constitue pas une signature du propriétaire. Aucun agent n'est activé ; aucune donnée source, permission, clé ou transaction n'est modifiée.
 
 ## Validation
-Code et tests ajoutés sur la branche `mission-71-strict-reconciliation-report-ingestion`. CI sur le SHA exact de tête : en attente de déclenchement/résultat au moment de la rédaction. La mission ne sera déclarée validée qu'après succès de tous les jobs sur le SHA final exact.
+Code et tests ajoutés sur la branche `mission-71-strict-reconciliation-report-ingestion`. CI validée sur le SHA `4ff16b6c856970e33a8745d4596294e2f92e011c` : workflows `43658584029` (pull_request) et `43658568510` (push), avec les jobs `tests` et `local-postgrest-integration` réussis dans chacun des deux workflows. La PR #233 reste en brouillon et non fusionnée.
 
 ## Avancement
-Implémentation et documentation préparées ; validation CI en attente. PR brouillon prévue après contrôle du SHA et des résultats CI.
+Mission validée : implémentation, tests et documentation présents ; deux workflows CI et quatre jobs réussis sur le SHA contrôlé. PR #233 conservée en brouillon, non fusionnée.
