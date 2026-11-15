@@ -41,3 +41,7 @@ The worker processes structural editorial analysis only. Image/LLM generation re
 - Configure reverse-proxy rate limits, TLS renewal, monitoring and alerting before production.
 - \`/healthz\` is a liveness endpoint, not a database readiness check.
 - Do not publish or merge deployment changes without review and explicit authorization.
+
+## Manual encrypted database backup
+
+A separate one-shot runner is available under the Compose `backup` profile. It is disabled by default. Configure `PAPI_KIDS_BACKUP_ENABLED=true`, a private 0700 backup volume, `PAPI_KIDS_BACKUP_KEY_B64` (32 random bytes, Base64), and a key ID only on the server. Build and run manually with `docker compose --profile backup run --rm papi-kids-backup`. The runner uses TLS PostgreSQL, encrypts the pg_dump archive with AES-256-GCM, removes its plaintext staging file, and prints only non-sensitive file names. No schedule or offsite transfer is configured; copy encrypted artifacts to a separately secured offsite destination and verify the manifest.
