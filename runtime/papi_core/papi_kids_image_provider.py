@@ -191,7 +191,7 @@ class CloudflareFluxSchnellProvider:
     def __init__(self, *, account_id: str, api_token: str,
                  reservation_store: PostgresNeuronReservationStore,
                  transport: Callable[[str, dict[str, str], bytes], tuple[int, bytes]] = _https_transport):
-        if not isinstance(account_id, str) or not re.fullmatch(r\"[a-f0-9]{32}\", account_id) or not api_token:
+        if not isinstance(account_id, str) or not re.fullmatch(r"[a-f0-9]{32}\", account_id) or not api_token:
             raise ImageProviderBlocked("Identifiants Cloudflare serveur absents.")
         self.account_id = account_id
         self.api_token = api_token
@@ -204,7 +204,7 @@ class CloudflareFluxSchnellProvider:
             raise ImageProviderBlocked("Génération externe non autorisée.")
         if not isinstance(prompt, str) or not 1 <= len(prompt) <= 2048:
             raise ImageProviderBlocked("Prompt FLUX invalide.")
-        if not isinstance(campaign_id, str) or not re.fullmatch(r\"[A-Za-z0-9._-]{1,100}\", campaign_id) or not isinstance(page_number, int) or isinstance(page_number, bool) or not 1 <= page_number <= 200:
+        if not isinstance(campaign_id, str) or not re.fullmatch(r"[A-Za-z0-9._-]{1,100}\", campaign_id) or not isinstance(page_number, int) or isinstance(page_number, bool) or not 1 <= page_number <= 200:
             raise ImageProviderBlocked("Référence de campagne ou numéro de page invalide.")
         neurons = estimate_flux_schnell_neurons(1024, 1024, steps)
         validate_free_quota_evidence(evidence, required_neurons=neurons)
