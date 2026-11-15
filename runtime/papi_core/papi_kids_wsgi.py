@@ -17,6 +17,7 @@ from .papi_kids_postgres_queue import (
     build_postgres_kdp_package_reviewer,
     build_postgres_kindle_previewer_reviewer,
     build_postgres_kdp_owner_release_authorizer,
+    build_postgres_kdp_submission_lifecycle_recorder,
     build_postgres_status_reader,
 )
 from .papi_kids_worker_service import create_postgres_connection_factory
