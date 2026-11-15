@@ -10,6 +10,7 @@ from papi_core.papi_kids_postgres_queue import (
     record_manuscript_safety_review,
     record_kdp_listing_metadata,
     record_kdp_package_build,
+    record_kdp_package_review,
 )
 
 
@@ -197,6 +198,43 @@ class PostgresEditorialQueueTests(unittest.TestCase):
                 package_manifest={"upload_id": "PKP-UP-" + "a" * 32, "package_version": 1},
                 package_manifest_sha256="0" * 64,
                 build_status="generated_pending_manual_pdf_inspection",
+            )
+        self.assertEqual(connection.cursor_obj.execute.call_count, 0)
+
+    def test_kdp_package_review_is_bound_to_latest_artifact_hash(self):
+        upload_id = "PKP-UP-" + "1" * 32
+        digest = "a" * 64
+        manifest = {"pdfs": {"interior": {"sha256": digest}}}
+        connection = FakeConnection(rows=[("book-uuid",), (1, manifest)])
+        result = record_kdp_package_review(
+            lambda: connection, upload_id=upload_id, artifact="interior",
+            artifact_sha256=digest, decision="approved", reviewer_id="owner-01",
+            notes="PDF inspecté page par page, marges et images contrôlées.",
+        )
+        self.assertTrue(result["approved"])
+        self.assertEqual(result["artifact_sha256"], digest)
+        self.assertEqual(len(result["evidence_ref"]), 64)
+        self.assertEqual(connection.commits, 1)
+        statements = " ".join(call.args[0] for call in connection.cursor_obj.execute.call_args_list)
+        self.assertIn("kdp_package_reviews", statements)
+        self.assertIn("kdp_package_reviews", statements)
+
+    def test_kdp_package_review_rejects_stale_hash_and_short_notes(self):
+        upload_id = "PKP-UP-" + "2" * 32
+        connection = FakeConnection(rows=[("book-uuid",), (1, {"pdfs": {"cover": {"sha256": "a" * 64}}})])
+        with self.assertRaises(PostgresEditorialQueueError):
+            record_kdp_package_review(
+                lambda: connection, upload_id=upload_id, artifact="cover",
+                artifact_sha256="b" * 64, decision="approved", reviewer_id="owner-01",
+                notes="Notes de revue suffisantes.",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+        connection = FakeConnection()
+        with self.assertRaises(ValueError):
+            record_kdp_package_review(
+                lambda: connection, upload_id=upload_id, artifact="cover",
+                artifact_sha256="a" * 64, decision="approved", reviewer_id="owner-01",
+                notes="trop court",
             )
         self.assertEqual(connection.cursor_obj.execute.call_count, 0)
 
