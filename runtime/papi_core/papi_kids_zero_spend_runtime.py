@@ -122,7 +122,8 @@ def build_pkp0001_zero_spend_runtime_engine(
         max_batch_size=max_batch_size,
     )
     asset_center = PapiKidsIllustrationAssetCenter(
-        root, asset_registrar=asset_registrar,
+        root, upload_id=upload_id, logical_book_id="PKP-0001",
+        asset_registrar=asset_registrar,
     )
     engine = ImageProductionEngine(
         generator=router, asset_center=asset_center, max_batch_size=max_batch_size,
@@ -134,6 +135,8 @@ def build_pkp0001_zero_spend_runtime_engine(
         "estimated_neurons_per_image": estimate_flux_schnell_neurons(1024, 1024, 4),
         "estimated_neurons_for_24_images": campaign_neurons,
         "quota_evidence_ref": evidence["evidence_ref"],
+        "registry_quota_evidence": registry_evidence,
+        "account_ref": account_id,
         "generation_authorized": generation_authorized,
         "network_called": False,
         "provider_calls": 0,
