@@ -122,6 +122,10 @@ def store_illustration_asset(
     model_id: str | None = None,
     prompt_sha256: str | None = None,
     generation_ref: str | None = None,
+    source_width_px: int | None = None,
+    source_height_px: int | None = None,
+    upscaling_method: str = "native",
+    resolution_review: dict[str, Any] | None = None,
     asset_registrar: Callable[[dict[str, Any]], Any] | None = None,
 ) -> dict[str, Any]:
     """Persist one private image version; final visual/editorial approval stays human."""
@@ -135,6 +139,24 @@ def store_illustration_asset(
         raise IllustrationAssetError("Empreinte du prompt invalide.")
     width, height = inspect_image(image_bytes, media_type)
     digest = hashlib.sha256(image_bytes).hexdigest()
+    source_width_px = width if source_width_px is None else source_width_px
+    source_height_px = height if source_height_px is None else source_height_px
+    if (not isinstance(source_width_px, int) or isinstance(source_width_px, bool)
+            or not 1 <= source_width_px <= 12000
+            or not isinstance(source_height_px, int) or isinstance(source_height_px, bool)
+            or not 1 <= source_height_px <= 12000):
+        raise IllustrationAssetError("Dimensions source invalides.")
+    if upscaling_method not in {"native", "ai_super_resolution", "manual_retouch", "lanczos_only"}:
+        raise IllustrationAssetError("Méthode d'agrandissement invalide.")
+    if resolution_review is not None:
+        if not isinstance(resolution_review, dict):
+            raise IllustrationAssetError("Preuve de revue de résolution invalide.")
+        if resolution_review.get("approved") is True and (
+            not resolution_review.get("reviewer_id")
+            or not resolution_review.get("approved_at")
+            or resolution_review.get("output_sha256") != digest
+        ):
+            raise IllustrationAssetError("La revue de résolution doit être liée au SHA-256 final.")
     asset_id = "PKP-ASSET-" + digest[:24]
     extension = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}[media_type]
     root = Path(storage_root).resolve()
@@ -158,6 +180,10 @@ def store_illustration_asset(
         "media_type": media_type,
         "width_px": width,
         "height_px": height,
+        "source_width_px": source_width_px,
+        "source_height_px": source_height_px,
+        "upscaling_method": upscaling_method,
+        "resolution_review": resolution_review or {},
         "source_provider": source_provider,
         "model_id": model_id,
         "prompt_sha256": prompt_sha256,
@@ -175,6 +201,10 @@ def store_illustration_asset(
         existing = json.loads(metadata_path.read_text(encoding="utf-8"))
         if existing.get("sha256") != digest:
             raise IllustrationAssetError("Métadonnées de version incohérentes.")
+        if (existing.get("source_width_px", existing.get("width_px")) != source_width_px
+                or existing.get("source_height_px", existing.get("height_px")) != source_height_px
+                or existing.get("upscaling_method", "native") != upscaling_method):
+            raise IllustrationAssetError("Provenance source différente pour cette version d'image.")
         metadata = existing
     if asset_registrar is not None:
         try:
