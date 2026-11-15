@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import os
+import re
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -27,7 +28,7 @@ class ImageProviderBlocked(RuntimeError):
 def estimate_flux_schnell_neurons(width_px: int = 1024, height_px: int = 1024, steps: int = 4) -> float:
     if not isinstance(width_px, int) or not isinstance(height_px, int) or width_px < 1 or height_px < 1:
         raise ValueError("Dimensions de sortie invalides.")
-    if not isinstance(steps, int) or not 1 <= steps <= 8:
+    if not isinstance(steps, int) or isinstance(steps, bool) or not 1 <= steps <= 8:
         raise ValueError("FLUX schnell accepte 1 à 8 étapes.")
     tiles = math.ceil(width_px / 512) * math.ceil(height_px / 512)
     return round(tiles * 4.8 + steps * 9.6, 2)
@@ -61,7 +62,7 @@ def validate_free_quota_evidence(evidence: dict[str, Any], *, required_neurons: 
         raise ImageProviderBlocked("Dates de preuve de quota invalides.") from exc
     if checked.tzinfo is None or expires.tzinfo is None:
         raise ImageProviderBlocked("Dates de preuve sans fuseau horaire.")
-    if checked > now or (now - checked).total_seconds() > 24 * 3600 or expires <= now:
+    if checked > now or (now - checked).total_seconds() > 24 * 3600 or expires <= now or (expires - checked).total_seconds() > 24 * 3600:
         raise ImageProviderBlocked("Preuve de quota périmée ; actualiser depuis le tableau de bord Cloudflare.")
     if checked.date() != now.date() or evidence.get("usage_date") != now.date().isoformat():
         raise ImageProviderBlocked("La preuve doit correspondre à la journée UTC courante.")
@@ -190,7 +191,7 @@ class CloudflareFluxSchnellProvider:
     def __init__(self, *, account_id: str, api_token: str,
                  reservation_store: PostgresNeuronReservationStore,
                  transport: Callable[[str, dict[str, str], bytes], tuple[int, bytes]] = _https_transport):
-        if not account_id or not api_token:
+        if not isinstance(account_id, str) or not re.fullmatch(r\"[a-f0-9]{32}\", account_id) or not api_token:
             raise ImageProviderBlocked("Identifiants Cloudflare serveur absents.")
         self.account_id = account_id
         self.api_token = api_token
@@ -203,7 +204,7 @@ class CloudflareFluxSchnellProvider:
             raise ImageProviderBlocked("Génération externe non autorisée.")
         if not isinstance(prompt, str) or not 1 <= len(prompt) <= 2048:
             raise ImageProviderBlocked("Prompt FLUX invalide.")
-        if not isinstance(campaign_id, str) or not campaign_id or not isinstance(page_number, int) or not 1 <= page_number <= 200:
+        if not isinstance(campaign_id, str) or not re.fullmatch(r\"[A-Za-z0-9._-]{1,100}\", campaign_id) or not isinstance(page_number, int) or isinstance(page_number, bool) or not 1 <= page_number <= 200:
             raise ImageProviderBlocked("Référence de campagne ou numéro de page invalide.")
         neurons = estimate_flux_schnell_neurons(1024, 1024, steps)
         validate_free_quota_evidence(evidence, required_neurons=neurons)
