@@ -4,6 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from papi_core.image_provider_registry import ImageProviderRegistry, ModelProfile, ProviderProfile
+from papi_core.papi_kids_orchestrator import prepare_pkp0001_from_project_sources
+from papi_core.papi_kids_image_provider import MODEL_ID
 from papi_core.papi_kids_editorial_approval import (
     EditorialApprovalError,
     build_pkp0001_editorial_preview_reader,
@@ -55,7 +58,8 @@ class PapiKidsEditorialApprovalTests(unittest.TestCase):
         repository_sources = Path(__file__).resolve().parents[1] / "publishing" / "papi-kids" / "PKP-0001"
         self.source_bytes = {}
         for name in ("manuscript-v2.md", "character-bible-v1.md",
-                     "storyboard-v1.md", "illustration-prompts-24-v1.md"):
+                     "storyboard-v1.md", "illustration-prompts-24-v1.md",
+                     "character-bible-prompt-compact-v1.md"):
             raw = (repository_sources / name).read_bytes()
             (source / name).write_bytes(raw)
             self.source_bytes[name] = raw
@@ -83,6 +87,30 @@ class PapiKidsEditorialApprovalTests(unittest.TestCase):
         self.assertEqual(preview["page_count"], 24)
         self.assertEqual([item["page_number"] for item in preview["prompts"]], list(range(1, 25)))
         self.assertEqual(len(preview["source_bundle_sha256"]), 64)
+
+
+    def test_preview_bundle_hash_matches_generation_orchestrator(self):
+        reader = build_pkp0001_editorial_preview_reader(self.root, project_root=self.project)
+        preview = reader(UPLOAD_ID)
+        registry = ImageProviderRegistry(
+            providers=[ProviderProfile("cloudflare", "Cloudflare", "https://developers.cloudflare.com/workers-ai/platform/pricing", "verified", "account_api", True)],
+            models=[ModelProfile("cloudflare", MODEL_ID, "image", 58, True, True, True)],
+        )
+        now = "2026-11-15T22:00:00+00:00"
+        evidence = {
+            "provider": "cloudflare", "account_ref": "a" * 32, "model_id": MODEL_ID,
+            "source_url": "https://developers.cloudflare.com/workers-ai/platform/pricing",
+            "evidence_ref": "quota-snapshot-001", "verified_at": now,
+            "expires_at": "2026-11-15T23:00:00+00:00",
+            "daily_quota_units": 10000, "spend_cap_minor": 0,
+        }
+        prepared = prepare_pkp0001_from_project_sources(
+            project_root=self.project, registry=registry,
+            account_refs={"cloudflare": "a" * 32},
+            quota_evidence_by_model={MODEL_ID: evidence},
+        )
+        self.assertEqual(preview["source_bundle_sha256"], prepared["source_bundle_sha256"])
+        self.assertTrue(all(len(page["prompt"]) <= 2048 for page in prepared["campaign"].batches[0].items))
 
     def test_different_uploaded_manuscript_cannot_be_approved(self):
         changed = b"# A different manuscript\n"
