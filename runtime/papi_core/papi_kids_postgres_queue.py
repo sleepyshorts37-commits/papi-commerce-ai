@@ -259,6 +259,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                        b.metadata->'kdp_package_build' as kdp_package_build,
                        b.metadata->'kdp_package_reviews' as kdp_package_reviews,
                        b.metadata->'kindle_previewer_review' as kindle_previewer_review,
+                       b.metadata->'kdp_owner_release_authorization' as kdp_owner_release_authorization,
                        j.job_id, j.status as job_status, j.attempts, j.max_attempts,
                        j.available_at, j.lease_until, j.payload->'analysis' as analysis
                   from papi_kids_private.books b
@@ -317,6 +318,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "kdp_package_build": values.get("kdp_package_build"),
                 "kdp_package_reviews": values.get("kdp_package_reviews") or {},
                 "kindle_previewer_review": values.get("kindle_previewer_review"),
+                "kdp_owner_release_authorization": values.get("kdp_owner_release_authorization"),
                 "illustrations": illustrations,
             }
         except Exception:
@@ -1045,3 +1047,146 @@ def build_postgres_kindle_previewer_reviewer(
             reviewer_id=reviewer_id, evidence_ref=evidence_ref, notes=notes,
         )
     return review
+
+
+def record_kdp_owner_release_authorization(
+    connection_factory: Callable[[], Any], *,
+    upload_id: str, owner_id: str, confirmation_phrase: str, notes: str,
+) -> dict[str, Any]:
+    """Persist owner sign-off only after every package review is current and approved."""
+    expected_phrase = "I AUTHORIZE MANUAL KDP SUBMISSION"
+    if not isinstance(upload_id, str) or not _UPLOAD_ID.fullmatch(upload_id):
+        raise ValueError("Référence de dépôt invalide.")
+    if not isinstance(owner_id, str) or not 3 <= len(owner_id.strip()) <= 120:
+        raise ValueError("Identité du propriétaire invalide.")
+    owner_id = owner_id.strip()
+    if confirmation_phrase != expected_phrase:
+        raise ValueError("Phrase de confirmation exacte obligatoire.")
+    if not isinstance(notes, str) or not 20 <= len(notes.strip()) <= 2000:
+        raise ValueError("Notes de confirmation obligatoires (20 à 2000 caractères).")
+    notes = notes.strip()
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """select book_id, metadata
+                 from papi_kids_private.books
+                where upload_id = %s for update""",
+            (upload_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise PostgresEditorialQueueError("Manuscrit introuvable.")
+        book_id, metadata = row
+        if isinstance(metadata, str):
+            metadata = json.loads(metadata)
+        metadata = metadata or {}
+        cursor.execute(
+            """select package_version, package_manifest, package_manifest_sha256
+                 from papi_kids_private.kdp_package_builds
+                where upload_id = %s
+                order by package_version desc limit 1""",
+            (upload_id,),
+        )
+        package_row = cursor.fetchone()
+        if not package_row:
+            raise PostgresEditorialQueueError("Aucun package KDP fabriqué.")
+        version, manifest, manifest_sha256 = package_row
+        if isinstance(manifest, str):
+            manifest = json.loads(manifest)
+        if not isinstance(manifest, dict) or manifest.get("package_version") != version:
+            raise PostgresEditorialQueueError("Manifeste du package invalide.")
+        canonical = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        if hashlib.sha256(canonical.encode("utf-8")).hexdigest() != manifest_sha256:
+            raise PostgresEditorialQueueError("Empreinte du manifeste incorrecte.")
+        blockers = []
+        reviews = metadata.get("kdp_package_reviews") or {}
+        pdfs = manifest.get("pdfs") or {}
+        for artifact in ("interior", "cover"):
+            record = pdfs.get(artifact)
+            review = reviews.get(f"v{version}:{artifact}")
+            if (not isinstance(record, dict) or not re.fullmatch(r"[0-9a-f]{64}", str(record.get("sha256", "")))
+                    or not isinstance(review, dict) or review.get("approved") is not True
+                    or review.get("decision") != "approved" or review.get("package_version") != version
+                    or review.get("artifact_sha256") != record.get("sha256")):
+                blockers.append(f"Revue humaine absente, refusée ou périmée : {artifact}.")
+        ebook = manifest.get("ebook")
+        if ebook:
+            review = reviews.get(f"v{version}:ebook")
+            preview = metadata.get("kindle_previewer_review") or {}
+            if (not isinstance(ebook, dict) or not isinstance(review, dict)
+                    or review.get("approved") is not True or review.get("decision") != "approved"
+                    or review.get("package_version") != version
+                    or review.get("artifact_sha256") != ebook.get("sha256")):
+                blockers.append("Revue humaine EPUB absente, refusée ou périmée.")
+            if (preview.get("passed") is not True or preview.get("package_version") != version
+                    or preview.get("epub_sha256") != ebook.get("sha256")
+                    or not re.fullmatch(r"[0-9a-f]{64}", str(preview.get("evidence_ref", "")))
+                    or not isinstance(preview.get("notes"), str) or len(preview.get("notes", "")) < 20):
+                blockers.append("Attestation Kindle Previewer absente ou périmée.")
+        safety = metadata.get("content_safety_review") or {}
+        if safety.get("approved") is not True:
+            blockers.append("Validation humaine de sécurité jeunesse absente ou refusée.")
+        listing = metadata.get("kdp_listing_metadata") or {}
+        if (metadata.get("kdp_listing_metadata_status") != "ready_for_owner_review"
+                or metadata.get("kdp_listing_metadata_blockers")
+                or listing.get("commercial_use_confirmed") is not True
+                or not listing.get("rights_holder") or not listing.get("rights_evidence_ref")):
+            blockers.append("Fiche KDP ou preuve des droits commerciaux incomplète.")
+        if manifest.get("spend_limit_minor") != 0:
+            blockers.append("Le plafond de dépense doit rester strictement à zéro.")
+        if blockers:
+            raise PostgresEditorialQueueError("Confirmation finale refusée : " + " ".join(blockers))
+        from datetime import datetime, timezone
+        confirmed_at = datetime.now(timezone.utc).isoformat()
+        evidence_ref = hashlib.sha256(
+            f"{upload_id}:{version}:{manifest_sha256}:{owner_id}:{confirmed_at}:{notes}".encode("utf-8")
+        ).hexdigest()
+        authorization = {
+            "package_version": version,
+            "manifest_sha256": manifest_sha256,
+            "owner_id": owner_id,
+            "confirmation_phrase": expected_phrase,
+            "confirmed_at": confirmed_at,
+            "notes": notes,
+            "evidence_ref": evidence_ref,
+            "manual_submission_only": True,
+        }
+        cursor.execute(
+            """insert into papi_kids_private.kdp_owner_release_authorizations
+                (book_id, upload_id, package_version, manifest_sha256, owner_id,
+                 confirmation_phrase, notes, evidence_ref)
+                values (%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (book_id, upload_id, version, manifest_sha256, owner_id,
+             expected_phrase, notes, evidence_ref),
+        )
+        cursor.execute(
+            """update papi_kids_private.books
+                  set metadata = coalesce(metadata, '{}'::jsonb) ||
+                      jsonb_build_object('kdp_owner_release_authorization', %s::jsonb),
+                      updated_at = now()
+                where book_id = %s""",
+            (json.dumps(authorization, ensure_ascii=False), book_id),
+        )
+        connection.commit()
+        return {"upload_id": upload_id, **authorization,
+                "kdp_upload_enabled": False, "publication_performed": False}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()
+
+
+def build_postgres_kdp_owner_release_authorizer(
+    connection_factory: Callable[[], Any],
+) -> Callable[..., dict[str, Any]]:
+    """Build the server-side owner final confirmation callback."""
+    def authorize(upload_id: str, owner_id: str, confirmation_phrase: str, notes: str) -> dict[str, Any]:
+        return record_kdp_owner_release_authorization(
+            connection_factory, upload_id=upload_id, owner_id=owner_id,
+            confirmation_phrase=confirmation_phrase, notes=notes,
+        )
+    return authorize
