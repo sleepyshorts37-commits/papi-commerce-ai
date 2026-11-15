@@ -47,8 +47,12 @@ class PapiKidsIllustrationAssetCenter:
             records.append((int(match.group(1)), metadata_path, metadata))
         return sorted(records, key=lambda item: item[0])
 
-    def get(self, *, book_id: str, page_id: str, page_number: int,
+    def get(self, *, book_id: str, page_id: str,
             idempotency_key: str) -> dict[str, Any] | None:
+        match = re.fullmatch(r"page-(\d{2})", page_id)
+        if not match:
+            raise ValueError("Identifiant de page invalide.")
+        page_number = int(match.group(1))
         records = self._records(book_id, page_number)
         for version, metadata_path, metadata in reversed(records):
             if metadata.get("idempotency_key") != idempotency_key:
