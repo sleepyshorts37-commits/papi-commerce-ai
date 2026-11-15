@@ -5,6 +5,7 @@ never creates network connections, reads secrets, or invokes AI/image vendors.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from typing import Any, Callable
