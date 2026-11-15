@@ -386,6 +386,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             {"package_version": 1, "status": "generated_pending_manual_pdf_inspection"},
             {"v1:interior": {"approved": True}},
             {"passed": True, "epub_sha256": "c" * 64},
+            {"owner_id": "owner-01", "package_version": 1},
             71, "completed", 1, 5, None, None, analysis,
         )])
         connection.cursor_obj.description = [
@@ -393,7 +394,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             ("updated_at",), ("content_safety_review",), ("kdp_listing_metadata",),
             ("kdp_listing_metadata_status",), ("kdp_listing_metadata_blockers",),
             ("kdp_package_build",), ("kdp_package_reviews",),
-            ("kindle_previewer_review",), ("job_id",),
+            ("kindle_previewer_review",), ("kdp_owner_release_authorization",), ("job_id",),
             ("job_status",), ("attempts",), ("max_attempts",),
             ("available_at",), ("lease_until",), ("analysis",),
         ]
@@ -407,6 +408,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(result["kdp_package_build"]["package_version"], 1)
         self.assertTrue(result["kdp_package_reviews"]["v1:interior"]["approved"])
         self.assertTrue(result["kindle_previewer_review"]["passed"])
+        self.assertEqual(result["kdp_owner_release_authorization"]["owner_id"], "owner-01")
 
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):
