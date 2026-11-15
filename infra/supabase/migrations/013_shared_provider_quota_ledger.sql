@@ -53,8 +53,8 @@ alter table public.papi_provider_daily_quotas enable row level security;
 alter table public.papi_provider_quota_reservations enable row level security;
 revoke all on public.papi_provider_daily_quotas from public, anon, authenticated;
 revoke all on public.papi_provider_quota_reservations from public, anon, authenticated;
-grant select on public.papi_provider_daily_quotas to service_role;
-grant select on public.papi_provider_quota_reservations to service_role;
+grant select, insert, update on public.papi_provider_daily_quotas to service_role;
+grant select, insert, update on public.papi_provider_quota_reservations to service_role;
 
 -- Serializes duplicate idempotency keys, then locks the quota bucket.
 -- Returns the existing reservation only when the original intent matches.
