@@ -20,7 +20,7 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn('name="viewport"', html)
         self.assertIn('data-filter="pending_visual_review"', html)
         self.assertEqual(html.count('class="scene"'), 24)
-        self.assertIn("Jeton Bearer", html)
+        self.assertIn("jeton Bearer", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(
