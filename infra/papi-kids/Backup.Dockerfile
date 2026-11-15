@@ -6,10 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PAPI_KIDS_BACKUP_DIRECTORY=/data/backups
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client \
+    && apt-get install -y --no-install-recommends postgresql-client rclone \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system papi \
-    && useradd --system --gid papi --home-dir /nonexistent --shell /usr/sbin/nologin papi \
+    && groupadd --gid 10001 papi \
+    && useradd --uid 10001 --gid papi --home-dir /nonexistent --shell /usr/sbin/nologin papi \
     && mkdir -p /data/backups /app \
     && chown -R papi:papi /data/backups /app \
     && chmod 0700 /data/backups

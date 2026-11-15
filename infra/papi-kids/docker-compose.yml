@@ -68,6 +68,30 @@ services:
       - no-new-privileges:true
     restart: "no"
 
+  papi-kids-offsite:
+    build:
+      context: ../..
+      dockerfile: infra/papi-kids/Backup.Dockerfile
+    image: papi-kids-backup:local
+    profiles: ["offsite"]
+    env_file:
+      - .env
+    environment:
+      PAPI_KIDS_BACKUP_DIRECTORY: /data/backups
+      RCLONE_CONFIG: /run/secrets/rclone.conf
+    command: ["python", "-m", "papi_core.papi_kids_offsite_backup_runner"]
+    volumes:
+      - papi-kids-backups:/data/backups:ro
+      - ${PAPI_KIDS_RCLONE_CONFIG_FILE:-./rclone.conf}:/run/secrets/rclone.conf:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
 volumes:
   papi-kids-private:
     driver: local
