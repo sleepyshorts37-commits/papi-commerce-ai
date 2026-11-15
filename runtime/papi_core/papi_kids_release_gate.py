@@ -166,6 +166,8 @@ def evaluate_kdp_release_gate(
     root = Path(private_root).resolve()
     pdfs = manifest.get("pdfs") or {}
     package_version = manifest.get("package_version")
+    _missing(isinstance(package_version, int) and not isinstance(package_version, bool) and 1 <= package_version <= 999,
+             "Version du package KDP manquante ou invalide.", blockers)
     package_reviews = manifest.get("kdp_package_reviews") or manifest.get("package_reviews") or {}
 
     def require_package_review(artifact: str, artifact_sha256: str) -> None:
