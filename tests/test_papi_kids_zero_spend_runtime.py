@@ -219,7 +219,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 max_batches_per_run=1,
             )
             execution = result["execution"]
-            self.assertEqual(execution["batch_reports"][0]["stored_count"], 4)
+            self.assertEqual(execution["batch_reports"][0]["stored_count"], 4, execution["batch_reports"][0])
             self.assertEqual(transport.call_count, 4)
             self.assertEqual(len(registered), 4)
             self.assertEqual(len(reservation.reservations), 4)
