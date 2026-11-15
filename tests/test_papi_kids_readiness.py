@@ -43,6 +43,8 @@ class PapiKidsReadinessTests(unittest.TestCase):
                 "PAPI_KIDS_SAFETY_REVIEW_TOKEN": "s" * 40,
                 "PAPI_KIDS_METADATA_TOKEN": "m" * 40,
                 "PAPI_KIDS_KDP_BUILD_TOKEN": "b" * 40,
+                "PAPI_KIDS_KDP_REVIEW_TOKEN": "k" * 40,
+                "PAPI_KIDS_KINDLE_PREVIEWER_TOKEN": "p" * 40,
                 "PAPI_KIDS_REVIEWER_ID": "owner-01",
                 "PAPI_KIDS_METADATA_EDITOR_ID": "owner-01",
                 "CLOUDFLARE_ACCOUNT_ID": "a" * 32,
