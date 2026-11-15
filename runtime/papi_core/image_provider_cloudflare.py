@@ -348,7 +348,7 @@ class CloudflareImageAdapter:
         def run_one(job: dict[str, str]) -> dict[str, Any]:
             try:
                 result = self.generate(**job, now=now)
-                return {"status": "generated", **result}
+                return {"status": "generated", "idempotency_key": job["idempotency_key"], **result}
             except Exception as exc:
                 return {"status": "failed", "model": job["model"],
                         "idempotency_key": job["idempotency_key"], "error": str(exc)}
