@@ -15,6 +15,7 @@ REQUIRED_TABLES = {
     "kdp_package_builds",
     "kdp_package_reviews",
     "kindle_previewer_reviews",
+    "kdp_owner_release_authorizations",
 }
 
 
@@ -67,6 +68,8 @@ def check_papi_kids_readiness(
         "PAPI_KIDS_KDP_BUILD_TOKEN",
         "PAPI_KIDS_KDP_REVIEW_TOKEN",
         "PAPI_KIDS_KINDLE_PREVIEWER_TOKEN",
+        "PAPI_KIDS_OWNER_RELEASE_TOKEN",
+        "PAPI_KIDS_RELEASE_OWNER_ID",
         "PAPI_KIDS_REVIEWER_ID",
         "PAPI_KIDS_METADATA_EDITOR_ID",
     )
