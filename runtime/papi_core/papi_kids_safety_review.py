@@ -84,7 +84,11 @@ def analyze_child_safety(manuscript: str, *, expected_pages: int = 24) -> dict[s
         normalized = _normalize(text)
         issues = []
         for rule_id, severity, pattern, description in _RULES:
-            found = pattern.search(normalized)
+            found = next(
+                (candidate for candidate in pattern.finditer(normalized)
+                 if not _is_negated(normalized, candidate.start(), candidate.end())),
+                None,
+            )
             if found:
                 start = max(0, found.start() - 70)
                 excerpt = re.sub(r"\s+", " ", text)[start:start + 180]
