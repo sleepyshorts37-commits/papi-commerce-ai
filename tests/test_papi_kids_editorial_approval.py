@@ -111,7 +111,7 @@ class PapiKidsEditorialApprovalTests(unittest.TestCase):
             quota_evidence_by_model={MODEL_ID: evidence},
         )
         self.assertEqual(preview["source_bundle_sha256"], prepared["source_bundle_sha256"])
-        self.assertTrue(all(len(page["prompt"]) <= 2048 for page in prepared["campaign"].batches[0].items))
+        self.assertTrue(all(len(item.prompt) <= 2048 for item in prepared["campaign"].batches[0].items))
 
     def test_different_uploaded_manuscript_cannot_be_approved(self):
         changed = b"# A different manuscript\n"
