@@ -250,8 +250,8 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
             cursor = connection.cursor()
             cursor.execute(
                 """
-                select b.upload_id, b.status, b.created_at, b.updated_at,
-                       j.job_id, j.status, j.attempts, j.max_attempts,
+                select b.upload_id, b.status as book_status, b.created_at, b.updated_at,
+                       j.job_id, j.status as job_status, j.attempts, j.max_attempts,
                        j.available_at, j.lease_until
                   from papi_kids_private.books b
                   left join papi_kids_private.editorial_jobs j on j.book_id = b.book_id
@@ -269,7 +269,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
             if values.get("job_id") is not None:
                 job = {
                     "job_id": values["job_id"],
-                    "status": values["status"],
+                    "status": values["job_status"],
                     "attempts": values["attempts"],
                     "max_attempts": values["max_attempts"],
                     "available_at": values["available_at"].isoformat() if values.get("available_at") else None,
@@ -278,7 +278,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
             connection.commit()
             return {
                 "upload_id": values["upload_id"],
-                "book_status": values["status"],
+                "book_status": values["book_status"],
                 "created_at": values["created_at"].isoformat() if values.get("created_at") else None,
                 "updated_at": values["updated_at"].isoformat() if values.get("updated_at") else None,
                 "job": job,
