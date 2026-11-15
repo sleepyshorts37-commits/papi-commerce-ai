@@ -98,6 +98,50 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertEqual(response["status"], "503 Service Unavailable")
         self.assertEqual(payload["error"], "status_not_configured")
 
+    def test_review_endpoint_requires_separate_review_token_and_records_server_reviewer(self):
+        asset_id = "PKP-ASSET-" + "a" * 24
+        received = []
+        def handler(asset, decision, reviewer, notes):
+            received.append((asset, decision, reviewer, notes))
+            return {"asset_id": asset, "review_status": decision}
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name, review_handler=handler)
+        body = json.dumps({"decision": "approved", "notes": "Cohérent"}).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/assets/" + asset_id + "/review",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_REVIEW_TOKEN": TOKEN, "PAPI_KIDS_REVIEWER_ID": "owner-01"
+        }, clear=True):
+            payload = json.loads(b"".join(app(environ, start_response)))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertEqual(payload["review_status"], "approved")
+        self.assertEqual(received, [(asset_id, "approved", "owner-01", "Cohérent")])
+
+    def test_review_route_fails_closed_without_review_handler(self):
+        asset_id = "PKP-ASSET-" + "b" * 24
+        body = b'{"decision":"approved"}'
+        environ = {
+            "PATH_INFO": "/api/papi-kids/assets/" + asset_id + "/review",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {"PAPI_KIDS_REVIEW_TOKEN": TOKEN}, clear=True):
+            b"".join(self.app(environ, start_response))
+        self.assertEqual(captured["status"], "503 Service Unavailable")
+
     def test_rejects_bad_filename_size_and_non_utf8(self):
         with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
             response, _ = call(self.app, filename="../evil.md")
