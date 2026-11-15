@@ -58,6 +58,7 @@ def prepare_pkp0001_campaign(
     character_bible_path: str | Path,
     model: str,
     model_costs: dict[str, int],
+    account_ref: str,
     quota_evidence: dict[str, Any],
     max_batch_size: int = 4,
     max_batch_units: int = 2_000,
@@ -68,7 +69,7 @@ def prepare_pkp0001_campaign(
     try:
         quota_record = validate_quota_evidence(
             quota_evidence, provider="cloudflare",
-            account_ref=quota_evidence.get("account_ref") if isinstance(quota_evidence, dict) else "",
+            account_ref=account_ref,
             model_id=model, estimated_units_per_image=model_costs[model],
             required_images=EXPECTED_SCENES,
         )
