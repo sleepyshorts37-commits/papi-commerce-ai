@@ -109,8 +109,12 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <p class="muted">Dernière mise à jour : """+safe_updated+"""</p></section>
 <section><h2>Transmettre un manuscrit</h2>
 <input id="manuscript" type="file" accept=".md,.txt,text/markdown,text/plain">
-<p class="muted">Formats acceptés pour l'aperçu local : .md et .txt, maximum 2 Mo.</p>
-<div class="notice">Aperçu local uniquement : ce tableau de bord ne téléverse pas encore le manuscrit vers le serveur et ne lance aucune génération.</div>
+<p class="muted">Formats acceptés : .md et .txt, maximum 2 Mo.</p>
+<label for="upload-token">Jeton de dépôt fourni par l'administrateur</label>
+<input id="upload-token" type="password" autocomplete="off" placeholder="Jeton sécurisé du serveur">
+<button id="upload-button" type="button" disabled>Envoyer le manuscrit</button>
+<p id="upload-result" class="muted" role="status" aria-live="polite">Aucun fichier envoyé.</p>
+<div class="notice">L'envoi utilise HTTPS et un jeton Bearer saisi ici. Le jeton n'est pas enregistré par cette interface. L'envoi ne déclenche pas la génération IA.</div>
 <pre id="preview" hidden></pre></section>
 <section><h2>Suivi des illustrations</h2>
 <div class="filters" aria-label="Filtrer les pages">
@@ -125,9 +129,13 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 "use strict";
 const fileInput=document.getElementById("manuscript");
 const preview=document.getElementById("preview");
+const tokenInput=document.getElementById("upload-token");
+const uploadButton=document.getElementById("upload-button");
+const uploadResult=document.getElementById("upload-result");
 fileInput.addEventListener("change",()=>{
  const file=fileInput.files&&fileInput.files[0];
  preview.hidden=true;preview.textContent="";
+ uploadButton.disabled=!file;
  if(!file)return;
  if(!/\.(md|txt)$/i.test(file.name)||file.size>2*1024*1024){
   preview.hidden=false;preview.textContent="Fichier refusé : choisissez un .md ou .txt de 2 Mo maximum.";return;
@@ -136,6 +144,24 @@ fileInput.addEventListener("change",()=>{
  reader.onload=()=>{preview.textContent=String(reader.result||"").slice(0,12000);preview.hidden=false;};
  reader.onerror=()=>{preview.textContent="Lecture locale impossible.";preview.hidden=false;};
  reader.readAsText(file);
+});
+uploadButton.addEventListener("click",async()=>{
+ const file=fileInput.files&&fileInput.files[0];
+ const token=tokenInput.value;
+ if(!file||!token){uploadResult.textContent="Sélectionnez un fichier et saisissez le jeton.";return;}
+ uploadButton.disabled=true;uploadResult.textContent="Envoi sécurisé en cours…";
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts",{
+   method:"POST",headers:{"Authorization":"Bearer "+token,
+    "Content-Type":file.name.toLowerCase().endsWith(".md")?"text/markdown":"text/plain",
+    "X-Filename":encodeURIComponent(file.name)},body:file,credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"upload_failed");
+  uploadResult.textContent="Manuscrit reçu. Référence : "+result.upload_id+". Analyse éditoriale en attente.";
+  tokenInput.value="";
+ }catch(error){uploadResult.textContent="Échec de l'envoi : "+String(error.message||error);}
+ finally{uploadButton.disabled=false;}
 });
 document.querySelectorAll("[data-filter]").forEach(button=>{
  button.addEventListener("click",()=>{
