@@ -45,6 +45,8 @@ class PapiKidsIllustrationAssetCenter:
             if metadata.get("idempotency_key") != idempotency_key:
                 continue
             if metadata.get("persistence_status") == "registered":
+                # Reconcile the private sidecar with PostgreSQL before skipping generation.
+                self.asset_registrar(metadata)
                 return metadata
             storage_path = (self.root / metadata["storage_key"]).resolve()
             if self.root not in storage_path.parents or not storage_path.is_file():
