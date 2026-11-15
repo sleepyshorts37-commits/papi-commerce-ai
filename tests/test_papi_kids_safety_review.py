@@ -1,5 +1,6 @@
 import hashlib
 import unittest
+from pathlib import Path
 
 from papi_core.papi_kids_safety_review import (
     PapiKidsSafetyReviewError,
@@ -76,6 +77,15 @@ class PapiKidsSafetyReviewTests(unittest.TestCase):
             reviewed_at="2026-11-15", evidence_ref="safety-03",
         )
         self.assertNotEqual(attestation["manuscript_sha256"], second["manuscript_sha256"])
+
+    def test_pkp0001_v2_working_manuscript_has_no_lexical_flags_but_is_not_auto_approved(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "publishing" / "papi-kids" / "PKP-0001" / "manuscript-v2.md").read_text(encoding="utf-8")
+        result = analyze_child_safety(source)
+        self.assertEqual(result["page_count"], 24)
+        self.assertEqual(result["issue_count"], 0)
+        self.assertFalse(result["automatic_approval"])
+        self.assertTrue(result["human_review_required"])
 
     def test_requires_24_ordered_pages(self):
         with self.assertRaises(PapiKidsSafetyReviewError):
