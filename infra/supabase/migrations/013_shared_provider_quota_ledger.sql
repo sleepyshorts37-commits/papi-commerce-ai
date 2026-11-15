@@ -121,7 +121,7 @@ begin
 
     insert into public.papi_provider_daily_quotas(provider, account_ref, model, quota_day, daily_limit)
     values (p_provider, p_account_ref, p_model, p_quota_day, p_daily_limit)
-    on conflict (provider, account_ref, model, quota_day) do nothing;
+    on conflict on constraint papi_provider_daily_quotas_pkey do nothing;
 
     select * into v_bucket
       from public.papi_provider_daily_quotas as bucket
