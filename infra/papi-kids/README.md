@@ -61,3 +61,7 @@ The editorial worker stores deterministic safety flags with the manuscript analy
 ## iPhone dashboard
 
 The WSGI app serves the mobile dashboard at `/dashboard` (and `/`) over HTTPS. The page is generated server-side from non-secret settings `PAPI_KIDS_DASHBOARD_BOOK_ID`, `PAPI_KIDS_DASHBOARD_TITLE`, and `PAPI_KIDS_DASHBOARD_PAGE_COUNT`. It includes manuscript intake, status, illustration review, child-safety review, and library workflows. API actions remain protected by separate server-side tokens. Configure the reverse proxy to forward the HTTPS scheme correctly; plain HTTP dashboard requests are rejected.
+
+## KDP listing metadata drafts
+
+`POST /api/papi-kids/manuscripts/{upload_id}/kdp-metadata` saves a versioned listing draft in PostgreSQL. Use the separate server-side `PAPI_KIDS_METADATA_TOKEN`; the editor identity comes from `PAPI_KIDS_METADATA_EDITOR_ID`. Incomplete drafts are accepted and returned with explicit blockers so the owner can complete them later. Each version is append-only, SHA-256 tracked, and does not enable KDP upload or publication.
