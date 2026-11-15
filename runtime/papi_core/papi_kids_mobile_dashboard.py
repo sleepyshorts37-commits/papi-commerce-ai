@@ -189,6 +189,13 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <label for="kdp-review-token">Jeton distinct de revue des fichiers KDP</label>
 <input id="kdp-review-token" type="password" autocomplete="off" placeholder="Jeton de revue KDP côté serveur">
 <div id="kdp-package-review-list" aria-live="polite">Aucun package à inspecter.</div>
+<hr>
+<h3>Contrôle final avant confirmation propriétaire</h3>
+<p class="muted">Vérifie les validations sécurité, les droits commerciaux et les empreintes exactes des fichiers. Ce contrôle ne téléverse ni ne publie.</p>
+<label for="kdp-release-token">Jeton distinct de contrôle final</label>
+<input id="kdp-release-token" type="password" autocomplete="off" placeholder="Jeton de contrôle final">
+<button id="kdp-release-button" type="button">Vérifier les conditions finales</button>
+<div id="kdp-release-result" role="status" aria-live="polite">Contrôle non exécuté.</div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
@@ -228,6 +235,9 @@ const readinessButton=document.getElementById("readiness-button");
 const readinessResult=document.getElementById("readiness-result");
 const kdpReviewTokenInput=document.getElementById("kdp-review-token");
 const kdpPackageReviewList=document.getElementById("kdp-package-review-list");
+const kdpReleaseTokenInput=document.getElementById("kdp-release-token");
+const kdpReleaseButton=document.getElementById("kdp-release-button");
+const kdpReleaseResult=document.getElementById("kdp-release-result");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -289,6 +299,33 @@ statusButton.addEventListener("click",async()=>{
   renderKdpPackageReview(result.kdp_package_build||{},result.kdp_package_reviews||{},id);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
+});
+kdpReleaseButton.addEventListener("click",async()=>{
+ const id=statusId.value.trim(),token=kdpReleaseTokenInput.value;
+ if(!/^PKP-UP-[0-9a-f]{32}$/.test(id)){kdpReleaseResult.textContent="Saisissez d'abord la référence du manuscrit.";return;}
+ if(!token){kdpReleaseResult.textContent="Saisissez le jeton distinct de contrôle final.";return;}
+ kdpReleaseButton.disabled=true;kdpReleaseResult.textContent="Vérification des validations…";
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(id)+"/kdp-release-check",{
+   method:"GET",headers:{"Authorization":"Bearer "+token},credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"release_check_failed");
+  kdpReleaseTokenInput.value="";
+  kdpReleaseResult.replaceChildren();
+  const heading=document.createElement("p");
+  heading.textContent=result.eligible_for_final_owner_confirmation?
+   "Toutes les conditions automatiques sont satisfaites. Confirmation finale du propriétaire encore requise.":
+   "Publication bloquée : des conditions restent à satisfaire.";
+  kdpReleaseResult.appendChild(heading);
+  (result.blockers||[]).forEach(item=>{
+   const line=document.createElement("p");line.textContent="• "+item;kdpReleaseResult.appendChild(line);
+  });
+  const note=document.createElement("p");
+  note.textContent="Téléversement KDP désactivé. Aucune publication effectuée. Dépenses : 0.";
+  kdpReleaseResult.appendChild(note);
+ }catch(error){kdpReleaseResult.textContent="Contrôle indisponible : "+String(error.message||error);}
+ finally{kdpReleaseButton.disabled=false;}
 });
 function renderKdpPackageReview(packageBuild,reviews,uploadId){
  kdpPackageReviewList.replaceChildren();
