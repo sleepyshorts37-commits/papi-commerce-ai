@@ -8,6 +8,7 @@ from typing import Any
 
 from .papi_kids_print_resolution import PrintResolutionError, audit_image_resolution
 from .papi_kids_ebook_package import PapiKidsEPUBPackageError, validate_epub_structure
+from .papi_kids_kdp_metadata import validate_kdp_listing_metadata
 
 _BOOK_ID = re.compile(r"^PKP-[0-9]{4,8}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -36,6 +37,32 @@ def evaluate_kdp_release_gate(
         }
 
     metadata = manifest.get("metadata") or {}
+    listing_metadata = manifest.get("kdp_listing_metadata") or {}
+    listing_validation = validate_kdp_listing_metadata(listing_metadata, paperback=True)
+    if listing_validation["blockers"]:
+        blockers.extend("Fiche KDP : " + item for item in listing_validation["blockers"])
+    else:
+        normalized_listing = listing_validation["normalized_draft"]
+        for field in ("title", "author", "language", "description"):
+            _missing(
+                normalized_listing.get(field) == metadata.get(field),
+                f"La fiche KDP et le dossier éditorial divergent pour {field}.",
+                blockers,
+            )
+        _missing(
+            normalized_listing.get("rights_holder") == (manifest.get("rights") or {}).get("rights_holder")
+            and normalized_listing.get("rights_evidence_ref") == (manifest.get("rights") or {}).get("evidence_ref"),
+            "La fiche KDP et la preuve des droits divergent.",
+            blockers,
+        )
+        pricing_record = manifest.get("pricing") or {}
+        _missing(
+            normalized_listing.get("marketplace") == pricing_record.get("marketplace")
+            and normalized_listing.get("currency") == pricing_record.get("currency")
+            and normalized_listing.get("list_price") == pricing_record.get("list_price"),
+            "La fiche KDP et le calcul de prix divergent.",
+            blockers,
+        )
     _missing(
         isinstance(metadata.get("title"), str) and bool(metadata.get("title", "").strip()),
         "Titre définitif manquant.", blockers,
@@ -257,5 +284,9 @@ def evaluate_kdp_release_gate(
             "approved": safety_review.get("approved") is True,
             "manuscript_sha256": safety_review.get("manuscript_sha256"),
             "reviewer_id": safety_review.get("reviewer_id"),
+        },
+        "listing_metadata": {
+            "status": listing_validation["status"],
+            "blocker_count": listing_validation["blocker_count"],
         },
     }
