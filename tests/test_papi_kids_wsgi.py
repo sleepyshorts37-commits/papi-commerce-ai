@@ -2,6 +2,7 @@ import io
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from papi_core.papi_kids_wsgi import create_app
 
@@ -9,7 +10,8 @@ from papi_core.papi_kids_wsgi import create_app
 class PapiKidsWSGICompositionTests(unittest.TestCase):
     def test_composes_api_with_private_storage_and_health_route(self):
         with tempfile.TemporaryDirectory() as root:
-            app = create_app(storage_root=Path(root) / "private", connection_factory=lambda: None)
+            with patch.dict("os.environ", {"PAPI_KIDS_REVIEWER_ID": "editor-01"}):
+                app = create_app(storage_root=Path(root) / "private", connection_factory=lambda: None)
             environ = {"PATH_INFO": "/healthz", "REQUEST_METHOD": "GET"}
             captured = {}
             def start_response(status, headers):
