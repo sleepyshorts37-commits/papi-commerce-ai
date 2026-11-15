@@ -259,9 +259,11 @@ statusButton.addEventListener("click",async()=>{
   const result=await response.json();
   if(!response.ok)throw new Error(result.error||"status_failed");
   const job=result.job||{};
+  const packageBuild=result.kdp_package_build||{};
   statusResult.textContent="Livre : "+result.book_status+
    " — tâche : "+(job.status||"non créée")+
-   " — tentatives : "+(job.attempts??0)+"/"+(job.max_attempts??0);
+   " — tentatives : "+(job.attempts??0)+"/"+(job.max_attempts??0)+
+   (packageBuild.status?" — package v"+packageBuild.package_version+" : "+packageBuild.status:"");
   renderIllustrationReviews(result.illustrations||[],id);
   renderSafetyReview(job.analysis&&job.analysis.child_safety_screening,
    result.content_safety_review,id);
