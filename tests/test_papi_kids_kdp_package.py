@@ -107,6 +107,24 @@ class PapiKidsKDPPrintPackageTests(unittest.TestCase):
         self.assertTrue((Path(result["package_dir"]) / "book.epub").is_file())
         self.assertFalse(result["kdp_upload_ready"])
 
+    def test_ebook_failure_rolls_back_both_print_pdfs(self):
+        interior, cover = self.builders()
+        def fail_ebook(root, output, upload_id, **kwargs):
+            raise RuntimeError("ebook generation failed")
+        with patch("papi_core.papi_kids_kdp_package.build_interior_pdf", side_effect=interior), patch(
+            "papi_core.papi_kids_kdp_package.build_kdp_cover_pdf", side_effect=cover
+        ), patch(
+            "papi_core.papi_kids_kdp_package.build_kdp_fixed_layout_epub", side_effect=fail_ebook
+        ):
+            with self.assertRaises(PapiKidsKDPPrintPackageError):
+                build_kdp_print_package(
+                    storage_root=self.root, upload_id=self.upload,
+                    interior_args=self.interior_args, cover_args=self.cover_args,
+                    ebook_args=self.ebook_args(), ebook_required=True,
+                )
+        self.assertFalse((self.book_dir / "kdp-print-package-v001").exists())
+        self.assertEqual(list(self.book_dir.glob(".kdp-print-package-*")), [])
+
     def test_required_ebook_without_assets_blocks_package(self):
         interior, cover = self.builders()
         with patch("papi_core.papi_kids_kdp_package.build_interior_pdf") as build:
