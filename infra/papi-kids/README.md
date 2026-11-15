@@ -1,0 +1,43 @@
+# PAPI KIDS server stack
+
+This is a deployment template only. It has not been deployed and does not create a Cloudflare, Supabase or hosting account.
+
+## Required server configuration
+
+1. Copy \`.env.example\` to \`.env\` in this directory.
+2. Use a dedicated PostgreSQL/Supabase database with migrations 013–016 applied.
+3. Use a TLS PostgreSQL URL with \`sslmode=require\`.
+4. Generate two different random secrets of at least 32 characters for upload and review.
+5. Set a private persistent Docker volume; never expose \`/data/private\` over HTTP.
+6. Set \`PAPI_KIDS_REVIEWER_ID\` to the accountable human reviewer.
+7. Keep \`PAPI_KIDS_WORKER_ENABLED=false\` until the database, storage volume and backups are verified.
+
+## Start the API
+
+From this directory:
+
+\`\`\`sh
+docker compose up -d --build papi-kids-api
+\`\`\`
+
+Put the API behind an HTTPS reverse proxy. The Compose file exposes port 8000 only to the internal Docker network.
+
+## Start the editorial worker
+
+Only after confirming the private volume is shared with the API and the database schema is current:
+
+\`\`\`sh
+docker compose --profile worker up -d papi-kids-worker
+\`\`\`
+
+The worker processes structural editorial analysis only. Image/LLM generation remains separately disabled and requires the free-quota evidence and zero-spend authorization gate.
+
+## Security and operations
+
+- Upload and review secrets are separate and server-only.
+- The API and worker run as a non-root user, read-only filesystem, dropped Linux capabilities and no-new-privileges.
+- Persistent private assets use a named Docker volume.
+- Configure encrypted off-host backups for the volume and database.
+- Configure reverse-proxy rate limits, TLS renewal, monitoring and alerting before production.
+- \`/healthz\` is a liveness endpoint, not a database readiness check.
+- Do not publish or merge deployment changes without review and explicit authorization.
