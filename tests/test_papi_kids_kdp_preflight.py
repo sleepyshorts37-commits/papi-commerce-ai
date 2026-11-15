@@ -2,6 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 import base64
+import struct
+import zlib
 import reportlab
 
 from papi_core.papi_kids_kdp_preflight import (
@@ -12,10 +14,19 @@ from papi_core.papi_kids_kdp_preflight import (
 )
 
 # Valid 1x1 PNG fixture. Tests lower dpi_target to 1; production defaults to 300.
-PNG_1PX = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/"
-    "q9sAAAAASUVORK5CYII="
-)
+def _png_chunk(kind, payload):
+    return (len(payload).to_bytes(4, "big") + kind + payload +
+            (zlib.crc32(kind + payload) & 0xffffffff).to_bytes(4, "big"))
+
+
+def png_fixture(width=9, height=9):
+    header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
+    pixels = b"".join(b"\x00" + b"\x00\x00\x00\xff" * width for _ in range(height))
+    return (b"\x89PNG\r\n\x1a\n" + _png_chunk(b"IHDR", header) +
+            _png_chunk(b"IDAT", zlib.compress(pixels)) + _png_chunk(b"IEND", b""))
+
+
+PNG_9PX = png_fixture()
 
 
 class PapiKidsKDPPreflightTests(unittest.TestCase):
@@ -63,13 +74,13 @@ class PapiKidsKDPPreflightTests(unittest.TestCase):
             pages = []
             for number in range(1, 25):
                 name = f"page-{number:02d}-v001.png"
-                (book_dir / name).write_bytes(PNG_1PX)
+                (book_dir / name).write_bytes(PNG_9PX)
                 import hashlib
                 assets.append({
                     "page_number": number, "version": 1, "review_status": "approved",
                     "storage_key": f"{upload_id}/illustrations/{name}",
-                    "media_type": "image/png", "width_px": 1, "height_px": 1,
-                    "sha256": hashlib.sha256(PNG_1PX).hexdigest(),
+                    "media_type": "image/png", "width_px": 9, "height_px": 9,
+                    "sha256": hashlib.sha256(PNG_9PX).hexdigest(),
                 })
                 pages.append({
                     "page_number": number, "text": f"Page {number}",
