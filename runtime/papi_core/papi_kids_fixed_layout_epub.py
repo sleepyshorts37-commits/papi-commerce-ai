@@ -194,7 +194,7 @@ html,body{{width:100%;height:100%;overflow:hidden;background:#fff;}}
 .background{{position:absolute;left:0;top:0;width:100%;height:100%;}}
 .text-source{{position:absolute;z-index:2;overflow:hidden;}}
 .story-text{{font-family:BookFont,sans-serif;font-size:4.2vw;line-height:1.25;color:#111;background:rgba(255,255,255,.82);padding:1.5%;}}
-.target-mag{{position:absolute;z-index:3;background:rgba(255,255,255,.96);}}
+.target-mag{{position:absolute;z-index:3;background:transparent;font-family:BookFont,sans-serif;font-size:6.3vw;line-height:1.25;}}
 .cover-title{{position:absolute;left:10%;top:12%;width:80%;font-family:BookFont,sans-serif;font-size:6vw;line-height:1.1;text-align:center;color:#14233a;}}
 .cover-author{{position:absolute;left:10%;bottom:8%;width:80%;font-family:BookFont,sans-serif;font-size:3.2vw;text-align:center;color:#14233a;}}
 """
