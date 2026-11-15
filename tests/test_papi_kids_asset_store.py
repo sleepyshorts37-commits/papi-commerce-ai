@@ -40,6 +40,34 @@ class PapiKidsAssetStoreTests(unittest.TestCase):
             self.assertEqual(asset["review_status"], "pending_review")
             self.assertTrue(asset["human_approval_required"])
 
+    def test_stores_original_dimensions_and_upscaling_method(self):
+        with tempfile.TemporaryDirectory() as root:
+            upload_id = "PKP-UP-" + "a" * 32
+            (Path(root) / upload_id).mkdir(mode=0o700)
+            asset = store_illustration_asset(
+                root, upload_id=upload_id, page_number=3, version=1,
+                image_bytes=png(2550, 2550), media_type="image/png",
+                source_width_px=1024, source_height_px=1024,
+                upscaling_method="ai_super_resolution",
+            )
+            self.assertEqual(asset["source_width_px"], 1024)
+            self.assertEqual(asset["width_px"], 2550)
+            self.assertEqual(asset["upscaling_method"], "ai_super_resolution")
+
+    def test_resolution_review_must_match_final_image_hash(self):
+        with tempfile.TemporaryDirectory() as root:
+            upload_id = "PKP-UP-" + "a" * 32
+            (Path(root) / upload_id).mkdir(mode=0o700)
+            with self.assertRaises(IllustrationAssetError):
+                store_illustration_asset(
+                    root, upload_id=upload_id, page_number=4, version=1,
+                    image_bytes=png(), media_type="image/png",
+                    source_width_px=1024, source_height_px=1024,
+                    upscaling_method="ai_super_resolution",
+                    resolution_review={"approved": True, "reviewer_id": "editor",
+                                       "approved_at": "2026-11-15", "output_sha256": "0" * 64},
+                )
+
     def test_identical_version_is_idempotent_and_conflicting_version_rejected(self):
         with tempfile.TemporaryDirectory() as root:
             upload_id = "PKP-UP-" + "a" * 32
