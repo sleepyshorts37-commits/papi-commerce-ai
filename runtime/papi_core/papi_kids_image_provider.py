@@ -87,6 +87,8 @@ def _https_transport(url: str, headers: dict[str, str], payload: bytes, timeout:
 class PostgresNeuronReservationStore:
     """Transactional daily usage ledger; injected with a server-side DB-API factory."""
 
+    daily_limit = 10000
+
     def __init__(self, connection_factory: Callable[[], Any]):
         self.connection_factory = connection_factory
 
