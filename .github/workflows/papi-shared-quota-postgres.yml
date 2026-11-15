@@ -1,0 +1,57 @@
+name: PAPI shared quota PostgreSQL tests
+
+on:
+  push:
+    branches:
+      - "mission-107-postgres-ci-validation"
+    paths:
+      - "infra/supabase/migrations/013_shared_provider_quota_ledger.sql"
+      - "infra/supabase/tests/013_shared_provider_quota_ledger.sql"
+      - "scripts/test_shared_quota_concurrency.py"
+      - ".github/workflows/papi-shared-quota-postgres.yml"
+  pull_request:
+    paths:
+      - "infra/supabase/migrations/013_shared_provider_quota_ledger.sql"
+      - "infra/supabase/tests/013_shared_provider_quota_ledger.sql"
+      - "scripts/test_shared_quota_concurrency.py"
+      - ".github/workflows/papi-shared-quota-postgres.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-quota-concurrency:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: papi_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d papi_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PAPI_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/papi_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prepare Supabase-compatible roles for migration grants
+        run: |
+          psql "$PAPI_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN BYPASSRLS;
+          SQL
+      - name: Run SQL contract and 10/20/50-session concurrency tests
+        run: python scripts/test_shared_quota_concurrency.py
