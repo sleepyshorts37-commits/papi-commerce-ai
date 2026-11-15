@@ -5,6 +5,7 @@ never creates network connections, reads secrets, or invokes AI/image vendors.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from typing import Any, Callable
@@ -251,8 +252,9 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
             cursor.execute(
                 """
                 select b.book_id, b.upload_id, b.status as book_status, b.created_at, b.updated_at,
+                       b.metadata->'content_safety_review' as content_safety_review,
                        j.job_id, j.status as job_status, j.attempts, j.max_attempts,
-                       j.available_at, j.lease_until
+                       j.available_at, j.lease_until, j.payload->'analysis' as analysis
                   from papi_kids_private.books b
                   left join papi_kids_private.editorial_jobs j on j.book_id = b.book_id
                  where b.upload_id = %s
@@ -274,6 +276,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                     "max_attempts": values["max_attempts"],
                     "available_at": values["available_at"].isoformat() if values.get("available_at") else None,
                     "lease_until": values["lease_until"].isoformat() if values.get("lease_until") else None,
+                    "analysis": values.get("analysis"),
                 }
             cursor.execute(
                 """select asset_id, page_number, version, review_status, width_px, height_px, media_type,
@@ -301,6 +304,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "created_at": values["created_at"].isoformat() if values.get("created_at") else None,
                 "updated_at": values["updated_at"].isoformat() if values.get("updated_at") else None,
                 "job": job,
+                "content_safety_review": values.get("content_safety_review"),
                 "illustrations": illustrations,
             }
         except Exception:
@@ -546,3 +550,110 @@ def build_postgres_library_reader(connection_factory: Callable[[], Any]) -> Call
             if callable(close):
                 close()
     return read_library
+
+
+def record_manuscript_safety_review(
+    connection_factory: Callable[[], Any], *,
+    upload_id: str, manuscript_sha256: str, decision: str,
+    reviewer_id: str, notes: str = "",
+) -> dict[str, Any]:
+    """Persist a human child-safety decision only against the current manuscript hash."""
+    _validate(upload_id, manuscript_sha256)
+    if decision not in {"approved", "rejected"}:
+        raise ValueError("Décision de revue de sécurité invalide.")
+    if not isinstance(reviewer_id, str) or not 3 <= len(reviewer_id.strip()) <= 120:
+        raise ValueError("Identité du réviseur invalide.")
+    reviewer_id = reviewer_id.strip()
+    if not isinstance(notes, str) or len(notes) > 2000:
+        raise ValueError("Notes de revue trop longues.")
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """select book_id, source_sha256 from papi_kids_private.books
+                where upload_id = %s for update""",
+            (upload_id,),
+        )
+        book = cursor.fetchone()
+        if not book:
+            raise PostgresEditorialQueueError("Manuscrit introuvable.")
+        book_id, current_sha256 = book
+        if current_sha256 != manuscript_sha256:
+            raise PostgresEditorialQueueError("Le manuscrit a changé depuis l'analyse ; revue périmée.")
+        cursor.execute(
+            """select payload->'analysis'->'child_safety_screening'
+                 from papi_kids_private.editorial_jobs
+                where book_id = %s and job_type = 'editorial_structure_analysis'
+                order by updated_at desc limit 1""",
+            (book_id,),
+        )
+        row = cursor.fetchone()
+        screening = row[0] if row else None
+        if isinstance(screening, str):
+            screening = json.loads(screening)
+        if not isinstance(screening, dict) or screening.get("manuscript_sha256") != manuscript_sha256:
+            raise PostgresEditorialQueueError("Analyse de sécurité absente ou périmée.")
+        issue_count = int(screening.get("issue_count", 0))
+        critical_count = int(screening.get("critical_issue_count", 0))
+        if decision == "approved" and issue_count > 0 and len(notes.strip()) < 20:
+            raise ValueError("Une justification d'au moins 20 caractères est requise pour approuver des alertes.")
+        from datetime import datetime, timezone
+        reviewed_at = datetime.now(timezone.utc).isoformat()
+        evidence_ref = hashlib.sha256(
+            f"{upload_id}:{manuscript_sha256}:{decision}:{reviewer_id}:{reviewed_at}:{notes.strip()}".encode("utf-8")
+        ).hexdigest()
+        review = {
+            "approved": decision == "approved",
+            "decision": decision,
+            "reviewer_id": reviewer_id.strip(),
+            "reviewed_at": reviewed_at,
+            "evidence_ref": evidence_ref,
+            "resolution_notes": notes.strip(),
+            "manuscript_sha256": manuscript_sha256,
+            "issue_count_reviewed": issue_count,
+            "critical_issue_count_reviewed": critical_count,
+        }
+        cursor.execute(
+            """insert into papi_kids_private.manuscript_safety_reviews
+                (book_id, upload_id, manuscript_sha256, decision, reviewer_id,
+                 evidence_ref, resolution_notes, issue_count_reviewed,
+                 critical_issue_count_reviewed)
+                values (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (book_id, upload_id, manuscript_sha256, decision, reviewer_id.strip(),
+             evidence_ref, notes.strip(), issue_count, critical_count),
+        )
+        cursor.execute(
+            """update papi_kids_private.books
+                  set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+                      'content_safety_review', %s::jsonb
+                  ),
+                  status = case when %s = 'rejected' then 'needs_editor_review' else status end,
+                  updated_at = now()
+                where book_id = %s""",
+            (json.dumps(review, ensure_ascii=False), decision, book_id),
+        )
+        connection.commit()
+        return {"upload_id": upload_id, **review}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()
+
+
+def build_postgres_safety_reviewer(
+    connection_factory: Callable[[], Any],
+) -> Callable[..., dict[str, Any]]:
+    """Build server-side callback for authenticated human manuscript safety reviews."""
+    def review(
+        upload_id: str, manuscript_sha256: str, decision: str,
+        reviewer_id: str, notes: str = "",
+    ) -> dict[str, Any]:
+        return record_manuscript_safety_review(
+            connection_factory, upload_id=upload_id,
+            manuscript_sha256=manuscript_sha256, decision=decision,
+            reviewer_id=reviewer_id, notes=notes,
+        )
+    return review

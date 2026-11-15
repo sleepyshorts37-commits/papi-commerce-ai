@@ -7,6 +7,7 @@ from papi_core.papi_kids_postgres_queue import (
     claim_editorial_job,
     complete_editorial_job,
     fail_editorial_job,
+    record_manuscript_safety_review,
 )
 
 
@@ -91,6 +92,48 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.cursor_obj.execute.call_count, 1)
 
+    def test_manuscript_safety_review_is_persisted_and_hash_bound(self):
+        upload_id = "PKP-UP-" + "a" * 32
+        digest = "b" * 64
+        screening = {
+            "manuscript_sha256": digest,
+            "issue_count": 2,
+            "critical_issue_count": 1,
+        }
+        connection = FakeConnection(rows=[("book-uuid", digest), (screening,)])
+        result = record_manuscript_safety_review(
+            lambda: connection, upload_id=upload_id, manuscript_sha256=digest,
+            decision="approved", reviewer_id="owner-01",
+            notes="Le passage dangereux a été réécrit et validé avec un adulte.",
+        )
+        self.assertTrue(result["approved"])
+        self.assertEqual(result["manuscript_sha256"], digest)
+        self.assertEqual(len(result["evidence_ref"]), 64)
+        self.assertEqual(connection.commits, 1)
+        statements = " ".join(call.args[0] for call in connection.cursor_obj.execute.call_args_list)
+        self.assertIn("manuscript_safety_reviews", statements)
+        self.assertIn("content_safety_review", statements)
+
+    def test_safety_review_rejects_stale_hash_and_missing_resolution_notes(self):
+        upload_id = "PKP-UP-" + "c" * 32
+        connection = FakeConnection(rows=[("book-uuid", "b" * 64)])
+        with self.assertRaises(PostgresEditorialQueueError):
+            record_manuscript_safety_review(
+                lambda: connection, upload_id=upload_id, manuscript_sha256="c" * 64,
+                decision="approved", reviewer_id="owner-01", notes="Notes suffisantes pour approuver.",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+
+        connection = FakeConnection(rows=[("book-uuid", "b" * 64), ({
+            "manuscript_sha256": "b" * 64, "issue_count": 1, "critical_issue_count": 1
+        },)])
+        with self.assertRaises(ValueError):
+            record_manuscript_safety_review(
+                lambda: connection, upload_id=upload_id, manuscript_sha256="b" * 64,
+                decision="approved", reviewer_id="owner-01", notes="",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+
     def test_library_reader_returns_bounded_sanitized_book_summaries(self):
         connection = FakeConnection()
         connection.cursor_obj.fetchall.return_value = [
@@ -108,6 +151,26 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(books[0]["approved_illustration_count"], 20)
         self.assertNotIn("storage_key", books[0])
         self.assertEqual(connection.commits, 1)
+
+    def test_status_reader_exposes_safety_screening_and_human_attestation(self):
+        from papi_core.papi_kids_postgres_queue import build_postgres_status_reader
+        upload_id = "PKP-UP-" + "d" * 32
+        analysis = {"child_safety_screening": {"issue_count": 2, "critical_issue_count": 1}}
+        review = {"approved": True, "reviewer_id": "owner-01", "manuscript_sha256": "b" * 64}
+        connection = FakeConnection(rows=[(
+            "book-uuid", upload_id, "needs_editor_review", None, None, review,
+            71, "completed", 1, 5, None, None, analysis,
+        )])
+        connection.cursor_obj.description = [
+            ("book_id",), ("upload_id",), ("book_status",), ("created_at",),
+            ("updated_at",), ("content_safety_review",), ("job_id",),
+            ("job_status",), ("attempts",), ("max_attempts",),
+            ("available_at",), ("lease_until",), ("analysis",),
+        ]
+        connection.cursor_obj.fetchall.return_value = []
+        result = build_postgres_status_reader(lambda: connection)(upload_id)
+        self.assertEqual(result["job"]["analysis"]["child_safety_screening"]["issue_count"], 2)
+        self.assertTrue(result["content_safety_review"]["approved"])
 
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):

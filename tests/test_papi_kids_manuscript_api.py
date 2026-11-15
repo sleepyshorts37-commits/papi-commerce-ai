@@ -138,6 +138,63 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertEqual(payload["review_status"], "approved")
         self.assertEqual(received, [(asset_id, "approved", "owner-01", "Cohérent")])
 
+    def test_safety_review_endpoint_uses_distinct_token_and_server_reviewer(self):
+        upload_id = "PKP-UP-" + "a" * 32
+        received = []
+        def handler(upload, digest, decision, reviewer, notes):
+            received.append((upload, digest, decision, reviewer, notes))
+            return {"upload_id": upload, "approved": decision == "approved"}
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name, safety_review_handler=handler,
+        )
+        digest = "b" * 64
+        body = json.dumps({
+            "decision": "approved", "manuscript_sha256": digest,
+            "notes": "Le passage a été vérifié et validé par un adulte.",
+        }).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/safety-review",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_SAFETY_REVIEW_TOKEN": TOKEN,
+            "PAPI_KIDS_REVIEWER_ID": "owner-01",
+        }, clear=True):
+            payload = json.loads(b"".join(app(environ, start_response)))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertTrue(payload["approved"])
+        self.assertEqual(received, [(
+            upload_id, digest, "approved", "owner-01",
+            "Le passage a été vérifié et validé par un adulte.",
+        )])
+
+    def test_safety_review_token_is_distinct_from_illustration_review_token(self):
+        upload_id = "PKP-UP-" + "b" * 32
+        body = json.dumps({
+            "decision": "approved", "manuscript_sha256": "c" * 64, "notes": "",
+        }).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/safety-review",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_REVIEW_TOKEN": TOKEN, "PAPI_KIDS_REVIEWER_ID": "owner-01",
+        }, clear=True):
+            b"".join(self.app(environ, start_response))
+        self.assertEqual(captured["status"], "503 Service Unavailable")
+
     def test_review_route_fails_closed_without_review_handler(self):
         asset_id = "PKP-ASSET-" + "b" * 24
         body = b'{"decision":"approved"}'

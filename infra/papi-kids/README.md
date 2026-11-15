@@ -53,3 +53,7 @@ A separate `offsite` Compose profile copies only encrypted `.pgdump.aesgcm` file
 ## Optional systemd schedules
 
 Templates for a daily encrypted backup (02:00 UTC) and offsite copy/check (03:00 UTC) are in `systemd/`. They are not installed or enabled automatically. Edit the deployment path in both service units, copy the four unit files to `/etc/systemd/system`, run `systemctl daemon-reload`, test the manual Compose commands first, and only then enable the timers if desired. The backup/offsite environment flags remain independent fail-closed gates.
+
+## Manuscript child-safety review
+
+The editorial worker stores deterministic safety flags with the manuscript analysis. A separate `PAPI_KIDS_SAFETY_REVIEW_TOKEN` protects `POST /api/papi-kids/manuscripts/{upload_id}/safety-review`; the reviewer identity comes from server-side `PAPI_KIDS_REVIEWER_ID`. The decision is persisted in the private PostgreSQL audit table and in the book metadata, bound to the exact source SHA-256. Approving a flagged manuscript requires resolution notes. A changed manuscript invalidates the previous attestation. Do not reuse the illustration-review token.
