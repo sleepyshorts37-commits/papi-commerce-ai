@@ -13,6 +13,7 @@ from papi_core.papi_kids_postgres_queue import (
     record_kdp_package_review,
     record_kindle_previewer_review,
     record_kdp_owner_release_authorization,
+    record_kdp_submission_lifecycle_event,
 )
 
 
@@ -239,6 +240,55 @@ class PostgresEditorialQueueTests(unittest.TestCase):
                 notes="trop court",
             )
         self.assertEqual(connection.cursor_obj.execute.call_count, 0)
+
+    def test_submission_lifecycle_records_first_manual_submission_after_owner_authorization(self):
+        upload_id = "PKP-UP-" + "c" * 32
+        manifest_hash = "1" * 64
+        metadata = {"kdp_owner_release_authorization": {
+            "package_version": 2, "manifest_sha256": manifest_hash,
+            "owner_id": "owner-01", "manual_submission_only": True,
+        }}
+        connection = FakeConnection(rows=[
+            ("book-uuid", metadata), (2, manifest_hash), None,
+        ])
+        result = record_kdp_submission_lifecycle_event(
+            lambda: connection, upload_id=upload_id, owner_id="owner-01",
+            status="submitted_manual", evidence_sha256="2" * 64,
+            notes="Dossier transmis manuellement dans l'espace KDP.",
+        )
+        self.assertEqual(result["status"], "submitted_manual")
+        self.assertEqual(result["manifest_sha256"], manifest_hash)
+        self.assertEqual(result["source"], "owner_attested_not_automatically_verified")
+        self.assertFalse(result["publication_performed"])
+        self.assertEqual(connection.commits, 1)
+        sql = " ".join(call.args[0] for call in connection.cursor_obj.execute.call_args_list)
+        self.assertIn("kdp_submission_lifecycle_events", sql)
+
+    def test_submission_lifecycle_rejects_invalid_transition_and_unverified_amazon_url(self):
+        upload_id = "PKP-UP-" + "d" * 32
+        manifest_hash = "3" * 64
+        metadata = {"kdp_owner_release_authorization": {
+            "package_version": 1, "manifest_sha256": manifest_hash,
+            "owner_id": "owner-01", "manual_submission_only": True,
+        }}
+        connection = FakeConnection(rows=[
+            ("book-uuid", metadata), (1, manifest_hash), None,
+        ])
+        with self.assertRaises(PostgresEditorialQueueError):
+            record_kdp_submission_lifecycle_event(
+                lambda: connection, upload_id=upload_id, owner_id="owner-01",
+                status="proof_received", evidence_sha256="4" * 64,
+                notes="Preuve reçue pour la correction de l'épreuve.",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+        with self.assertRaises(ValueError):
+            record_kdp_submission_lifecycle_event(
+                lambda: self.fail("database must not be opened"),
+                upload_id=upload_id, owner_id="owner-01",
+                status="live_verified_by_owner", evidence_sha256="4" * 64,
+                notes="Page produit observée et identifiant ASIN contrôlé.",
+                asin="B012345678", listing_url="https://fake-amazon.example/dp/B012345678",
+            )
 
     def test_owner_release_authorization_requires_every_hash_bound_review(self):
         upload_id = "PKP-UP-" + "a" * 32

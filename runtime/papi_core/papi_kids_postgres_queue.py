@@ -304,6 +304,22 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                  "resolution_review_output_sha256": row[12]}
                 for row in asset_rows
             ]
+            cursor.execute(
+                """select package_version, manifest_sha256, status, asin, listing_url,
+                          owner_id, evidence_sha256, notes, recorded_at
+                     from papi_kids_private.kdp_submission_lifecycle_events
+                    where upload_id = %s
+                    order by recorded_at asc""",
+                (upload_id,),
+            )
+            lifecycle_rows = cursor.fetchall()
+            lifecycle_events = [
+                {"package_version": row[0], "manifest_sha256": row[1], "status": row[2],
+                 "asin": row[3], "listing_url": row[4], "owner_id": row[5],
+                 "evidence_sha256": row[6], "notes": row[7],
+                 "recorded_at": row[8].isoformat() if row[8] else None}
+                for row in lifecycle_rows
+            ]
             connection.commit()
             return {
                 "upload_id": values["upload_id"],
@@ -319,6 +335,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "kdp_package_reviews": values.get("kdp_package_reviews") or {},
                 "kindle_previewer_review": values.get("kindle_previewer_review"),
                 "kdp_owner_release_authorization": values.get("kdp_owner_release_authorization"),
+                "kdp_submission_lifecycle": lifecycle_events,
                 "illustrations": illustrations,
             }
         except Exception:
@@ -1190,3 +1207,151 @@ def build_postgres_kdp_owner_release_authorizer(
             confirmation_phrase=confirmation_phrase, notes=notes,
         )
     return authorize
+
+
+def record_kdp_submission_lifecycle_event(
+    connection_factory: Callable[[], Any], *,
+    upload_id: str, owner_id: str, status: str,
+    evidence_sha256: str, notes: str, asin: str | None = None,
+    listing_url: str | None = None,
+) -> dict[str, Any]:
+    """Record an owner-asserted manual KDP lifecycle event for the authorized package."""
+    from urllib.parse import urlparse
+
+    allowed_statuses = {
+        "submitted_manual", "proof_received", "proof_approved",
+        "live_verified_by_owner", "rejected", "action_required",
+    }
+    allowed_hosts = {
+        "amazon.com", "amazon.fr", "amazon.co.uk", "amazon.de", "amazon.es",
+        "amazon.it", "amazon.ca", "amazon.com.au", "amazon.co.jp", "amazon.in",
+        "amazon.com.br", "amazon.nl", "amazon.se", "amazon.pl", "amazon.com.mx",
+        "amazon.sg",
+    }
+    if not isinstance(upload_id, str) or not _UPLOAD_ID.fullmatch(upload_id):
+        raise ValueError("Référence de dépôt invalide.")
+    if not isinstance(owner_id, str) or not 3 <= len(owner_id.strip()) <= 120:
+        raise ValueError("Identité propriétaire invalide.")
+    owner_id = owner_id.strip()
+    if status not in allowed_statuses:
+        raise ValueError("Statut KDP inconnu.")
+    if not isinstance(evidence_sha256, str) or not _SHA256.fullmatch(evidence_sha256):
+        raise ValueError("Empreinte SHA-256 de preuve invalide.")
+    if not isinstance(notes, str) or not 20 <= len(notes.strip()) <= 2000:
+        raise ValueError("Notes obligatoires (20 à 2000 caractères).")
+    notes = notes.strip()
+    if status == "live_verified_by_owner":
+        if not isinstance(asin, str) or not re.fullmatch(r"[A-Z0-9]{10}", asin):
+            raise ValueError("ASIN Amazon valide requis.")
+        if not isinstance(listing_url, str):
+            raise ValueError("URL Amazon publique requise.")
+        parsed = urlparse(listing_url)
+        if (parsed.scheme != "https" or parsed.hostname not in allowed_hosts
+                or parsed.query or parsed.fragment
+                or not re.search(rf"/(?:dp|gp/product)/{asin}(?:/|$)", parsed.path)):
+            raise ValueError("URL Amazon publique invalide ou sans correspondance ASIN.")
+    elif listing_url is not None:
+        raise ValueError("L'URL publique est réservée au statut live_verified_by_owner.")
+    if asin is not None and (not isinstance(asin, str) or not re.fullmatch(r"[A-Z0-9]{10}", asin)):
+        raise ValueError("ASIN invalide.")
+
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """select b.book_id, b.metadata
+                 from papi_kids_private.books b
+                where b.upload_id = %s for update""",
+            (upload_id,),
+        )
+        book = cursor.fetchone()
+        if not book:
+            raise PostgresEditorialQueueError("Manuscrit introuvable.")
+        book_id, metadata = book
+        if isinstance(metadata, str):
+            metadata = json.loads(metadata)
+        metadata = metadata or {}
+        authorization = metadata.get("kdp_owner_release_authorization") or {}
+        cursor.execute(
+            """select package_version, package_manifest_sha256
+                 from papi_kids_private.kdp_package_builds
+                where upload_id = %s
+                order by package_version desc limit 1""",
+            (upload_id,),
+        )
+        package = cursor.fetchone()
+        if not package:
+            raise PostgresEditorialQueueError("Package KDP absent.")
+        version, manifest_sha256 = package
+        if (authorization.get("package_version") != version
+                or authorization.get("manifest_sha256") != manifest_sha256
+                or authorization.get("owner_id") != owner_id
+                or authorization.get("manual_submission_only") is not True):
+            raise PostgresEditorialQueueError("Autorisation propriétaire absente, périmée ou différente.")
+        cursor.execute(
+            """select status from papi_kids_private.kdp_submission_lifecycle_events
+                where upload_id = %s order by recorded_at desc limit 1""",
+            (upload_id,),
+        )
+        last = cursor.fetchone()
+        previous = last[0] if last else None
+        transitions = {
+            None: {"submitted_manual"},
+            "submitted_manual": {"proof_received", "rejected", "action_required"},
+            "proof_received": {"proof_approved", "rejected", "action_required"},
+            "proof_approved": {"live_verified_by_owner", "action_required"},
+            "live_verified_by_owner": {"action_required"},
+            "rejected": {"action_required"},
+            "action_required": {"proof_received", "proof_approved", "live_verified_by_owner", "rejected"},
+        }
+        if status not in transitions.get(previous, set()):
+            raise PostgresEditorialQueueError("Transition KDP interdite ou déjà enregistrée.")
+        cursor.execute(
+            """insert into papi_kids_private.kdp_submission_lifecycle_events
+                (book_id, upload_id, package_version, manifest_sha256, status,
+                 asin, listing_url, owner_id, evidence_sha256, notes)
+                values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (book_id, upload_id, version, manifest_sha256, status,
+             asin, listing_url, owner_id, evidence_sha256, notes),
+        )
+        from datetime import datetime, timezone
+        event = {
+            "package_version": version, "manifest_sha256": manifest_sha256,
+            "status": status, "asin": asin, "listing_url": listing_url,
+            "owner_id": owner_id, "evidence_sha256": evidence_sha256,
+            "notes": notes, "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "source": "owner_attested_not_automatically_verified",
+        }
+        cursor.execute(
+            """update papi_kids_private.books
+                  set metadata = coalesce(metadata, '{}'::jsonb) ||
+                      jsonb_build_object('kdp_submission_lifecycle_latest', %s::jsonb),
+                      updated_at = now()
+                where book_id = %s""",
+            (json.dumps(event, ensure_ascii=False), book_id),
+        )
+        connection.commit()
+        return {"upload_id": upload_id, **event, "publication_performed": False}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()
+
+
+def build_postgres_kdp_submission_lifecycle_recorder(
+    connection_factory: Callable[[], Any],
+) -> Callable[..., dict[str, Any]]:
+    """Build server-side recorder for manually verified KDP lifecycle events."""
+    def record(
+        upload_id: str, owner_id: str, status: str, evidence_sha256: str,
+        notes: str, asin: str | None = None, listing_url: str | None = None,
+    ) -> dict[str, Any]:
+        return record_kdp_submission_lifecycle_event(
+            connection_factory, upload_id=upload_id, owner_id=owner_id,
+            status=status, evidence_sha256=evidence_sha256, notes=notes,
+            asin=asin, listing_url=listing_url,
+        )
+    return record

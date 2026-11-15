@@ -83,6 +83,7 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         owner_release_handler: Callable[[str, str, str, str], dict[str, Any]] | None = None,
         owner_release_id_env: str = "PAPI_KIDS_RELEASE_OWNER_ID",
         kdp_submission_bundle_handler: Callable[[str], dict[str, Any]] | None = None,
+        kdp_submission_lifecycle_handler: Callable[[str, str, str, str, str, str | None, str | None], dict[str, Any]] | None = None,
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
         library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
@@ -104,16 +105,17 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         kindle_previewer_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kindle-previewer-review", request_path)
         owner_release_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/owner-final-confirmation", request_path)
         submission_bundle_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-submission-bundle", request_path)
-        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match and not kindle_previewer_match and not owner_release_match and not submission_bundle_match:
+        submission_lifecycle_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-submission-status", request_path)
+        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match and not kdp_package_review_match and not kdp_package_download_match and not kindle_previewer_match and not owner_release_match and not submission_bundle_match and not submission_lifecycle_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
-        expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or kdp_package_review_match or kindle_previewer_match or owner_release_match or (upload_route and request_method == "POST") else "GET"
+        expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or kdp_package_review_match or kindle_previewer_match or owner_release_match or submission_lifecycle_match or (upload_route and request_method == "POST") else "GET"
         if request_method != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
         selected_token_env = (
-            owner_release_token_env if owner_release_match or submission_bundle_match else
+            owner_release_token_env if owner_release_match or submission_bundle_match or submission_lifecycle_match else
             (kindle_previewer_token_env if kindle_previewer_match else
             (kdp_package_review_token_env if kdp_package_review_match or kdp_package_download_match else
              (readiness_token_env if readiness_match else
@@ -166,6 +168,49 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
             return _response(start_response, "200 OK", reviewed)
+        if submission_lifecycle_match:
+            if kdp_submission_lifecycle_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "submission_lifecycle_not_configured"})
+            owner_id = os.environ.get(owner_release_id_env, "").strip()
+            if not 3 <= len(owner_id) <= 120:
+                return _response(start_response, "503 Service Unavailable", {"error": "owner_identity_not_configured"})
+            if environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower() != "application/json":
+                return _response(start_response, "415 Unsupported Media Type", {"error": "json_required"})
+            try:
+                body_length = int(environ.get("CONTENT_LENGTH") or "0")
+            except (TypeError, ValueError):
+                body_length = 0
+            if body_length < 1 or body_length > 8192:
+                return _response(start_response, "413 Payload Too Large", {"error": "invalid_lifecycle_size"})
+            try:
+                payload = json.loads(environ["wsgi.input"].read(body_length).decode("utf-8"))
+            except (KeyError, UnicodeDecodeError, json.JSONDecodeError):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_lifecycle_json"})
+            if not isinstance(payload, dict):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_lifecycle_json"})
+            status = payload.get("status")
+            evidence_sha256 = payload.get("evidence_sha256")
+            notes = payload.get("notes")
+            asin = payload.get("asin")
+            listing_url = payload.get("listing_url")
+            if (status not in {"submitted_manual", "proof_received", "proof_approved",
+                               "live_verified_by_owner", "rejected", "action_required"}
+                    or not isinstance(evidence_sha256, str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", evidence_sha256)
+                    or not isinstance(notes, str) or not 20 <= len(notes.strip()) <= 2000
+                    or (asin is not None and not isinstance(asin, str))
+                    or (listing_url is not None and not isinstance(listing_url, str))):
+                return _response(start_response, "400 Bad Request", {"error": "invalid_lifecycle_event"})
+            try:
+                result = kdp_submission_lifecycle_handler(
+                    submission_lifecycle_match.group(1), owner_id, status,
+                    evidence_sha256, notes.strip(), asin, listing_url,
+                )
+            except ValueError:
+                return _response(start_response, "400 Bad Request", {"error": "invalid_lifecycle_event"})
+            except Exception:
+                return _response(start_response, "409 Conflict", {"error": "lifecycle_transition_blocked"})
+            return _response(start_response, "200 OK", result)
         if submission_bundle_match:
             if kdp_submission_bundle_handler is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "submission_bundle_not_configured"})

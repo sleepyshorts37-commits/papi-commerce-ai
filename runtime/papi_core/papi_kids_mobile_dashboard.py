@@ -191,6 +191,7 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <div id="kdp-package-review-list" aria-live="polite">Aucun package à inspecter.</div>
 <div id="kindle-previewer-section"></div>
 <div id="owner-release-section"></div>
+<div id="kdp-submission-lifecycle"></div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
@@ -232,6 +233,7 @@ const kdpReviewTokenInput=document.getElementById("kdp-review-token");
 const kdpPackageReviewList=document.getElementById("kdp-package-review-list");
 const kindlePreviewerSection=document.getElementById("kindle-previewer-section");
 const ownerReleaseSection=document.getElementById("owner-release-section");
+const kdpSubmissionLifecycle=document.getElementById("kdp-submission-lifecycle");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -293,6 +295,7 @@ statusButton.addEventListener("click",async()=>{
   renderKdpPackageReview(result.kdp_package_build||{},result.kdp_package_reviews||{},id);
   renderKindlePreviewerReview(result.kdp_package_build||{},result.kindle_previewer_review||{},id);
   renderOwnerFinalAuthorization(result.kdp_package_build||{},result.kdp_owner_release_authorization||{},id);
+  renderKdpSubmissionLifecycle(result.kdp_submission_lifecycle||[],id);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
@@ -314,6 +317,76 @@ async function downloadKdpSubmissionBundle(uploadId,tokenInput,button){
   statusResult.textContent="Dossier ZIP téléchargé. La soumission Amazon KDP reste manuelle.";
  }catch(error){ownerReleaseSection.insertAdjacentText("afterbegin","ZIP indisponible : "+String(error.message||error));}
  finally{button.disabled=false;}
+}
+function renderKdpSubmissionLifecycle(events,uploadId){
+ kdpSubmissionLifecycle.replaceChildren();
+ const heading=document.createElement("h3");heading.textContent="Suivi après soumission manuelle à Amazon KDP";
+ kdpSubmissionLifecycle.appendChild(heading);
+ const timeline=document.createElement("ol");
+ (events||[]).forEach(event=>{
+  const item=document.createElement("li");
+  item.textContent=event.status+" — "+(event.recorded_at||"date inconnue")+
+   " — package v"+event.package_version+
+   (event.asin?" — ASIN "+event.asin:"");
+  timeline.appendChild(item);
+ });
+ if(events&&events.length)kdpSubmissionLifecycle.appendChild(timeline);
+ const latest=events&&events.length?events[events.length-1]:null;
+ const transitions={
+  "": ["submitted_manual"],
+  "submitted_manual": ["proof_received","rejected","action_required"],
+  "proof_received": ["proof_approved","rejected","action_required"],
+  "proof_approved": ["live_verified_by_owner","action_required"],
+  "live_verified_by_owner": ["action_required"],
+  "rejected": ["action_required"],
+  "action_required": ["proof_received","proof_approved","live_verified_by_owner","rejected"]
+ };
+ const allowed=transitions[latest?latest.status:""]||[];
+ if(!allowed.length){
+  const message=document.createElement("p");message.textContent="Aucune transition autorisée pour l'état actuel.";
+  kdpSubmissionLifecycle.appendChild(message);return;
+ }
+ const token=document.createElement("input");token.type="password";token.autocomplete="off";
+ token.placeholder="Jeton propriétaire de suivi KDP";
+ const status=document.createElement("select");
+ allowed.forEach(value=>{const option=document.createElement("option");option.value=value;option.textContent=value;status.appendChild(option);});
+ const evidence=document.createElement("input");evidence.type="text";
+ evidence.placeholder="SHA-256 de la preuve (capture, PDF de validation, etc.)";
+ const asin=document.createElement("input");asin.type="text";asin.placeholder="ASIN Amazon (requis pour live_verified_by_owner)";
+ const listing=document.createElement("input");listing.type="url";listing.placeholder="URL publique Amazon (requis pour live_verified_by_owner)";
+ const notes=document.createElement("textarea");notes.maxLength=2000;
+ notes.placeholder="Notes de suivi (minimum 20 caractères).";
+ const button=document.createElement("button");button.type="button";button.textContent="Enregistrer le statut KDP";
+ button.addEventListener("click",async()=>{
+  if(!token.value||!/^[0-9a-f]{64}$/.test(evidence.value)||notes.value.trim().length<20){
+   kdpSubmissionLifecycle.insertAdjacentText("afterbegin","Jeton, preuve SHA-256 et notes obligatoires.");return;
+  }
+  const isLive=status.value==="live_verified_by_owner";
+  if(isLive&&(!asin.value.trim()||!listing.value.trim())){
+   kdpSubmissionLifecycle.insertAdjacentText("afterbegin","ASIN et URL publique requis pour confirmer la mise en ligne.");return;
+  }
+  button.disabled=true;
+  try{
+   const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(uploadId)+"/kdp-submission-status",{
+    method:"POST",headers:{"Authorization":"Bearer "+token.value,"Content-Type":"application/json"},
+    body:JSON.stringify({
+     status:status.value,evidence_sha256:evidence.value,notes:notes.value.trim(),
+     asin:isLive?asin.value.trim():(asin.value.trim()||null),
+     listing_url:isLive?listing.value.trim():null
+    }),credentials:"same-origin"
+   });
+   const result=await response.json();
+   if(!response.ok)throw new Error(result.error||"kdp_lifecycle_transition_blocked");
+   token.value="";
+   statusResult.textContent="Statut KDP enregistré. Cette information est déclarative et n'est pas vérifiée automatiquement par Amazon.";
+   statusButton.click();
+  }catch(error){kdpSubmissionLifecycle.insertAdjacentText("afterbegin","Statut non enregistré : "+String(error.message||error));}
+  finally{button.disabled=false;}
+ });
+ kdpSubmissionLifecycle.append(token,status,evidence,asin,listing,notes,button);
+ const notice=document.createElement("p");notice.className="muted";
+ notice.textContent="Chaque événement est une déclaration du propriétaire liée au package autorisé. Le système ne consulte pas Amazon et ne prétend pas vérifier la mise en ligne.";
+ kdpSubmissionLifecycle.appendChild(notice);
 }
 function renderOwnerFinalAuthorization(packageBuild,authorization,uploadId){
  ownerReleaseSection.replaceChildren();
