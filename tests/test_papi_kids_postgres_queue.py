@@ -80,6 +80,17 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         )
         self.assertEqual(connection.commits, 1)
 
+    def test_review_decision_is_idempotent_for_already_reviewed_asset(self):
+        connection = FakeConnection(rows=[("book-uuid", 1, "approved")])
+        from papi_core.papi_kids_postgres_queue import review_illustration_asset
+        result = review_illustration_asset(
+            lambda: connection, asset_id="PKP-ASSET-" + "a" * 24,
+            decision="approved", reviewer_id="owner-01",
+        )
+        self.assertEqual(result["review_status"], "approved")
+        self.assertEqual(connection.commits, 1)
+        self.assertEqual(connection.cursor_obj.execute.call_count, 1)
+
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):
             enqueue_manuscript(
