@@ -226,6 +226,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         connection = FakeConnection(rows=[(
             "book-uuid", upload_id, "needs_editor_review", None, None, review,
             {"title": "Nia"}, "incomplete", ["Auteur absent"],
+            {"package_version": 1, "status": "generated_pending_manual_pdf_inspection"},
             71, "completed", 1, 5, None, None, analysis,
         )])
         connection.cursor_obj.description = [
@@ -242,6 +243,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(result["kdp_listing_metadata"]["title"], "Nia")
         self.assertEqual(result["kdp_listing_metadata_status"], "incomplete")
         self.assertEqual(result["kdp_listing_metadata_blockers"], ["Auteur absent"])
+        self.assertEqual(result["kdp_package_build"]["package_version"], 1)
 
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):
