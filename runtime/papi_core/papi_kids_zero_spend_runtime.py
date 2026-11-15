@@ -18,6 +18,7 @@ from .papi_kids_image_provider import (
 )
 from .papi_kids_postgres_queue import build_postgres_asset_registrar
 from .papi_kids_worker_service import create_postgres_connection_factory
+from .papi_kids_orchestrator import prepare_pkp0001_from_project_sources
 
 
 class PapiKidsZeroSpendRuntimeError(ValueError):
@@ -145,3 +146,37 @@ def build_pkp0001_zero_spend_runtime_engine(
         "asset_store": "private_papi_kids_store_plus_postgresql_registry",
         "print_ready_300dpi": False,
     }
+
+
+def build_pkp0001_zero_spend_pipeline(
+    *,
+    upload_id: str,
+    storage_root: str | Path,
+    registry: Any,
+    account_refs: dict[str, str],
+    quota_evidence_by_model: dict[str, dict[str, Any]],
+    operator_confirmed_free_tier: bool,
+    generation_authorized: bool = False,
+    project_root: str | Path | None = None,
+    **runtime_options: Any,
+) -> tuple[ImageProductionEngine, dict[str, Any], dict[str, Any]]:
+    """Build engine + 24-page source plan without invoking any external provider."""
+    engine, runtime_info = build_pkp0001_zero_spend_runtime_engine(
+        upload_id=upload_id,
+        storage_root=storage_root,
+        registry=registry,
+        account_refs=account_refs,
+        quota_evidence_by_model=quota_evidence_by_model,
+        operator_confirmed_free_tier=operator_confirmed_free_tier,
+        generation_authorized=generation_authorized,
+        **runtime_options,
+    )
+    prepared = prepare_pkp0001_from_project_sources(
+        project_root=project_root or Path(__file__).resolve().parents[2],
+        registry=registry,
+        account_refs=account_refs,
+        quota_evidence_by_model={
+            MODEL_ID: runtime_info["registry_quota_evidence"],
+        },
+    )
+    return engine, prepared, runtime_info
