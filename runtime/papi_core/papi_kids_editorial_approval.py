@@ -66,6 +66,7 @@ def build_pkp0001_editorial_preview_reader(
         names = {
             "manuscript": "manuscript-v2.md",
             "character_bible": "character-bible-v1.md",
+            "prompt_character_bible": "character-bible-prompt-compact-v1.md",
             "storyboard": "storyboard-v1.md",
             "illustration_prompts": "illustration-prompts-24-v1.md",
         }
@@ -113,6 +114,7 @@ def build_pkp0001_editorial_preview_reader(
             "prompts_valid": prompts_valid,
             "approval_eligible": approval_eligible,
             "character_bible": sources["character_bible"],
+            "prompt_character_bible": sources["prompt_character_bible"],
             "storyboard": sources["storyboard"],
             "prompts": prompts,
             "warnings": [] if approval_eligible else [
