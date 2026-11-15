@@ -365,6 +365,11 @@ class CloudflareImageAdapter:
         if content is None and callable(getattr(response, "read", None)):
             content = response.read()
         if not isinstance(content, (bytes, bytearray)) or not content:
+            if callable(getattr(self.ledger, "mark_uncertain", None)):
+                try:
+                    self.ledger.mark_uncertain(reservation)
+                except Exception:
+                    pass
             raise ImageProviderError("Réponse image vide/invalide ; quota réservé conservé.")
         try:
             self.ledger.commit(reservation)
