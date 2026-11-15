@@ -189,7 +189,7 @@ begin
      where provider = v_res.provider and account_ref = v_res.account_ref
        and model = v_res.model and quota_day = v_res.quota_day
      for update;
-    if v_bucket.consumed_units + p_actual_units > v_bucket.daily_limit then
+    if v_bucket.consumed_units + (v_bucket.reserved_units - v_res.estimated_units) + p_actual_units > v_bucket.daily_limit then
         raise exception 'Actual provider usage would exceed daily quota; reservation retained' using errcode = 'P0001';
     end if;
 
