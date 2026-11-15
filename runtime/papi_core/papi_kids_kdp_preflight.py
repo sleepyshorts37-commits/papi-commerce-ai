@@ -20,7 +20,7 @@ from reportlab.platypus import Paragraph
 from reportlab.lib.utils import ImageReader
 
 from .papi_kids_asset_store import inspect_image
-from .papi_kids_print_resolution import audit_image_resolution
+from .papi_kids_print_resolution import PrintResolutionError, audit_image_resolution
 
 # Current official KDP paperback color page limits verified 2026-11-15.
 # Only trim sizes with explicit entries below are accepted by this preflight.
@@ -224,15 +224,18 @@ def build_interior_pdf(
                 "approved_at": asset.get("resolution_reviewed_at"),
                 "output_sha256": asset.get("resolution_review_output_sha256"),
             }
-            resolution = audit_image_resolution(
-                source_width_px=asset.get("source_width_px", width_px),
-                source_height_px=asset.get("source_height_px", height_px),
-                final_width_px=width_px, final_height_px=height_px,
-                trim_width_in=trim_width_in, trim_height_in=trim_height_in,
-                bleed=bleed, output_sha256=digest,
-                upscaling_method=asset.get("upscaling_method", "native"),
-                resolution_review=resolution_review, target_dpi=dpi_target,
-            )
+            try:
+                resolution = audit_image_resolution(
+                    source_width_px=asset.get("source_width_px", width_px),
+                    source_height_px=asset.get("source_height_px", height_px),
+                    final_width_px=width_px, final_height_px=height_px,
+                    trim_width_in=trim_width_in, trim_height_in=trim_height_in,
+                    bleed=bleed, output_sha256=digest,
+                    upscaling_method=asset.get("upscaling_method", "native"),
+                    resolution_review=resolution_review, target_dpi=dpi_target,
+                )
+            except PrintResolutionError as exc:
+                raise KDPPreflightError(f"Provenance de résolution invalide page {number}.") from exc
             if not resolution["print_ready"]:
                 raise KDPPreflightError(
                     f"Page {number}: résolution source {resolution['source_dpi']} DPI ; "
