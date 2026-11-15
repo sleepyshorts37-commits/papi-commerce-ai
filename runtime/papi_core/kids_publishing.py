@@ -147,7 +147,8 @@ def _validate_book(book: Any) -> list[str]:
                 errors.append("Type d'asset inconnu.")
             elif kind in seen:
                 errors.append(f"Asset dupliqué: {kind}.")
-            seen.add(kind)
+            if isinstance(kind, str) and kind in ASSET_KINDS:
+                seen.add(kind)
             if not isinstance(path, str) or not path or Path(path).is_absolute() or "\\" in path:
                 errors.append(f"Chemin d'asset invalide pour {kind}.")
             elif any(part in {"", ".", ".."} for part in path.split("/")):
