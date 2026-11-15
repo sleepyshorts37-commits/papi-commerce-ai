@@ -415,6 +415,9 @@ def review_illustration_asset(
         if not asset:
             raise PostgresEditorialQueueError("Illustration introuvable.")
         book_id, page_number, current_status = asset
+        if current_status == decision:
+            connection.commit()
+            return {"asset_id": asset_id, "review_status": decision, "reviewer_id": reviewer_id}
         if current_status == "superseded":
             raise PostgresEditorialQueueError("Cette version a été remplacée.")
         if decision == "approved":
