@@ -46,7 +46,7 @@ def load_reconciliation_report(raw: bytes) -> dict[str, Any]:
         )
     except IdentityReconciliationArtifactError:
         raise
-    except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+    except (UnicodeError, ValueError, RecursionError) as exc:
         raise IdentityReconciliationArtifactError(
             "Rapport JSON illisible ou invalide."
         ) from exc
