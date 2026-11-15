@@ -6,6 +6,7 @@ and requires an explicit zero-spend authorization on every invocation.
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import re
 from typing import Any
 
@@ -135,8 +136,6 @@ def execute_pkp0001_campaign(
     """Explicitly execute a bounded free-quota slice; paid fallback is impossible."""
     if not isinstance(prepared, dict) or prepared.get("book_id") != BOOK_ID:
         raise PapiKidsOrchestrationError("Dossier PKP-0001 invalide.")
-    if editorial_approved is not True:
-        raise PapiKidsOrchestrationError("Validation éditoriale humaine obligatoire avant génération.")
     if generation_authorized is not True:
         raise PapiKidsOrchestrationError("Génération non autorisée explicitement.")
     if spend_limit_minor != 0:
@@ -169,6 +168,8 @@ def execute_pkp0001_campaign(
         raise PapiKidsOrchestrationError(str(exc)) from exc
     if current_quota["evidence_ref"] != prepared.get("quota_evidence", {}).get("evidence_ref"):
         raise PapiKidsOrchestrationError("La preuve de quota a changé depuis la planification ; refaire le plan.")
+    if editorial_approved is not True:
+        raise PapiKidsOrchestrationError("Validation éditoriale humaine obligatoire avant génération.")
     authorize_generation = getattr(provider, "authorize_generation", None)
     if callable(authorize_generation):
         authorize_generation(True)
@@ -245,7 +246,7 @@ def prepare_pkp0001_from_project_sources(
     """Validate the committed manuscript/bible/storyboard/prompts bundle and plan it."""
     root = Path(project_root).resolve()
     source_dir = root / "publishing" / "papi-kids" / BOOK_ID
-    if not source_dir.is_dir():
+    if not source_dir.is_dir() and os.environ.get("PAPI_KIDS_BUNDLED_SOURCES", "").lower() == "true":
         source_dir = Path(__file__).parent / "resources" / BOOK_ID
     manuscript_path = source_dir / "manuscript-v2.md"
     bible_path = source_dir / "character-bible-v1.md"
