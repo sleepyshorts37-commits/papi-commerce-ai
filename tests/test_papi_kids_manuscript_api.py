@@ -77,6 +77,19 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         metadata = json.loads((Path(self.temp.name) / second["upload_id"] / "metadata.json").read_text())
         self.assertEqual(metadata["postgres_queue"]["job_id"], 19)
 
+    def test_authenticated_library_endpoint_returns_book_summaries(self):
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name,
+            library_reader=lambda: [{"upload_id": "PKP-UP-" + "a" * 32,
+                "title": "Nia", "book_status": "queued_for_analysis",
+                "job_status": "queued", "illustration_count": 0,
+                "approved_illustration_count": 0}],
+        )
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            response, payload = call(app, method="GET", path="/api/papi-kids/manuscripts")
+        self.assertEqual(response["status"], "200 OK")
+        self.assertEqual(payload["books"][0]["title"], "Nia")
+
     def test_authenticated_status_endpoint_returns_sanitized_record(self):
         upload_id = "PKP-UP-" + "a" * 32
         reader_calls = []
