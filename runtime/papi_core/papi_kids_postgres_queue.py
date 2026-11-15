@@ -5,7 +5,6 @@ never creates network connections, reads secrets, or invokes AI/image vendors.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from typing import Any, Callable
@@ -179,7 +178,7 @@ def complete_editorial_job(
 def fail_editorial_job(
     connection_factory: Callable[[], Any], *, job_id: int, worker_id: str,
     error: str, retry_delay_seconds: int = 60,
-) -> None:
+) -> str:
     """Record a failure and requeue until max_attempts, then mark terminally failed."""
     connection = connection_factory()
     try:
@@ -212,6 +211,7 @@ def fail_editorial_job(
             (job_id, status, worker_id, json.dumps({"error": error[:2000]})),
         )
         connection.commit()
+        return status
     except Exception:
         connection.rollback()
         raise
@@ -219,3 +219,21 @@ def fail_editorial_job(
         close = getattr(connection, "close", None)
         if callable(close):
             close()
+
+
+
+def build_postgres_queue_registrar(connection_factory: Callable[[], Any]) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Build the WSGI intake callback; keep the connection factory server-side."""
+    def register(metadata: dict[str, Any]) -> dict[str, Any]:
+        return enqueue_manuscript(
+            connection_factory,
+            upload_id=metadata["upload_id"],
+            source_sha256=metadata["sha256"],
+            original_filename=metadata["original_filename"],
+            metadata={
+                "size_bytes": metadata.get("size_bytes"),
+                "received_at": metadata.get("received_at"),
+                "storage_visibility": "private",
+            },
+        )
+    return register
