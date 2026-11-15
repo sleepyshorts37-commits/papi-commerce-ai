@@ -59,6 +59,14 @@ class IdentityReconciliationArtifactTests(unittest.TestCase):
         with self.assertRaises(IdentityReconciliationArtifactError):
             load_reconciliation_report(b"[]")
 
+    def test_normalizes_python_json_integer_digit_limit(self):
+        # Python's JSON decoder raises ValueError for integer strings beyond
+        # its configured digit limit; callers must still receive the stable
+        # artifact-boundary exception.
+        raw = b'{"unexpected":' + (b"9" * 5000) + b"}"
+        with self.assertRaises(IdentityReconciliationArtifactError):
+            load_reconciliation_report(raw)
+
     def test_rejects_invalid_contract_after_parsing(self):
         report = self.valid_report()
         report["report_sha256"] = "0" * 64
