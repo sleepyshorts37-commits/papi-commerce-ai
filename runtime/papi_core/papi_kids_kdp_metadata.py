@@ -1,6 +1,7 @@
 """Validate Amazon KDP listing metadata without inventing missing author inputs."""
 from __future__ import annotations
 
+import math
 import re
 from typing import Any
 
@@ -28,16 +29,16 @@ def validate_kdp_listing_metadata(
     blockers = []
     normalized: dict[str, Any] = {}
 
-    def required_text(field: str, label: str, maximum: int) -> None:
+    def required_text(field: str, label: str, maximum: int, minimum: int = 1) -> None:
         value = metadata.get(field)
-        if not isinstance(value, str) or not value.strip() or len(value.strip()) > maximum:
+        if not isinstance(value, str) or not value.strip() or not minimum <= len(value.strip()) <= maximum:
             blockers.append(f"{label} absent ou hors limite.")
         else:
             normalized[field] = value.strip()
 
     required_text("title", "Titre", 200)
     required_text("author", "Auteur", 100)
-    required_text("description", "Description", 4000)
+    required_text("description", "Description", 4000, 50)
     language = metadata.get("language")
     if not isinstance(language, str) or not re.fullmatch(r"[a-z]{2,3}(?:-[A-Z]{2})?", language):
         blockers.append("Code de langue invalide.")
@@ -120,7 +121,7 @@ def validate_kdp_listing_metadata(
     else:
         normalized["currency"] = currency
     price = metadata.get("list_price")
-    if not isinstance(price, (int, float)) or isinstance(price, bool) or price <= 0:
+    if not isinstance(price, (int, float)) or isinstance(price, bool) or not math.isfinite(price) or price <= 0:
         blockers.append("Prix catalogue non confirmé.")
     else:
         normalized["list_price"] = float(price)
