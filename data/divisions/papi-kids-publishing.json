@@ -1,0 +1,654 @@
+{
+  "division_id": "papi_kids_publishing",
+  "name": "PAPI KIDS PUBLISHING",
+  "parent": "PAPI COMMERCE AI",
+  "status": "planned",
+  "stock_model": "print_on_demand_and_digital_no_physical_inventory",
+  "platforms": [
+    "Amazon KDP",
+    "other_platforms_subject_to_eligibility_and_policy_review"
+  ],
+  "business_units": [
+    {
+      "id": "papi_kids_books",
+      "name": "PAPI KIDS BOOKS",
+      "scope": [
+        "coloring_books",
+        "illustrated_stories",
+        "educational_books"
+      ]
+    },
+    {
+      "id": "papi_activity_books",
+      "name": "PAPI ACTIVITY BOOKS",
+      "scope": [
+        "mazes",
+        "games",
+        "puzzles",
+        "activity_workbooks"
+      ]
+    },
+    {
+      "id": "papi_digital_publishing",
+      "name": "PAPI DIGITAL PUBLISHING",
+      "scope": [
+        "ebooks",
+        "specialized_digital_publications"
+      ]
+    }
+  ],
+  "agent_count": 24,
+  "agents": [
+    {
+      "id": "PAPI-KIDS-001",
+      "name": "PAPI PUBLISHER",
+      "role": "division_director",
+      "mission": "Direction, arbitrage, objectifs et rapports",
+      "manager": "Marietou Diouf",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "read_division_reports",
+        "prepare_strategy",
+        "coordinate_planned_agents"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-002",
+      "name": "NOVA",
+      "role": "trend_research",
+      "mission": "Veille des tendances, thèmes et niches potentielles",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "research_public_sources",
+        "prepare_trend_reports"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-003",
+      "name": "MAYA",
+      "role": "market_research",
+      "mission": "Étude de marché, concurrence et validation de la demande",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "research_public_sources",
+        "prepare_market_reports"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-004",
+      "name": "PROFIT",
+      "role": "profitability_analyst",
+      "mission": "Modèles économiques, objectifs et rentabilité",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "read_verified_financial_reports",
+        "prepare_profitability_analysis"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-005",
+      "name": "LEX",
+      "role": "ip_compliance",
+      "mission": "Vérification préliminaire des droits, licences et marques",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "review_content_rights",
+        "flag_ip_risks"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-006",
+      "name": "KIRA",
+      "role": "editorial_concept",
+      "mission": "Histoires, concepts, univers et personnages originaux",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "create_original_editorial_briefs"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-007",
+      "name": "PIXEL",
+      "role": "illustration",
+      "mission": "Illustrations originales et fichiers graphiques",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "create_original_artwork"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-008",
+      "name": "EDUKID",
+      "role": "child_content_review",
+      "mission": "Adéquation à l'âge, intérêt éducatif et sécurité du contenu",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "review_age_appropriateness",
+        "flag_child_content_risks"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-009",
+      "name": "EDITOR",
+      "role": "editorial_review",
+      "mission": "Correction, cohérence et qualité éditoriale",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "edit_drafts",
+        "prepare_editorial_report"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-010",
+      "name": "ATLAS",
+      "role": "interior_layout",
+      "mission": "Composition intérieure, pagination et mise en page",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "prepare_interior_files"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-011",
+      "name": "COVER",
+      "role": "cover_design",
+      "mission": "Couvertures, dos et visuels de vente",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "prepare_cover_files"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-012",
+      "name": "SENTINEL",
+      "role": "quality_assurance",
+      "mission": "Contrôle qualité indépendant des fichiers finaux",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "run_quality_checks",
+        "block_failed_quality_gate"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-013",
+      "name": "KDP MASTER",
+      "role": "kdp_compliance",
+      "mission": "Exigences, formats, métadonnées et préparation KDP",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "review_kdp_requirements",
+        "prepare_kdp_submission"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-014",
+      "name": "GLOBAL PUBLISHER",
+      "role": "platform_research",
+      "mission": "Évaluation des autres plateformes et de leurs conditions",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "research_platform_policies",
+        "prepare_distribution_comparison"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-015",
+      "name": "BOOK SEO",
+      "role": "book_metadata_seo",
+      "mission": "Titres, descriptions, catégories et mots-clés conformes",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "prepare_metadata",
+        "prepare_keyword_research"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-016",
+      "name": "CATALOG MANAGER",
+      "role": "catalog_management",
+      "mission": "Catalogue, versions, fichiers maîtres et statuts",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "manage_local_catalog",
+        "track_publication_status"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-017",
+      "name": "GROWTH MASTER",
+      "role": "marketing_director",
+      "mission": "Stratégie marketing, calendrier et coordination des canaux",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "prepare_marketing_strategy",
+        "coordinate_channel_plans"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-018",
+      "name": "PINTEREST PRO",
+      "role": "pinterest_marketing",
+      "mission": "Contenus et stratégie Pinterest",
+      "manager": "GROWTH MASTER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "prepare_channel_content"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-019",
+      "name": "TIKTOK PRO",
+      "role": "tiktok_marketing",
+      "mission": "Contenus courts et stratégie TikTok",
+      "manager": "GROWTH MASTER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "prepare_channel_content"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-020",
+      "name": "INSTAGRAM PRO",
+      "role": "instagram_marketing",
+      "mission": "Contenus et stratégie Instagram",
+      "manager": "GROWTH MASTER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "prepare_channel_content"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-021",
+      "name": "FACEBOOK PRO",
+      "role": "facebook_marketing",
+      "mission": "Contenus et stratégie Facebook",
+      "manager": "GROWTH MASTER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "prepare_channel_content"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-022",
+      "name": "AFFILIATE PRO",
+      "role": "affiliate_partnerships",
+      "mission": "Recherche et qualification de partenaires affiliés",
+      "manager": "GROWTH MASTER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "research_affiliate_programs",
+        "prepare_partner_proposals"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-023",
+      "name": "SALES MASTER",
+      "role": "sales_analytics",
+      "mission": "Suivi des ventes, conversion, retours et optimisation",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "read_verified_sales_reports",
+        "prepare_sales_analysis"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    },
+    {
+      "id": "PAPI-KIDS-024",
+      "name": "FINANCE & ROYALTY MASTER",
+      "role": "pricing_and_royalties",
+      "mission": "Prix, coûts, redevances, rapprochement et rentabilité",
+      "manager": "PAPI PUBLISHER",
+      "team": "PAPI KIDS PUBLISHING",
+      "status": "planned",
+      "autonomy_level": "preparation_and_analysis_only",
+      "permissions": [
+        "calculate_price_scenarios",
+        "read_verified_royalties",
+        "prepare_finance_reports"
+      ],
+      "prohibited_actions": [
+        "publish_or_list_products_without_explicit_human_approval",
+        "spend_or_start_paid_ads",
+        "create_or_manage_external_accounts_without_authorization",
+        "accept_contracts_or_licenses",
+        "send_external_marketing_messages_without_approval",
+        "withdraw_transfer_or_pay_funds",
+        "access_or_store_passwords_otp_pins_cvv_or_private_keys"
+      ]
+    }
+  ],
+  "workflow": [
+    "trend_research",
+    "market_validation",
+    "ip_review",
+    "original_concept",
+    "illustration",
+    "age_and_education_review",
+    "editing",
+    "interior_layout",
+    "cover_design",
+    "quality_gate",
+    "platform_compliance",
+    "metadata_and_catalog",
+    "human_publication_approval",
+    "publishing",
+    "marketing_approval",
+    "sales_analysis",
+    "royalty_reconciliation",
+    "catalog_optimization"
+  ],
+  "governance": {
+    "human_approval_required": [
+      "external_account_creation_or_use",
+      "book_publication",
+      "external_terms_or_contracts",
+      "external_marketing_posts_or_messages",
+      "affiliate_activation",
+      "paid_advertising",
+      "purchases_subscriptions_or_api_credits",
+      "external_price_changes",
+      "withdrawals_transfers_and_payments"
+    ],
+    "no_physical_inventory": true,
+    "no_spending_without_explicit_approval": true,
+    "ip_policy": "Only original works or properly licensed material; popular cartoon characters, logos, trademarks and protected universes may not be copied or used without valid rights.",
+    "financial_reporting": "Separate estimates, pending royalties, confirmed royalties and verified payouts; never report estimates as received revenue."
+  },
+  "rollout": [
+    {
+      "stage": 1,
+      "name": "Documentation and governance",
+      "status": "implemented_in_this_change"
+    },
+    {
+      "stage": 2,
+      "name": "Central identity registration and permission tests",
+      "status": "not_started"
+    },
+    {
+      "stage": 3,
+      "name": "Local catalog and production tooling",
+      "status": "not_started"
+    },
+    {
+      "stage": 4,
+      "name": "Human-reviewed publishing pilot",
+      "status": "not_started"
+    },
+    {
+      "stage": 5,
+      "name": "Controlled external integrations",
+      "status": "not_started"
+    }
+  ],
+  "note": "This registry is a division-level plan. These records are not provisioned cryptographic identities and do not activate agents, external accounts, publishing, marketing, payments, workers or schedulers."
+}
