@@ -10,6 +10,7 @@ from papi_core.papi_kids_postgres_queue import (
     record_manuscript_safety_review,
     record_kdp_listing_metadata,
     record_kdp_package_build,
+    record_kdp_package_review,
 )
 
 
@@ -200,6 +201,43 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             )
         self.assertEqual(connection.cursor_obj.execute.call_count, 0)
 
+    def test_kdp_package_review_is_bound_to_latest_artifact_hash(self):
+        upload_id = "PKP-UP-" + "1" * 32
+        digest = "a" * 64
+        manifest = {"pdfs": {"interior": {"sha256": digest}}}
+        connection = FakeConnection(rows=[("book-uuid",), (1, manifest)])
+        result = record_kdp_package_review(
+            lambda: connection, upload_id=upload_id, artifact="interior",
+            artifact_sha256=digest, decision="approved", reviewer_id="owner-01",
+            notes="PDF inspecté page par page, marges et images contrôlées.",
+        )
+        self.assertTrue(result["approved"])
+        self.assertEqual(result["artifact_sha256"], digest)
+        self.assertEqual(len(result["evidence_ref"]), 64)
+        self.assertEqual(connection.commits, 1)
+        statements = " ".join(call.args[0] for call in connection.cursor_obj.execute.call_args_list)
+        self.assertIn("kdp_package_reviews", statements)
+        self.assertIn("kdp_package_reviews", statements)
+
+    def test_kdp_package_review_rejects_stale_hash_and_short_notes(self):
+        upload_id = "PKP-UP-" + "2" * 32
+        connection = FakeConnection(rows=[("book-uuid",), (1, {"pdfs": {"cover": {"sha256": "a" * 64}}})])
+        with self.assertRaises(PostgresEditorialQueueError):
+            record_kdp_package_review(
+                lambda: connection, upload_id=upload_id, artifact="cover",
+                artifact_sha256="b" * 64, decision="approved", reviewer_id="owner-01",
+                notes="Notes de revue suffisantes.",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+        connection = FakeConnection()
+        with self.assertRaises(ValueError):
+            record_kdp_package_review(
+                lambda: connection, upload_id=upload_id, artifact="cover",
+                artifact_sha256="a" * 64, decision="approved", reviewer_id="owner-01",
+                notes="trop court",
+            )
+        self.assertEqual(connection.cursor_obj.execute.call_count, 0)
+
     def test_library_reader_returns_bounded_sanitized_book_summaries(self):
         connection = FakeConnection()
         connection.cursor_obj.fetchall.return_value = [
@@ -227,13 +265,14 @@ class PostgresEditorialQueueTests(unittest.TestCase):
             "book-uuid", upload_id, "needs_editor_review", None, None, review,
             {"title": "Nia"}, "incomplete", ["Auteur absent"],
             {"package_version": 1, "status": "generated_pending_manual_pdf_inspection"},
+            {"v1:interior": {"approved": True}},
             71, "completed", 1, 5, None, None, analysis,
         )])
         connection.cursor_obj.description = [
             ("book_id",), ("upload_id",), ("book_status",), ("created_at",),
             ("updated_at",), ("content_safety_review",), ("kdp_listing_metadata",),
             ("kdp_listing_metadata_status",), ("kdp_listing_metadata_blockers",),
-            ("kdp_package_build",), ("job_id",),
+            ("kdp_package_build",), ("kdp_package_reviews",), ("job_id",),
             ("job_status",), ("attempts",), ("max_attempts",),
             ("available_at",), ("lease_until",), ("analysis",),
         ]
@@ -245,6 +284,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(result["kdp_listing_metadata_status"], "incomplete")
         self.assertEqual(result["kdp_listing_metadata_blockers"], ["Auteur absent"])
         self.assertEqual(result["kdp_package_build"]["package_version"], 1)
+        self.assertTrue(result["kdp_package_reviews"]["v1:interior"]["approved"])
 
     def test_invalid_identifiers_fail_before_database_access(self):
         with self.assertRaises(ValueError):

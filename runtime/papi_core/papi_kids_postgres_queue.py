@@ -257,6 +257,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                        b.metadata->>'kdp_listing_metadata_status' as kdp_listing_metadata_status,
                        b.metadata->'kdp_listing_metadata_blockers' as kdp_listing_metadata_blockers,
                        b.metadata->'kdp_package_build' as kdp_package_build,
+                       b.metadata->'kdp_package_reviews' as kdp_package_reviews,
                        j.job_id, j.status as job_status, j.attempts, j.max_attempts,
                        j.available_at, j.lease_until, j.payload->'analysis' as analysis
                   from papi_kids_private.books b
@@ -313,6 +314,7 @@ def build_postgres_status_reader(connection_factory: Callable[[], Any]) -> Calla
                 "kdp_listing_metadata_status": values.get("kdp_listing_metadata_status"),
                 "kdp_listing_metadata_blockers": values.get("kdp_listing_metadata_blockers") or [],
                 "kdp_package_build": values.get("kdp_package_build"),
+                "kdp_package_reviews": values.get("kdp_package_reviews") or {},
                 "illustrations": illustrations,
             }
         except Exception:
@@ -825,3 +827,117 @@ def record_kdp_package_build(
         close = getattr(connection, "close", None)
         if callable(close):
             close()
+
+
+def record_kdp_package_review(
+    connection_factory: Callable[[], Any], *,
+    upload_id: str, artifact: str, artifact_sha256: str,
+    decision: str, reviewer_id: str, notes: str,
+) -> dict[str, Any]:
+    """Record a human PDF/EPUB inspection bound to the current package artifact hash."""
+    if not isinstance(upload_id, str) or not re.fullmatch(r"PKP-UP-[0-9a-f]{32}", upload_id):
+        raise ValueError("Référence de dépôt invalide.")
+    if artifact not in {"interior", "cover", "ebook"}:
+        raise ValueError("Type de fichier KDP invalide.")
+    if not isinstance(artifact_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", artifact_sha256):
+        raise ValueError("Empreinte du fichier invalide.")
+    if decision not in {"approved", "rejected"}:
+        raise ValueError("Décision de revue KDP invalide.")
+    if not isinstance(reviewer_id, str) or not 3 <= len(reviewer_id.strip()) <= 120:
+        raise ValueError("Identité du réviseur invalide.")
+    reviewer_id = reviewer_id.strip()
+    if not isinstance(notes, str) or not 20 <= len(notes.strip()) <= 2000:
+        raise ValueError("Une note de revue de 20 à 2000 caractères est obligatoire.")
+    notes = notes.strip()
+    connection = connection_factory()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            """select book_id from papi_kids_private.books
+                where upload_id = %s for update""",
+            (upload_id,),
+        )
+        book = cursor.fetchone()
+        if not book:
+            raise PostgresEditorialQueueError("Manuscrit introuvable.")
+        book_id = book[0]
+        cursor.execute(
+            """select package_version, package_manifest
+                 from papi_kids_private.kdp_package_builds
+                where upload_id = %s
+                order by package_version desc limit 1""",
+            (upload_id,),
+        )
+        package_row = cursor.fetchone()
+        if not package_row:
+            raise PostgresEditorialQueueError("Aucun package KDP fabriqué.")
+        package_version, package_manifest = package_row
+        if isinstance(package_manifest, str):
+            package_manifest = json.loads(package_manifest)
+        if artifact in {"interior", "cover"}:
+            artifact_record = (package_manifest.get("pdfs") or {}).get(artifact)
+        else:
+            artifact_record = package_manifest.get("ebook")
+        if not isinstance(artifact_record, dict) or artifact_record.get("sha256") != artifact_sha256:
+            raise PostgresEditorialQueueError("Le fichier a changé ou ne correspond plus au dernier package.")
+        from datetime import datetime, timezone
+        reviewed_at = datetime.now(timezone.utc).isoformat()
+        evidence_ref = hashlib.sha256(
+            f"{upload_id}:{package_version}:{artifact}:{artifact_sha256}:{decision}:{reviewer_id}:{reviewed_at}:{notes}".encode("utf-8")
+        ).hexdigest()
+        review = {
+            "package_version": package_version,
+            "artifact": artifact,
+            "artifact_sha256": artifact_sha256,
+            "decision": decision,
+            "approved": decision == "approved",
+            "reviewer_id": reviewer_id,
+            "reviewed_at": reviewed_at,
+            "evidence_ref": evidence_ref,
+            "notes": notes,
+        }
+        cursor.execute(
+            """insert into papi_kids_private.kdp_package_reviews
+                (book_id, upload_id, package_version, artifact, artifact_sha256,
+                 decision, reviewer_id, evidence_ref, notes)
+                values (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (book_id, upload_id, package_version, artifact, artifact_sha256,
+             decision, reviewer_id, evidence_ref, notes),
+        )
+        review_key = f"v{package_version}:{artifact}"
+        cursor.execute(
+            """update papi_kids_private.books
+                  set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+                      'kdp_package_reviews',
+                      coalesce(metadata->'kdp_package_reviews', '{}'::jsonb) ||
+                      jsonb_build_object(%s, %s::jsonb)
+                  ),
+                  updated_at = now()
+                where book_id = %s""",
+            (review_key, json.dumps(review, ensure_ascii=False), book_id),
+        )
+        connection.commit()
+        return {"upload_id": upload_id, **review}
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        close = getattr(connection, "close", None)
+        if callable(close):
+            close()
+
+
+def build_postgres_kdp_package_reviewer(
+    connection_factory: Callable[[], Any],
+) -> Callable[..., dict[str, Any]]:
+    """Build server-side callback for owner review of a KDP package artifact."""
+    def review(
+        upload_id: str, artifact: str, artifact_sha256: str,
+        decision: str, reviewer_id: str, notes: str,
+    ) -> dict[str, Any]:
+        return record_kdp_package_review(
+            connection_factory, upload_id=upload_id, artifact=artifact,
+            artifact_sha256=artifact_sha256, decision=decision,
+            reviewer_id=reviewer_id, notes=notes,
+        )
+    return review
