@@ -47,7 +47,10 @@
 - [ ] Rédiger les quatre autres manuscrits, produire les illustrations originales et faire contrôler indépendamment chaque fichier.
 - [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
 - [x] Définir une stratégie de validation de la demande et un processus commercial par étapes, sans ventes garanties (Mission 78).
-- [x] Ajouter un moteur de scoring marché à huit critères, preuves datées obligatoires et blocage du classement si les données sont incomplètes (Mission 79 ; cinq concepts laissés non évalués faute de preuves).\n- [x] Ajouter Jumia Sénégal comme canal distinct pour les livres physiques, avec vérification KYC, commissions et logistique (Mission 78).\n- [ ] Vérifier les coûts complets et l'éligibilité réelle des comptes KDP et Jumia avant toute mise en vente.\n- [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
+- [x] Ajouter un moteur de scoring marché à huit critères, preuves datées obligatoires et blocage du classement si les données sont incomplètes (Mission 79 ; cinq concepts laissés non évalués faute de preuves).\n- [x] Ajouter Jumia Sénégal comme canal distinct pour les livres physiques, avec vérification KYC, commissions et logistique (Mission 78).
+- [x] Définir la politique PAPI KIDS zéro avance de trésorerie pour tous les livres et canaux (Mission 80).
+- [x] Ajouter un registre des six canaux (Amazon KDP, Lulu, IngramSpark, Bookvault, Blurb, Jumia) et un moteur de routage bloquant si éligibilité Sénégal, versement, format, territoires ou coûts ne sont pas prouvés (Mission 80).
+- [ ] Vérifier avec des sources officielles datées les coûts complets, l'éligibilité Sénégal, les paiements, les formats et l'absence d'avance pour chaque canal ; aucun canal n'est actuellement certifié zéro coût.\n- [ ] Vérifier les coûts complets et l'éligibilité réelle des comptes sur chaque canal avant toute mise en vente.\n- [ ] Obtenir validation humaine explicite avant toute publication ou promotion externe.
 - [ ] Réaliser le premier lancement manuel contrôlé ; aucun agent, compte ou publication externe n'est activé automatiquement.
 
 ## Phase 4 — Autres activités commerciales
