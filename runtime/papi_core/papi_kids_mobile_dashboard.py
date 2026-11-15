@@ -255,11 +255,11 @@ statusButton.addEventListener("click",async()=>{
   renderIllustrationReviews(result.illustrations||[],id);
   renderSafetyReview(job.analysis&&job.analysis.child_safety_screening,
    result.content_safety_review,id);
-  renderKdpMetadata(result.kdp_listing_metadata||{},result.kdp_listing_metadata_status||"");
+  renderKdpMetadata(result.kdp_listing_metadata||{},result.kdp_listing_metadata_status||"",result.kdp_listing_metadata_blockers||[]);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
-function renderKdpMetadata(metadata,status){
+function renderKdpMetadata(metadata,status,blockers){
  const fields={
   "kdp-title":metadata.title||"",
   "kdp-author":metadata.author||"",
@@ -283,7 +283,15 @@ function renderKdpMetadata(metadata,status){
  Object.entries(fields).forEach(([id,value])=>{document.getElementById(id).value=String(value);});
  document.getElementById("kdp-rights-confirmed").checked=metadata.commercial_use_confirmed===true;
  document.getElementById("kdp-pricing-verified").checked=metadata.pricing_verified===true;
- if(status)metadataResult.textContent="Fiche enregistrée : "+status;
+ metadataResult.replaceChildren();
+ if(status){
+  metadataResult.textContent="Fiche enregistrée : "+status;
+  if(blockers&&blockers.length){
+   const list=document.createElement("ul");
+   blockers.forEach(item=>{const li=document.createElement("li");li.textContent=item;list.appendChild(li);});
+   metadataResult.appendChild(list);
+  }
+ }else{metadataResult.textContent="Aucune fiche enregistrée.";}
 }
 function readKdpMetadataForm(){
  const lines=id=>document.getElementById(id).value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
@@ -325,6 +333,7 @@ metadataSaveButton.addEventListener("click",async()=>{
   });
   const result=await response.json();
   if(!response.ok)throw new Error(result.error||"metadata_save_failed");
+  metadataTokenInput.value="";
   metadataResult.textContent="Version "+result.version+" — "+result.status+
    " — blocages : "+result.blocker_count;
   if(result.blockers&&result.blockers.length){
