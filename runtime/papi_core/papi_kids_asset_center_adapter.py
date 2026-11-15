@@ -69,8 +69,11 @@ class PapiKidsIllustrationAssetCenter:
             return retried
         # An image without its sidecar must never be blindly regenerated.
         folder = self._book_dir(book_id) / "illustrations"
-        if folder.exists() and list(folder.glob(f"page-{page_number:02d}-v*.*")):
-            raise ValueError("Fichier d'illustration sans correspondance d'idempotence ; rapprochement requis.")
+        if folder.exists():
+            known_stems = {item[1].stem for item in records}
+            image_files = list(folder.glob(f"page-{page_number:02d}-v*.png")) + list(folder.glob(f"page-{page_number:02d}-v*.jpg")) + list(folder.glob(f"page-{page_number:02d}-v*.webp"))
+            if any(path.stem not in known_stems for path in image_files):
+                raise ValueError("Fichier d'illustration sans métadonnées ; rapprochement requis.")
         return None
 
     def put(self, *, book_id: str, page_id: str, page_number: int,
