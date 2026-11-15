@@ -23,6 +23,22 @@ def complete_manifest(root):
         },
         "editorial_approval": {"approved": True, "reviewer_id": "editor-01", "approved_at": "2026-11-15"},
         "rights": {"commercial_use_confirmed": True, "rights_holder": "Auteur", "evidence_ref": "rights-001"},
+        "kdp_listing_metadata": {
+            "title": "Nia et la rivière aux mille reflets",
+            "author": "Auteur confirmé",
+            "description": "Une histoire jeunesse complète et vérifiée pour les familles.",
+            "language": "fr",
+            "keywords": ["jeunesse", "rivière"],
+            "categories": ["Children's Books / Environment"],
+            "reading_age_min": 5, "reading_age_max": 8,
+            "commercial_use_confirmed": True,
+            "rights_holder": "Auteur", "rights_evidence_ref": "rights-001",
+            "territories": "worldwide",
+            "isbn_strategy": "kdp_free_isbn",
+            "marketplace": "Amazon.com", "currency": "USD",
+            "list_price": 12.99, "pricing_verified": True,
+            "pricing_verified_at": "2026-11-15",
+        },
         "manuscript_sha256": "b" * 64,
         "content_safety_review": {
             "approved": True, "reviewer_id": "safety-01", "reviewed_at": "2026-11-15",
@@ -188,6 +204,26 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             )
         self.assertFalse(result["publish_ready"])
         self.assertTrue(any("sécurité jeunesse" in item for item in result["blockers"]))
+
+    def test_missing_listing_category_blocks_release(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            manifest["kdp_listing_metadata"]["categories"] = []
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertFalse(result["publish_ready"])
+        self.assertTrue(any("catégories KDP" in item for item in result["blockers"]))
+
+    def test_listing_metadata_price_must_match_verified_pricing(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            manifest["kdp_listing_metadata"]["list_price"] = 14.99
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertFalse(result["publish_ready"])
+        self.assertTrue(any("divergent" in item for item in result["blockers"]))
 
     def test_pdf_hash_mismatch_blocks_release(self):
         with tempfile.TemporaryDirectory() as root:
