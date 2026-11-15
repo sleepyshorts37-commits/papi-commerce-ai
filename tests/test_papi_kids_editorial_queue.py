@@ -37,6 +37,45 @@ class PapiKidsEditorialQueueTests(unittest.TestCase):
             result = analyze_queued_manuscript(root, folder.name)
             self.assertEqual(result["status"], "needs_editor_review")
 
+    def test_structured_child_story_runs_offline_safety_screening(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root) / ("PKP-UP-" + "c" * 32)
+            folder.mkdir(mode=0o700)
+            pages = [
+                f"### Page {n} — Scène {n}\n" +
+                ("Nia entre dans la rivière." if n == 1 else "Nia observe la rivière depuis le chemin avec Awa.")
+                for n in range(1, 25)
+            ]
+            (folder / "manuscript.md").write_text("\n\n".join(pages), encoding="utf-8")
+            (folder / "metadata.json").write_text(json.dumps({"status": "queued_for_analysis"}), encoding="utf-8")
+            (folder / "job.json").write_text(json.dumps({
+                "upload_id": folder.name, "status": "queued_for_analysis", "stored_filename": "manuscript.md"
+            }), encoding="utf-8")
+            result = analyze_queued_manuscript(root, folder.name)
+        self.assertEqual(result["status"], "needs_editor_review")
+        screening = result["analysis"]["child_safety_screening"]
+        self.assertGreater(screening["critical_issue_count"], 0)
+        self.assertFalse(screening["automatic_approval"])
+        self.assertFalse(result["analysis"]["ai_invoked"])
+
+    def test_safe_structured_story_has_no_flags_but_still_requires_human_review(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder = Path(root) / ("PKP-UP-" + "d" * 32)
+            folder.mkdir(mode=0o700)
+            pages = [
+                f"### Page {n} — Scène {n}\nNia observe la rivière depuis le chemin avec Awa, une adulte."
+                for n in range(1, 25)
+            ]
+            (folder / "manuscript.md").write_text("\n\n".join(pages), encoding="utf-8")
+            (folder / "metadata.json").write_text(json.dumps({"status": "queued_for_analysis"}), encoding="utf-8")
+            (folder / "job.json").write_text(json.dumps({
+                "upload_id": folder.name, "status": "queued_for_analysis", "stored_filename": "manuscript.md"
+            }), encoding="utf-8")
+            result = analyze_queued_manuscript(root, folder.name)
+        self.assertEqual(result["status"], "analysis_ready")
+        self.assertEqual(result["analysis"]["child_safety_screening"]["issue_count"], 0)
+        self.assertTrue(result["analysis"]["child_safety_screening"]["human_review_required"])
+
     def test_invalid_upload_id_is_rejected(self):
         with self.assertRaises(ValueError):
             get_queue_record("/tmp", "../escape")
