@@ -116,6 +116,11 @@ def validate_assessments(data: Any) -> list[str]:
                             errors.append(f"{label}: référence de source obligatoire.")
                         if not isinstance(proof["observed_at"], str) or not DATE_RE.fullmatch(proof["observed_at"]):
                             errors.append(f"{label}: date observée attendue au format AAAA-MM-JJ.")
+                        else:
+                            try:
+                                date.fromisoformat(proof["observed_at"])
+                            except ValueError:
+                                errors.append(f"{label}: date observée invalide.")
                         if not isinstance(proof["claim"], str) or not proof["claim"].strip():
                             errors.append(f"{label}: constat de preuve obligatoire.")
                         if not isinstance(proof["limitations"], str):
