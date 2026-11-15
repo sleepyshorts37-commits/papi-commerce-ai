@@ -169,6 +169,13 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <label><input id="kdp-pricing-verified" type="checkbox"> Prix et redevance vérifiés</label>
 <button id="kdp-metadata-save" type="button">Enregistrer le brouillon KDP</button>
 <div id="kdp-metadata-result" class="muted" role="status" aria-live="polite">Aucune fiche enregistrée.</div>
+<hr>
+<h2>Fabrication du package KDP</h2>
+<p class="notice">La fabrication utilise uniquement le profil privé du serveur et les illustrations déjà approuvées. Elle ne téléverse ni ne publie le livre.</p>
+<label for="kdp-build-token">Jeton distinct de fabrication KDP</label>
+<input id="kdp-build-token" type="password" autocomplete="off" placeholder="Jeton de fabrication côté serveur">
+<button id="kdp-build-button" type="button">Fabriquer les fichiers KDP</button>
+<div id="kdp-build-result" class="muted" role="status" aria-live="polite">Aucun package fabriqué.</div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
@@ -200,6 +207,9 @@ const safetyReviewList=document.getElementById("safety-review-list");
 const metadataTokenInput=document.getElementById("metadata-token");
 const metadataSaveButton=document.getElementById("kdp-metadata-save");
 const metadataResult=document.getElementById("kdp-metadata-result");
+const kdpBuildTokenInput=document.getElementById("kdp-build-token");
+const kdpBuildButton=document.getElementById("kdp-build-button");
+const kdpBuildResult=document.getElementById("kdp-build-result");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -343,6 +353,26 @@ metadataSaveButton.addEventListener("click",async()=>{
   }
  }catch(error){metadataResult.textContent="Fiche non enregistrée : "+String(error.message||error);}
  finally{metadataSaveButton.disabled=false;}
+});
+kdpBuildButton.addEventListener("click",async()=>{
+ const id=statusId.value.trim(),token=kdpBuildTokenInput.value;
+ if(!/^PKP-UP-[0-9a-f]{32}$/.test(id)){kdpBuildResult.textContent="Vérifiez d'abord le statut du manuscrit.";return;}
+ if(!token){kdpBuildResult.textContent="Saisissez le jeton distinct de fabrication KDP.";return;}
+ if(!window.confirm("Lancer la fabrication des PDF et, si configuré, de l'EPUB ? Aucune publication ne sera effectuée."))return;
+ kdpBuildButton.disabled=true;kdpBuildResult.textContent="Fabrication en cours…";
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(id)+"/build-kdp-package",{
+   method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({confirm:true}),credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"kdp_build_failed");
+  kdpBuildTokenInput.value="";
+  kdpBuildResult.textContent="Package : "+result.status+
+   " — inspection humaine encore requise — upload KDP désactivé.";
+  statusButton.click();
+ }catch(error){kdpBuildResult.textContent="Fabrication bloquée : "+String(error.message||error);}
+ finally{kdpBuildButton.disabled=false;}
 });
 async function loadLibrary(){
  const token=tokenInput.value;
