@@ -37,7 +37,7 @@ _RULES = (
     (
         "unsupervised_river_or_waste",
         "high",
-        re.compile(r"\b(?:seul|seule|sans adulte|sans surveillance|sans accompagnement)\b.{0,80}\b(?:riviere|berge|eau|dechet|ordure|objet dangereux)\b"),
+        re.compile(r"\b(?:seul|seule|seuls|seules|sans adulte|sans surveillance|sans accompagnement)\b.{0,80}\b(?:riviere|berge|eau|dechet|ordure|objet dangereux)\b"),
         "Une scène pourrait placer un enfant près d'un danger sans adulte.",
     ),
     (
