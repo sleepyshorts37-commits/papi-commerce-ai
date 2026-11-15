@@ -124,6 +124,10 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <label for="review-token">Jeton de validation humaine</label>
 <input id="review-token" type="password" autocomplete="off" placeholder="Jeton de revue distinct">
 <div id="asset-review-list" aria-live="polite"></div>
+<hr>
+<h2>Mes livres</h2>
+<button id="library-button" type="button">Actualiser ma bibliothèque</button>
+<div id="book-list" aria-live="polite"></div>
 </section>
 <section><h2>Suivi des illustrations</h2>
 <div class="filters" aria-label="Filtrer les pages">
@@ -146,6 +150,8 @@ const statusId=document.getElementById("status-upload-id");
 const statusResult=document.getElementById("status-result");
 const reviewTokenInput=document.getElementById("review-token");
 const assetReviewList=document.getElementById("asset-review-list");
+const libraryButton=document.getElementById("library-button");
+const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
  const file=fileInput.files&&fileInput.files[0];
  preview.hidden=true;preview.textContent="";
@@ -173,6 +179,8 @@ uploadButton.addEventListener("click",async()=>{
   const result=await response.json();
   if(!response.ok)throw new Error(result.error||"upload_failed");
   uploadResult.textContent="Manuscrit reçu. Référence : "+result.upload_id+". Analyse éditoriale en attente.";
+  statusId.value=result.upload_id;
+  await loadLibrary();
   tokenInput.value="";
  }catch(error){uploadResult.textContent="Échec de l'envoi : "+String(error.message||error);}
  finally{uploadButton.disabled=false;}
@@ -198,6 +206,33 @@ statusButton.addEventListener("click",async()=>{
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
+async function loadLibrary(){
+ const token=tokenInput.value;
+ if(!token){bookList.textContent="Saisissez le jeton de dépôt pour consulter vos livres.";return;}
+ libraryButton.disabled=true;bookList.textContent="Chargement de la bibliothèque…";
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts",{
+   method:"GET",headers:{"Authorization":"Bearer "+token},credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"library_failed");
+  bookList.replaceChildren();
+  if(!result.books.length){bookList.textContent="Aucun manuscrit reçu.";return;}
+  result.books.forEach(book=>{
+   const item=document.createElement("div");item.className="book-library-item";
+   const heading=document.createElement("strong");heading.textContent=book.title||book.upload_id;
+   const details=document.createElement("p");
+   details.textContent=book.book_status+" — tâche : "+(book.job_status||"non créée")+
+    " — illustrations : "+book.approved_illustration_count+"/"+book.illustration_count+
+    " approuvées — "+book.upload_id;
+   const open=document.createElement("button");open.type="button";open.textContent="Ouvrir le suivi";
+   open.addEventListener("click",()=>{statusId.value=book.upload_id;statusButton.click();});
+   item.append(heading,details,open);bookList.appendChild(item);
+  });
+ }catch(error){bookList.textContent="Bibliothèque indisponible : "+String(error.message||error);}
+ finally{libraryButton.disabled=false;}
+}
+libraryButton.addEventListener("click",loadLibrary);
 function renderIllustrationReviews(assets,uploadId){
  assetReviewList.replaceChildren();
  if(!assets.length){assetReviewList.textContent="Aucune illustration enregistrée.";return;}
