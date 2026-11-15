@@ -17,6 +17,14 @@ class CloudflareFluxSchnellBatchAdapter:
         self.provider = provider
         self.quota_evidence = quota_evidence
         self.generation_authorized = generation_authorized is True
+        self.ledger = provider.reservation_store
+        self.model_costs = {MODEL_ID: 58}
+        self.account_id = provider.account_id
+
+    def authorize_generation(self, approved: bool) -> None:
+        if approved is not True:
+            raise ImageProviderBlocked("Autorisation de génération non confirmée.")
+        self.generation_authorized = True
 
     def generate_many(self, *, jobs: list[dict[str, Any]], now: Any = None) -> list[dict[str, Any]]:
         if not isinstance(jobs, list) or not jobs:
