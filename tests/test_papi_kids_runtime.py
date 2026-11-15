@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from papi_core.image_asset_center import LocalImageAssetCenter
+from papi_core.image_provider_cloudflare import SupabaseNeuronQuotaLedger
 from papi_core.image_provider_registry import ImageProviderRegistry, ModelProfile, ProviderProfile
 from papi_core.papi_kids_runtime import PapiKidsRuntimeError, build_pkp0001_runtime_engine
 
@@ -62,6 +63,22 @@ class PapiKidsRuntimeTests(unittest.TestCase):
         self.assertFalse(info["network_called"])
         self.assertEqual(called, [])
         self.assertEqual(engine.generator.models[0].model_id, "@cf/test/image")
+        ledger = engine.generator.provider.ledger
+        self.assertIsInstance(ledger, SupabaseNeuronQuotaLedger)
+        self.assertEqual(ledger.account_ref, "cf-test-account")
+        self.assertEqual(ledger.worker_id, "PAPI-TEST-01")
+        self.assertEqual(ledger.daily_limit, 1000)
+
+    def test_rejects_account_reference_mismatch_before_runtime_creation(self):
+        with patch.dict(os.environ, self.env, clear=True):
+            with self.assertRaisesRegex(PapiKidsRuntimeError, "ne correspond pas"):
+                build_pkp0001_runtime_engine(
+                    registry=self.registry,
+                    account_refs={"cloudflare": "cf-other-account"},
+                    quota_evidence_by_model={"@cf/test/image": proof()},
+                    asset_center=LocalImageAssetCenter(Path(self.temp.name) / "mismatch"),
+                    operator_confirmed_free_tier=True,
+                )
 
     def test_requires_operator_confirmation_and_server_secrets(self):
         with patch.dict(os.environ, self.env, clear=True):
