@@ -195,7 +195,7 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             result = evaluate_kdp_release_gate(
                 book_id="PKP-0001", manifest=manifest, private_root=root,
             )
-        self.assertTrue(result["publish_ready"])
+        self.assertTrue(result["publish_ready"], result["blockers"])
         self.assertEqual(result["ebook"]["status"], "approved")
         self.assertFalse(result["publication_execution_enabled"])
 
