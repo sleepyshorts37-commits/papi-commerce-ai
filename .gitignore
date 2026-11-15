@@ -27,3 +27,6 @@ logs/
 **/*.pgdump.aesgcm
 **/*.pgdump.aesgcm.json
 **/backups/
+
+# Private per-book print/ebook build profiles
+**/kdp-build-config.json
