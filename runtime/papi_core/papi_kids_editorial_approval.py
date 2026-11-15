@@ -131,7 +131,7 @@ def build_postgres_editorial_approval_handler(
     reviewer_id: str,
 ) -> Callable[[str, dict[str, Any]], dict[str, Any]]:
     root = Path(storage_root).resolve()
-    if not reviewer_id or len(reviewer_id) > 100:
+    if not isinstance(reviewer_id, str) or not 3 <= len(reviewer_id) <= 120:
         raise EditorialApprovalError("Identifiant du réviseur absent ou invalide.")
 
     def approve(upload_id: str, payload: dict[str, Any]) -> dict[str, Any]:
