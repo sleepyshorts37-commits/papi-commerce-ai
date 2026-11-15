@@ -5,7 +5,7 @@
 - Sur Workers Free, le dépassement provoque un échec ; le passage à Workers Paid est requis pour dépasser le quota. Workers Paid commence à 5 USD/mois et facture l'excédent à 0,011 USD / 1 000 Neurons.
 - Modèle : \`@cf/black-forest-labs/flux-1-schnell\`, réponse image JPEG encodée en Base64.
 - Tarification du modèle : 4,8 Neurons par tuile 512×512 + 9,6 Neurons par étape.
-- Pour 1024×1024 et 4 étapes : 76,8 Neurons/image ; 24 images : 1 843,2 Neurons estimés (18,4 % du quota quotidien).
+- Pour 1024×1024 et 4 étapes : 57,6 Neurons/image ; 24 images : 1 382,4 Neurons estimés (13,8 % du quota quotidien).
 Sources :
 - https://developers.cloudflare.com/workers-ai/platform/pricing
 - https://developers.cloudflare.com/workers-ai/models/flux-1-schnell
