@@ -64,6 +64,18 @@ class ReconciliationArtifactSignatureTests(unittest.TestCase):
         self.assertFalse(result["nonce_consumed"])
         self.assertFalse(result["historical_key"])
 
+    def test_verifies_historical_key_without_granting_authorization(self):
+        self.write_registry(version=2, history=[{
+            "key_version": 1, "public_key": PUBLIC_KEY, "retired_at": 100,
+        }])
+        result = verify_reconciliation_artifact_signature(
+            SIGNED_BYTES, self.proof(), self.registry
+        )
+        self.assertTrue(result["signature_verified"])
+        self.assertTrue(result["historical_key"])
+        self.assertFalse(result["authorization_granted"])
+        self.assertFalse(result["nonce_consumed"])
+
     def test_rejects_artifact_digest_mismatch(self):
         with self.assertRaises(ArtifactSignatureError):
             verify_reconciliation_artifact_signature(
