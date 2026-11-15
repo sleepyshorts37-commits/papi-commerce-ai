@@ -925,3 +925,19 @@ def record_kdp_package_review(
         close = getattr(connection, "close", None)
         if callable(close):
             close()
+
+
+def build_postgres_kdp_package_reviewer(
+    connection_factory: Callable[[], Any],
+) -> Callable[..., dict[str, Any]]:
+    """Build server-side callback for owner review of a KDP package artifact."""
+    def review(
+        upload_id: str, artifact: str, artifact_sha256: str,
+        decision: str, reviewer_id: str, notes: str,
+    ) -> dict[str, Any]:
+        return record_kdp_package_review(
+            connection_factory, upload_id=upload_id, artifact=artifact,
+            artifact_sha256=artifact_sha256, decision=decision,
+            reviewer_id=reviewer_id, notes=notes,
+        )
+    return review
