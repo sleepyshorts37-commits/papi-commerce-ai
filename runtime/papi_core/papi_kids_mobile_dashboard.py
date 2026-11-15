@@ -250,7 +250,12 @@ function renderEditorialPreview(result){
   const body=document.createElement("pre");body.textContent=prompt.prompt;
   details.append(summary,body);editorialPreview.appendChild(details);
  });
- if(result.approval_eligible){
+ if(result.editorial_approval&&result.editorial_approval.approved){
+  const approved=document.createElement("p");
+  approved.textContent="Plan déjà approuvé par "+result.editorial_approval.reviewer_id+
+   " le "+result.editorial_approval.approved_at+".";
+  editorialPreview.appendChild(approved);
+ }else if(result.approval_eligible){
   const approve=document.createElement("button");approve.type="button";
   approve.textContent="Approuver les 24 prompts et la bible graphique";
   approve.addEventListener("click",()=>submitEditorialApproval(result));
