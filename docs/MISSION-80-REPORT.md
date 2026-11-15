@@ -10,6 +10,7 @@
 - `docs/PAPI-KIDS-ZERO-COST-DISTRIBUTION.md` : politique détaillée, contrôles obligatoires, méthode de production gratuite et limites.
 - CLI `kids-channel-route` : rapport local en lecture seule pour un format et un pays.
 - Roadmap PAPI KIDS mise à jour.
+- Correction d'un défaut de validation de date calendaire découvert par la CI dans le moteur de scoring Mission 79 (les dates impossibles comme 2026-02-31 sont désormais rejetées).
 
 ## Contrôles intégrés
 Le moteur exige des preuves distinctes pour l'éligibilité d'un vendeur sénégalais, les versements au Sénégal, la couverture de livraison, les formats, l'absence d'abonnement, l'absence d'avance à chaque commande, l'absence de stock préfinancé, l'impression/fulfillment direct et le coût initial nul.
@@ -19,7 +20,7 @@ Toute valeur inconnue conduit à `HOLD`. Tout coût positif, stock requis, abonn
 Le registre initial ne prétend pas connaître les conditions actuelles. Les cinq plateformes POD restent en attente de preuves officielles. Jumia est bloqué pour le modèle zéro stock sur la base du besoin de stock physique décrit dans la stratégie Mission 78.
 
 ## Vérification
-Tests ajoutés : 11 tests unitaires ciblant les portes de décision et les refus conservateurs. La CI doit être examinée sur le SHA final de la branche avant de déclarer le lot validé.
+Tests ajoutés : 11 tests unitaires ciblant les portes de décision et les refus conservateurs. La première exécution CI a révélé un défaut préexistant dans la validation des dates du scoring Mission 79 ; la validation calendaire a été corrigée dans cette branche. Les workflows doivent être réexaminés sur le SHA final avant de déclarer le lot validé.
 
 ## Hors périmètre
 Aucun compte externe créé, aucune inscription, aucun contact, aucun contrat, aucun achat, aucune commande d'exemplaire, aucun stock, aucune publicité, aucune publication, aucune dépense, aucun agent activé et aucun déploiement.
