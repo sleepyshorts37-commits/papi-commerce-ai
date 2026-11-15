@@ -5,6 +5,7 @@ import hashlib
 import math
 import os
 from pathlib import Path
+from xml.sax.saxutils import escape
 import re
 import tempfile
 from typing import Any
@@ -14,6 +15,8 @@ from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.platypus import Paragraph
 from reportlab.lib.utils import ImageReader
 
 from .papi_kids_asset_store import inspect_image
@@ -37,7 +40,7 @@ def _rect(value: Any, name: str, page_w: float, page_h: float) -> tuple[float, f
     return x, y, width, height
 
 
-def _image(storage_root: Path, upload_id: str, asset: dict[str, Any], dpi: int) -> Path:
+def _image(storage_root: Path, upload_id: str, asset: dict[str, Any], target_rect: tuple[float, float, float, float], dpi: int) -> Path:
     if not isinstance(asset, dict) or asset.get("review_status") != "approved":
         raise KDPCoverError("Les illustrations de couverture doivent être approuvées par un humain.")
     key = asset.get("storage_key", "")
@@ -53,10 +56,7 @@ def _image(storage_root: Path, upload_id: str, asset: dict[str, Any], dpi: int) 
         raise KDPCoverError("Dimensions d'illustration incohérentes.")
     if hashlib.sha256(data).hexdigest() != asset.get("sha256"):
         raise KDPCoverError("Empreinte SHA-256 de couverture incorrecte.")
-    rect = asset.get("target_rect_in")
-    if not isinstance(rect, (list, tuple)) or len(rect) != 4:
-        raise KDPCoverError("Zone d'image de couverture absente.")
-    _, _, target_w, target_h = (float(v) for v in rect)
+    _, _, target_w, target_h = target_rect
     if width < math.ceil(target_w * dpi) or height < math.ceil(target_h * dpi):
         raise KDPCoverError(f"Image de couverture sous le seuil {dpi} DPI.")
     return path
@@ -120,8 +120,8 @@ def build_kdp_full_wrap_cover_pdf(
         raise KDPCoverError("Ordre géométrique dos/pliure/face avant invalide.")
     if barcode[0] < back[0] or barcode[1] < back[1] or barcode[0] + barcode[2] > back[0] + back[2] or barcode[1] + barcode[3] > back[1] + back[3]:
         raise KDPCoverError("Zone code-barres doit être intégralement sur la quatrième.")
-    back_path = _image(Path(storage_root).resolve(), upload_id, back_art, dpi_target)
-    front_path = _image(Path(storage_root).resolve(), upload_id, front_art, dpi_target)
+    back_path = _image(Path(storage_root).resolve(), upload_id, back_art, back, dpi_target)
+    front_path = _image(Path(storage_root).resolve(), upload_id, front_art, front, dpi_target)
     font_name = "PapiKidsCoverEmbedded"
     try:
         pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
@@ -163,17 +163,16 @@ def build_kdp_full_wrap_cover_pdf(
 
         def draw_text(text: str, box: tuple[float, float, float, float], size: float, leading: float) -> None:
             x, y, width, height = box
-            lines = text.splitlines() or [text]
-            if len(lines) * leading > height:
+            style = ParagraphStyle(
+                "PapiKidsCoverText", fontName=font_name, fontSize=size,
+                leading=leading, textColor=HexColor("#111111"),
+                spaceAfter=0, spaceBefore=0,
+            )
+            paragraph = Paragraph(escape(text).replace("\n", "<br/>"), style)
+            _, used_height = paragraph.wrap(width, height)
+            if used_height > height:
                 raise KDPCoverError("Le texte ne tient pas dans sa zone de couverture.")
-            pdf.setFillColor(HexColor("#111111"))
-            pdf.setFont(font_name, size)
-            current_y = y + height - leading
-            for line in lines:
-                if pdfmetrics.stringWidth(line, font_name, size) > width:
-                    raise KDPCoverError("Une ligne dépasse la largeur de sa zone de couverture.")
-                pdf.drawString(x, current_y, line)
-                current_y -= leading
+            paragraph.drawOn(pdf, x, y + height - used_height)
 
         draw_text(title, title_box, 28, 34)
         draw_text(author, author_box, 14, 18)
