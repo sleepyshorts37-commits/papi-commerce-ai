@@ -1,10 +1,13 @@
 """Mémoire partagée locale, traçable et append-only pour PAPI."""
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import re
+import stat
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -59,12 +62,49 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def _read_events(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
+@contextmanager
+def _journal_lock(path: Path, *, exclusive: bool):
+    """Verrou interprocessus du journal ; les liens symboliques sont refusés."""
+    lock_path = Path(path).with_name(Path(path).name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    # O_NONBLOCK prevents a malicious FIFO at the lock path from hanging the worker.
+    flags = (os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+             | getattr(os, "O_NONBLOCK", 0))
+    descriptor = os.open(lock_path, flags, 0o600)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise MemoryError("Le verrou mémoire doit être un fichier régulier.")
+        fcntl.flock(descriptor, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        yield
+    finally:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
+
+
+def _read_events_unlocked(path: Path) -> list[dict[str, Any]]:
+    # Open non-blocking so fstat can reject FIFOs instead of waiting for a writer.
+    flags = (os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+             | getattr(os, "O_NONBLOCK", 0))
+    try:
+        descriptor = os.open(path, flags)
+    except FileNotFoundError:
         return []
+    except OSError as exc:
+        raise MemoryError("Impossible d'ouvrir le journal mémoire de façon sûre.") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise MemoryError("Le journal mémoire doit être un fichier régulier.")
+        with os.fdopen(descriptor, "r", encoding="utf-8") as stream:
+            descriptor = -1
+            lines = stream.readlines()
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
     events = []
     seen = set()
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for number, line in enumerate(lines, 1):
         if not line.strip():
             continue
         try:
@@ -80,14 +120,38 @@ def _read_events(path: Path) -> list[dict[str, Any]]:
     return events
 
 
-def _append(event: dict[str, Any], path: Path) -> None:
+def _read_events(path: Path) -> list[dict[str, Any]]:
+    with _journal_lock(Path(path), exclusive=False):
+        return _read_events_unlocked(Path(path))
+
+
+def _append_unlocked(event: dict[str, Any], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    # Open non-blocking so a FIFO cannot stall a memory append indefinitely.
+    flags = (os.O_WRONLY | os.O_CREAT | os.O_APPEND
+             | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     try:
-        os.write(fd, payload)
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as exc:
+        raise MemoryError("Impossible d'ouvrir le journal mémoire de façon sûre.") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise MemoryError("Le journal mémoire doit être un fichier régulier.")
+        remaining = memoryview(payload)
+        while remaining:
+            written = os.write(descriptor, remaining)
+            if written <= 0:
+                raise MemoryError("Écriture incomplète du journal mémoire.")
+            remaining = remaining[written:]
+        os.fsync(descriptor)
     finally:
-        os.close(fd)
+        os.close(descriptor)
+
+
+def _append(event: dict[str, Any], path: Path) -> None:
+    with _journal_lock(Path(path), exclusive=True):
+        _append_unlocked(event, Path(path))
 
 
 def remember_fact(
@@ -173,19 +237,21 @@ def supersede_memory(
     authenticated = require_authenticated_agent_principal(principal)
     actor = authenticated.agent_id
     reason = _safe_text(reason, "reason", 240)
-    events = _read_events(Path(path))
-    target = next((e for e in events if e["event_type"] == "remember" and e["memory_id"] == memory_id), None)
-    if target is None:
-        raise MemoryError("Entrée mémoire introuvable.")
-    if target["category"] == "decision" or target["scope"] == "owner":
-        raise MemoryError("Un agent ne peut pas archiver une mémoire réservée au propriétaire.")
-    if target["scope"] == "agent" and actor != target["actor"]:
-        raise MemoryError("Un agent ne peut pas archiver la mémoire privée d’un autre agent.")
-    if any(e.get("target_memory_id") == memory_id for e in events if e["event_type"] == "supersede"):
-        return False
-    _append({
-        "event_id": str(uuid.uuid4()), "event_type": "supersede",
-        "target_memory_id": memory_id, "created_at": _timestamp(),
-        "actor": actor, "reason": reason,
-    }, Path(path))
-    return True
+    journal_path = Path(path)
+    with _journal_lock(journal_path, exclusive=True):
+        events = _read_events_unlocked(journal_path)
+        target = next((e for e in events if e["event_type"] == "remember" and e["memory_id"] == memory_id), None)
+        if target is None:
+            raise MemoryError("Entrée mémoire introuvable.")
+        if target["category"] == "decision" or target["scope"] == "owner":
+            raise MemoryError("Un agent ne peut pas archiver une mémoire réservée au propriétaire.")
+        if target["scope"] == "agent" and actor != target["actor"]:
+            raise MemoryError("Un agent ne peut pas archiver la mémoire privée d’un autre agent.")
+        if any(e.get("target_memory_id") == memory_id for e in events if e["event_type"] == "supersede"):
+            return False
+        _append_unlocked({
+            "event_id": str(uuid.uuid4()), "event_type": "supersede",
+            "target_memory_id": memory_id, "created_at": _timestamp(),
+            "actor": actor, "reason": reason,
+        }, journal_path)
+        return True
