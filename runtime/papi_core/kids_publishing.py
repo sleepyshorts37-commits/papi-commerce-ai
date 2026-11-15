@@ -163,7 +163,7 @@ def _validate_book(book: Any) -> list[str]:
                     "metadata": {".json"},
                     "quality_report": {".json"},
                 }
-                if kind in allowed_suffixes and suffix not in allowed_suffixes[kind]:
+                if isinstance(kind, str) and kind in allowed_suffixes and suffix not in allowed_suffixes[kind]:
                     errors.append(f"Extension de fichier invalide pour {kind}.")
     return errors
 
