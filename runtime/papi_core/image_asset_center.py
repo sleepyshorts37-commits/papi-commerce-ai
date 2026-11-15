@@ -126,7 +126,8 @@ class LocalImageAssetCenter:
             raise
         return record
 
-    def get(self, *, book_id: str, page_id: str, idempotency_key: str) -> dict[str, Any] | None:
+    def get(self, *, book_id: str, page_id: str, idempotency_key: str,
+            page_number: int | None = None) -> dict[str, Any] | None:
         _, index_path = self._paths(book_id, page_id, idempotency_key)
         if not index_path.exists():
             return None

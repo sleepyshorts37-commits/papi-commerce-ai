@@ -122,6 +122,7 @@ def store_illustration_asset(
     model_id: str | None = None,
     prompt_sha256: str | None = None,
     generation_ref: str | None = None,
+    idempotency_key: str | None = None,
     source_width_px: int | None = None,
     source_height_px: int | None = None,
     upscaling_method: str = "native",
@@ -137,6 +138,11 @@ def store_illustration_asset(
         raise IllustrationAssetError("Version d'image invalide.")
     if prompt_sha256 is not None and not _SHA256.fullmatch(prompt_sha256):
         raise IllustrationAssetError("Empreinte du prompt invalide.")
+    if idempotency_key is not None and (
+        not isinstance(idempotency_key, str) or not 1 <= len(idempotency_key) <= 200
+        or not re.fullmatch(r"[A-Za-z0-9._:-]+", idempotency_key)
+    ):
+        raise IllustrationAssetError("Clé d'idempotence invalide.")
     width, height = inspect_image(image_bytes, media_type)
     digest = hashlib.sha256(image_bytes).hexdigest()
     source_width_px = width if source_width_px is None else source_width_px
@@ -188,6 +194,7 @@ def store_illustration_asset(
         "model_id": model_id,
         "prompt_sha256": prompt_sha256,
         "generation_ref": generation_ref,
+        "idempotency_key": idempotency_key,
         "review_status": "pending_review",
         "human_approval_required": True,
         "persistence_status": "local_only",

@@ -55,6 +55,10 @@ class ImageProductionEngine:
             payload = [{
                 "prompt": item.prompt, "model": item.model,
                 "idempotency_key": item.idempotency_key,
+                "book_id": item.book_id,
+                "page_id": item.page_id,
+                "page_number": item.page_number,
+                "batch_id": batch.batch_id,
             } for item in pending]
             provider_results = self.generator.generate_many(jobs=payload, now=now)
             if not isinstance(provider_results, list) or len(provider_results) != len(pending):

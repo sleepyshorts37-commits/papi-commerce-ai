@@ -3,7 +3,8 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app/runtime \
-    PAPI_KIDS_PRIVATE_STORAGE_DIR=/data/private
+    PAPI_KIDS_PRIVATE_STORAGE_DIR=/data/private \
+    PAPI_KIDS_BUNDLED_SOURCES=true
 
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
