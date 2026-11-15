@@ -5,6 +5,11 @@ import hashlib
 import json
 from typing import Any, Iterable
 
+from .identity_reconciliation_contract import (
+    IdentityReconciliationReportContractError,
+    validate_reconciliation_report,
+)
+
 
 class IdentityReconciliationError(ValueError):
     """Input snapshots are malformed or ambiguous."""
@@ -126,4 +131,8 @@ def reconcile_identity_snapshots(
         "discrepancies": discrepancies,
     }
     report["report_sha256"] = hashlib.sha256(_canonical(report)).hexdigest()
+    try:
+        validate_reconciliation_report(report)
+    except IdentityReconciliationReportContractError as exc:
+        raise IdentityReconciliationError("Contrat du rapport de rapprochement non respecté.") from exc
     return report
