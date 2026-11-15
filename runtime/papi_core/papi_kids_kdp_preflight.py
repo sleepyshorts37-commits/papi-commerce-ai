@@ -11,6 +11,7 @@ from typing import Any
 from xml.sax.saxutils import escape
 
 from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -185,7 +186,7 @@ def build_interior_pdf(
     pdf_h = spec["pdf_height_in"] * inch
     style = ParagraphStyle(
         "PapiKidsBody", fontName=font_name, fontSize=16, leading=21,
-        textColor="#111111", spaceAfter=0, allowWidows=0, allowOrphans=0,
+        textColor=colors.HexColor("#111111"), spaceAfter=0, allowWidows=0, allowOrphans=0,
     )
     try:
         pdf = canvas.Canvas(temp_name, pagesize=(pdf_w, pdf_h), pageCompression=1, invariant=1)
