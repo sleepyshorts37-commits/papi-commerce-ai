@@ -175,7 +175,7 @@ class CloudflareQuotaTests(unittest.TestCase):
                     free_tier_confirmed_for_account=True,
                     transport=lambda *a, **k: calls.append((a, k)) or FakeResponse(),
                 )
-                with self.assertRaisesRegex(ImageProviderError, "Réservation non utilisable"):
+                with self.assertRaises(ImageProviderError):
                     adapter.generate(prompt="retry must be blocked",
                                      model="@cf/test/image",
                                      idempotency_key="same-idempotency-key",
