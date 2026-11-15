@@ -241,6 +241,8 @@ def prepare_pkp0001_from_project_sources(
     """Validate the committed manuscript/bible/storyboard/prompts bundle and plan it."""
     root = Path(project_root).resolve()
     source_dir = root / "publishing" / "papi-kids" / BOOK_ID
+    if not source_dir.is_dir():
+        source_dir = Path(__file__).parent / "resources" / BOOK_ID
     manuscript_path = source_dir / "manuscript-v2.md"
     bible_path = source_dir / "character-bible-v1.md"
     storyboard_path = source_dir / "storyboard-v1.md"
