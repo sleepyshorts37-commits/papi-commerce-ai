@@ -14,43 +14,53 @@ class PapiKidsSafetyReviewError(ValueError):
 _PAGE_HEADING = re.compile(
     r"^###\s+Page\s+(\d+)\s+[—-]\s+(.+?)\s*$", re.MULTILINE | re.IGNORECASE
 )
+_CHILD_SUBJECT = r"(?:nia|bako|les enfants|enfants|un enfant|une enfant|l'enfant|ils|elles|nous|je|tu|on)"
 _RULES = (
     (
         "child_in_water",
         "critical",
-        re.compile(r"\b(?:entre|entrer|descend|descendre|plonge|plonger|nage|nager|traverse|traverser|se baigne)\b.{0,90}\b(?:riviere|eau|ruisseau|canal)\b"),
+        re.compile(r"\b" + _CHILD_SUBJECT + r"\s+(?:ne\s+|n['’](?:y|en)?)?(?:entre|entrent|entrait|entrait|descend|descendent|descendait|plonge|plongent|plongeait|nage|nagent|nageait|traverse|traversent|traversait|se baigne|se baignaient)\b.{0,80}\b(?:riviere|eau|ruisseau|canal)\b"),
         "Un enfant pourrait entrer dans l'eau ou la traverser.",
     ),
     (
         "drinking_unknown_water",
         "critical",
-        re.compile(r"\b(?:boit|boire|goute|gouter|avale)\b.{0,70}\b(?:eau|riviere|ruisseau|canal|mare)\b"),
+        re.compile(r"\b" + _CHILD_SUBJECT + r"\s+(?:ne\s+|n['’](?:y|en)?)?(?:boit|boivent|bois|buvons|buvez|buvait|boire|goute|goutent|goutons|goutait|avale|avalent)\b.{0,70}\b(?:eau|riviere|ruisseau|canal|mare)\b"),
         "Le texte pourrait suggérer de boire ou goûter une eau non vérifiée.",
     ),
     (
         "child_handles_hazard",
         "critical",
-        re.compile(r"\b(?:ramasse|ramasser|touche|toucher|prend|prendre|ouvre|ouvrir|porte|porter|manipule|manipuler)\b.{0,90}\b(?:seringue|lame|verre casse|batterie|produit chimique|dechet toxique|ordure|dechet dangereux|objet coupant)\b"),
+        re.compile(r"\b" + _CHILD_SUBJECT + r"\s+(?:ne\s+|n['’](?:y|en)?)?(?:ramasse|ramassent|ramassait|ramasser|touche|touchent|touchons|touchait|toucher|prend|prennent|prenons|prendre|ouvre|ouvrent|ouvrir|porte|portent|porter|manipule|manipulent|manipuler)\b.{0,90}\b(?:seringue|lame|verre casse|batterie|produit chimique|dechet toxique|ordure|dechet dangereux|objet coupant)\b"),
         "Un enfant pourrait manipuler un déchet ou objet dangereux.",
     ),
     (
         "unsupervised_river_or_waste",
         "high",
-        re.compile(r"\b(?:seul|seule|sans adulte|sans surveillance|sans accompagnement)\b.{0,80}\b(?:riviere|berge|eau|dechet|ordure|objet dangereux)\b"),
+        re.compile(r"\b(?:seul|seule|seuls|seules|sans adulte|sans surveillance|sans accompagnement)\b.{0,80}\b(?:riviere|berge|eau|dechet|ordure|objet dangereux)\b"),
         "Une scène pourrait placer un enfant près d'un danger sans adulte.",
     ),
     (
         "child_on_unstable_bank",
         "high",
-        re.compile(r"\b(?:glisse|glisser|court|courir|grimpe|grimper|s'approche|approche)\b.{0,70}\b(?:berge|bord de l'eau|rive|pente glissante)\b"),
+        re.compile(r"\b" + _CHILD_SUBJECT + r"\s+(?:ne\s+|n['’](?:y|en)?)?(?:glisse|glissent|glisser|court|courent|courir|grimpe|grimpent|grimper|s'approche|s'approchent|approche|approchent)\b.{0,70}\b(?:berge|bord de l'eau|rive|pente glissante)\b"),
         "Une action près d'une berge ou pente instable mérite une vérification.",
     ),
 )
 
 
+
 def _normalize(value: str) -> str:
     decomposed = unicodedata.normalize("NFKD", value.casefold())
     return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
+
+
+def _is_negated(text: str, start: int, end: int) -> bool:
+    context = text[max(0, start - 20):min(len(text), end + 45)]
+    has_ne = bool(re.search(r"\bne\b|\bn['’](?:y|en)?", context))
+    has_negation = bool(re.search(r"\b(?:pas|jamais|plus|rien|aucun|aucune|ni)\b", context))
+    return has_ne and has_negation
 
 
 def analyze_child_safety(manuscript: str, *, expected_pages: int = 24) -> dict[str, Any]:
@@ -74,7 +84,11 @@ def analyze_child_safety(manuscript: str, *, expected_pages: int = 24) -> dict[s
         normalized = _normalize(text)
         issues = []
         for rule_id, severity, pattern, description in _RULES:
-            found = pattern.search(normalized)
+            found = next(
+                (candidate for candidate in pattern.finditer(normalized)
+                 if not _is_negated(normalized, candidate.start(), candidate.end())),
+                None,
+            )
             if found:
                 start = max(0, found.start() - 70)
                 excerpt = re.sub(r"\s+", " ", text)[start:start + 180]
