@@ -201,7 +201,7 @@ def build_kdp_print_package(
         "interior_result": {**interior_result, "output_path": str(final_dir / "interior.pdf")},
         "cover_result": {**cover_result, "output_path": str(final_dir / "cover.pdf")},
         "ebook_result": ({**ebook_result, "output_path": str(final_dir / "book.epub")} if ebook_result else None),
-        "status": "generated_pending_manual_pdf_inspection",
+        "status": "generated_pending_manual_multiformat_review" if ebook_requested else "generated_pending_manual_pdf_inspection",
         "kdp_upload_ready": False,
         "publication_performed": False,
         "spend_limit_minor": 0,
