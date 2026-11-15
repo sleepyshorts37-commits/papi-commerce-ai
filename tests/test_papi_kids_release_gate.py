@@ -2,6 +2,7 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
+from zipfile import ZipFile, ZIP_STORED, ZIP_DEFLATED
 
 from papi_core.papi_kids_release_gate import evaluate_kdp_release_gate
 
@@ -94,6 +95,84 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             )
         self.assertFalse(result["publish_ready"])
         self.assertTrue(any("super-résolution" in item for item in result["blockers"]))
+
+    def create_valid_epub(self, path):
+        with ZipFile(path, "w") as archive:
+            archive.writestr("mimetype", "application/epub+zip", compress_type=ZIP_STORED)
+            archive.writestr("META-INF/container.xml",
+                '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/package.opf"/></rootfiles></container>',
+                compress_type=ZIP_DEFLATED)
+            archive.writestr("OEBPS/package.opf",
+                '<package xmlns="http://www.idpf.org/2007/opf"><metadata/><manifest/><spine/><meta property="rendition:layout">pre-paginated</meta></package>',
+                compress_type=ZIP_DEFLATED)
+            archive.writestr("OEBPS/nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml"><body><nav/></body></html>', compress_type=ZIP_DEFLATED)
+            archive.writestr("OEBPS/styles/book.css", "body{}")
+            archive.writestr("OEBPS/pages/cover.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml"><body/></html>')
+            for number in range(1, 25):
+                archive.writestr(
+                    f"OEBPS/pages/page-{number:03d}.xhtml",
+                    '<html xmlns="http://www.w3.org/1999/xhtml"><body><a class="app-amzn-magnify"/></body></html>',
+                )
+
+    def test_ebook_required_blocks_without_kindle_previewer_review(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            epub_path = Path(root) / "book.epub"
+            self.create_valid_epub(epub_path)
+            digest = hashlib.sha256(epub_path.read_bytes()).hexdigest()
+            manifest["ebook_required"] = True
+            manifest["ebook"] = {
+                "path": "book.epub", "sha256": digest, "page_count": 24,
+                "preflight": "passed", "format": "EPUB 3 fixed-layout",
+            }
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertFalse(result["publish_ready"])
+        self.assertTrue(any("Kindle Previewer" in item for item in result["blockers"]))
+
+    def test_ebook_passes_only_with_preview_attestation_bound_to_epub_hash(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            epub_path = Path(root) / "book.epub"
+            self.create_valid_epub(epub_path)
+            digest = hashlib.sha256(epub_path.read_bytes()).hexdigest()
+            manifest["ebook_required"] = True
+            manifest["ebook"] = {
+                "path": "book.epub", "sha256": digest, "page_count": 24,
+                "preflight": "passed", "format": "EPUB 3 fixed-layout",
+            }
+            manifest["kindle_previewer_review"] = {
+                "passed": True, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "kindle-preview-01", "epub_sha256": digest,
+            }
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertTrue(result["publish_ready"])
+        self.assertEqual(result["ebook"]["status"], "approved")
+        self.assertFalse(result["publication_execution_enabled"])
+
+    def test_ebook_preview_attestation_for_different_hash_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            epub_path = Path(root) / "book.epub"
+            self.create_valid_epub(epub_path)
+            digest = hashlib.sha256(epub_path.read_bytes()).hexdigest()
+            manifest["ebook_required"] = True
+            manifest["ebook"] = {
+                "path": "book.epub", "sha256": digest, "page_count": 24,
+                "preflight": "passed", "format": "EPUB 3 fixed-layout",
+            }
+            manifest["kindle_previewer_review"] = {
+                "passed": True, "reviewer_id": "qa-01", "reviewed_at": "2026-11-15",
+                "evidence_ref": "kindle-preview-01", "epub_sha256": "0" * 64,
+            }
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertFalse(result["publish_ready"])
+        self.assertTrue(any("Kindle Previewer" in item for item in result["blockers"]))
 
     def test_pdf_hash_mismatch_blocks_release(self):
         with tempfile.TemporaryDirectory() as root:
