@@ -13,6 +13,8 @@ from typing import Any
 from .papi_kids_kdp_preflight import KDPPreflightError
 from .papi_kids_cover_pdf import KDPCoverError, build_kdp_cover_pdf
 from .papi_kids_kdp_preflight import build_interior_pdf
+from .papi_kids_fixed_layout_epub import KDPFixedLayoutEPUBError, build_kdp_fixed_layout_epub
+from .papi_kids_ebook_package import PapiKidsEPUBPackageError, validate_epub_structure
 
 
 class PapiKidsKDPPrintPackageError(ValueError):
@@ -33,6 +35,8 @@ def build_kdp_print_package(
     upload_id: str,
     interior_args: dict[str, Any],
     cover_args: dict[str, Any],
+    ebook_args: dict[str, Any] | None = None,
+    ebook_required: bool = False,
     package_version: int = 1,
 ) -> dict[str, Any]:
     """Build both PDFs as one atomic package; only approved art and official KDP template."""
@@ -42,8 +46,15 @@ def build_kdp_print_package(
         raise PapiKidsKDPPrintPackageError("Version de package invalide.")
     if not isinstance(interior_args, dict) or not isinstance(cover_args, dict):
         raise PapiKidsKDPPrintPackageError("Paramètres intérieurs/couverture invalides.")
+    if not isinstance(ebook_required, bool):
+        raise PapiKidsKDPPrintPackageError("Indicateur ebook invalide.")
+    if ebook_required and not isinstance(ebook_args, dict):
+        raise PapiKidsKDPPrintPackageError("L'ebook est requis mais ses paramètres sont absents.")
+    if ebook_args is not None and not isinstance(ebook_args, dict):
+        raise PapiKidsKDPPrintPackageError("Paramètres ebook invalides.")
+    ebook_requested = ebook_required or ebook_args is not None
     controlled = {"storage_root", "output_path", "upload_id"}
-    if controlled.intersection(interior_args) or controlled.intersection(cover_args):
+    if controlled.intersection(interior_args) or controlled.intersection(cover_args) or (ebook_args and controlled.intersection(ebook_args)):
         raise PapiKidsKDPPrintPackageError("Les chemins et identifiants sont contrôlés par le service.")
     root = Path(storage_root).resolve()
     book_dir = (root / upload_id).resolve()
@@ -62,6 +73,25 @@ def build_kdp_print_package(
         raise PapiKidsKDPPrintPackageError("Les illustrations ne couvrent pas exactement toutes les pages.")
     if any(asset.get("review_status") != "approved" for asset in assets):
         raise PapiKidsKDPPrintPackageError("Toutes les illustrations intérieures doivent être approuvées.")
+    if ebook_requested:
+        ebook_pages = ebook_args.get("pages")
+        ebook_assets = ebook_args.get("page_assets")
+        if not isinstance(ebook_pages, list) or len(ebook_pages) != page_count:
+            raise PapiKidsKDPPrintPackageError("La pagination ebook doit correspondre à l'intérieur imprimé.")
+        if not isinstance(ebook_assets, list) or len(ebook_assets) != page_count:
+            raise PapiKidsKDPPrintPackageError("Une illustration ebook est requise pour chaque page.")
+        for print_page, ebook_page in zip(pages, ebook_pages):
+            if (not isinstance(ebook_page, dict)
+                    or ebook_page.get("page_number") != print_page.get("page_number")
+                    or ebook_page.get("text") != print_page.get("text")):
+                raise PapiKidsKDPPrintPackageError("Le texte et l'ordre des pages ebook doivent correspondre à l'intérieur.")
+        if ebook_args.get("title") != cover_args.get("title") or ebook_args.get("author") != cover_args.get("author"):
+            raise PapiKidsKDPPrintPackageError("Titre/auteur de l'ebook et de la couverture divergents.")
+        if any(not isinstance(asset, dict) or asset.get("review_status") != "approved" for asset in ebook_assets):
+            raise PapiKidsKDPPrintPackageError("Toutes les illustrations ebook doivent être approuvées.")
+        ebook_cover = ebook_args.get("cover_asset")
+        if not isinstance(ebook_cover, dict) or ebook_cover.get("review_status") != "approved":
+            raise PapiKidsKDPPrintPackageError("La couverture ebook doit être approuvée.")
     if cover_args.get("page_count") != page_count:
         raise PapiKidsKDPPrintPackageError("La pagination de couverture diffère de l'intérieur.")
     for dimension in ("trim_width_in", "trim_height_in"):
@@ -92,6 +122,9 @@ def build_kdp_print_package(
     os.chmod(stage, 0o700)
     interior_path = stage / "interior.pdf"
     cover_path = stage / "cover.pdf"
+    ebook_path = stage / "book.epub"
+    ebook_result = None
+    ebook_preflight = None
     try:
         interior_result = build_interior_pdf(
             root, interior_path, upload_id=upload_id, **interior_args
@@ -99,6 +132,11 @@ def build_kdp_print_package(
         cover_result = build_kdp_cover_pdf(
             root, cover_path, **cover_args
         )
+        if ebook_requested:
+            ebook_result = build_kdp_fixed_layout_epub(
+                root, ebook_path, upload_id=upload_id, **ebook_args
+            )
+            ebook_preflight = validate_epub_structure(ebook_path, page_count)
         for path, label in ((interior_path, "intérieur"), (cover_path, "couverture")):
             if not path.is_file() or not path.read_bytes().startswith(b"%PDF-"):
                 raise PapiKidsKDPPrintPackageError(f"PDF {label} absent ou invalide.")
@@ -108,6 +146,7 @@ def build_kdp_print_package(
         cover_sha = _sha256(cover_path)
         manifest = {
             "schema_version": 1,
+            "ebook_required": ebook_required,
             "upload_id": upload_id,
             "package_version": package_version,
             "page_count": page_count,
@@ -137,13 +176,22 @@ def build_kdp_print_package(
             "kdp_upload_ready": False,
             "publication_performed": False,
         }
+        if ebook_requested:
+            manifest["ebook"] = {
+                "path": f"{upload_id}/kdp-print-package-v{package_version:03d}/book.epub",
+                "sha256": _sha256(ebook_path),
+                "page_count": page_count,
+                "preflight": "pending_kindle_previewer",
+                "format": "EPUB 3 fixed-layout",
+                "structural_checks": ebook_preflight,
+            }
         manifest_path = stage / "package-manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         os.chmod(manifest_path, 0o600)
         os.replace(stage, final_dir)
     except Exception as exc:
         shutil.rmtree(stage, ignore_errors=True)
-        if isinstance(exc, (PapiKidsKDPPrintPackageError, KDPPreflightError, KDPCoverError)):
+        if isinstance(exc, (PapiKidsKDPPrintPackageError, KDPPreflightError, KDPCoverError, KDPFixedLayoutEPUBError, PapiKidsEPUBPackageError)):
             raise
         raise PapiKidsKDPPrintPackageError("La fabrication du package broché a échoué.") from exc
     return {
@@ -152,7 +200,8 @@ def build_kdp_print_package(
         "manifest": manifest,
         "interior_result": {**interior_result, "output_path": str(final_dir / "interior.pdf")},
         "cover_result": {**cover_result, "output_path": str(final_dir / "cover.pdf")},
-        "status": "generated_pending_manual_pdf_inspection",
+        "ebook_result": ({**ebook_result, "output_path": str(final_dir / "book.epub")} if ebook_result else None),
+        "status": "generated_pending_manual_multiformat_review" if ebook_requested else "generated_pending_manual_pdf_inspection",
         "kdp_upload_ready": False,
         "publication_performed": False,
         "spend_limit_minor": 0,
