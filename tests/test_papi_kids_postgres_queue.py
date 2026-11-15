@@ -153,7 +153,7 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(connection.commits, 1)
 
     def test_status_reader_exposes_safety_screening_and_human_attestation(self):
-        from papi_kids_postgres_queue import build_postgres_status_reader
+        from papi_core.papi_kids_postgres_queue import build_postgres_status_reader
         upload_id = "PKP-UP-" + "d" * 32
         analysis = {"child_safety_screening": {"issue_count": 2, "critical_issue_count": 1}}
         review = {"approved": True, "reviewer_id": "owner-01", "manuscript_sha256": "b" * 64}
