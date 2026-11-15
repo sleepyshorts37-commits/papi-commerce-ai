@@ -11,7 +11,7 @@ from PIL import Image
 
 from papi_core.image_campaign import plan_image_campaign
 from papi_core.papi_kids_orchestrator import (
-    execute_pkp0001_campaign, prepare_pkp0001_from_project_sources,
+    PapiKidsOrchestrationError, execute_pkp0001_campaign, prepare_pkp0001_from_project_sources,
 )
 from papi_core.image_provider_registry import (
     ImageProviderRegistry, ModelProfile, ProviderProfile,
@@ -179,7 +179,7 @@ class PapiKidsImageWiringTests(unittest.TestCase):
                 reservation_store=reservation, asset_registrar=lambda metadata: None,
                 transport=transport, project_root=root,
             )
-            with self.assertRaises(Exception):
+            with self.assertRaises(PapiKidsOrchestrationError):
                 execute_pkp0001_campaign(
                     prepared=prepared, engine=engine,
                     quota_evidence=report["registry_quota_evidence"],
