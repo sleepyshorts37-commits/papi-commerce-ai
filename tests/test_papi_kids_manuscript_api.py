@@ -204,6 +204,79 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertEqual(payload["status"], "incomplete")
         self.assertEqual(received, [(upload_id, metadata, "owner-01")])
 
+    def test_kdp_package_review_endpoint_uses_owner_identity_and_hash(self):
+        upload_id = "PKP-UP-" + "3" * 32
+        received = []
+        def handler(*args):
+            received.append(args)
+            return {"decision": args[3], "approved": args[3] == "approved"}
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name, kdp_package_review_handler=handler,
+        )
+        body = json.dumps({
+            "artifact": "interior", "artifact_sha256": "a" * 64,
+            "decision": "approved",
+            "notes": "PDF contrôlé sur toutes les pages, marges et images vérifiées.",
+        }).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kdp-package-review",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_KDP_REVIEW_TOKEN": TOKEN, "PAPI_KIDS_REVIEWER_ID": "owner-01",
+        }, clear=True):
+            payload = json.loads(b"".join(app(environ, start_response)))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertTrue(payload["approved"])
+        self.assertEqual(received[0][0], upload_id)
+        self.assertEqual(received[0][4], "owner-01")
+
+    def test_kdp_package_artifact_download_is_authenticated_and_inline(self):
+        upload_id = "PKP-UP-" + "4" * 32
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name,
+            kdp_package_download_handler=lambda upload, artifact: {
+                "data": b"%PDF-1.7 test", "content_type": "application/pdf",
+                "filename": "interior.pdf",
+            },
+        )
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kdp-package/interior",
+            "REQUEST_METHOD": "GET", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "wsgi.input": io.BytesIO(b""),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+            captured["headers"] = dict(headers)
+        with patch.dict(os.environ, {"PAPI_KIDS_KDP_REVIEW_TOKEN": TOKEN}, clear=True):
+            payload = b"".join(app(environ, start_response))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertEqual(captured["headers"]["Content-Disposition"], 'inline; filename="interior.pdf"')
+        self.assertEqual(payload, b"%PDF-1.7 test")
+
+    def test_kdp_package_review_token_is_not_reused_from_build_token(self):
+        upload_id = "PKP-UP-" + "5" * 32
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/kdp-package/cover",
+            "REQUEST_METHOD": "GET", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "wsgi.input": io.BytesIO(b""),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {"PAPI_KIDS_KDP_BUILD_TOKEN": TOKEN}, clear=True):
+            b"".join(self.app(environ, start_response))
+        self.assertEqual(captured["status"], "503 Service Unavailable")
+
     def test_readiness_endpoint_uses_separate_token_and_never_returns_secret_values(self):
         app = create_papi_kids_manuscript_app(
             storage_root=self.temp.name,
