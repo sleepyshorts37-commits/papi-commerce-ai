@@ -10,3 +10,8 @@
 
 ## Gouvernance
 Un nouveau package invalide les attestations précédentes par version/hash. Aucun fichier n'est envoyé à KDP ; l'état maximal reste prêt pour soumission manuelle après validation propriétaire.
+
+## Interface et endpoint
+- Panneau iPhone avec jeton distinct et liste de blocages.
+- Endpoint HTTPS GET en lecture seule ; aucun état modifié.
+- Les revues doivent correspondre aux empreintes SHA-256 exactes de la dernière version du package.
