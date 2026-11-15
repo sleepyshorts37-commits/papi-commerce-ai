@@ -35,8 +35,8 @@ def template(root):
         "front_panel": {"x": 8.681328, "y": 0, "width": 8.625, "height": 8.75},
         "barcode_box": {"x": .5, "y": .5, "width": 2, "height": 1.2},
         "summary_box": {"x": .5, "y": 3, "width": 7, "height": 2.5},
-        "title_box": {"x": 9, "y": 6.5, "width": 7, "height": 1.2},
-        "author_box": {"x": 9, "y": 1, "width": 7, "height": .5},
+        "title_box": {"x": 9.1, "y": 6.5, "width": 7, "height": 1.2},
+        "author_box": {"x": 9.1, "y": 1, "width": 7, "height": .5},
     }
 
 
