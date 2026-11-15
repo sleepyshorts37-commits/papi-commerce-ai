@@ -201,7 +201,7 @@ def build_postgres_editorial_approval_reader(
         cursor = connection.cursor()
         try:
             cursor.execute(
-                "select metadata->'editorial_approval' from papi_kids_private.books where upload_id = %s",
+                "select metadata->'editorial_approval' from papi_kids_private.books where upload_id = %s and status = 'analysis_ready'",
                 (upload_id,),
             )
             row = cursor.fetchone()
