@@ -11,6 +11,7 @@ from typing import Any
 
 from .image_campaign import execute_image_campaign, plan_image_campaign
 from .image_production_engine import ImageProductionEngine
+from .image_quota_evidence import validate_quota_evidence, QuotaEvidenceError
 
 SCENE_HEADING = re.compile(r"^###\s+(\d{2})\s+[—-]\s+(.+?)\s*$", re.MULTILINE)
 EXPECTED_SCENES = 24
@@ -57,15 +58,22 @@ def prepare_pkp0001_campaign(
     character_bible_path: str | Path,
     model: str,
     model_costs: dict[str, int],
-    free_quota_confirmed: bool,
+    quota_evidence: dict[str, Any],
     max_batch_size: int = 4,
     max_batch_units: int = 2_000,
 ) -> dict[str, Any]:
     """Build a deterministic 24-page plan; no model or network call is made."""
-    if free_quota_confirmed is not True:
-        raise PapiKidsOrchestrationError("Modèle/quota gratuit non confirmé : plan de production bloqué.")
     if not isinstance(model_costs, dict) or model not in model_costs:
         raise PapiKidsOrchestrationError("Coût en unités de quota absent du registre explicite.")
+    try:
+        quota_record = validate_quota_evidence(
+            quota_evidence, provider="cloudflare",
+            account_ref=quota_evidence.get("account_ref") if isinstance(quota_evidence, dict) else "",
+            model_id=model, estimated_units_per_image=model_costs[model],
+            required_images=EXPECTED_SCENES,
+        )
+    except QuotaEvidenceError as exc:
+        raise PapiKidsOrchestrationError(str(exc)) from exc
     character_bible = _read(character_bible_path)
     prompt_document = _read(prompts_path)
     scenes = _scene_sections(prompt_document)
@@ -103,7 +111,7 @@ def prepare_pkp0001_campaign(
         "page_count": len(pages),
         "character_bible_sha256": __import__("hashlib").sha256(character_bible.encode("utf-8")).hexdigest(),
         "prompt_source_sha256": __import__("hashlib").sha256(prompt_document.encode("utf-8")).hexdigest(),
-        "free_quota_confirmed_at_planning": True,
+        "quota_evidence": quota_record,
         "model": model,
         "campaign": campaign,
         "human_approval_required": True,
@@ -115,7 +123,7 @@ def execute_pkp0001_campaign(
     *,
     prepared: dict[str, Any],
     engine: ImageProductionEngine,
-    free_quota_confirmed: bool = False,
+    quota_evidence: dict[str, Any] | None = None,
     generation_authorized: bool = False,
     spend_limit_minor: int = 0,
     max_batches_per_run: int = 1,
@@ -127,17 +135,36 @@ def execute_pkp0001_campaign(
         raise PapiKidsOrchestrationError("Dossier PKP-0001 invalide.")
     if generation_authorized is not True:
         raise PapiKidsOrchestrationError("Génération non autorisée explicitement.")
-    if free_quota_confirmed is not True:
-        raise PapiKidsOrchestrationError("Quota gratuit non confirmé au moment de l'exécution.")
     if spend_limit_minor != 0:
         raise PapiKidsOrchestrationError("Le plafond de dépense doit rester strictement à zéro.")
-    generator_models = getattr(getattr(engine, "generator", None), "models", None)
+    generator = getattr(engine, "generator", None)
+    generator_models = getattr(generator, "models", None)
     if not isinstance(generator_models, tuple) or not generator_models or any(
-        getattr(model, "free_confirmed", False) is not True for model in generator_models
+        getattr(item, "free_confirmed", False) is not True for item in generator_models
     ):
         raise PapiKidsOrchestrationError(
             "Adaptateur non vérifié comme routeur de modèles explicitement gratuits ; exécution refusée."
         )
+    selected = next((item for item in generator_models if item.model_id == prepared.get("model")), None)
+    provider = getattr(generator, "provider", None)
+    ledger = getattr(provider, "ledger", None)
+    provider_costs = getattr(provider, "model_costs", None)
+    account_ref = getattr(provider, "account_id", None)
+    if selected is None or provider is None or ledger is None or not isinstance(provider_costs, dict):
+        raise PapiKidsOrchestrationError("Fournisseur Cloudflare et ledger transactionnel requis.")
+    try:
+        current_quota = validate_quota_evidence(
+            quota_evidence, provider="cloudflare", account_ref=account_ref,
+            model_id=selected.model_id,
+            estimated_units_per_image=selected.estimated_neurons_per_image,
+            required_images=prepared.get("page_count"),
+            provider_daily_limit=getattr(ledger, "daily_limit", None),
+            provider_model_cost=provider_costs.get(selected.model_id),
+        )
+    except QuotaEvidenceError as exc:
+        raise PapiKidsOrchestrationError(str(exc)) from exc
+    if current_quota["evidence_ref"] != prepared.get("quota_evidence", {}).get("evidence_ref"):
+        raise PapiKidsOrchestrationError("La preuve de quota a changé depuis la planification ; refaire le plan.")
     report = execute_image_campaign(
         plan=prepared["campaign"],
         engine=engine,
@@ -150,5 +177,6 @@ def execute_pkp0001_campaign(
         "execution": report,
         "spend_limit_minor": 0,
         "paid_fallback": False,
+        "quota_evidence": current_quota,
         "human_approval_required": True,
     }
