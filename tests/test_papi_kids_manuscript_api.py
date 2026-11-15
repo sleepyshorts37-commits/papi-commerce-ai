@@ -204,6 +204,58 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertEqual(payload["status"], "incomplete")
         self.assertEqual(received, [(upload_id, metadata, "owner-01")])
 
+    def test_kdp_package_build_requires_explicit_owner_confirmation_and_separate_token(self):
+        upload_id = "PKP-UP-" + "d" * 32
+        received = []
+        def handler(upload):
+            received.append(upload)
+            return {"status": "generated_pending_manual_pdf_inspection", "kdp_upload_ready": False}
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name, kdp_build_handler=handler,
+        )
+        body = json.dumps({"confirm": True}).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/build-kdp-package",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_KDP_BUILD_ENABLED": "true",
+            "PAPI_KIDS_KDP_BUILD_TOKEN": TOKEN,
+        }, clear=True):
+            payload = json.loads(b"".join(app(environ, start_response)))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertFalse(payload["kdp_upload_ready"])
+        self.assertEqual(received, [upload_id])
+
+    def test_kdp_package_build_is_disabled_by_default_and_requires_confirm_true(self):
+        upload_id = "PKP-UP-" + "e" * 32
+        body = json.dumps({"confirm": False}).encode()
+        environ = {
+            "PATH_INFO": "/api/papi-kids/manuscripts/" + upload_id + "/build-kdp-package",
+            "REQUEST_METHOD": "POST", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": io.BytesIO(body),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {"PAPI_KIDS_KDP_BUILD_TOKEN": TOKEN}, clear=True):
+            b"".join(self.app(environ, start_response))
+        self.assertEqual(captured["status"], "403 Forbidden")
+        with patch.dict(os.environ, {
+            "PAPI_KIDS_KDP_BUILD_ENABLED": "true",
+            "PAPI_KIDS_KDP_BUILD_TOKEN": TOKEN,
+        }, clear=True):
+            b"".join(self.app(environ, start_response))
+        self.assertEqual(captured["status"], "400 Bad Request")
+
     def test_metadata_endpoint_does_not_reuse_safety_review_token(self):
         upload_id = "PKP-UP-" + "b" * 32
         body = json.dumps({"metadata": {"title": "Nia"}}).encode()
