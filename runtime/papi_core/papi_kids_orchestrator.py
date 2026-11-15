@@ -97,6 +97,10 @@ def prepare_pkp0001_campaign(
         {**page, "prompt": global_instructions + page["prompt"]}
         for page in scenes
     ]
+    if any(len(page["prompt"]) > 2048 for page in pages):
+        raise PapiKidsOrchestrationError(
+            "Un prompt dépasse la limite de 2 048 caractères du connecteur FLUX."
+        )
     campaign = plan_image_campaign(
         campaign_id="PKP-0001-ILLUSTRATIONS-V1",
         books=[{"book_id": BOOK_ID, "pages": pages}],
@@ -264,6 +268,9 @@ def prepare_pkp0001_from_project_sources(
         source_dir = Path(__file__).parent / "resources" / BOOK_ID
     manuscript_path = source_dir / "manuscript-v2.md"
     bible_path = source_dir / "character-bible-v1.md"
+    prompt_bible_path = source_dir / "character-bible-prompt-compact-v1.md"
+    if not prompt_bible_path.is_file():
+        prompt_bible_path = bible_path
     storyboard_path = source_dir / "storyboard-v1.md"
     prompts_path = source_dir / "illustration-prompts-24-v1.md"
     manuscript = _read(manuscript_path)
@@ -287,11 +294,17 @@ def prepare_pkp0001_from_project_sources(
     prepared = prepare_pkp0001_campaign_from_registry(
         registry=registry,
         prompts_path=prompts_path,
-        character_bible_path=bible_path,
+        character_bible_path=prompt_bible_path,
         account_refs=account_refs,
         quota_evidence_by_model=quota_evidence_by_model,
     )
     import hashlib
+    prepared["character_bible_sha256"] = hashlib.sha256(
+        _read(bible_path).encode("utf-8")
+    ).hexdigest()
+    prepared["prompt_character_bible_sha256"] = hashlib.sha256(
+        _read(prompt_bible_path).encode("utf-8")
+    ).hexdigest()
     prepared["source_bundle"] = {
         "manuscript_v2_sha256": hashlib.sha256(manuscript.encode("utf-8")).hexdigest(),
         "character_bible_sha256": hashlib.sha256(_read(bible_path).encode("utf-8")).hexdigest(),
