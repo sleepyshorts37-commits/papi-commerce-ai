@@ -183,6 +183,12 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <input id="readiness-token" type="password" autocomplete="off" placeholder="Jeton diagnostic côté serveur">
 <button id="readiness-button" type="button">Vérifier la préparation</button>
 <div id="readiness-result" class="muted" role="status" aria-live="polite">Diagnostic non exécuté.</div>
+<hr>
+<h2>Inspection humaine des fichiers KDP</h2>
+<p class="muted">Téléchargez chaque fichier, inspectez-le sur iPhone, puis approuvez ou refusez la version exacte.</p>
+<label for="kdp-review-token">Jeton distinct de revue des fichiers KDP</label>
+<input id="kdp-review-token" type="password" autocomplete="off" placeholder="Jeton de revue KDP côté serveur">
+<div id="kdp-package-review-list" aria-live="polite">Aucun package à inspecter.</div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
@@ -220,6 +226,8 @@ const kdpBuildResult=document.getElementById("kdp-build-result");
 const readinessTokenInput=document.getElementById("readiness-token");
 const readinessButton=document.getElementById("readiness-button");
 const readinessResult=document.getElementById("readiness-result");
+const kdpReviewTokenInput=document.getElementById("kdp-review-token");
+const kdpPackageReviewList=document.getElementById("kdp-package-review-list");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -278,9 +286,98 @@ statusButton.addEventListener("click",async()=>{
   renderSafetyReview(job.analysis&&job.analysis.child_safety_screening,
    result.content_safety_review,id);
   renderKdpMetadata(result.kdp_listing_metadata||{},result.kdp_listing_metadata_status||"",result.kdp_listing_metadata_blockers||[]);
+  renderKdpPackageReview(result.kdp_package_build||{},result.kdp_package_reviews||{},id);
  }catch(error){statusResult.textContent="État indisponible : "+String(error.message||error);}
  finally{statusButton.disabled=false;}
 });
+function renderKdpPackageReview(packageBuild,reviews,uploadId){
+ kdpPackageReviewList.replaceChildren();
+ if(!packageBuild||!packageBuild.package_version){
+  kdpPackageReviewList.textContent="Aucun package KDP fabriqué pour ce manuscrit.";
+  return;
+ }
+ const summary=document.createElement("p");
+ summary.textContent="Package v"+packageBuild.package_version+" — "+packageBuild.status+
+  " — empreinte manifeste : "+(packageBuild.manifest_sha256||"non disponible");
+ kdpPackageReviewList.appendChild(summary);
+ const artifacts=[
+  ["interior",(packageBuild.pdfs||{}).interior,"PDF intérieur"],
+  ["cover",(packageBuild.pdfs||{}).cover,"Couverture"],
+  ["ebook",packageBuild.ebook,"EPUB"]
+ ];
+ artifacts.forEach(([artifact,record,label])=>{
+  if(!record)return;
+  const card=document.createElement("section");card.className="card";
+  const title=document.createElement("h3");title.textContent=label;
+  const detail=document.createElement("p");
+  detail.textContent="Pages : "+record.page_count+" — SHA-256 : "+record.sha256+
+   " — préflight : "+record.preflight;
+  card.append(title,detail);
+  const reviewKey="v"+packageBuild.package_version+":"+artifact;
+  const review=reviews[reviewKey];
+  if(review&&review.artifact_sha256===record.sha256){
+   const status=document.createElement("p");
+   status.textContent="Décision : "+(review.approved?"APPROUVÉ":"REFUSÉ")+
+    " — "+(review.reviewer_id||"")+
+    " — "+(review.reviewed_at||"");
+   card.appendChild(status);
+   if(review.approved){kdpPackageReviewList.appendChild(card);return;}
+  }
+  const download=document.createElement("button");download.type="button";
+  download.textContent="Ouvrir / télécharger "+label;
+  download.addEventListener("click",()=>openKdpPackageArtifact(uploadId,artifact));
+  card.appendChild(download);
+  const notes=document.createElement("textarea");
+  notes.placeholder="Notes d'inspection (minimum 20 caractères).";
+  notes.maxLength=2000;
+  card.appendChild(notes);
+  const actions=document.createElement("div");actions.className="safety-actions";
+  ["approved","rejected"].forEach(decision=>{
+   const button=document.createElement("button");button.type="button";
+   button.textContent=decision==="approved"?"Approuver ce fichier":"Refuser ce fichier";
+   button.addEventListener("click",()=>submitKdpPackageReview(
+    uploadId,artifact,record.sha256,decision,notes.value
+   ));
+   actions.appendChild(button);
+  });
+  card.appendChild(actions);kdpPackageReviewList.appendChild(card);
+ });
+}
+async function openKdpPackageArtifact(uploadId,artifact){
+ const token=kdpReviewTokenInput.value;
+ if(!token){kdpPackageReviewList.insertAdjacentText("afterbegin","Saisissez le jeton de revue KDP.");return;}
+ const popup=window.open("about:blank","_blank");
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(uploadId)+
+   "/kdp-package/"+artifact,{
+   method:"GET",headers:{"Authorization":"Bearer "+token},credentials:"same-origin"
+  });
+  if(!response.ok)throw new Error("download_failed");
+  const blob=await response.blob(),url=URL.createObjectURL(blob);
+  if(popup)popup.location.href=url;
+  else{
+   const link=document.createElement("a");link.href=url;link.download=artifact==="ebook"?"book.epub":artifact+".pdf";
+   document.body.appendChild(link);link.click();link.remove();
+  }
+ }catch(error){if(popup)popup.close();kdpPackageReviewList.insertAdjacentText("afterbegin","Téléchargement impossible : "+String(error.message||error));}
+}
+async function submitKdpPackageReview(uploadId,artifact,sha256,decision,notes){
+ const token=kdpReviewTokenInput.value;
+ if(!token){kdpPackageReviewList.insertAdjacentText("afterbegin","Saisissez le jeton de revue KDP.");return;}
+ if(notes.trim().length<20){kdpPackageReviewList.insertAdjacentText("afterbegin","Ajoutez au moins 20 caractères de notes d'inspection.");return;}
+ try{
+  const response=await fetch("/api/papi-kids/manuscripts/"+encodeURIComponent(uploadId)+"/kdp-package-review",{
+   method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+   body:JSON.stringify({artifact,artifact_sha256:sha256,decision,notes}),
+   credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"package_review_failed");
+  kdpReviewTokenInput.value="";
+  statusResult.textContent="Revue "+artifact+" enregistrée : "+result.decision;
+  statusButton.click();
+ }catch(error){kdpPackageReviewList.insertAdjacentText("afterbegin","Revue impossible : "+String(error.message||error));}
+}
 function renderKdpMetadata(metadata,status,blockers){
  const fields={
   "kdp-title":metadata.title||"",
