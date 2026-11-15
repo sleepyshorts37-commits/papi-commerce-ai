@@ -32,6 +32,7 @@ class PapiKidsReadinessTests(unittest.TestCase):
             cursor.fetchall.return_value = [(name,) for name in (
                 "books", "editorial_jobs", "manuscript_safety_reviews",
                 "kdp_listing_metadata_versions", "kdp_package_builds",
+                "kdp_package_reviews", "kindle_previewer_reviews",
             )]
             connection = MagicMock()
             connection.cursor.return_value = cursor
