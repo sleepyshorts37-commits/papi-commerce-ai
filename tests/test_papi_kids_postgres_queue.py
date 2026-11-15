@@ -7,6 +7,7 @@ from papi_core.papi_kids_postgres_queue import (
     claim_editorial_job,
     complete_editorial_job,
     fail_editorial_job,
+    record_manuscript_safety_review,
 )
 
 
@@ -90,6 +91,48 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         self.assertEqual(result["review_status"], "approved")
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.cursor_obj.execute.call_count, 1)
+
+    def test_manuscript_safety_review_is_persisted_and_hash_bound(self):
+        upload_id = "PKP-UP-" + "a" * 32
+        digest = "b" * 64
+        screening = {
+            "manuscript_sha256": digest,
+            "issue_count": 2,
+            "critical_issue_count": 1,
+        }
+        connection = FakeConnection(rows=[("book-uuid", digest), (screening,)])
+        result = record_manuscript_safety_review(
+            lambda: connection, upload_id=upload_id, manuscript_sha256=digest,
+            decision="approved", reviewer_id="owner-01",
+            notes="Le passage dangereux a été réécrit et validé avec un adulte.",
+        )
+        self.assertTrue(result["approved"])
+        self.assertEqual(result["manuscript_sha256"], digest)
+        self.assertEqual(len(result["evidence_ref"]), 64)
+        self.assertEqual(connection.commits, 1)
+        statements = " ".join(call.args[0] for call in connection.cursor_obj.execute.call_args_list)
+        self.assertIn("manuscript_safety_reviews", statements)
+        self.assertIn("content_safety_review", statements)
+
+    def test_safety_review_rejects_stale_hash_and_missing_resolution_notes(self):
+        upload_id = "PKP-UP-" + "c" * 32
+        connection = FakeConnection(rows=[("book-uuid", "b" * 64)])
+        with self.assertRaises(PostgresEditorialQueueError):
+            record_manuscript_safety_review(
+                lambda: connection, upload_id=upload_id, manuscript_sha256="c" * 64,
+                decision="approved", reviewer_id="owner-01", notes="Notes suffisantes pour approuver.",
+            )
+        self.assertEqual(connection.rollbacks, 1)
+
+        connection = FakeConnection(rows=[("book-uuid", "b" * 64), ({
+            "manuscript_sha256": "b" * 64, "issue_count": 1, "critical_issue_count": 1
+        },)])
+        with self.assertRaises(ValueError):
+            record_manuscript_safety_review(
+                lambda: connection, upload_id=upload_id, manuscript_sha256="b" * 64,
+                decision="approved", reviewer_id="owner-01", notes="",
+            )
+        self.assertEqual(connection.rollbacks, 1)
 
     def test_library_reader_returns_bounded_sanitized_book_summaries(self):
         connection = FakeConnection()
