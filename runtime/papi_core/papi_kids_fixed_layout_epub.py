@@ -19,7 +19,7 @@ class KDPFixedLayoutEPUBError(ValueError):
 
 _UPLOAD_ID = re.compile(r"^PKP-UP-[0-9a-f]{32}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_MEDIA_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
+_MEDIA_EXT = {"image/png": ".png", "image/jpeg": ".jpg"}
 
 
 def _verified_asset(root: Path, asset: dict[str, Any], *, prefix: str, min_width: int,
@@ -140,7 +140,7 @@ def build_kdp_fixed_layout_epub(
     manifest_items = [
         '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
         '<item id="css" href="styles/book.css" media-type="text/css"/>',
-        f'<item id="font" href="fonts/{escape(font_name)}" media-type="font/ttf"/>',
+        f'<item id="font" href="fonts/{escape(font_name)}" media-type="{"font/otf" if Path(font_name).suffix.lower() == ".otf" else "font/ttf"}"/>',
         f'<item id="cover-image" href="images/cover{_MEDIA_EXT[cover_type]}" media-type="{cover_type}" properties="cover-image"/>',
         '<item id="cover-page" href="pages/cover.xhtml" media-type="application/xhtml+xml"/>',
     ]
@@ -162,7 +162,7 @@ def build_kdp_fixed_layout_epub(
         text = escape(page["text"]).replace("\n", "<br/>")
         doc = f"""<?xml version="1.0" encoding="utf-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="fr" lang="fr">
-<head><title>{escape(title)} — page {number}</title><link rel="stylesheet" type="text/css" href="../styles/book.css"/></head>
+<head><title>{escape(title)} — page {number}</title><meta name="viewport" content="width={canvas_width_px},height={canvas_height_px}"/><link rel="stylesheet" type="text/css" href="../styles/book.css"/></head>
 <body><div class="page" style="width:{canvas_width_px}px;height:{canvas_height_px}px">
 <img class="background" src="../images/{page_id}{extension}" alt="Illustration de la page {number}"/>
 <div class="text-source" style="left:{x}%;top:{y}%;width:{width}%;height:{height}%">
@@ -174,7 +174,7 @@ def build_kdp_fixed_layout_epub(
 
     cover_doc = f"""<?xml version="1.0" encoding="utf-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr" lang="fr">
-<head><title>{escape(title)} — couverture</title><link rel="stylesheet" type="text/css" href="../styles/book.css"/></head>
+<head><title>{escape(title)} — couverture</title><meta name="viewport" content="width={canvas_width_px},height={canvas_height_px}"/><link rel="stylesheet" type="text/css" href="../styles/book.css"/></head>
 <body><div class="page cover-page" style="width:{canvas_width_px}px;height:{canvas_height_px}px">
 <img class="background" src="../images/cover{_MEDIA_EXT[cover_type]}" alt="Couverture de {escape(title)}"/>
 <div class="cover-title">{escape(title)}</div><div class="cover-author">{escape(author)}</div>
@@ -193,10 +193,10 @@ html,body{{width:100%;height:100%;overflow:hidden;background:#fff;}}
 .page{{position:relative;width:{canvas_width_px}px;height:{canvas_height_px}px;overflow:hidden;}}
 .background{{position:absolute;left:0;top:0;width:100%;height:100%;}}
 .text-source{{position:absolute;z-index:2;overflow:hidden;}}
-.story-text{{font-family:BookFont,sans-serif;font-size:4.2%;line-height:1.25;color:#111;background:rgba(255,255,255,.82);padding:1.5%;}}
-.target-mag{{position:absolute;z-index:3;display:none;background:rgba(255,255,255,.96);}}
-.cover-title{{position:absolute;left:10%;top:12%;width:80%;font-family:BookFont,sans-serif;font-size:6%;line-height:1.1;text-align:center;color:#14233a;}}
-.cover-author{{position:absolute;left:10%;bottom:8%;width:80%;font-family:BookFont,sans-serif;font-size:3.2%;text-align:center;color:#14233a;}}
+.story-text{{font-family:BookFont,sans-serif;font-size:4.2vw;line-height:1.25;color:#111;background:rgba(255,255,255,.82);padding:1.5%;}}
+.target-mag{{position:absolute;z-index:3;background:rgba(255,255,255,.96);}}
+.cover-title{{position:absolute;left:10%;top:12%;width:80%;font-family:BookFont,sans-serif;font-size:6vw;line-height:1.1;text-align:center;color:#14233a;}}
+.cover-author{{position:absolute;left:10%;bottom:8%;width:80%;font-family:BookFont,sans-serif;font-size:3.2vw;text-align:center;color:#14233a;}}
 """
     opf = f"""<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id" xml:lang="fr" prefix="rendition: http://www.idpf.org/vocab/rendition/#">
