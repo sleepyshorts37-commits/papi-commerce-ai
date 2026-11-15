@@ -19,6 +19,7 @@ from .papi_kids_image_provider import (
 from .papi_kids_postgres_queue import build_postgres_asset_registrar
 from .papi_kids_worker_service import create_postgres_connection_factory
 from .papi_kids_orchestrator import prepare_pkp0001_from_project_sources
+from .papi_kids_editorial_approval import build_postgres_editorial_approval_reader
 
 
 class PapiKidsZeroSpendRuntimeError(ValueError):
@@ -129,6 +130,7 @@ def build_pkp0001_zero_spend_runtime_engine(
     engine = ImageProductionEngine(
         generator=router, asset_center=asset_center, max_batch_size=max_batch_size,
     )
+    approval_reader = build_postgres_editorial_approval_reader(factory) if factory is not None else None
     return engine, {
         "upload_id": upload_id,
         "provider_id": "cloudflare",
@@ -145,6 +147,7 @@ def build_pkp0001_zero_spend_runtime_engine(
         "spend_cap_minor": 0,
         "asset_store": "private_papi_kids_store_plus_postgresql_registry",
         "print_ready_300dpi": False,
+        "editorial_approval_reader": approval_reader,
     }
 
 
