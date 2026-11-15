@@ -39,6 +39,7 @@ class CloudflareFluxSchnellBatchAdapter:
                 results.append({
                     "status": "failed", "idempotency_key": key,
                     "error": "Lot arrêté après le premier refus ; aucun autre appel fournisseur.",
+                    "fallback_used": False,
                 })
                 continue
             if job.get("model") != MODEL_ID:
