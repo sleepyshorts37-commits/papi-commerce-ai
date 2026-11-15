@@ -22,7 +22,7 @@ Garantir que chaque rapport de rapprochement produit par le moteur respecte un c
 Le SHA-256 détecte une modification accidentelle ou une altération non accompagnée d'un recalcul cohérent. Il ne prouve ni l'origine du rapport, ni l'identité de son auteur, ni une signature du propriétaire. Le moteur reste local et en lecture seule.
 
 ## Validation
-CI à contrôler sur le SHA exact de tête après les derniers changements documentaires. Aucun test local n'est revendiqué.
+CI verte sur le SHA `a5b0743da67ff285bc1002c0a663ed7384e2ebaa`, run `43656889232` ; les jobs `tests` et `local-postgrest-integration` sont réussis.
 
 ## Avancement
-Mission ouverte. Critères à confirmer par les tests et la CI sur le SHA final. Aucun agent activé, aucune donnée source modifiée, aucune fusion ou mise en production.
+Mission réalisée et validée sur le SHA ci-dessus. PR #232 maintenue en brouillon et non fusionnée. Aucun agent activé, aucune donnée source modifiée, aucune fusion ou mise en production. Aucun agent activé, aucune donnée source modifiée, aucune fusion ou mise en production.
