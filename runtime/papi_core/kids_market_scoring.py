@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -91,7 +92,7 @@ def validate_assessments(data: Any) -> list[str]:
                 errors.append(f"{label}: structure invalide.")
                 continue
             status, score = entry["status"], entry["score"]
-            if status not in {"pending", "assessed"}:
+            if not isinstance(status, str) or status not in {"pending", "assessed"}:
                 errors.append(f"{label}: status doit être pending ou assessed.")
             if status == "pending":
                 if score is not None or entry["evidence"] != []:
@@ -109,7 +110,7 @@ def validate_assessments(data: Any) -> list[str]:
                         if not isinstance(proof, dict) or set(proof) != {"source_type", "reference", "observed_at", "claim", "limitations"}:
                             errors.append(f"{label}: format de preuve invalide.")
                             continue
-                        if proof["source_type"] not in SOURCE_TYPES:
+                        if not isinstance(proof["source_type"], str) or proof["source_type"] not in SOURCE_TYPES:
                             errors.append(f"{label}: source_type inconnu.")
                         if not isinstance(proof["reference"], str) or not proof["reference"].strip():
                             errors.append(f"{label}: référence de source obligatoire.")
