@@ -72,6 +72,8 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         kdp_build_token_env: str = "PAPI_KIDS_KDP_BUILD_TOKEN",
         kdp_build_enabled_env: str = "PAPI_KIDS_KDP_BUILD_ENABLED",
         kdp_build_handler: Callable[[str], dict[str, Any]] | None = None,
+        readiness_token_env: str = "PAPI_KIDS_READINESS_TOKEN",
+        readiness_handler: Callable[[], dict[str, Any]] | None = None,
         reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
         library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
@@ -87,7 +89,8 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         safety_review_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/safety-review", request_path)
         metadata_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/kdp-metadata", request_path)
         kdp_build_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})/build-kdp-package", request_path)
-        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match:
+        readiness_match = request_path == "/api/papi-kids/readiness"
+        if not upload_route and not status_match and not review_match and not safety_review_match and not metadata_match and not kdp_build_match and not readiness_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
         request_method = environ.get("REQUEST_METHOD")
         expected_method = "POST" if review_match or safety_review_match or metadata_match or kdp_build_match or (upload_route and request_method == "POST") else "GET"
@@ -96,10 +99,11 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
         selected_token_env = (
-            kdp_build_token_env if kdp_build_match else
-            (metadata_token_env if metadata_match else
+            readiness_token_env if readiness_match else
+            (kdp_build_token_env if kdp_build_match else
+             (metadata_token_env if metadata_match else
              (safety_review_token_env if safety_review_match else
-              (review_token_env if review_match else token_env)))
+               (review_token_env if review_match else token_env))))
         )
         configured_token = os.environ.get(selected_token_env, "")
         if len(configured_token) < 32:
@@ -145,6 +149,14 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
             except Exception:
                 return _response(start_response, "409 Conflict", {"error": "review_transition_rejected"})
             return _response(start_response, "200 OK", reviewed)
+        if readiness_match:
+            if readiness_handler is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "readiness_not_configured"})
+            try:
+                readiness = readiness_handler()
+            except Exception:
+                return _response(start_response, "503 Service Unavailable", {"error": "readiness_check_failed"})
+            return _response(start_response, "200 OK", readiness)
         if kdp_build_match:
             if os.environ.get(kdp_build_enabled_env, "false").lower() != "true":
                 return _response(start_response, "403 Forbidden", {"error": "kdp_build_disabled"})

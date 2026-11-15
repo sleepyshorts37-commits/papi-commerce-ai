@@ -176,6 +176,13 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <input id="kdp-build-token" type="password" autocomplete="off" placeholder="Jeton de fabrication côté serveur">
 <button id="kdp-build-button" type="button">Fabriquer les fichiers KDP</button>
 <div id="kdp-build-result" class="muted" role="status" aria-live="polite">Aucun package fabriqué.</div>
+<hr>
+<h2>État de l'infrastructure</h2>
+<p class="muted">Contrôle des variables et du stockage sans afficher les valeurs des secrets et sans appeler les fournisseurs.</p>
+<label for="readiness-token">Jeton distinct de diagnostic</label>
+<input id="readiness-token" type="password" autocomplete="off" placeholder="Jeton diagnostic côté serveur">
+<button id="readiness-button" type="button">Vérifier la préparation</button>
+<div id="readiness-result" class="muted" role="status" aria-live="polite">Diagnostic non exécuté.</div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
@@ -210,6 +217,9 @@ const metadataResult=document.getElementById("kdp-metadata-result");
 const kdpBuildTokenInput=document.getElementById("kdp-build-token");
 const kdpBuildButton=document.getElementById("kdp-build-button");
 const kdpBuildResult=document.getElementById("kdp-build-result");
+const readinessTokenInput=document.getElementById("readiness-token");
+const readinessButton=document.getElementById("readiness-button");
+const readinessResult=document.getElementById("readiness-result");
 const libraryButton=document.getElementById("library-button");
 const bookList=document.getElementById("book-list");
 fileInput.addEventListener("change",()=>{
@@ -375,6 +385,39 @@ kdpBuildButton.addEventListener("click",async()=>{
   statusButton.click();
  }catch(error){kdpBuildResult.textContent="Fabrication bloquée : "+String(error.message||error);}
  finally{kdpBuildButton.disabled=false;}
+});
+readinessButton.addEventListener("click",async()=>{
+ const token=readinessTokenInput.value;
+ if(!token){readinessResult.textContent="Saisissez le jeton distinct de diagnostic.";return;}
+ readinessButton.disabled=true;readinessResult.textContent="Vérification en cours…";
+ try{
+  const response=await fetch("/api/papi-kids/readiness",{
+   method:"GET",headers:{"Authorization":"Bearer "+token},credentials:"same-origin"
+  });
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||"readiness_failed");
+  readinessTokenInput.value="";
+  readinessResult.replaceChildren();
+  const summary=document.createElement("p");
+  summary.textContent="État : "+result.status+
+   " — stockage/DB : "+(result.core_ready?"OK":"à corriger")+
+   " — workflows propriétaire : "+(result.owner_workflows_ready?"OK":"à corriger")+
+   " — génération image configurée : "+(result.image_generation_ready?"oui":"non");
+  readinessResult.appendChild(summary);
+  (result.blockers||[]).forEach(item=>{
+   const line=document.createElement("p");line.textContent="Blocage : "+item;
+   readinessResult.appendChild(line);
+  });
+  const missing=document.createElement("p");
+  missing.textContent="Variables absentes : "+Object.values(result.checks||{})
+   .flatMap(check=>Array.isArray(check.missing)?check.missing:[])
+   .join(", ");
+  readinessResult.appendChild(missing);
+  const note=document.createElement("p");
+  note.textContent="Aucun secret affiché ; aucun appel fournisseur effectué ; dépenses : 0.";
+  readinessResult.appendChild(note);
+ }catch(error){readinessResult.textContent="Diagnostic impossible : "+String(error.message||error);}
+ finally{readinessButton.disabled=false;}
 });
 async function loadLibrary(){
  const token=tokenInput.value;

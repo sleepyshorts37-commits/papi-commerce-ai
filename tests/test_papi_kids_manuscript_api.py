@@ -204,6 +204,47 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertEqual(payload["status"], "incomplete")
         self.assertEqual(received, [(upload_id, metadata, "owner-01")])
 
+    def test_readiness_endpoint_uses_separate_token_and_never_returns_secret_values(self):
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name,
+            readiness_handler=lambda: {
+                "status": "blocked", "secrets_returned": False,
+                "checks": {"core_secrets": {"missing": ["SUPABASE_URL"]}},
+            },
+        )
+        environ = {
+            "PATH_INFO": "/api/papi-kids/readiness",
+            "REQUEST_METHOD": "GET", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "wsgi.input": io.BytesIO(b""),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {"PAPI_KIDS_READINESS_TOKEN": TOKEN}, clear=True):
+            payload = json.loads(b"".join(app(environ, start_response)))
+        self.assertEqual(captured["status"], "200 OK")
+        self.assertFalse(payload["secrets_returned"])
+        self.assertEqual(payload["checks"]["core_secrets"]["missing"], ["SUPABASE_URL"])
+
+    def test_readiness_endpoint_does_not_reuse_upload_token(self):
+        app = create_papi_kids_manuscript_app(
+            storage_root=self.temp.name,
+            readiness_handler=lambda: {"status": "ready"},
+        )
+        environ = {
+            "PATH_INFO": "/api/papi-kids/readiness",
+            "REQUEST_METHOD": "GET", "wsgi.url_scheme": "https",
+            "HTTP_AUTHORIZATION": "Bearer " + TOKEN,
+            "wsgi.input": io.BytesIO(b""),
+        }
+        captured = {}
+        def start_response(status, headers):
+            captured["status"] = status
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            b"".join(app(environ, start_response))
+        self.assertEqual(captured["status"], "503 Service Unavailable")
+
     def test_kdp_package_build_requires_explicit_owner_confirmation_and_separate_token(self):
         upload_id = "PKP-UP-" + "d" * 32
         received = []

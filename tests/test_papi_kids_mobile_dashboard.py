@@ -53,6 +53,10 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("window.confirm", html)
         self.assertIn("publication ne sera effectuée", html)
         self.assertIn("packageBuild.status", html)
+        self.assertIn("État de l'infrastructure", html)
+        self.assertIn("/api/papi-kids/readiness", html)
+        self.assertIn("Aucun secret affiché", html)
+        self.assertIn("readinessTokenInput.value=\"\"", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(
