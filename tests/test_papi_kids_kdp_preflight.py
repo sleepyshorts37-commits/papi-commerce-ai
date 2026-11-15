@@ -100,6 +100,41 @@ class PapiKidsKDPPreflightTests(unittest.TestCase):
             self.assertTrue(result["font_embedded"])
             self.assertFalse(result["kdp_submission_ready"])
 
+    def test_pdf_refuses_lanczos_only_upscale_with_low_source_detail(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as root:
+            upload_id = "PKP-UP-" + "d" * 32
+            book_dir = Path(root) / upload_id / "illustrations"
+            book_dir.mkdir(parents=True)
+            high_res = png_fixture(2550, 2550)
+            assets = []
+            pages = []
+            for number in range(1, 25):
+                name = f"page-{number:02d}-v001.png"
+                (book_dir / name).write_bytes(high_res)
+                assets.append({
+                    "page_number": number, "version": 1, "review_status": "approved",
+                    "storage_key": f"{upload_id}/illustrations/{name}",
+                    "media_type": "image/png", "width_px": 2550, "height_px": 2550,
+                    "source_width_px": 1024, "source_height_px": 1024,
+                    "upscaling_method": "lanczos_only",
+                    "sha256": hashlib.sha256(high_res).hexdigest(),
+                })
+                pages.append({
+                    "page_number": number, "text": f"Page {number}",
+                    "text_box": {"x": .5, "y": .5, "width": 7.5, "height": 7.5},
+                })
+            font_path = Path(reportlab.__file__).parent / "fonts" / "Vera.ttf"
+            with self.assertRaises(KDPPreflightError):
+                build_interior_pdf(
+                    root, Path(root) / "refused.pdf", upload_id=upload_id,
+                    assets=assets, pages=pages, font_path=font_path,
+                    trim_width_in=8.5, trim_height_in=8.5,
+                    color_mode="premium_color", bleed=False,
+                    inside_margin_in=.375, outside_margin_in=.25,
+                    top_margin_in=.25, bottom_margin_in=.25, dpi_target=300,
+                )
+
     def test_pdf_refuses_unapproved_image(self):
         with tempfile.TemporaryDirectory() as root:
             upload_id = "PKP-UP-" + "a" * 32
