@@ -90,18 +90,19 @@ class PapiKidsOrchestratorTests(unittest.TestCase):
         root = Path(self.temp.name)
         self.prompts = root / "prompts.md"
         self.bible = root / "bible.md"
-        scenes = "\\n\\n".join(
-            f"### {i:02d} — Scene {i}\\nIllustration scene {i}."
+        scenes = "\n\n".join(
+            f"### {i:02d} — Scene {i}\nIllustration scene {i}."
             for i in range(1, 25)
         )
-        self.prompts.write_text("# Prompts\\n\\n" + scenes, encoding="utf-8")
-        self.bible.write_text("# Character bible\\nNia wears an ochre tunic.", encoding="utf-8")
+        self.prompts.write_text("# Prompts\n\n" + scenes, encoding="utf-8")
+        self.bible.write_text("# Character bible\nNia wears an ochre tunic.", encoding="utf-8")
 
     def prepare(self, quota=None):
         return prepare_pkp0001_campaign(
             prompts_path=self.prompts, character_bible_path=self.bible,
             model="@cf/test/image", model_costs={"@cf/test/image": 7},
-            account_ref="cf-account-001", quota_evidence=quota or evidence(),
+            account_ref="cf-account-001",
+            quota_evidence=quota if quota is not None else evidence(),
             max_batch_size=4, max_batch_units=28,
         )
 
@@ -119,7 +120,7 @@ class PapiKidsOrchestratorTests(unittest.TestCase):
             self.prepare({})
 
     def test_rejects_missing_scene(self):
-        self.prompts.write_text("### 01 — Only one\\nOne scene", encoding="utf-8")
+        self.prompts.write_text("### 01 — Only one\nOne scene", encoding="utf-8")
         with self.assertRaises(PapiKidsOrchestrationError):
             self.prepare()
 
