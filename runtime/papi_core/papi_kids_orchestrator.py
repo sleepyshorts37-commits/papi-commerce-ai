@@ -226,3 +226,56 @@ def prepare_pkp0001_campaign_from_registry(
     )
     prepared["provider_selection"] = selected
     return prepared
+
+
+def prepare_pkp0001_from_project_sources(
+    *,
+    project_root: str | Path,
+    registry: Any,
+    account_refs: dict[str, str],
+    quota_evidence_by_model: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Validate the committed manuscript/bible/storyboard/prompts bundle and plan it."""
+    root = Path(project_root).resolve()
+    source_dir = root / "publishing" / "papi-kids" / BOOK_ID
+    manuscript_path = source_dir / "manuscript-v2.md"
+    bible_path = source_dir / "character-bible-v1.md"
+    storyboard_path = source_dir / "storyboard-v1.md"
+    prompts_path = source_dir / "illustration-prompts-24-v1.md"
+    manuscript = _read(manuscript_path)
+    storyboard = _read(storyboard_path)
+    prompts = _read(prompts_path)
+    manuscript_pages = [
+        int(value) for value in re.findall(r"^### Page (\\d+)\\s+[—-]", manuscript, re.MULTILINE)
+    ]
+    storyboard_pages = [
+        int(value) for value in re.findall(r"^\\|\\s*(\\d+)\\s*\\|", storyboard, re.MULTILINE)
+    ]
+    if manuscript_pages != list(range(1, EXPECTED_SCENES + 1)):
+        raise PapiKidsOrchestrationError(
+            "Le manuscrit V2 doit contenir exactement les pages narratives 1 à 24."
+        )
+    if storyboard_pages != list(range(1, EXPECTED_SCENES + 1)):
+        raise PapiKidsOrchestrationError(
+            "Le storyboard doit contenir exactement les pages 1 à 24 dans l'ordre."
+        )
+    _scene_sections(prompts)
+    prepared = prepare_pkp0001_campaign_from_registry(
+        registry=registry,
+        prompts_path=prompts_path,
+        character_bible_path=bible_path,
+        account_refs=account_refs,
+        quota_evidence_by_model=quota_evidence_by_model,
+    )
+    import hashlib
+    prepared["source_bundle"] = {
+        "manuscript_v2_sha256": hashlib.sha256(manuscript.encode("utf-8")).hexdigest(),
+        "character_bible_sha256": hashlib.sha256(_read(bible_path).encode("utf-8")).hexdigest(),
+        "storyboard_v1_sha256": hashlib.sha256(storyboard.encode("utf-8")).hexdigest(),
+        "illustration_prompts_v1_sha256": hashlib.sha256(prompts.encode("utf-8")).hexdigest(),
+        "manuscript_pages": len(manuscript_pages),
+        "storyboard_pages": len(storyboard_pages),
+        "source_status": "editorial_v2_not_human_approved",
+    }
+    prepared["human_editorial_approval_required"] = True
+    return prepared
