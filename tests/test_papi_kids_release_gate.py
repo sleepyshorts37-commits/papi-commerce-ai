@@ -23,6 +23,11 @@ def complete_manifest(root):
         },
         "editorial_approval": {"approved": True, "reviewer_id": "editor-01", "approved_at": "2026-11-15"},
         "rights": {"commercial_use_confirmed": True, "rights_holder": "Auteur", "evidence_ref": "rights-001"},
+        "manuscript_sha256": "b" * 64,
+        "content_safety_review": {
+            "approved": True, "reviewer_id": "safety-01", "reviewed_at": "2026-11-15",
+            "evidence_ref": "safety-review-01", "manuscript_sha256": "b" * 64,
+        },
         "page_count": 24,
         "illustrations": [
             {"page_number": i, "review_status": "approved", "sha256": f"{i:064x}", "dpi": 300,
@@ -173,6 +178,16 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             )
         self.assertFalse(result["publish_ready"])
         self.assertTrue(any("Kindle Previewer" in item for item in result["blockers"]))
+
+    def test_missing_or_stale_child_safety_review_blocks_release(self):
+        with tempfile.TemporaryDirectory() as root:
+            manifest = complete_manifest(root)
+            manifest["content_safety_review"]["manuscript_sha256"] = "c" * 64
+            result = evaluate_kdp_release_gate(
+                book_id="PKP-0001", manifest=manifest, private_root=root,
+            )
+        self.assertFalse(result["publish_ready"])
+        self.assertTrue(any("sécurité jeunesse" in item for item in result["blockers"]))
 
     def test_pdf_hash_mismatch_blocks_release(self):
         with tempfile.TemporaryDirectory() as root:
