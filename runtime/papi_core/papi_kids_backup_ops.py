@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import hashlib
 import re
 import json
 from pathlib import Path
@@ -185,7 +186,11 @@ def load_backup_health_inventory(backup_dir: str | Path) -> list[dict[str, Any]]
             raise PapiKidsBackupOpsError("Manifeste de sauvegarde illisible.") from exc
         if manifest.get("backup_file") != encrypted.name or manifest.get("encrypted") is not True:
             raise PapiKidsBackupOpsError("Manifeste non lié à la sauvegarde.")
-        digest = hashlib.sha256(encrypted.read_bytes()).hexdigest()
+        digest_builder = hashlib.sha256()
+        with encrypted.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest_builder.update(chunk)
+        digest = digest_builder.hexdigest()
         if digest != manifest.get("encrypted_sha256"):
             raise PapiKidsBackupOpsError("SHA-256 local incorrect.")
         proof = verification.get(encrypted.name, {})
