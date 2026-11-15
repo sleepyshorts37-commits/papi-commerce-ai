@@ -57,12 +57,16 @@ def build_kdp_print_package(
     if len(assets) != page_count:
         raise PapiKidsKDPPrintPackageError("Une illustration approuvée est requise pour chaque page.")
     page_numbers = [asset.get("page_number") if isinstance(asset, dict) else None for asset in assets]
-    if sorted(page_numbers) != list(range(1, page_count + 1)):
+    if (any(not isinstance(number, int) or isinstance(number, bool) for number in page_numbers)
+            or sorted(page_numbers) != list(range(1, page_count + 1))):
         raise PapiKidsKDPPrintPackageError("Les illustrations ne couvrent pas exactement toutes les pages.")
     if any(asset.get("review_status") != "approved" for asset in assets):
         raise PapiKidsKDPPrintPackageError("Toutes les illustrations intérieures doivent être approuvées.")
     if cover_args.get("page_count") != page_count:
         raise PapiKidsKDPPrintPackageError("La pagination de couverture diffère de l'intérieur.")
+    for dimension in ("trim_width_in", "trim_height_in"):
+        if float(cover_args.get(dimension, 0)) != float(interior_args.get(dimension, 0)):
+            raise PapiKidsKDPPrintPackageError("Le format de coupe de la couverture et de l'intérieur diffère.")
     for field in ("front_asset", "back_asset"):
         asset = cover_args.get(field)
         if not isinstance(asset, dict) or asset.get("review_status") != "approved":
