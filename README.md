@@ -34,6 +34,7 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core finance-validate` — valider le registre financier local.
 - `PYTHONPATH=runtime python -m papi_core finance-report` — afficher les recettes vérifiées et dépenses payées, en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core security-check` — contrôler les garde-fous locaux sans réseau ni affichage de secrets.
+- `PYTHONPATH=runtime python -m papi_core kids-init PKP-0001 --title "Titre du livre" --language fr --product-type illustrated_story --format paperback --age-min 5 --age-max 8` — créer un kit de travail vierge dans `workspace/papi-kids/` (refuse tout écrasement).
 - `PYTHONPATH=runtime python -m papi_core kids-validate` — valider le catalogue PAPI KIDS local.
 - `PYTHONPATH=runtime python -m papi_core kids-report` — afficher le portefeuille de livres sans action externe.
 - `PYTHONPATH=runtime python -m papi_core kids-check PKP-XXXX` — contrôler les pièces et les portes qualité d'un livre.
@@ -43,6 +44,8 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 ## Documents
 - [Organisation](docs/ORGANISATION.md)
 - [PAPI KIDS PUBLISHING — organisation, 24 rôles et chaîne de vente](docs/PAPI-KIDS-PUBLISHING.md)
+- [Mission 74 — plan du kit de production](docs/MISSION-74-PLAN.md)
+- [Mission 74 — rapport](docs/MISSION-74-REPORT.md)
 - [Gouvernance et sécurité](docs/GOUVERNANCE-SECURITE.md)
 - [Architecture technique](docs/ARCHITECTURE.md)
 - [Plan de réalisation](docs/ROADMAP.md)
