@@ -109,7 +109,7 @@ def evaluate_kdp_release_gate(
             continue
         data = path.read_bytes()
         _missing(data.startswith(b"%PDF-"), f"Fichier {key} n'est pas un PDF valide.", blockers)
-        actual_page_count = len(re.findall(rb"/Type\\s*/Page\\b", data))
+        actual_page_count = len(re.findall(rb"/Type\s*/Page\b", data))
         _missing(actual_page_count == expected_pages,
                  f"Pagination réelle du PDF {key} incorrecte.", blockers)
         _missing(b"/Encrypt" not in data, f"PDF {key} chiffré ou verrouillé.", blockers)

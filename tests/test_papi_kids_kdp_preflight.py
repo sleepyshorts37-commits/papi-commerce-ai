@@ -107,7 +107,7 @@ class PapiKidsKDPPreflightTests(unittest.TestCase):
             book_dir.mkdir(parents=True)
             for number in range(1, 25):
                 name = f"page-{number:02d}-v001.png"
-                (book_dir / name).write_bytes(PNG_1PX)
+                (book_dir / name).write_bytes(PNG_9PX)
             assets = [{
                 "page_number": number, "review_status": "pending_review",
                 "storage_key": f"{upload_id}/illustrations/page-{number:02d}-v001.png",
