@@ -8,6 +8,7 @@ from urllib.parse import unquote
 from typing import Any, Callable
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
+_UPLOAD_ID = re.compile(r"^PKP-UP-[0-9a-f]{32}$")
 _ALLOWED_EXTENSIONS = {".md", ".txt"}
 
 def _response(start_response: Callable[..., Any], status: str, payload: dict[str, Any]) -> list[bytes]:
@@ -59,12 +60,17 @@ def _register_queue(book_dir: Path, metadata: dict[str, Any],
 def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         token_env: str = "PAPI_KIDS_UPLOAD_TOKEN",
         allow_insecure_local: bool = False,
-        queue_registrar: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> Callable[..., list[bytes]]:
+        queue_registrar: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        status_reader: Callable[[str], dict[str, Any] | None] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
     def app(environ: dict[str, Any], start_response: Callable[..., Any]) -> list[bytes]:
-        if environ.get("PATH_INFO") != "/api/papi-kids/manuscripts":
+        request_path = environ.get("PATH_INFO", "")
+        upload_route = request_path == "/api/papi-kids/manuscripts"
+        status_match = re.fullmatch(r"/api/papi-kids/manuscripts/(PKP-UP-[0-9a-f]{32})", request_path)
+        if not upload_route and not status_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
-        if environ.get("REQUEST_METHOD") != "POST":
+        expected_method = "POST" if upload_route else "GET"
+        if environ.get("REQUEST_METHOD") != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
@@ -74,6 +80,16 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         supplied = environ.get("HTTP_AUTHORIZATION", "")
         if not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:], configured_token):
             return _response(start_response, "401 Unauthorized", {"error": "unauthorized"})
+        if status_match:
+            if status_reader is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "status_not_configured"})
+            try:
+                status_record = status_reader(status_match.group(1))
+            except Exception:
+                return _response(start_response, "503 Service Unavailable", {"error": "status_unavailable"})
+            if status_record is None:
+                return _response(start_response, "404 Not Found", {"error": "manuscript_not_found"})
+            return _response(start_response, "200 OK", status_record)
         filename = unquote(environ.get("HTTP_X_FILENAME", ""))
         if (not isinstance(filename, str) or len(filename) > 180 or Path(filename).name != filename
             or Path(filename).suffix.lower() not in _ALLOWED_EXTENSIONS
