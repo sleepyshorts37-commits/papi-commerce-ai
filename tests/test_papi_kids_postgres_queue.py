@@ -8,6 +8,7 @@ from papi_core.papi_kids_postgres_queue import (
     complete_editorial_job,
     fail_editorial_job,
     record_manuscript_safety_review,
+    record_kdp_listing_metadata,
 )
 
 
@@ -133,6 +134,35 @@ class PostgresEditorialQueueTests(unittest.TestCase):
                 decision="approved", reviewer_id="owner-01", notes="",
             )
         self.assertEqual(connection.rollbacks, 1)
+
+    def test_kdp_listing_metadata_draft_is_versioned_and_persisted_even_when_incomplete(self):
+        upload_id = "PKP-UP-" + "e" * 32
+        connection = FakeConnection(rows=[("book-uuid",), (3,)])
+        metadata = {
+            "title": "Nia et la rivière aux mille reflets",
+            "language": "fr",
+        }
+        result = record_kdp_listing_metadata(
+            lambda: connection, upload_id=upload_id,
+            metadata=metadata, editor_id="owner-01",
+        )
+        self.assertEqual(result["version"], 3)
+        self.assertEqual(result["status"], "incomplete")
+        self.assertGreater(result["blocker_count"], 0)
+        self.assertEqual(len(result["metadata_sha256"]), 64)
+        self.assertEqual(connection.commits, 1)
+        statements = " ".join(call.args[0] for call in connection.cursor_obj.execute.call_args_list)
+        self.assertIn("kdp_listing_metadata_versions", statements)
+        self.assertIn("kdp_listing_metadata_status", statements)
+
+    def test_kdp_listing_metadata_rejects_invalid_editor_identity_before_database(self):
+        connection = FakeConnection()
+        with self.assertRaises(ValueError):
+            record_kdp_listing_metadata(
+                lambda: connection, upload_id="PKP-UP-" + "f" * 32,
+                metadata={"title": "Nia"}, editor_id="x",
+            )
+        self.assertEqual(connection.cursor_obj.execute.call_count, 0)
 
     def test_library_reader_returns_bounded_sanitized_book_summaries(self):
         connection = FakeConnection()
