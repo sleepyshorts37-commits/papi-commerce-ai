@@ -23,8 +23,10 @@ class PapiKidsBackupSystemdTemplatesTests(unittest.TestCase):
         self.assertIn("03:00:00 UTC", offsite)
         self.assertIn("Persistent=true", backup)
         self.assertIn("Persistent=true", offsite)
-        self.assertNotIn("WantedBy=timers.target", backup)
-        self.assertNotIn("WantedBy=timers.target", offsite)
+        self.assertIn("[Install]", backup)
+        self.assertIn("[Install]", offsite)
+        self.assertNotIn("[Install]", self.read("papi-kids-backup.service"))
+        self.assertNotIn("[Install]", self.read("papi-kids-offsite.service"))
 
     def test_offsite_service_uses_only_offsite_profile(self):
         service = self.read("papi-kids-offsite.service")
