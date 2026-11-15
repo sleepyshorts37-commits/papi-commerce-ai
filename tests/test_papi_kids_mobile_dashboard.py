@@ -47,6 +47,11 @@ class PapiKidsMobileDashboardTests(unittest.TestCase):
         self.assertIn("isbn_strategy", html)
         self.assertIn("kdp_listing_metadata_blockers", html)
         self.assertIn("metadataTokenInput.value=\"\"", html)
+        self.assertIn("Fabrication du package KDP", html)
+        self.assertIn("Jeton distinct de fabrication KDP", html)
+        self.assertIn("/build-kdp-package", html)
+        self.assertIn("window.confirm", html)
+        self.assertIn("publication ne sera effectuée", html)
 
     def test_escapes_user_content(self):
         html = render_papi_kids_mobile_dashboard(
