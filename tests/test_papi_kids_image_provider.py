@@ -56,34 +56,34 @@ class FakeReservationStore:
 class PapiKidsCloudflareProviderTests(unittest.TestCase):
     def test_estimates_neurons_for_24_square_images(self):
         per_image = estimate_flux_schnell_neurons(1024, 1024, 4)
-        self.assertEqual(per_image, 76.8)
-        self.assertEqual(round(per_image * 24, 1), 1843.2)
+        self.assertEqual(per_image, 57.6)
+        self.assertEqual(round(per_image * 24, 1), 1382.4)
 
     def test_rejects_paid_plan_and_spend(self):
         proof = evidence()
         proof["account_plan"] = "workers_paid"
         with self.assertRaises(ImageProviderBlocked):
-            validate_free_quota_evidence(proof, required_neurons=76.8)
+            validate_free_quota_evidence(proof, required_neurons=57.6)
         proof = evidence()
         proof["zero_spend_confirmed"] = False
         with self.assertRaises(ImageProviderBlocked):
-            validate_free_quota_evidence(proof, required_neurons=76.8)
+            validate_free_quota_evidence(proof, required_neurons=57.6)
 
     def test_rejects_stale_or_insufficient_quota(self):
         proof = evidence()
         proof["remaining_neurons"] = 1
         with self.assertRaises(ImageProviderBlocked):
-            validate_free_quota_evidence(proof, required_neurons=76.8)
+            validate_free_quota_evidence(proof, required_neurons=57.6)
         proof = evidence()
         proof["evidence_expires_at"] = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
         with self.assertRaises(ImageProviderBlocked):
-            validate_free_quota_evidence(proof, required_neurons=76.8)
+            validate_free_quota_evidence(proof, required_neurons=57.6)
 
     def test_no_external_call_without_explicit_authorization(self):
         store = FakeReservationStore()
         transport = Mock()
         provider = CloudflareFluxSchnellProvider(
-            account_id="account", api_token="secret", reservation_store=store, transport=transport,
+            account_id="a" * 32, api_token="secret", reservation_store=store, transport=transport,
         )
         with self.assertRaises(ImageProviderBlocked):
             provider.generate("a child-friendly river illustration", evidence=evidence(),
@@ -98,7 +98,7 @@ class PapiKidsCloudflareProviderTests(unittest.TestCase):
             "success": True, "result": {"image": base64.b64encode(image).decode("ascii")}
         }).encode()))
         provider = CloudflareFluxSchnellProvider(
-            account_id="account", api_token="server-token",
+            account_id="a" * 32, api_token="server-token",
             reservation_store=store, transport=transport,
         )
         result = provider.generate(
@@ -106,7 +106,7 @@ class PapiKidsCloudflareProviderTests(unittest.TestCase):
             allow_generation=True, campaign_id="PKP-0001", page_number=1,
         )
         self.assertEqual(result["width_px"], 1024)
-        self.assertEqual(result["estimated_neurons"], 76.8)
+        self.assertEqual(result["estimated_neurons"], 57.6)
         self.assertEqual(result["cost_minor"], 0)
         self.assertFalse(result["print_ready_300dpi"])
         self.assertFalse(result["fallback_used"])
@@ -117,7 +117,7 @@ class PapiKidsCloudflareProviderTests(unittest.TestCase):
         store = FakeReservationStore()
         transport = Mock(return_value=(429, b'{"success":false}'))
         provider = CloudflareFluxSchnellProvider(
-            account_id="account", api_token="server-token",
+            account_id="a" * 32, api_token="server-token",
             reservation_store=store, transport=transport,
         )
         with self.assertRaises(ImageProviderBlocked):
