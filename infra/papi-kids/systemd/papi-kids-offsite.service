@@ -1,0 +1,23 @@
+[Unit]
+Description=PAPI KIDS verified offsite backup copy
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/papi-kids/infra/papi-kids
+ExecStart=/usr/bin/docker compose --profile offsite run --rm papi-kids-offsite
+TimeoutStartSec=2h
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
