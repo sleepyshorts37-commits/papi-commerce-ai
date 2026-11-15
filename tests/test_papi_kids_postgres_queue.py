@@ -232,7 +232,8 @@ class PostgresEditorialQueueTests(unittest.TestCase):
         connection.cursor_obj.description = [
             ("book_id",), ("upload_id",), ("book_status",), ("created_at",),
             ("updated_at",), ("content_safety_review",), ("kdp_listing_metadata",),
-            ("kdp_listing_metadata_status",), ("kdp_listing_metadata_blockers",), ("job_id",),
+            ("kdp_listing_metadata_status",), ("kdp_listing_metadata_blockers",),
+            ("kdp_package_build",), ("job_id",),
             ("job_status",), ("attempts",), ("max_attempts",),
             ("available_at",), ("lease_until",), ("analysis",),
         ]
