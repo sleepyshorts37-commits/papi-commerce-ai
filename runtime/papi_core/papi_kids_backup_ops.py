@@ -167,7 +167,8 @@ def load_backup_health_inventory(backup_dir: str | Path) -> list[dict[str, Any]]
     if verification_path.is_file():
         try:
             document = json.loads(verification_path.read_text(encoding="utf-8"))
-            verified_at = _timestamp(document.get("verified_at"))
+            verified_at = document.get("verified_at")
+            _timestamp(verified_at)
             remote = document.get("remote")
             if (document.get("status") == "offsite_copy_verified"
                     and document.get("checksum_verified") is True
