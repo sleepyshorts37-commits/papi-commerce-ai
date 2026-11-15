@@ -178,7 +178,7 @@ class PapiKidsReleaseGateTests(unittest.TestCase):
             manifest["ebook_required"] = True
             manifest["ebook"] = {
                 "path": "book.epub", "sha256": digest, "page_count": 24,
-                "preflight": "passed", "format": "EPUB 3 fixed-layout",
+                "preflight": "automated_epub_checks_passed_pending_kindle_previewer", "format": "EPUB 3 fixed-layout",
             }
             manifest["kdp_package_reviews"]["v1:ebook"] = {
                 "package_version": 1, "artifact": "ebook",
