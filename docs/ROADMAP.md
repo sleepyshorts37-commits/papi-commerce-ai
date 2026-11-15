@@ -39,7 +39,7 @@
 - [x] Définir les trois activités et les 24 postes cibles, avec chaîne éditoriale-commerciale et garde-fous IP/financiers (PR #225).
 - [x] Ajouter le catalogue local versionné, les contrôles de fichiers SHA-256 et les portes droits/qualité/KDP/validation humaine (Mission 73 ; 180 tests unitaires et trois workflows CI réussis sur le SHA d'implémentation).
 - [ ] Rattacher les 24 postes au registre central d'identités et vérifier l'unicité globale des identifiants/noms avant toute activation.
-- [x] Ajouter un générateur local de kits de production vierges : brief, canevas de manuscrit, métadonnées, checklist et rapport qualité initial (Mission 74 ; 187 tests et trois workflows CI réussis sur le SHA final).
+- [x] Ajouter un générateur local de kits de production vierges : brief, canevas de manuscrit, métadonnées, checklist et rapport qualité initial (Mission 74 ; 187 tests et trois workflows CI réussis sur le SHA de code testé 7bfc392e ; les commits suivants n'ont modifié que le rapport et la roadmap).
 - [ ] Construire les outils de rédaction/assemblage des manuscrits, illustrations originales, intérieurs PDF, couvertures et exports finaux.
 - [ ] Préparer cinq livres pilotes originaux et faire contrôler indépendamment chaque fichier.
 - [ ] Vérifier les exigences KDP actuelles, l'éligibilité depuis le Sénégal, les moyens de versement, frais et retenues.
