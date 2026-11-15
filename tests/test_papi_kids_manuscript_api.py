@@ -58,6 +58,25 @@ class PapiKidsManuscriptAPITests(unittest.TestCase):
         self.assertTrue(second["deduplicated"])
         self.assertEqual(len(list(Path(self.temp.name).glob("PKP-UP-*"))), 1)
 
+    def test_duplicate_upload_retries_failed_postgres_registration(self):
+        attempts = []
+        def registrar(metadata):
+            attempts.append(metadata["upload_id"])
+            if len(attempts) == 1:
+                raise RuntimeError("database temporarily unavailable")
+            return {"book_id": "book-1", "job_id": 19, "status": "queued_for_analysis"}
+        app = create_papi_kids_manuscript_app(storage_root=self.temp.name, queue_registrar=registrar)
+        with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
+            first_response, first = call(app, body=b"# Retry me")
+            second_response, second = call(app, body=b"# Retry me")
+        self.assertEqual(first_response["status"], "503 Service Unavailable")
+        self.assertTrue(first["retryable"])
+        self.assertEqual(second_response["status"], "200 OK")
+        self.assertEqual(second["persistence_status"], "registered")
+        self.assertEqual(len(attempts), 2)
+        metadata = json.loads((Path(self.temp.name) / second["upload_id"] / "metadata.json").read_text())
+        self.assertEqual(metadata["postgres_queue"]["job_id"], 19)
+
     def test_rejects_bad_filename_size_and_non_utf8(self):
         with patch.dict(os.environ, {"PAPI_KIDS_UPLOAD_TOKEN": TOKEN}, clear=True):
             response, _ = call(self.app, filename="../evil.md")
