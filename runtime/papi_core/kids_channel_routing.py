@@ -99,9 +99,9 @@ def assess_channel(profile: dict[str, Any], book_format: str, target_country: st
         "payout_to_senegal": profile["senegal_payout"],
         "territory_delivery": profile["territory_coverage"],
         "format": "verified" if book_format in profile["formats"] else "unknown" if not profile["formats"] else "blocked",
-        "no_subscription": "blocked" if profile["subscription_required"] == "verified" else profile["subscription_required"],
-        "no_per_order_advance": "blocked" if profile["seller_funds_each_order"] == "verified" else profile["seller_funds_each_order"],
-        "no_stock": "blocked" if profile["stock_required"] == "verified" else profile["stock_required"],
+        "no_subscription": "blocked" if profile["subscription_required"] == "verified" else "verified" if profile["subscription_required"] == "blocked" else "unknown",
+        "no_per_order_advance": "blocked" if profile["seller_funds_each_order"] == "verified" else "verified" if profile["seller_funds_each_order"] == "blocked" else "unknown",
+        "no_stock": "blocked" if profile["stock_required"] == "verified" else "verified" if profile["stock_required"] == "blocked" else "unknown",
         "direct_print_fulfilment": profile["direct_print_fulfilment"],
         "zero_upfront_cost": "unknown" if profile["upfront_cost_xof"] is None else "verified" if profile["upfront_cost_xof"] == 0 else "blocked",
     }
