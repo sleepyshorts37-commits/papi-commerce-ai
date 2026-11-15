@@ -82,7 +82,11 @@ h2{font-size:18px;margin:0 0 12px}.muted{color:#64748b;font-size:13px}
 .progress{height:9px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin:12px 0 5px}
 .progress span{display:block;height:100%;background:#2563eb;width:0}
 input,button,textarea{font:inherit}input[type=file]{width:100%;padding:12px;border:1px dashed #94a3b8;border-radius:10px;background:#f8fafc}
+label{display:block;font-size:13px;font-weight:650;margin:12px 0 5px}
+input:not([type=checkbox]):not([type=file]),select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:9px;background:white}
+input[type=checkbox]{width:auto;min-height:18px}
 textarea{width:100%;min-height:88px;padding:10px;border:1px solid #cbd5e1;border-radius:9px}
+#kdp-metadata-result{overflow-wrap:anywhere}
 .safety-issue{border:1px solid #fbbf24;background:#fffbeb;padding:10px;border-radius:10px;margin:8px 0}
 .safety-issue strong{font-size:12px}.safety-issue p{font-size:13px;margin:5px 0}
 .safety-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -164,7 +168,7 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:12px 0 28px}
 <label for="kdp-pricing-date">Date de vérification du prix</label><input id="kdp-pricing-date" type="date">
 <label><input id="kdp-pricing-verified" type="checkbox"> Prix et redevance vérifiés</label>
 <button id="kdp-metadata-save" type="button">Enregistrer le brouillon KDP</button>
-<p id="kdp-metadata-result" class="muted" role="status" aria-live="polite">Aucune fiche enregistrée.</p>
+<div id="kdp-metadata-result" class="muted" role="status" aria-live="polite">Aucune fiche enregistrée.</div>
 
 <h2>Mes livres</h2>
 <button id="library-button" type="button">Actualiser ma bibliothèque</button>
