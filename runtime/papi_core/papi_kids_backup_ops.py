@@ -167,9 +167,17 @@ def load_backup_health_inventory(backup_dir: str | Path) -> list[dict[str, Any]]
     if verification_path.is_file():
         try:
             document = json.loads(verification_path.read_text(encoding="utf-8"))
-            if document.get("status") == "offsite_copy_verified" and document.get("checksum_verified") is True:
+            verified_at = _timestamp(document.get("verified_at"))
+            remote = document.get("remote")
+            if (document.get("status") == "offsite_copy_verified"
+                    and document.get("checksum_verified") is True
+                    and isinstance(remote, str) and remote):
                 verification = {
-                    item.get("backup_file"): item
+                    item.get("backup_file"): {
+                        **item,
+                        "_verified_at": verified_at,
+                        "_remote": remote,
+                    }
                     for item in document.get("backups", [])
                     if isinstance(item, dict)
                 }
@@ -194,11 +202,14 @@ def load_backup_health_inventory(backup_dir: str | Path) -> list[dict[str, Any]]
         if digest != manifest.get("encrypted_sha256"):
             raise PapiKidsBackupOpsError("SHA-256 local incorrect.")
         proof = verification.get(encrypted.name, {})
+        expected_evidence = hashlib.sha256(
+            f"{encrypted.name}:{digest}:{proof.get('_remote', '')}:{proof.get('_verified_at', '')}".encode("utf-8")
+        ).hexdigest() if proof else None
         verified = (
             proof.get("offsite_copy_verified") is True
             and proof.get("encrypted_sha256") == digest
             and isinstance(proof.get("offsite_evidence_ref"), str)
-            and bool(proof.get("offsite_evidence_ref"))
+            and proof.get("offsite_evidence_ref") == expected_evidence
         )
         inventory.append({
             "backup_file": encrypted.name,
