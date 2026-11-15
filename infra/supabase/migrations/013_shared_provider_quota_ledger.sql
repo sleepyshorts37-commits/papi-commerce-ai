@@ -144,10 +144,10 @@ begin
         p_worker_id, p_estimated_units, 'reserved'
     ) returning public.papi_provider_quota_reservations.reservation_id into v_id;
 
-    update public.papi_provider_daily_quotas
-       set reserved_units = reserved_units + p_estimated_units, updated_at = now()
-     where papi_provider_daily_quotas.provider = p_provider and papi_provider_daily_quotas.account_ref = p_account_ref
-       and papi_provider_daily_quotas.model = p_model and papi_provider_daily_quotas.quota_day = p_quota_day
+    update public.papi_provider_daily_quotas as bucket
+       set reserved_units = bucket.reserved_units + p_estimated_units, updated_at = now()
+     where bucket.provider = p_provider and bucket.account_ref = p_account_ref
+       and bucket.model = p_model and bucket.quota_day = p_quota_day
     returning * into v_bucket;
 
     return query select v_id, 'reserved'::text, v_bucket.quota_day,
