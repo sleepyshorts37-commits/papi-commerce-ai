@@ -70,7 +70,7 @@ def analyze_queued_manuscript(storage_root: str | Path, upload_id: str) -> dict[
     except OSError as exc:
         raise EditorialQueueError("Manuscrit privé inaccessible.") from exc
     headings = [match.group(2).strip() for match in _HEADING.finditer(source)]
-    page_headings = list(re.finditer(r"^###\\s+Page\\s+(\\d+)\\s+[—-]", source, re.MULTILINE | re.IGNORECASE))
+    page_headings = list(re.finditer(r"^###\s+Page\s+(\d+)\s+[—-]", source, re.MULTILINE | re.IGNORECASE))
     safety_screening: dict[str, Any] = {
         "status": "not_run_unstructured_manuscript",
         "automatic_approval": False,
