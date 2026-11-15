@@ -5,7 +5,6 @@ never creates network connections, reads secrets, or invokes AI/image vendors.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from typing import Any, Callable
@@ -167,7 +166,6 @@ def complete_editorial_job(
             (job_id, worker_id, json.dumps({"book_status": book_status})),
         )
         connection.commit()
-        return status
     except Exception:
         connection.rollback()
         raise
@@ -213,6 +211,7 @@ def fail_editorial_job(
             (job_id, status, worker_id, json.dumps({"error": error[:2000]})),
         )
         connection.commit()
+        return status
     except Exception:
         connection.rollback()
         raise
