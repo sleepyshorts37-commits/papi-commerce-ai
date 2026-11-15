@@ -117,6 +117,36 @@ class CloudflareQuotaTests(unittest.TestCase):
         self.assertEqual(self.ledger.snapshot(self.day)["reserved_estimated_neurons"], 60)
 
 
+    def test_non_reserved_idempotent_states_never_call_cloudflare(self):
+        class ExistingStateLedger:
+            def __init__(self, status):
+                self.status = status
+            def reserve(self, **kwargs):
+                return QuotaReservation("reservation-001", kwargs["idempotency_key"],
+                                        "2026-11-15", 60, self.status)
+            def commit(self, reservation):
+                raise AssertionError("commit must not run for a closed reservation")
+            def release(self, reservation):
+                raise AssertionError("release must not run for a closed reservation")
+
+        for state in ("uncertain", "released", "committed"):
+            with self.subTest(state=state):
+                calls = []
+                adapter = CloudflareImageAdapter(
+                    account_id="account-123", api_token="test-only-token",
+                    ledger=ExistingStateLedger(state),
+                    model_costs={"@cf/test/image": 60},
+                    free_tier_confirmed_for_account=True,
+                    transport=lambda *a, **k: calls.append((a, k)) or FakeResponse(),
+                )
+                with self.assertRaisesRegex(ImageProviderError, "Réservation non utilisable"):
+                    adapter.generate(prompt="retry must be blocked",
+                                     model="@cf/test/image",
+                                     idempotency_key="same-idempotency-key",
+                                     now=self.day)
+                self.assertEqual(calls, [], f"Cloudflare called for state={state}")
+
+
 
 class SupabaseQuotaLedgerTests(unittest.TestCase):
     def setUp(self):

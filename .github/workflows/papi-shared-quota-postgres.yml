@@ -8,6 +8,8 @@ on:
       - "infra/supabase/migrations/013_shared_provider_quota_ledger.sql"
       - "infra/supabase/tests/013_shared_provider_quota_ledger.sql"
       - "scripts/test_shared_quota_concurrency.py"
+      - "runtime/papi_core/image_provider_cloudflare.py"
+      - "tests/test_image_provider_cloudflare.py"
       - ".github/workflows/papi-shared-quota-postgres.yml"
   pull_request:
     paths:
@@ -53,5 +55,7 @@ jobs:
           CREATE ROLE authenticated NOLOGIN;
           CREATE ROLE service_role NOLOGIN BYPASSRLS;
           SQL
+      - name: Run Cloudflare adapter unit tests
+        run: PYTHONPATH=runtime python -m unittest discover -s tests -p "test_image_provider_cloudflare.py" -v
       - name: Run SQL contract and 10/20/50-session concurrency tests
         run: python scripts/test_shared_quota_concurrency.py
