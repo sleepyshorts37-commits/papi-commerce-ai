@@ -64,7 +64,8 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         status_reader: Callable[[str], dict[str, Any] | None] | None = None,
         review_handler: Callable[[str, str, str, str], dict[str, Any]] | None = None,
         review_token_env: str = "PAPI_KIDS_REVIEW_TOKEN",
-        reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID") -> Callable[..., list[bytes]]:
+        reviewer_id_env: str = "PAPI_KIDS_REVIEWER_ID",
+        library_reader: Callable[[], list[dict[str, Any]]] | None = None) -> Callable[..., list[bytes]]:
     """Create WSGI app. Configure a random 32+ char token in server secrets."""
     def app(environ: dict[str, Any], start_response: Callable[..., Any]) -> list[bytes]:
         request_path = environ.get("PATH_INFO", "")
@@ -73,8 +74,9 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         review_match = re.fullmatch(r"/api/papi-kids/assets/(PKP-ASSET-[0-9a-f]{24})/review", request_path)
         if not upload_route and not status_match and not review_match:
             return _response(start_response, "404 Not Found", {"error": "not_found"})
-        expected_method = "GET" if status_match else "POST"
-        if environ.get("REQUEST_METHOD") != expected_method:
+        request_method = environ.get("REQUEST_METHOD")
+        expected_method = "POST" if review_match or (upload_route and request_method == "POST") else "GET"
+        if request_method != expected_method:
             return _response(start_response, "405 Method Not Allowed", {"error": "method_not_allowed"})
         if environ.get("wsgi.url_scheme") != "https" and not allow_insecure_local:
             return _response(start_response, "403 Forbidden", {"error": "https_required"})
@@ -84,6 +86,14 @@ def create_papi_kids_manuscript_app(*, storage_root: str | Path | None = None,
         supplied = environ.get("HTTP_AUTHORIZATION", "")
         if not supplied.startswith("Bearer ") or not hmac.compare_digest(supplied[7:], configured_token):
             return _response(start_response, "401 Unauthorized", {"error": "unauthorized"})
+        if upload_route and request_method == "GET":
+            if library_reader is None:
+                return _response(start_response, "503 Service Unavailable", {"error": "library_not_configured"})
+            try:
+                books = library_reader()
+            except Exception:
+                return _response(start_response, "503 Service Unavailable", {"error": "library_unavailable"})
+            return _response(start_response, "200 OK", {"books": books})
         if review_match:
             if review_handler is None:
                 return _response(start_response, "503 Service Unavailable", {"error": "review_not_configured"})
