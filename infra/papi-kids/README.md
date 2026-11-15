@@ -57,3 +57,7 @@ Templates for a daily encrypted backup (02:00 UTC) and offsite copy/check (03:00
 ## Manuscript child-safety review
 
 The editorial worker stores deterministic safety flags with the manuscript analysis. A separate `PAPI_KIDS_SAFETY_REVIEW_TOKEN` protects `POST /api/papi-kids/manuscripts/{upload_id}/safety-review`; the reviewer identity comes from server-side `PAPI_KIDS_REVIEWER_ID`. The decision is persisted in the private PostgreSQL audit table and in the book metadata, bound to the exact source SHA-256. Approving a flagged manuscript requires resolution notes. A changed manuscript invalidates the previous attestation. Do not reuse the illustration-review token.
+
+## iPhone dashboard
+
+The WSGI app now serves the mobile dashboard at `/dashboard` (and `/`) over HTTPS. The page is generated server-side from non-secret settings `PAPI_KIDS_DASHBOARD_BOOK_ID`, `PAPI_KIDS_DASHBOARD_TITLE`, and `PAPI_KIDS_DASHBOARD_PAGE_COUNT`. It includes upload, status, illustration review, child-safety review, and library workflows. API actions remain protected by their separate server-side tokens. Configure the reverse proxy to forward the HTTPS scheme correctly; plain HTTP dashboard requests are rejected.
