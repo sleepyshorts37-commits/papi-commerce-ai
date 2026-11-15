@@ -239,6 +239,10 @@ function renderEditorialPreview(result){
  const bibleSummary=document.createElement("summary");bibleSummary.textContent="Bible des personnages";
  const bibleText=document.createElement("pre");bibleText.textContent=result.character_bible||"";
  bible.append(bibleSummary,bibleText);editorialPreview.appendChild(bible);
+ const promptBible=document.createElement("details");
+ const promptBibleSummary=document.createElement("summary");promptBibleSummary.textContent="Référence compacte réellement injectée dans les prompts";
+ const promptBibleText=document.createElement("pre");promptBibleText.textContent=result.prompt_character_bible||"";
+ promptBible.append(promptBibleSummary,promptBibleText);editorialPreview.appendChild(promptBible);
  const storyboard=document.createElement("details");
  const storyboardSummary=document.createElement("summary");storyboardSummary.textContent="Storyboard";
  const storyboardText=document.createElement("pre");storyboardText.textContent=result.storyboard||"";
