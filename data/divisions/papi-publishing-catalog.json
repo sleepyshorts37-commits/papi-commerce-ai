@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "division_id": "papi_publishing",
+  "title": "PAPI PUBLISHING",
+  "status": "FOUNDATION_ONLY_NO_AGENTS_ACTIVATED",
+  "shared_governance": {
+    "original_ip_required": true,
+    "rights_and_licenses_review_required": true,
+    "human_editorial_approval_required": true,
+    "human_publication_approval_required": true,
+    "market_and_profitability_validation_required": true,
+    "zero_upfront_policy_inherited_for_pod_channels": true,
+    "no_child_personal_data_collection": true,
+    "no_automatic_publication": true
+  },
+  "imprints": [
+    {
+      "imprint_id": "papi_kids_publishing",
+      "name": "PAPI KIDS",
+      "status": "EXISTING_PILOT_LINE",
+      "audience_profiles": [
+        "children",
+        "parents_and_educators_as_buyers"
+      ],
+      "product_types": [
+        "illustrated_storybooks",
+        "early_learning_books",
+        "activity_books",
+        "coloring_books"
+      ],
+      "production_pipeline": [
+        "age_and_learning_objectives",
+        "original_concept",
+        "manuscript",
+        "child_safety_review",
+        "editorial_review",
+        "illustration_bible",
+        "storyboard_or_activity_design",
+        "interior_layout",
+        "cover",
+        "proofreading_and_preflight",
+        "market_and_cost_validation",
+        "human_approval"
+      ],
+      "special_controls": [
+        "age_appropriate_language",
+        "safe_depiction_of_risk",
+        "adult_buyer_positioning",
+        "no_direct_child_marketing_or_data_collection"
+      ]
+    },
+    {
+      "imprint_id": "papi_scifi_publishing",
+      "name": "PAPI SCI-FI",
+      "status": "NEW_LINE_PROPOSED",
+      "audience_profiles": [
+        "middle_grade",
+        "young_adult",
+        "adult"
+      ],
+      "product_types": [
+        "science_fiction_novels",
+        "novellas",
+        "short_story_collections",
+        "illustrated_science_fiction",
+        "science_fiction_series"
+      ],
+      "production_pipeline": [
+        "audience_and_age_rating",
+        "subgenre_and_market_research",
+        "original_premise_and_worldbuilding",
+        "science_and_technology_consistency_review",
+        "character_and_series_bible",
+        "outline",
+        "manuscript_draft",
+        "developmental_edit",
+        "continuity_and_fact_review",
+        "copyedit_and_proofread",
+        "cover_and_interior_design",
+        "metadata_and_format_preflight",
+        "market_and_cost_validation",
+        "human_approval"
+      ],
+      "special_controls": [
+        "distinct_age_rating_and_content_advisories",
+        "original_worldbuilding_and_characters",
+        "continuity_tracking_for_series",
+        "separate_fact_check_for_scientific_claims",
+        "no_unlicensed_franchise_or_character_use"
+      ]
+    },
+    {
+      "imprint_id": "papi_manga_publishing",
+      "name": "PAPI MANGA",
+      "status": "NEW_LINE_PROPOSED",
+      "audience_profiles": [
+        "kodomo",
+        "shonen",
+        "shojo",
+        "seinen",
+        "josei",
+        "adult"
+      ],
+      "product_types": [
+        "one_shot_manga",
+        "serialized_manga_volumes",
+        "graphic_novels",
+        "webtoon_adapted_print_editions"
+      ],
+      "production_pipeline": [
+        "audience_and_age_rating",
+        "genre_and_market_research",
+        "original_story_and_series_bible",
+        "script_and_dialogue",
+        "character_design_sheets",
+        "thumbnail_storyboards",
+        "page_and_panel_layout",
+        "penciling",
+        "inking",
+        "tones_and_color_if_applicable",
+        "lettering",
+        "reading_direction_and_gutter_review",
+        "continuity_and_visual_quality_review",
+        "translation_and_localization_if_needed",
+        "cover_and_interior_preflight",
+        "market_and_cost_validation",
+        "human_approval"
+      ],
+      "special_controls": [
+        "reading_direction_explicitly_selected",
+        "page_count_and_trim_specification",
+        "panel_bleed_and_gutter_safety",
+        "dialogue_and_lettering_legibility",
+        "consistent_character_design",
+        "rights_for_fonts_assets_and_contributions",
+        "age_rating_and_content_advisories",
+        "no_unlicensed_existing_manga_characters_or_styles"
+      ]
+    }
+  ]
+}
