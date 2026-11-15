@@ -14,6 +14,7 @@ from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
 from .kids_publishing import KidsPublishingError, build_catalog_report, check_book, load_catalog, validate_catalog
 from .kids_project import KidsProjectError, create_project
+from .kids_market_scoring import KidsMarketScoringError, build_market_report
 
 
 def main() -> int:
@@ -38,6 +39,7 @@ def main() -> int:
     sub.add_parser("kids-report", help="Afficher le portefeuille de livres PAPI KIDS en lecture seule")
     kids_check = sub.add_parser("kids-check", help="Contrôler la préparation locale d'un livre")
     kids_check.add_argument("book_id")
+    sub.add_parser("kids-market-report", help="Afficher le scoring de marché PAPI KIDS fondé sur des preuves")
     kids_init = sub.add_parser("kids-init", help="Créer un kit de travail local vierge pour un nouveau livre")
     kids_init.add_argument("book_id")
     kids_init.add_argument("--title", required=True)
@@ -77,6 +79,9 @@ def main() -> int:
         if args.command == "security-check":
             print(json.dumps(check_security(), ensure_ascii=False, indent=2))
             return 0
+        if args.command == "kids-market-report":
+            print(json.dumps(build_market_report(), ensure_ascii=False, indent=2))
+            return 0
         if args.command == "kids-init":
             print(json.dumps(create_project(
                 args.book_id, args.title, args.language, args.product_type,
@@ -109,7 +114,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, KidsPublishingError, KidsProjectError, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, KidsPublishingError, KidsProjectError, KidsMarketScoringError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
