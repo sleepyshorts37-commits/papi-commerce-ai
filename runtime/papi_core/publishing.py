@@ -152,6 +152,14 @@ def validate_project(project: dict[str, Any]) -> None:
             raise BookProjectError("Compteur de tentatives invalide.")
         if not isinstance(task.get("output_refs"), list):
             raise BookProjectError("Références de livrables invalides.")
+    if not isinstance(project.get("assets"), list) or not isinstance(project.get("reviews"), list):
+        raise BookProjectError("Registre des livrables ou des revues invalide.")
+    if project.get("release_package") is not None:
+        package = project["release_package"]
+        if not isinstance(package, dict) or package.get("approval_status") not in {"pending_owner", "approved", "rejected"}:
+            raise BookProjectError("Dossier de livraison invalide.")
+        if package.get("publication_status") != "not_published":
+            raise BookProjectError("La publication doit rester une action externe explicitement autorisée.")
     if not isinstance(project.get("history"), list) or not project["history"]:
         raise BookProjectError("Historique d'audit absent.")
     if project.get("publication_approval_required") is not True:
@@ -213,6 +221,101 @@ def transition_task(project_id: str, task_id: str, action: str, *, store: BookPr
     project["history"].append({"at": now, "event": event, "actor": actor[:100], "details": details})
     return store.save_update(project)
 
+def register_asset(project_id: str, asset: dict[str, Any], *, store: BookProjectStore,
+                   actor: str = "owner") -> dict[str, Any]:
+    """Enregistre les métadonnées d'un livrable ; aucun fichier n'est téléversé."""
+    project = store.get(project_id)
+    if project is None:
+        raise BookProjectError("Projet introuvable.")
+    required = {"id", "kind", "uri", "version", "sha256", "provenance", "status"}
+    if not isinstance(asset, dict) or not required.issubset(asset):
+        raise BookProjectError("Métadonnées du livrable incomplètes.")
+    if not isinstance(asset["id"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", asset["id"]):
+        raise BookProjectError("Identifiant de livrable invalide.")
+    if any(item.get("id") == asset["id"] for item in project["assets"]):
+        raise BookProjectError("Cet identifiant de livrable existe déjà.")
+    if asset["status"] not in {"draft", "ready_for_review", "approved", "rejected"}:
+        raise BookProjectError("Statut de livrable invalide.")
+    if not isinstance(asset["version"], int) or asset["version"] < 1:
+        raise BookProjectError("Version de livrable invalide.")
+    if not isinstance(asset["sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", asset["sha256"]):
+        raise BookProjectError("Empreinte SHA-256 invalide.")
+    for field in ("kind", "uri", "provenance"):
+        if not isinstance(asset[field], str) or not asset[field].strip() or len(asset[field]) > 2000:
+            raise BookProjectError(f"Champ {field} invalide.")
+    if project["release_package"] is not None:
+        raise BookProjectError("Dossier de livraison figé : créer une nouvelle version du projet.")
+    item = dict(asset)
+    item.setdefault("created_at", _now())
+    project["assets"].append(item)
+    project["updated_at"] = _now()
+    project["history"].append({"at": project["updated_at"], "event": "asset.registered",
+                               "actor": actor[:100], "details": {"asset_id": item["id"], "kind": item["kind"]}})
+    return store.save_update(project)
+
+
+def add_review(project_id: str, review: dict[str, Any], *, store: BookProjectStore,
+               actor: str = "reviewer") -> dict[str, Any]:
+    """Enregistre une revue avec séparation entre auteur et réviseur."""
+    project = store.get(project_id)
+    if project is None:
+        raise BookProjectError("Projet introuvable.")
+    required = {"id", "scope", "reviewer", "decision", "findings"}
+    if not isinstance(review, dict) or not required.issubset(review):
+        raise BookProjectError("Rapport de revue incomplet.")
+    if not isinstance(review["id"], str) or not review["id"].strip():
+        raise BookProjectError("Identifiant de revue invalide.")
+    if any(item.get("id") == review["id"] for item in project["reviews"]):
+        raise BookProjectError("Identifiant de revue déjà utilisé.")
+    if review["decision"] not in {"approved", "changes_requested", "rejected"}:
+        raise BookProjectError("Décision de revue invalide.")
+    if not isinstance(review["reviewer"], str) or not review["reviewer"].strip():
+        raise BookProjectError("Identité du réviseur obligatoire.")
+    if not isinstance(actor, str) or review["reviewer"].strip().casefold() == actor.strip().casefold():
+        raise BookProjectError("Le réviseur ne peut pas soumettre sa propre revue.")
+    if not isinstance(review["findings"], list):
+        raise BookProjectError("Les constats de revue doivent être une liste.")
+    item = dict(review)
+    item.setdefault("created_at", _now())
+    project["reviews"].append(item)
+    project["updated_at"] = _now()
+    project["history"].append({"at": project["updated_at"], "event": "review.recorded",
+                               "actor": actor[:100], "details": {"review_id": item["id"], "decision": item["decision"]}})
+    return store.save_update(project)
+
+
+def prepare_release_package(project_id: str, *, store: BookProjectStore,
+                            metadata: dict[str, Any]) -> dict[str, Any]:
+    """Fige le manifeste de livraison en attente d'approbation humaine."""
+    project = store.get(project_id)
+    if project is None:
+        raise BookProjectError("Projet introuvable.")
+    if project["release_package"] is not None:
+        raise BookProjectError("Un dossier de livraison existe déjà.")
+    if any(task["status"] != "completed" for task in project["tasks"]):
+        raise BookProjectError("Toutes les tâches doivent être terminées.")
+    if not project["assets"] or any(asset["status"] != "approved" for asset in project["assets"]):
+        raise BookProjectError("Tous les livrables doivent être enregistrés et approuvés.")
+    if not project["reviews"] or any(review["decision"] != "approved" for review in project["reviews"]):
+        raise BookProjectError("Tous les rapports de revue doivent être approuvés.")
+    if not isinstance(metadata, dict):
+        raise BookProjectError("Métadonnées commerciales invalides.")
+    package = {
+        "id": project_id + "-release-v1",
+        "created_at": _now(),
+        "asset_ids": [asset["id"] for asset in project["assets"]],
+        "metadata": metadata,
+        "manifest_sha256": hashlib.sha256(json.dumps(project["assets"], sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest(),
+        "approval_status": "pending_owner",
+        "publication_status": "not_published",
+    }
+    project["release_package"] = package
+    project["updated_at"] = package["created_at"]
+    project["history"].append({"at": package["created_at"], "event": "release.package_prepared",
+                               "actor": "system", "details": {"package_id": package["id"], "approval_status": "pending_owner"}})
+    return store.save_update(project)
+
+
 def create_book_project(prompt: str, *, store: BookProjectStore) -> dict[str, Any]:
     """Crée un projet idempotent à partir d'une seule demande utilisateur."""
     value = _clean_prompt(prompt)
@@ -225,7 +328,7 @@ def create_book_project(prompt: str, *, store: BookProjectStore) -> dict[str, An
         "schema_version": SCHEMA_VERSION, "id": project_id, "status": "planned",
         "created_at": now, "updated_at": now, "request_hash": request_hash,
         "brief": interpret_brief(value), "tasks": build_tasks(project_id),
-        "history": [{"at": now, "event": "project.created", "actor": "owner_request",
+        "assets": [], "reviews": [], "release_package": None,\n        "history": [{"at": now, "event": "project.created", "actor": "owner_request",
                      "details": {"task_count": len(TASK_BLUEPRINT), "execution_enabled": False}}],
         "execution_enabled": False, "publication_approval_required": True,
         "production_note": "Plan créé uniquement : aucun texte, visuel ou fichier de livre n'a encore été généré.",
