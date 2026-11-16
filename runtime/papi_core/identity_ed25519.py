@@ -1,10 +1,14 @@
 """Identité Ed25519 et registre de clés publiques versionné (socle local)."""
 from __future__ import annotations
 
+import fcntl
+import functools
+import inspect
 import json
 import os
 import secrets
 import sqlite3
+import stat
 import time
 from pathlib import Path
 from typing import Any
@@ -55,18 +59,79 @@ def _read_registry(path: Path) -> dict[str, Any]:
 def _write_registry(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     temp = path.with_name(path.name + "." + secrets.token_hex(8) + ".tmp")
+    fd = None
+    temp_exists = False
     try:
         fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        temp_exists = True
+        # Set the final permissions before publication: nothing fallible should
+        # run after os.replace(), or callers could roll back the key after commit.
+        os.fchmod(fd, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = None
             json.dump(data, handle, sort_keys=True, indent=2)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temp, path)
-        os.chmod(path, 0o600)
+        temp_exists = False
     finally:
-        temp.unlink(missing_ok=True)
+        if fd is not None:
+            os.close(fd)
+        if temp_exists:
+            try:
+                temp.unlink(missing_ok=True)
+            except OSError:
+                # Preserve the original write error; an orphaned 0600 temp file
+                # is safer than masking the failure or touching the live registry.
+                pass
 
 
+def _registry_locked(path_parameter: str):
+    """Serialize identity-registry mutations across threads and processes (POSIX)."""
+    def decorate(function):
+        signature = inspect.signature(function)
+
+        @functools.wraps(function)
+        def wrapped(*args, **kwargs):
+            bound = signature.bind(*args, **kwargs)
+            bound.apply_defaults()
+            registry_path = Path(bound.arguments[path_parameter])
+            registry_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            lock_path = registry_path.with_name(registry_path.name + ".lock")
+            if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "getuid"):
+                raise OSError("Verrou de registre sûr indisponible sur cette plateforme.")
+            flags = (
+                os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW
+                | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0)
+            )
+            fd = os.open(lock_path, flags, 0o600)
+            try:
+                metadata = os.fstat(fd)
+                mode = stat.S_IMODE(metadata.st_mode)
+                if (
+                    not stat.S_ISREG(metadata.st_mode)
+                    or metadata.st_uid != os.getuid()
+                    or metadata.st_nlink != 1
+                    or mode & 0o077
+                    or mode & 0o600 != 0o600
+                ):
+                    raise PermissionError("Fichier de verrou non sûr : accès fermé.")
+                with os.fdopen(fd, "r+b") as lock_file:
+                    fd = None
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+                    try:
+                        return function(*args, **kwargs)
+                    finally:
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            finally:
+                if fd is not None:
+                    os.close(fd)
+        return wrapped
+    return decorate
+
+
+
+@_registry_locked("registry_path")
 def provision_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
                             registry_path: Path = DEFAULT_PUBLIC_REGISTRY) -> Path:
     """Crée une clé privée locale et publie uniquement sa clé publique."""
@@ -103,9 +168,10 @@ def provision_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_D
     return private_path
 
 
+@_registry_locked("registry_path")
 def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
                          registry_path: Path = DEFAULT_PUBLIC_REGISTRY) -> Path:
-    """Incrémente la version de clé et invalide immédiatement l'ancienne clé."""
+    """Incrémente la version de clé et restaure l'ancienne clé si la publication échoue."""
     _validate_agent(agent_id)
     registry = _read_registry(registry_path)
     current = registry["agents"].get(agent_id)
@@ -114,27 +180,85 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
     private_path = private_dir / (agent_id + ".ed25519.pem")
     if not private_path.is_file():
         raise Ed25519IdentityError("Clé privée locale absente.")
+    try:
+        old_private_bytes = private_path.read_bytes()
+    except OSError as exc:
+        raise Ed25519IdentityError("Clé privée locale illisible.") from exc
+
     key = Ed25519PrivateKey.generate()
     private_bytes = key.private_bytes(serialization.Encoding.PEM,
         serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
     temp = private_dir / ("." + agent_id + "." + secrets.token_hex(8) + ".tmp")
-    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    fd = None
+    temp_exists = False
     try:
+        fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        temp_exists = True
         with os.fdopen(fd, "wb") as handle:
+            fd = None
             handle.write(private_bytes)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temp, private_path)
+        temp_exists = False
     finally:
-        temp.unlink(missing_ok=True)
+        if fd is not None:
+            os.close(fd)
+        if temp_exists:
+            try:
+                temp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
     public_bytes = key.public_key().public_bytes(serialization.Encoding.Raw,
                                                   serialization.PublicFormat.Raw)
-    registry["agents"][agent_id] = {"status": "active",
-        "key_version": int(current["key_version"]) + 1, "public_key": public_bytes.hex()}
-    _write_registry(registry_path, registry)
+    registry["agents"][agent_id] = {
+        "status": "active",
+        "key_version": int(current["key_version"]) + 1,
+        "public_key": public_bytes.hex(),
+    }
+    try:
+        _write_registry(registry_path, registry)
+    except Exception as registry_error:
+        rollback = private_dir / ("." + agent_id + "." + secrets.token_hex(8) + ".rollback")
+        rollback_fd = None
+        rollback_exists = False
+        rollback_ready = False
+        try:
+            rollback_fd = os.open(rollback, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            rollback_exists = True
+            with os.fdopen(rollback_fd, "wb") as handle:
+                rollback_fd = None
+                handle.write(old_private_bytes)
+                handle.flush()
+                os.fsync(handle.fileno())
+            rollback_ready = True
+            os.replace(rollback, private_path)
+            rollback_exists = False
+        except Exception as rollback_error:
+            if rollback_exists and not rollback_ready:
+                try:
+                    rollback.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            recovery_note = (
+                f"Sauvegarde de récupération conservée sous {rollback.name}."
+                if rollback_exists and rollback_ready
+                else "Aucune sauvegarde de récupération fiable n'a pu être garantie."
+            )
+            raise Ed25519IdentityError(
+                "Échec de publication du registre et de restauration de la clé. "
+                + recovery_note
+            ) from rollback_error
+        finally:
+            if rollback_fd is not None:
+                os.close(rollback_fd)
+        raise registry_error
     return private_path
 
 
+
+@_registry_locked("registry_path")
 def revoke_ed25519_agent(agent_id: str, registry_path: Path = DEFAULT_PUBLIC_REGISTRY) -> None:
     _validate_agent(agent_id)
     registry = _read_registry(registry_path)

@@ -1,9 +1,10 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
 
 from papi_core.identity_ed25519 import (
-    Ed25519IdentityError, provision_ed25519_agent, revoke_ed25519_agent,
+    Ed25519IdentityError, _registry_locked, provision_ed25519_agent, revoke_ed25519_agent,
     rotate_ed25519_agent, sign_ed25519_request, verify_ed25519_request,
 )
 
@@ -110,6 +111,112 @@ class Ed25519IdentityTests(unittest.TestCase):
             results = list(pool.map(lambda _: attempt(), range(2)))
         self.assertEqual(results.count("accepted"), 1)
         self.assertEqual(results.count("rejected"), 1)
+
+    def test_rotation_does_not_fail_after_registry_publication_for_chmod_error(self):
+        from unittest.mock import patch
+        from papi_core import identity_ed25519
+
+        with patch.object(identity_ed25519.os, "chmod",
+                          side_effect=OSError("post-publication chmod failure")) as chmod:
+            rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+        chmod.assert_not_called()
+
+        new = sign_ed25519_request(
+            "agent-a", {"permission": "read"}, self.private,
+            key_version=2, timestamp=1000, nonce="post-commit-rotation-0001")
+        self.assertTrue(verify_ed25519_request(
+            new, self.registry, self.replay, now=1000)["authenticated"])
+
+    def test_rotation_keeps_recovery_copy_if_rollback_replace_fails(self):
+        from unittest.mock import patch
+        from papi_core import identity_ed25519
+
+        old_private_bytes = self.private.read_bytes()
+        real_replace = os.replace
+        replace_calls = 0
+
+        def fail_rollback_replace(source, destination):
+            nonlocal replace_calls
+            replace_calls += 1
+            if replace_calls == 2:
+                raise OSError("simulated rollback replace failure")
+            return real_replace(source, destination)
+
+        with patch.object(identity_ed25519, "_write_registry",
+                          side_effect=OSError("simulated registry failure")), \
+             patch.object(identity_ed25519.os, "replace",
+                          side_effect=fail_rollback_replace):
+            with self.assertRaises(Ed25519IdentityError) as raised:
+                rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+
+        recovery_files = list(self.private_dir.glob(".*.rollback"))
+        self.assertEqual(len(recovery_files), 1)
+        self.assertEqual(recovery_files[0].read_bytes(), old_private_bytes)
+        self.assertIn(recovery_files[0].name, str(raised.exception))
+
+    def test_concurrent_rotations_serialize_registry_versions(self):
+        from concurrent.futures import ThreadPoolExecutor
+        import json
+
+        def rotate():
+            return rotate_ed25519_agent("agent-a", self.private_dir, self.registry)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: rotate(), range(2)))
+
+        self.assertEqual(results, [self.private, self.private])
+        registry = json.loads(self.registry.read_text(encoding="utf-8"))
+        self.assertEqual(registry["agents"]["agent-a"]["key_version"], 3)
+        envelope = sign_ed25519_request(
+            "agent-a", {"permission": "read"}, self.private,
+            key_version=3, timestamp=1000, nonce="rotation-lock-test-0001")
+        self.assertTrue(verify_ed25519_request(
+            envelope, self.registry, self.replay, now=1000)["authenticated"])
+
+    def test_registry_lock_uses_declared_default_path(self):
+        def operation(registry_path=self.registry):
+            return registry_path
+
+        locked_operation = _registry_locked("registry_path")(operation)
+        self.assertEqual(locked_operation(), self.registry)
+        self.assertTrue(self.registry.with_name(self.registry.name + ".lock").is_file())
+
+    def test_registry_lock_rejects_symlink_lock_file(self):
+        registry_path = self.root / "symlink-registry.json"
+        lock_path = registry_path.with_name(registry_path.name + ".lock")
+        target = self.root / "lock-target"
+        target.write_text("unchanged", encoding="utf-8")
+        lock_path.symlink_to(target)
+
+        def operation(registry_path=registry_path):
+            return registry_path
+
+        with self.assertRaises(OSError):
+            _registry_locked("registry_path")(operation)()
+        self.assertEqual(target.read_text(encoding="utf-8"), "unchanged")
+
+    def test_registry_lock_rejects_group_or_world_access(self):
+        lock_path = self.registry.with_name(self.registry.name + ".lock")
+        lock_path.touch()
+        lock_path.chmod(0o644)
+
+        def operation(registry_path=self.registry):
+            return registry_path
+
+        with self.assertRaises(PermissionError):
+            _registry_locked("registry_path")(operation)()
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "POSIX FIFO support required")
+    def test_registry_lock_rejects_fifo_without_blocking(self):
+        registry_path = self.root / "fifo-registry.json"
+        lock_path = registry_path.with_name(registry_path.name + ".lock")
+        os.mkfifo(lock_path, 0o600)
+
+        def operation(registry_path=registry_path):
+            return registry_path
+
+        with self.assertRaises(PermissionError):
+            _registry_locked("registry_path")(operation)()
 
 
 if __name__ == "__main__":
