@@ -29,6 +29,8 @@ jobs:
               Path("schemas/sales.schema.json"),
               Path("schemas/finance-ledger.schema.json"),
               Path("schemas/task.schema.json"),
+              Path("schemas/provider-registry.schema.json"),
+              Path("data/providers.json"),
               Path("templates/TASK-TEMPLATE.json"),
           ]:
               json.loads(path.read_text(encoding="utf-8"))
