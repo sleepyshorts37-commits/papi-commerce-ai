@@ -119,6 +119,7 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
         serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
     temp = private_dir / ("." + agent_id + "." + secrets.token_hex(8) + ".tmp")
     fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    old_private_bytes = private_path.read_bytes()
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(private_bytes)
@@ -131,7 +132,22 @@ def rotate_ed25519_agent(agent_id: str, private_dir: Path = DEFAULT_PRIVATE_DIR,
                                                   serialization.PublicFormat.Raw)
     registry["agents"][agent_id] = {"status": "active",
         "key_version": int(current["key_version"]) + 1, "public_key": public_bytes.hex()}
-    _write_registry(registry_path, registry)
+    try:
+        _write_registry(registry_path, registry)
+    except Exception:
+        # Keep the private key and public registry on the same version.
+        # If registry publication fails, restore the previous private key.
+        rollback = private_dir / ("." + agent_id + "." + secrets.token_hex(8) + ".rollback")
+        try:
+            rollback_fd = os.open(rollback, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(rollback_fd, "wb") as handle:
+                handle.write(old_private_bytes)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(rollback, private_path)
+        finally:
+            rollback.unlink(missing_ok=True)
+        raise
     return private_path
 
 
