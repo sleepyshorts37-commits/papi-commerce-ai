@@ -20,17 +20,25 @@ class GenerationRequest:
     max_output_chars: int = 20000
 
     def validate(self) -> None:
-        if not self.project_id or len(self.project_id) > 100:
+        if not isinstance(self.project_id, str) or not self.project_id.strip() or len(self.project_id) > 100:
             raise ProviderError("Identifiant de projet invalide.")
-        if self.kind not in {"text", "image"}:
+        if not isinstance(self.kind, str) or self.kind not in {"text", "image"}:
             raise ProviderError("Type de génération autorisé : text ou image.")
         if not isinstance(self.prompt, str) or not self.prompt.strip():
             raise ProviderError("Le prompt de génération est obligatoire.")
         if len(self.prompt) > 12000:
             raise ProviderError("Le prompt dépasse 12 000 caractères.")
-        if not isinstance(self.estimated_cost_xof, int) or self.estimated_cost_xof < 0:
+        if (
+            not isinstance(self.estimated_cost_xof, int)
+            or isinstance(self.estimated_cost_xof, bool)
+            or self.estimated_cost_xof < 0
+        ):
             raise ProviderError("Estimation de coût invalide.")
-        if not isinstance(self.max_output_chars, int) or not 1 <= self.max_output_chars <= 100000:
+        if (
+            not isinstance(self.max_output_chars, int)
+            or isinstance(self.max_output_chars, bool)
+            or not 1 <= self.max_output_chars <= 100000
+        ):
             raise ProviderError("Limite de sortie invalide.")
 
 
@@ -93,12 +101,22 @@ class ProviderPolicy:
     allowed_providers: frozenset[str] = frozenset({"mock"})
 
     def validate(self) -> None:
-        if not isinstance(self.max_cost_xof, int) or self.max_cost_xof < 0:
+        if (
+            not isinstance(self.max_cost_xof, int)
+            or isinstance(self.max_cost_xof, bool)
+            or self.max_cost_xof < 0
+        ):
             raise ProviderError("Plafond de coût invalide.")
+        if not isinstance(self.allow_external, bool) or not isinstance(self.owner_approved, bool):
+            raise ProviderError("Les options d'autorisation doivent être booléennes.")
         if self.allow_external and not self.owner_approved:
             raise ProviderError("Un accord explicite du propriétaire est requis.")
-        if "mock" not in self.allowed_providers and not self.allowed_providers:
-            raise ProviderError("Registre de fournisseurs autorisés vide.")
+        if (
+            not isinstance(self.allowed_providers, (set, frozenset))
+            or not self.allowed_providers
+            or any(not isinstance(name, str) or not name.strip() for name in self.allowed_providers)
+        ):
+            raise ProviderError("Registre de fournisseurs autorisés invalide.")
 
 
 class ProviderRegistry:
@@ -111,7 +129,7 @@ class ProviderRegistry:
         self.register(MockGenerationProvider())
 
     def register(self, provider: GenerationProvider) -> None:
-        if not provider.name or provider.name in self._providers:
+        if not isinstance(provider.name, str) or not provider.name.strip() or provider.name in self._providers:
             raise ProviderError("Nom de fournisseur absent ou déjà enregistré.")
         if not provider.supported_kinds or not provider.supported_kinds.issubset({"text", "image"}):
             raise ProviderError("Capacités de fournisseur invalides.")

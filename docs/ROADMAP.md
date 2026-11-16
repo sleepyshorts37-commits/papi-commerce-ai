@@ -68,7 +68,7 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 ## PAPI CONNECT — intégrations économiques et open source
 - [x] Mission 182 : architecture, règles de gouvernance et inventaire initial des projets open source dans `docs/PAPI-CONNECT-ARCHITECTURE.md`.
 - [x] Mission 183 : schéma JSON, catalogue fournisseurs, validation locale, permissions et tests sans réseau dans `docs/PAPI-CONNECT-PROVIDER-REGISTRY.md`.
-- [ ] Mission 184 : interfaces d'adaptateurs et fournisseur simulé, tests sans réseau.
+- [x] Mission 184 : passerelle catalogue/adaptateurs, fournisseur mock local, permissions et tests sans réseau dans `docs/PAPI-CONNECT-ADAPTERS.md`.
 - [ ] Mission 185 : premier fournisseur IA réel après choix et autorisation explicites, test non sensible.
 - [ ] Mission 186 : attribution des outils à deux agents pilotes avec permissions minimales.
 - [ ] Missions suivantes : observabilité, plafonds, fallback, automatisation et extension des fournisseurs.

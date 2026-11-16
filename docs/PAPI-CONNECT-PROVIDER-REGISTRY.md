@@ -13,7 +13,7 @@
 - `unknown` signifie que le prix et les quotas ne sont pas vérifiés : ne pas présenter le service comme gratuit.
 - Le plafond local par défaut est de 0 XOF. Aucun coût n'est autorisé par défaut.
 - Un fournisseur vérifié ou activé doit avoir une date de vérification récente.
-- L'accès exige toutes les permissions déclarées par l'agent. Les fournisseurs externes exigent une approbation explicite du propriétaire.
+- L'accès exige toutes les permissions déclarées par l'agent. Tout fournisseur dont `owner_approval_required=true`, local ou externe, exige une approbation explicite du propriétaire.
 - Cette mission ne crée aucun compte, secret, abonnement, déploiement ou appel réseau.
 
 ## Fournisseurs catalogués

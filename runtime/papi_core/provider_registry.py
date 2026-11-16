@@ -113,5 +113,7 @@ def authorize_provider(provider: dict[str, Any], agent_permissions: set[str], ow
         raise ProviderRegistryError("Provider is disabled or not verified yet.")
     if not set(provider["required_permissions"]).issubset(agent_permissions):
         raise ProviderRegistryError("Agent permissions are insufficient.")
-    if provider["external"] and provider["owner_approval_required"] and not owner_approved:
-        raise ProviderRegistryError("Explicit owner approval is required for this external provider.")
+    if not isinstance(owner_approved, bool):
+        raise ProviderRegistryError("Owner approval flag must be boolean.")
+    if provider["owner_approval_required"] and not owner_approved:
+        raise ProviderRegistryError("Explicit owner approval is required for this provider.")
