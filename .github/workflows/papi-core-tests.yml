@@ -81,6 +81,38 @@ jobs:
             -f infra/supabase/migrations/016_papi_kids_resolution_provenance.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
             -f tests/sql/test_papi_kids_resolution_provenance.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/017_papi_kids_manuscript_safety_reviews.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_papi_kids_manuscript_safety_reviews.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/018_papi_kids_kdp_listing_metadata_versions.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_papi_kids_kdp_listing_metadata_versions.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/019_papi_kids_kdp_package_builds.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_papi_kids_kdp_package_builds.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/020_papi_kids_kdp_package_reviews.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_papi_kids_kdp_package_reviews.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/021_papi_kids_kindle_previewer_reviews.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_papi_kids_kindle_previewer_reviews.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/022_papi_kids_owner_release_authorizations.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_papi_kids_owner_release_authorizations.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/023_papi_kids_kdp_submission_lifecycle.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_papi_kids_kdp_submission_lifecycle.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/024_papi_kids_kdp_submission_lifecycle_immutability.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f tests/sql/test_papi_kids_kdp_submission_lifecycle_append_only.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SHARED_COLLAB_SQL'
           insert into public.papi_memory_events(
             event_id, memory_id, event_type, created_at, actor, category, title,
@@ -266,6 +298,22 @@ jobs:
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_provider_usage_ledger.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/016_papi_kids_resolution_provenance.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_resolution_provenance.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/017_papi_kids_manuscript_safety_reviews.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_manuscript_safety_reviews.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/018_papi_kids_kdp_listing_metadata_versions.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_kdp_listing_metadata_versions.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/019_papi_kids_kdp_package_builds.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_kdp_package_builds.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/020_papi_kids_kdp_package_reviews.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_kdp_package_reviews.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/021_papi_kids_kindle_previewer_reviews.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_kindle_previewer_reviews.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/022_papi_kids_owner_release_authorizations.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_owner_release_authorizations.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/023_papi_kids_kdp_submission_lifecycle.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_kdp_submission_lifecycle.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f infra/supabase/migrations/024_papi_kids_kdp_submission_lifecycle_immutability.sql
+          psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_papi_kids_kdp_submission_lifecycle_append_only.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_queue_diagnostic_report.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_approval_ledger.sql
           psql -h 127.0.0.1 -p 55432 -U postgres -d papi_contract_test -v ON_ERROR_STOP=1 -f tests/sql/test_transactional_outbox.sql

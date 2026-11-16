@@ -5,7 +5,7 @@ This is a deployment template only. It has not been deployed and does not create
 ## Required server configuration
 
 1. Copy \`.env.example\` to \`.env\` in this directory.
-2. Use a dedicated PostgreSQL/Supabase database with migrations 013–016 applied.
+2. Use a dedicated PostgreSQL/Supabase database with migrations 013–024 applied.
 3. Use a TLS PostgreSQL URL with \`sslmode=require\`.
 4. Generate two different random secrets of at least 32 characters for upload and review.
 5. Set a private persistent Docker volume; never expose \`/data/private\` over HTTP.

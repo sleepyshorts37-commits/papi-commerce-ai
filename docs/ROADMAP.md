@@ -53,3 +53,10 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+
+## PAPI KIDS — intégrité du cycle de soumission KDP
+- [x] Couvrir dans les deux jobs PostgreSQL de CI les migrations KDP 017–024 et leurs contrats SQL.
+- [x] Rendre le journal de soumission KDP append-only au niveau PostgreSQL et empêcher la suppression en cascade du livre parent.
+- [x] Bloquer le diagnostic readiness si le trigger d'immutabilité est absent.
+- [ ] Appliquer et vérifier les migrations sur un projet Supabase de test explicitement autorisé.
+- [ ] Effectuer une revue indépendante du flux complet avant toute utilisation réelle.
