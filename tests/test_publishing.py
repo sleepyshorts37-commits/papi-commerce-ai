@@ -40,5 +40,45 @@ class PublishingTests(unittest.TestCase):
         self.assertEqual(brief["language"], "fr")
         self.assertIn("language", brief["assumptions"])
 
+    def test_task_cannot_start_before_dependencies_complete(self):
+        from papi_core.publishing import transition_task
+        project = create_book_project("Un livre sur les étoiles.", store=self.store)
+        task = project["tasks"][1]
+        with self.assertRaises(BookProjectError):
+            transition_task(project["id"], task["id"], "start", store=self.store)
+
+    def test_task_lifecycle_persists_and_unlocks_next_task(self):
+        from papi_core.publishing import transition_task
+        project = create_book_project("Un livre sur les océans.", store=self.store)
+        first, second = project["tasks"][:2]
+        started = transition_task(project["id"], first["id"], "start", store=self.store)
+        self.assertEqual(started["tasks"][0]["status"], "in_progress")
+        completed = transition_task(project["id"], first["id"], "complete", store=self.store,
+                                    output_ref="deliverables/research.md")
+        self.assertEqual(completed["tasks"][0]["status"], "completed")
+        self.assertEqual(completed["tasks"][0]["output_refs"], ["deliverables/research.md"])
+        next_project = transition_task(project["id"], second["id"], "start", store=self.store)
+        self.assertEqual(next_project["tasks"][1]["status"], "in_progress")
+        self.assertGreaterEqual(len(next_project["history"]), 4)
+
+    def test_failed_task_can_retry_but_attempt_limit_is_enforced(self):
+        from papi_core.publishing import transition_task
+        project = create_book_project("Un livre sur les animaux.", store=self.store)
+        task = project["tasks"][0]
+        for attempt in range(3):
+            transition_task(project["id"], task["id"], "start", store=self.store)
+            transition_task(project["id"], task["id"], "fail", store=self.store,
+                            reason=f"Échec simulé {attempt + 1}")
+            if attempt < 2:
+                transition_task(project["id"], task["id"], "retry", store=self.store)
+        with self.assertRaises(BookProjectError):
+            transition_task(project["id"], task["id"], "retry", store=self.store)
+
+    def test_completion_requires_in_progress_state(self):
+        from papi_core.publishing import transition_task
+        project = create_book_project("Un livre sur la lune.", store=self.store)
+        with self.assertRaises(BookProjectError):
+            transition_task(project["id"], project["tasks"][0]["id"], "complete", store=self.store)
+
 if __name__ == "__main__":
     unittest.main()
