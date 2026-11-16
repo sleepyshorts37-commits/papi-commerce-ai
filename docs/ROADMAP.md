@@ -53,7 +53,7 @@
 - [x] Définir un premier schéma JSON versionné du projet livre et des tâches, avec validation des dépendances.
 - [x] Implémenter la création locale idempotente d’un projet depuis une seule requête et son plan de 13 tâches ; aucune tâche n’est exécutée.
 - [x] Implémenter les transitions persistantes start/complete/fail/retry, le contrôle des dépendances, l'historique et la limite de tentatives (tests écrits, exécution encore requise).\n- [x] Ajouter les registres de livrables, rapports de revue indépendants et manifeste de livraison avec blocage avant approbation humaine.
-- [ ] Intégrer les fournisseurs IA de texte et d'images après vérification des coûts, quotas, droits et secrets.
+- [x] Définir un contrat commun texte/image, un registre de fournisseurs et un mock local ; aucun fournisseur réel connecté (tests ajoutés, CI à confirmer).\n- [ ] Intégrer un fournisseur IA réel de texte et d'images après choix explicite, vérification des coûts, quotas, droits et secrets.
 - [ ] Implémenter la génération des manuscrits, illustrations, PDF intérieur, couverture et formats numériques adaptés.
 - [ ] Ajouter les contrôles qualité éditoriaux, visuels, techniques et de propriété intellectuelle.
 - [ ] Réussir un test complet reproductible sur un livre pilote, avec échec simulé et reprise.
