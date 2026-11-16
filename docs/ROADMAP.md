@@ -54,7 +54,7 @@
 - [x] Implémenter la création locale idempotente d’un projet depuis une seule requête et son plan de 13 tâches ; aucune tâche n’est exécutée.
 - [x] Implémenter les transitions persistantes start/complete/fail/retry, le contrôle des dépendances, l'historique et la limite de tentatives (tests écrits, exécution encore requise).\n- [x] Ajouter les registres de livrables, rapports de revue indépendants et manifeste de livraison avec blocage avant approbation humaine.
 - [x] Définir un contrat commun texte/image, un registre de fournisseurs et un mock local ; aucun fournisseur réel connecté (tests ajoutés, CI à confirmer).\n- [ ] Intégrer un fournisseur IA réel de texte et d'images après choix explicite, vérification des coûts, quotas, droits et secrets.
-- [x] Ajouter le schéma, le contrôle structurel et l'assemblage Markdown des manuscrits (sans génération automatique du contenu).\n- [ ] Implémenter la génération IA des manuscrits, illustrations, PDF intérieur, couverture et formats numériques adaptés.
+- [x] Ajouter le schéma, le contrôle structurel et l'assemblage Markdown des manuscrits (sans génération automatique du contenu).\n- [ ] Implémenter la génération IA des manuscrits et illustrations, ainsi que le PDF intérieur et la couverture.\n- [x] Ajouter un export EPUB 3 minimal et son inspection ZIP interne (validation EPUBCheck/KDP encore requise).
 - [ ] Ajouter les contrôles qualité éditoriaux, visuels, techniques et de propriété intellectuelle.
 - [ ] Réussir un test complet reproductible sur un livre pilote, avec échec simulé et reprise.
 - [ ] Obtenir l'approbation humaine avant toute publication KDP.
