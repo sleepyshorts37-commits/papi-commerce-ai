@@ -2,7 +2,7 @@ name: PAPI core tests
 
 on:
   push:
-    branches: [main, mission-183-provider-registry]
+    branches: [main, mission-183-provider-registry, mission-184-connectors]
   pull_request:
     branches: [main]
   workflow_dispatch:
