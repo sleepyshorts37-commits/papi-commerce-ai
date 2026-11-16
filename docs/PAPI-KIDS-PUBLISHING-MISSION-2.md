@@ -48,3 +48,15 @@ Le moteur gère maintenant :
 - un statut de validation propriétaire pending_owner et une publication explicitement marquée not_published.
 
 Limites : le registre stocke les métadonnées et références, pas les fichiers eux-mêmes. Aucun fichier PDF, EPUB ou visuel n'est généré ou téléversé. La validation humaine et la publication KDP ne sont pas exécutées.
+
+
+## Mission 5 — Contrat des fournisseurs IA et garde-fous
+
+Ajout du module `runtime/papi_core/providers.py` :
+- contrat commun de requête/résultat pour les tâches de texte et d'image ;
+- registre explicite des fournisseurs et vérification de leurs capacités ;
+- fournisseur `mock` local déterministe pour tester le parcours sans réseau ;
+- politique fermée par défaut : fournisseur autorisé, plafond XOF, accord propriétaire et secret d'environnement requis pour tout fournisseur externe ;
+- résultats simulés clairement marqués ; empreinte SHA-256 du contenu retourné.
+
+**Limites importantes :** aucun fournisseur réel (OpenAI, Google ou autre) n'est connecté. Le mock ne rédige pas de livre et ne dessine pas d'illustration. Aucun appel réseau, secret, abonnement ou paiement n'est utilisé. La prochaine étape sera l'intégration d'un fournisseur réel uniquement après choix du prestataire, vérification des tarifs et accord explicite.
