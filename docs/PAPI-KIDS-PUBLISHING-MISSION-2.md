@@ -36,3 +36,15 @@ Ajouté après le premier plan ONE PROMPT :
 - exécution réelle des agents toujours désactivée.
 
 Limites : aucun agent IA, générateur de texte ou d'images, stockage cloud, interface mobile ou publication KDP n'est encore connecté. Les tests unitaires ajoutés pour ces transitions doivent être exécutés dans un environnement Python avant de déclarer cette étape validée.
+
+
+## Mission 4 — Registre des livrables, revues et manifeste
+
+Le moteur gère maintenant :
+- un registre de livrables avec identifiant, type, URI, version, empreinte SHA-256, provenance et statut ;
+- des rapports de revue avec réviseur distinct de l'acteur qui soumet le rapport ;
+- la préparation d'un manifeste de livraison listant les livrables et leurs empreintes ;
+- le blocage du manifeste si une tâche n'est pas terminée, si un livrable n'est pas approuvé ou si une revue n'est pas approuvée ;
+- un statut de validation propriétaire pending_owner et une publication explicitement marquée not_published.
+
+Limites : le registre stocke les métadonnées et références, pas les fichiers eux-mêmes. Aucun fichier PDF, EPUB ou visuel n'est généré ou téléversé. La validation humaine et la publication KDP ne sont pas exécutées.
