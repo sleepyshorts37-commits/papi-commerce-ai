@@ -12,7 +12,7 @@ from .sales import SalesError, build_sales_report, load_sales
 from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
-from .publishing import BookProjectError, BookProjectStore, create_book_project, get_project_summary
+from .publishing import BookProjectError, BookProjectStore, create_book_project, get_project_summary, transition_task
 
 
 def main() -> int:
@@ -39,6 +39,14 @@ def main() -> int:
     book_show = sub.add_parser("book-show", help="Afficher un projet PAPI KIDS")
     book_show.add_argument("project_id")
     book_show.add_argument("--store-dir", default="data/book_projects")
+    book_task = sub.add_parser("book-task", help="Faire évoluer explicitement une tâche PAPI KIDS")
+    book_task.add_argument("project_id")
+    book_task.add_argument("task_id")
+    book_task.add_argument("action", choices=["start", "complete", "fail", "retry"])
+    book_task.add_argument("--actor", default="owner")
+    book_task.add_argument("--output-ref")
+    book_task.add_argument("--reason")
+    book_task.add_argument("--store-dir", default="data/book_projects")
     args = parser.parse_args()
     try:
         if args.command == "book-create":
@@ -51,6 +59,12 @@ def main() -> int:
                 print("Projet introuvable.", file=sys.stderr)
                 return 1
             print(json.dumps({"summary": get_project_summary(project), "brief": project["brief"], "tasks": project["tasks"]}, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "book-task":
+            project = transition_task(args.project_id, args.task_id, args.action,
+                                      store=BookProjectStore(args.store_dir), actor=args.actor,
+                                      output_ref=args.output_ref, reason=args.reason)
+            print(json.dumps({"summary": get_project_summary(project), "task": next(t for t in project["tasks"] if t["id"] == args.task_id)}, ensure_ascii=False, indent=2))
             return 0
         if args.command == "agent-check":
             print(json.dumps(authorize_agent(args.agent_id, args.permission), ensure_ascii=False, indent=2))
