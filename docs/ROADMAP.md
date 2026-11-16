@@ -64,3 +64,12 @@ Un composant est opérationnel uniquement si code/configuration, accès autoris�
 
 ## Statut
 Fondations de code et documentation présentes. Le worker vérifie les identités Ed25519 en mode local par défaut, ou via un adaptateur Supabase explicitement injecté. Le schéma et l'adaptateur partagés sont codés et testés par simulation, mais aucun projet distant n'est configuré et aucune migration n'est exécutée. Aucun agent autonome, worker permanent, scheduler déployé, boutique, prospection externe ou paiement automatisé n'est actif. Aucun modèle IA n'est connecté à ce stade.
+
+## PAPI CONNECT — intégrations économiques et open source
+- [x] Mission 182 : architecture, règles de gouvernance et inventaire initial des projets open source dans `docs/PAPI-CONNECT-ARCHITECTURE.md`.
+- [ ] Mission 183 : registre fournisseurs, capacités, quotas, permissions et statuts.
+- [ ] Mission 184 : interfaces d'adaptateurs et fournisseur simulé, tests sans réseau.
+- [ ] Mission 185 : premier fournisseur IA réel après choix et autorisation explicites, test non sensible.
+- [ ] Mission 186 : attribution des outils à deux agents pilotes avec permissions minimales.
+- [ ] Missions suivantes : observabilité, plafonds, fallback, automatisation et extension des fournisseurs.
+
