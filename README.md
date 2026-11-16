@@ -33,6 +33,8 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core finance-validate` — valider le registre financier local.
 - `PYTHONPATH=runtime python -m papi_core finance-report` — afficher les recettes vérifiées et dépenses payées, en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core security-check` — contrôler les garde-fous locaux sans réseau ni affichage de secrets.
+- `PYTHONPATH=runtime python -m papi_core book-create "Crée un album illustré pour enfants de 6 à 9 ans sur une tortue courageuse"` — créer un dossier de production PAPI KIDS local, sans génération IA ni action externe.
+- `PYTHONPATH=runtime python -m papi_core book-show PKP-<identifiant>` — consulter le plan d’un projet créé.
 
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
