@@ -111,8 +111,10 @@ class ProviderPolicy:
             raise ProviderError("Les options d'autorisation doivent être booléennes.")
         if self.allow_external and not self.owner_approved:
             raise ProviderError("Un accord explicite du propriétaire est requis.")
-        if not self.allowed_providers or any(
-            not isinstance(name, str) or not name.strip() for name in self.allowed_providers
+        if (
+            not isinstance(self.allowed_providers, (set, frozenset))
+            or not self.allowed_providers
+            or any(not isinstance(name, str) or not name.strip() for name in self.allowed_providers)
         ):
             raise ProviderError("Registre de fournisseurs autorisés invalide.")
 
