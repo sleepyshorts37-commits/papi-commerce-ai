@@ -6,6 +6,7 @@ import html
 import io
 import uuid
 import zipfile
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
 from .manuscript import validate_manuscript
@@ -42,7 +43,6 @@ def build_epub(manuscript: dict) -> bytes:
         archive.writestr("EPUB/styles.css", _CSS, compress_type=zipfile.ZIP_DEFLATED)
         nav_items = []
         manifest_items = [
-            '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
             '<item id="css" href="styles.css" media-type="text/css"/>',
             '<item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>',
         ]
@@ -60,9 +60,6 @@ def build_epub(manuscript: dict) -> bytes:
             chap_title = _x(chapter["title"].strip())
             body = "".join("<p>" + _x(paragraph.strip()) + "</p>"
                            for paragraph in chapter["text"].strip().split("\n\n") if paragraph.strip())
-            brief = chapter.get("illustration_brief", "")
-            if brief:
-                body += '<p class="illustration-note">' + _x(brief.strip()) + "</p>"
             content = (
                 '<?xml version="1.0" encoding="UTF-8"?>'
                 '<html xmlns="http://www.w3.org/1999/xhtml" lang="' + language + '"><head>'
@@ -118,6 +115,12 @@ def inspect_epub(content: bytes) -> dict:
                 raise EpubError("Fichiers obligatoires EPUB manquants.")
             if archive.testzip() is not None:
                 raise EpubError("Archive EPUB corrompue.")
+            for name in names:
+                if name.endswith((".xml", ".xhtml", ".opf")):
+                    try:
+                        ET.fromstring(archive.read(name))
+                    except ET.ParseError as exc:
+                        raise EpubError(f"Document XML invalide : {name}.") from exc
             return {
                 "valid_archive": True,
                 "entry_count": len(names),
