@@ -57,6 +57,17 @@ class ProviderRegistryTests(unittest.TestCase):
         with self.assertRaises(ProviderRegistryError):
             authorize_provider(provider, {"llm.generate", "network.api"}, owner_approved=False)
 
+    def test_owner_approval_flag_applies_to_local_providers(self):
+        catalog = load_provider_catalog()
+        provider = next(p for p in catalog["providers"] if p["id"] == "llm.local")
+        provider.update(status="enabled", enabled=True, last_verified_at="2026-11-16")
+        permissions = {"llm.generate", "runtime.local"}
+        with self.assertRaisesRegex(ProviderRegistryError, "owner approval"):
+            authorize_provider(provider, permissions)
+        authorize_provider(provider, permissions, owner_approved=True)
+        with self.assertRaisesRegex(ProviderRegistryError, "boolean"):
+            authorize_provider(provider, permissions, owner_approved=1)
+
     def test_invalid_json_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "providers.json"
