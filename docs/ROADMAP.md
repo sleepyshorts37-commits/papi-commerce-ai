@@ -56,7 +56,7 @@
 - [x] Définir un contrat commun texte/image, un registre de fournisseurs et un mock local ; aucun fournisseur réel connecté (tests ajoutés, CI à confirmer).\n- [ ] Intégrer un fournisseur IA réel de texte et d'images après choix explicite, vérification des coûts, quotas, droits et secrets.
 - [x] Ajouter le schéma, le contrôle structurel et l'assemblage Markdown des manuscrits (sans génération automatique du contenu).\n- [ ] Implémenter la génération IA des manuscrits et illustrations, ainsi que la couverture.\n- [x] Ajouter une épreuve PDF intérieure texte à coupe configurable (non certifiée KDP, sans images ni couverture).\n- [x] Ajouter un export EPUB 3 minimal et son inspection ZIP interne (validation EPUBCheck/KDP encore requise).
 - [ ] Ajouter les contrôles qualité éditoriaux, visuels, techniques et de propriété intellectuelle.
-- [ ] Réussir un test complet reproductible sur un livre pilote, avec échec simulé et reprise.
+- [x] Assembler en une seule opération les exports Markdown, EPUB 3, PDF d'épreuve et manifeste avec empreintes (à partir d'un manuscrit fourni).\n- [ ] Réussir un test complet reproductible sur un livre pilote réellement généré par IA, illustré, préflighté et avec échec simulé/reprise.
 - [ ] Obtenir l'approbation humaine avant toute publication KDP.
 
 - [ ] Exécuter et valider les tests du cycle de vie, des livrables, des revues et du manifeste dans un environnement Python.\n\n## Mise en service
