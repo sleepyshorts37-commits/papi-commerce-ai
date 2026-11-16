@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from papi_core.connectors import ConnectorError, ConnectorGateway
-from papi_core.providers import GenerationRequest, GenerationResult, MockGenerationProvider
+from papi_core.providers import GenerationRequest, GenerationResult, MockGenerationProvider, ProviderError, ProviderPolicy
 
 
 class StaticLocalAdapter:
@@ -103,6 +103,17 @@ class ConnectorGatewayTests(unittest.TestCase):
             self.gateway.register_adapter("llm.external", ExternalAdapter(self._result()))
         with self.assertRaises(ConnectorError):
             self.gateway.register_adapter("llm.credentialed", CredentialBearingAdapter(self._result()))
+
+    def test_provider_policy_rejects_boolean_cost_and_invalid_allowlists(self):
+        policies = (
+            ProviderPolicy(max_cost_xof=True),
+            ProviderPolicy(allowed_providers="mock"),
+            ProviderPolicy(allowed_providers=frozenset()),
+            ProviderPolicy(allow_external=1),
+        )
+        for policy in policies:
+            with self.subTest(policy=policy), self.assertRaises(ProviderError):
+                policy.validate()
 
     def test_generation_request_rejects_boolean_numeric_limits(self):
         for kwargs in ({"estimated_cost_xof": True}, {"max_output_chars": True}):
