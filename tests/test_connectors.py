@@ -50,7 +50,7 @@ class ConnectorGatewayTests(unittest.TestCase):
     def _local_gateway(tmp_path, result):
         catalog = json.loads(Path("data/providers.json").read_text(encoding="utf-8"))
         local = next(provider for provider in catalog["providers"] if provider["id"] == "llm.local")
-        local.update(status="enabled", enabled=True, last_verified_at="2026-11-16")
+        local.update(status="enabled", enabled=True, last_verified_at="2026-11-16", owner_approval_required=False)
         catalog_path = Path(tmp_path) / "providers.json"
         catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
         gateway = ConnectorGateway(catalog_path)
