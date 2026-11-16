@@ -60,3 +60,14 @@ Ajout du module `runtime/papi_core/providers.py` :
 - résultats simulés clairement marqués ; empreinte SHA-256 du contenu retourné.
 
 **Limites importantes :** aucun fournisseur réel (OpenAI, Google ou autre) n'est connecté. Le mock ne rédige pas de livre et ne dessine pas d'illustration. Aucun appel réseau, secret, abonnement ou paiement n'est utilisé. La prochaine étape sera l'intégration d'un fournisseur réel uniquement après choix du prestataire, vérification des tarifs et accord explicite.
+
+
+## Mission 6 — Structure, validation et assemblage du manuscrit
+
+Ajout de `runtime/papi_core/manuscript.py` :
+- schéma de manuscrit structuré : titre, langue, âge cible, synopsis, chapitres et briefs d'illustration ;
+- validation des champs, bornes, tranches d'âge et marqueurs provisoires ;
+- comptage de mots, empreinte SHA-256 et avertissements éditoriaux ;
+- assemblage du contenu validé en Markdown.
+
+**Limites :** ce module contrôle la structure, pas la qualité littéraire, la sécurité psychologique ou la justesse pédagogique. Il ne génère pas le texte, ne produit pas de PDF/EPUB et ne remplace pas une relecture humaine.
