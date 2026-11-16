@@ -22,3 +22,17 @@ Ce lot crée le dossier et le plan, pas le livre. Aucun fournisseur IA, généra
 
 ## Prochaine étape
 Ajouter des transitions de tâches persistantes, les actifs et rapports de revue, puis connecter un premier fournisseur de génération uniquement après vérification des coûts et autorisation explicite.
+
+
+## Mission 3 — Cycle de vie des tâches (socle local)
+
+Ajouté après le premier plan ONE PROMPT :
+- transitions explicites `start`, `complete`, `fail`, `retry` ;
+- blocage du démarrage tant que les dépendances ne sont pas terminées ;
+- persistance atomique des mises à jour JSON ;
+- historique horodaté des événements et références de livrables ;
+- trois tentatives maximum par tâche ;
+- commandes CLI `book-task` pour piloter une tâche ;
+- exécution réelle des agents toujours désactivée.
+
+Limites : aucun agent IA, générateur de texte ou d'images, stockage cloud, interface mobile ou publication KDP n'est encore connecté. Les tests unitaires ajoutés pour ces transitions doivent être exécutés dans un environnement Python avant de déclarer cette étape validée.
