@@ -26,7 +26,7 @@ class EpubTests(unittest.TestCase):
         self.assertEqual(report["chapters"], 1)
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             self.assertEqual(archive.namelist()[0], "mimetype")
-            self.assertIn(b"Mina &amp; la riviÃ¨re", archive.read("EPUB/title.xhtml"))
+            self.assertIn("Mina &amp; la rivi\u00e8re", archive.read("EPUB/title.xhtml").decode("utf-8"))
 
     def test_invalid_manuscript_is_rejected(self):
         data = self.manuscript()
