@@ -86,7 +86,7 @@ class PapiKidsReadinessTests(unittest.TestCase):
         self.assertFalse(result["core_ready"])
         self.assertEqual(
             result["checks"]["database"]["missing_required_triggers"],
-            ["kdp_submission_lifecycle_events_append_only"],
+            sorted(REQUIRED_TRIGGERS),
         )
         self.assertTrue(any("append-only" in item for item in result["blockers"]))
 
