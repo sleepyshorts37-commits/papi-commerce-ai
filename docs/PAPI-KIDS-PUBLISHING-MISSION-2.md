@@ -93,3 +93,15 @@ Ajout de `runtime/papi_core/print_pdf.py` et de ReportLab :
 - vérification minimale de l'en-tête et de la fin du fichier PDF.
 
 **Limites :** il s'agit d'une épreuve intérieure textuelle, sans illustrations ni couverture. Les marges par défaut ne sont pas une certification KDP : les exigences exactes dépendent du format, du papier, du fond perdu et du nombre final de pages. Un préflight KDP reste obligatoire.
+
+
+## Mission 9 — Chaîne d'export locale
+
+Ajout de `runtime/papi_core/export.py` :
+- validation d'un manuscrit structuré avant export ;
+- production groupée du manuscrit Markdown, de l'EPUB 3, d'une épreuve PDF intérieure et d'un manifeste de contrôle ;
+- empreintes SHA-256 et tailles des fichiers ;
+- refus d'écraser un export existant ;
+- statut explicite : illustrations et couverture absentes, préflight KDP requis, publication non effectuée.
+
+Ce flux est un export de maquette à partir d'un manuscrit fourni. Il ne crée pas encore le manuscrit par IA et ne doit pas être présenté comme un livre illustré ou comme un paquet prêt à publier.
