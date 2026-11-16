@@ -257,6 +257,44 @@
       "pricing_url": "https://github.com/modelcontextprotocol/python-sdk",
       "last_verified_at": null,
       "owner_approval_required": true
+    },
+    {
+      "id": "local.mock",
+      "name": "PAPI Mock Connector",
+      "category": "local_runtime",
+      "capabilities": [
+        "text.generate",
+        "image.generate"
+      ],
+      "status": "enabled",
+      "enabled": true,
+      "external": false,
+      "pricing": {
+        "model": "free",
+        "currency": null,
+        "free_quota": "Simulation locale uniquement",
+        "trial_days": null,
+        "notes": "Fournisseur simulé intégré au dépôt ; ne contacte aucun service externe et ne produit pas de véritable contenu final."
+      },
+      "quota": {
+        "requests_per_minute": null,
+        "requests_per_day": null,
+        "monthly_limit": null,
+        "max_cost_xof": 0
+      },
+      "required_permissions": [
+        "connectors.generate"
+      ],
+      "credentials_env": [],
+      "data_classes": [
+        "public",
+        "internal"
+      ],
+      "region_scope": "Exécution locale dans le processus PAPI",
+      "docs_url": "https://github.com/sleepyshorts37-commits/papi-commerce-ai",
+      "pricing_url": "https://github.com/sleepyshorts37-commits/papi-commerce-ai",
+      "last_verified_at": "2026-11-16",
+      "owner_approval_required": false
     }
   ]
 }
