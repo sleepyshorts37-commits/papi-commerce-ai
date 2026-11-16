@@ -80,5 +80,47 @@ class PublishingTests(unittest.TestCase):
         with self.assertRaises(BookProjectError):
             transition_task(project["id"], project["tasks"][0]["id"], "complete", store=self.store)
 
+    def test_asset_registration_requires_provenance_and_sha256(self):
+        from papi_core.publishing import register_asset
+        project = create_book_project("Un album sur la savane.", store=self.store)
+        asset = {"id": "manuscript-v1", "kind": "manuscript", "uri": "local://manuscript.md",
+                 "version": 1, "sha256": "a" * 64, "provenance": "Original content created for this project",
+                 "status": "ready_for_review"}
+        updated = register_asset(project["id"], asset, store=self.store)
+        self.assertEqual(updated["assets"][0]["id"], "manuscript-v1")
+        with self.assertRaises(BookProjectError):
+            register_asset(project["id"], {**asset, "id": "bad-hash", "sha256": "invalid"}, store=self.store)
+
+    def test_reviewer_must_be_independent_from_submitter(self):
+        from papi_core.publishing import add_review
+        project = create_book_project("Un conte sur la mer.", store=self.store)
+        review = {"id": "review-1", "scope": "editorial", "reviewer": "Mariama",
+                  "decision": "approved", "findings": []}
+        with self.assertRaises(BookProjectError):
+            add_review(project["id"], review, store=self.store, actor="Mariama")
+        updated = add_review(project["id"], review, store=self.store, actor="Papi Director")
+        self.assertEqual(updated["reviews"][0]["decision"], "approved")
+
+    def test_release_package_waits_for_completed_tasks_and_approval(self):
+        from papi_core.publishing import register_asset, add_review, prepare_release_package
+        project = create_book_project("Un livre sur les planètes.", store=self.store)
+        with self.assertRaises(BookProjectError):
+            prepare_release_package(project["id"], store=self.store, metadata={"title": "Planètes"})
+        for task in project["tasks"]:
+            task["status"] = "completed"
+            task["attempts"] = 1
+        self.store.save_update(project)
+        asset = {"id": "interior-pdf", "kind": "interior_pdf", "uri": "local://interior.pdf",
+                 "version": 1, "sha256": "b" * 64, "provenance": "Generated for this project",
+                 "status": "approved"}
+        register_asset(project["id"], asset, store=self.store)
+        review = {"id": "final-review", "scope": "quality_and_rights", "reviewer": "Mariama",
+                  "decision": "approved", "findings": []}
+        add_review(project["id"], review, store=self.store, actor="Papi Director")
+        package = prepare_release_package(project["id"], store=self.store,
+                                           metadata={"title": "Voyage aux planètes", "language": "fr"})
+        self.assertEqual(package["release_package"]["approval_status"], "pending_owner")
+        self.assertEqual(package["release_package"]["publication_status"], "not_published")
+
 if __name__ == "__main__":
     unittest.main()
