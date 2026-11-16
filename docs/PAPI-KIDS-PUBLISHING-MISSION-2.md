@@ -105,3 +105,19 @@ Ajout de `runtime/papi_core/export.py` :
 - statut explicite : illustrations et couverture absentes, préflight KDP requis, publication non effectuée.
 
 Ce flux est un export de maquette à partir d'un manuscrit fourni. Il ne crée pas encore le manuscrit par IA et ne doit pas être présenté comme un livre illustré ou comme un paquet prêt à publier.
+
+
+## Mission 10 — Calculs géométriques KDP paperback
+
+Ajout de `runtime/papi_core/kdp_preflight.py` :
+- calcul du dos selon le papier (blanc, crème, groundwood, couleur premium/standard) ;
+- calcul de la largeur et de la hauteur du fichier de couverture avec fond perdu de 0,125 pouce ;
+- seuil conservateur de 80 pages pour autoriser du texte sur le dos ;
+- calcul des marges minimales et de la gouttière selon la pagination.
+
+Références officielles utilisées :
+- [Create a Paperback Cover](https://kdp.amazon.com/en_US/help/topic/G201953020)
+- [Set Trim Size, Bleed, and Margins](https://kdp.amazon.com/en_US/help/topic/GVBQ3CMEQW3W2VL6)
+- [Paperback Submission Guidelines](https://kdp.amazon.com/en_US/help/topic/G201857950)
+
+**Limites :** le calcul géométrique n'est pas une approbation KDP. Les plages de pages dépendent aussi du format de coupe, de l'encre et du papier ; le calculateur/gabarit KDP doit confirmer les dimensions finales avant dépôt.
