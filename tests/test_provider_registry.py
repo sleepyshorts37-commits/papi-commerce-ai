@@ -8,12 +8,17 @@ class ProviderRegistryTests(unittest.TestCase):
     def test_catalog_is_valid_and_entries_start_disabled(self):
         catalog = load_provider_catalog()
         self.assertGreaterEqual(len(catalog["providers"]), 6)
-        self.assertTrue(all(p["status"] == "proposed" and not p["enabled"] for p in catalog["providers"]))
+        self.assertTrue(all(p["status"] == "proposed" and not p["enabled"] for p in catalog["providers"] if p["id"] != "local.mock"))
+        mock = next(p for p in catalog["providers"] if p["id"] == "local.mock")
+        self.assertEqual(mock["status"], "enabled")
+        self.assertTrue(mock["enabled"])
 
     def test_capability_search_is_read_only(self):
         results = find_providers(capability="text.generate")
         self.assertIn("llm.gemini", {p["id"] for p in results})
-        self.assertTrue(all(not p["enabled"] for p in results))
+        self.assertTrue(all(not p["enabled"] for p in results if p["id"] != "local.mock"))
+        mock = next(p for p in results if p["id"] == "local.mock")
+        self.assertTrue(mock["enabled"])
 
     def test_duplicate_provider_ids_are_rejected(self):
         catalog = load_provider_catalog()
