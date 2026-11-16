@@ -52,14 +52,14 @@
 - [x] Formaliser l'expérience cible, les rôles spécialisés, la chaîne de production, les livrables et les critères d'acceptation dans `docs/PAPI-KIDS-PUBLISHING-ONE-PROMPT.md`.
 - [x] Définir un premier schéma JSON versionné du projet livre et des tâches, avec validation des dépendances.
 - [x] Implémenter la création locale idempotente d’un projet depuis une seule requête et son plan de 13 tâches ; aucune tâche n’est exécutée.
-- [x] Implémenter les transitions persistantes start/complete/fail/retry, le contrôle des dépendances, l'historique et la limite de tentatives (tests écrits, exécution encore requise).\n- [ ] Étendre les schémas aux actifs, revues et paquet de livraison.
+- [x] Implémenter les transitions persistantes start/complete/fail/retry, le contrôle des dépendances, l'historique et la limite de tentatives (tests écrits, exécution encore requise).\n- [x] Ajouter les registres de livrables, rapports de revue indépendants et manifeste de livraison avec blocage avant approbation humaine.
 - [ ] Intégrer les fournisseurs IA de texte et d'images après vérification des coûts, quotas, droits et secrets.
 - [ ] Implémenter la génération des manuscrits, illustrations, PDF intérieur, couverture et formats numériques adaptés.
 - [ ] Ajouter les contrôles qualité éditoriaux, visuels, techniques et de propriété intellectuelle.
 - [ ] Réussir un test complet reproductible sur un livre pilote, avec échec simulé et reprise.
 - [ ] Obtenir l'approbation humaine avant toute publication KDP.
 
-- [ ] Exécuter et valider les tests du cycle de vie des tâches dans un environnement Python.\n\n## Mise en service
+- [ ] Exécuter et valider les tests du cycle de vie, des livrables, des revues et du manifeste dans un environnement Python.\n\n## Mise en service
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 
 ## Statut
