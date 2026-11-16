@@ -7,7 +7,10 @@ import stat
 from typing import Any, Callable
 
 
-REQUIRED_TRIGGERS = {"kdp_submission_lifecycle_events_append_only"}
+REQUIRED_TRIGGERS = {
+    "kdp_submission_lifecycle_events_append_only",
+    "kdp_submission_lifecycle_events_no_truncate",
+}
 
 
 REQUIRED_TABLES = {
