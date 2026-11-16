@@ -82,3 +82,14 @@ Ajout de `runtime/papi_core/epub.py` :
 - inspection minimale du paquet et calcul SHA-256.
 
 **Limites :** ce premier EPUB n'intègre pas encore de couverture ni d'images. L'inspection interne n'est pas une validation EPUBCheck officielle ni une garantie d'acceptation KDP. Le fichier doit être vérifié avec les outils de préflight appropriés et relu avant commercialisation.
+
+
+## Mission 8 — Épreuve PDF intérieure
+
+Ajout de `runtime/papi_core/print_pdf.py` et de ReportLab :
+- création d'une épreuve PDF texte à partir du manuscrit validé ;
+- formats de coupe configurables dans des limites définies ;
+- marges et gouttière configurables, pagination et métadonnées PDF ;
+- vérification minimale de l'en-tête et de la fin du fichier PDF.
+
+**Limites :** il s'agit d'une épreuve intérieure textuelle, sans illustrations ni couverture. Les marges par défaut ne sont pas une certification KDP : les exigences exactes dépendent du format, du papier, du fond perdu et du nombre final de pages. Un préflight KDP reste obligatoire.
