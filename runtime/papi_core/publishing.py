@@ -117,7 +117,7 @@ class BookProjectStore:
         path = self.path_for(project["id"])
         if not path.exists():
             raise BookProjectError("Projet introuvable : création refusée lors d'une mise à jour.")
-        payload = json.dumps(project, ensure_ascii=False, indent=2, sort_keys=True) + "\\n"
+        payload = json.dumps(project, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
         temporary = path.with_suffix(f".{os.getpid()}.tmp")
         descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
