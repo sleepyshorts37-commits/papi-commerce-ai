@@ -2,7 +2,7 @@ name: PAPI registry validation
 
 on:
   push:
-    branches: [main]
+    branches: [main, mission-183-provider-registry]
   pull_request:
     branches: [main]
   workflow_dispatch:
