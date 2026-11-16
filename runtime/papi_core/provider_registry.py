@@ -29,9 +29,9 @@ def validate_provider(provider: Any) -> list[str]:
         errors.append("Invalid provider id.")
     if not isinstance(provider["name"], str) or not provider["name"].strip():
         errors.append("Provider name is required.")
-    if provider["category"] not in CATEGORIES:
+    if not isinstance(provider["category"], str) or provider["category"] not in CATEGORIES:
         errors.append("Invalid provider category.")
-    if provider["status"] not in STATUSES:
+    if not isinstance(provider["status"], str) or provider["status"] not in STATUSES:
         errors.append("Invalid provider status.")
     for field in ("enabled", "external", "owner_approval_required"):
         if not isinstance(provider[field], bool):
@@ -44,6 +44,8 @@ def validate_provider(provider: Any) -> list[str]:
         value = provider[field]
         if not isinstance(value, list) or (field in {"capabilities", "data_classes"} and not value):
             errors.append(field + " must be a valid list.")
+        elif any(not isinstance(item, str) for item in value):
+            errors.append(field + " must contain strings only.")
         elif len(value) != len(set(value)):
             errors.append(field + " must not contain duplicates.")
     if isinstance(provider["credentials_env"], list) and any(not isinstance(v, str) or not ENV_NAME.fullmatch(v) for v in provider["credentials_env"]):
@@ -53,7 +55,7 @@ def validate_provider(provider: Any) -> list[str]:
     pricing = provider["pricing"]
     if not isinstance(pricing, dict) or not {"model", "currency", "free_quota", "trial_days", "notes"} <= pricing.keys():
         errors.append("Incomplete pricing object.")
-    elif pricing["model"] not in PRICING_MODELS:
+    elif not isinstance(pricing["model"], str) or pricing["model"] not in PRICING_MODELS:
         errors.append("Invalid pricing model.")
     quota = provider["quota"]
     if not isinstance(quota, dict) or not {"requests_per_minute", "requests_per_day", "monthly_limit", "max_cost_xof"} <= quota.keys():
@@ -111,5 +113,5 @@ def authorize_provider(provider: dict[str, Any], agent_permissions: set[str], ow
         raise ProviderRegistryError("Provider is disabled or not verified yet.")
     if not set(provider["required_permissions"]).issubset(agent_permissions):
         raise ProviderRegistryError("Agent permissions are insufficient.")
-    if provider["external"] and (not owner_approved or provider["owner_approval_required"]):
+    if provider["external"] and provider["owner_approval_required"] and not owner_approved:
         raise ProviderRegistryError("Explicit owner approval is required for this external provider.")
