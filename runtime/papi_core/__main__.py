@@ -12,6 +12,7 @@ from .sales import SalesError, build_sales_report, load_sales
 from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
+from .publishing import BookProjectError, BookProjectStore, create_book_project, get_project_summary
 
 
 def main() -> int:
@@ -32,8 +33,25 @@ def main() -> int:
     sub.add_parser("finance-validate", help="Valider le registre financier local")
     sub.add_parser("finance-report", help="Afficher le rapport financier local en lecture seule")
     sub.add_parser("security-check", help="Vérifier la posture de sécurité locale en lecture seule")
+    book_create = sub.add_parser("book-create", help="Créer un projet PAPI KIDS depuis une demande, sans exécution IA")
+    book_create.add_argument("prompt", help="Description du livre souhaité")
+    book_create.add_argument("--store-dir", default="data/book_projects")
+    book_show = sub.add_parser("book-show", help="Afficher un projet PAPI KIDS")
+    book_show.add_argument("project_id")
+    book_show.add_argument("--store-dir", default="data/book_projects")
     args = parser.parse_args()
     try:
+        if args.command == "book-create":
+            project = create_book_project(args.prompt, store=BookProjectStore(args.store_dir))
+            print(json.dumps({"summary": get_project_summary(project), "brief": project["brief"], "tasks": project["tasks"]}, ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "book-show":
+            project = BookProjectStore(args.store_dir).get(args.project_id)
+            if project is None:
+                print("Projet introuvable.", file=sys.stderr)
+                return 1
+            print(json.dumps({"summary": get_project_summary(project), "brief": project["brief"], "tasks": project["tasks"]}, ensure_ascii=False, indent=2))
+            return 0
         if args.command == "agent-check":
             print(json.dumps(authorize_agent(args.agent_id, args.permission), ensure_ascii=False, indent=2))
             return 0
@@ -75,7 +93,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, BookProjectError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
