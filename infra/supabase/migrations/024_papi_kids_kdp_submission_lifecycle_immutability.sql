@@ -26,14 +26,20 @@ do $$
 begin
     if exists (select 1 from pg_roles where rolname = 'service_role') then
         grant execute on function papi_kids_private.reject_kdp_submission_lifecycle_mutation() to service_role;
-        revoke update, delete on papi_kids_private.kdp_submission_lifecycle_events from service_role;
+        revoke update, delete, truncate on papi_kids_private.kdp_submission_lifecycle_events from service_role;
     end if;
 end;
 $$;
 
 drop trigger if exists kdp_submission_lifecycle_events_append_only
     on papi_kids_private.kdp_submission_lifecycle_events;
+drop trigger if exists kdp_submission_lifecycle_events_no_truncate
+    on papi_kids_private.kdp_submission_lifecycle_events;
 
 create trigger kdp_submission_lifecycle_events_append_only
     before update or delete on papi_kids_private.kdp_submission_lifecycle_events
     for each row execute function papi_kids_private.reject_kdp_submission_lifecycle_mutation();
+
+create trigger kdp_submission_lifecycle_events_no_truncate
+    before truncate on papi_kids_private.kdp_submission_lifecycle_events
+    for each statement execute function papi_kids_private.reject_kdp_submission_lifecycle_mutation();
