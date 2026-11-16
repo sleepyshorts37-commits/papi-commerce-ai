@@ -71,3 +71,14 @@ Ajout de `runtime/papi_core/manuscript.py` :
 - assemblage du contenu validé en Markdown.
 
 **Limites :** ce module contrôle la structure, pas la qualité littéraire, la sécurité psychologique ou la justesse pédagogique. Il ne génère pas le texte, ne produit pas de PDF/EPUB et ne remplace pas une relecture humaine.
+
+
+## Mission 7 — Première sortie numérique EPUB 3
+
+Ajout de `runtime/papi_core/epub.py` :
+- assemblage d'un fichier EPUB 3 depuis un manuscrit validé ;
+- génération du conteneur, du manifeste OPF, du sommaire de navigation, des pages XHTML et du CSS ;
+- échappement des contenus textuels et contrôle d'intégrité de l'archive ZIP ;
+- inspection minimale du paquet et calcul SHA-256.
+
+**Limites :** ce premier EPUB n'intègre pas encore de couverture ni d'images. L'inspection interne n'est pas une validation EPUBCheck officielle ni une garantie d'acceptation KDP. Le fichier doit être vérifié avec les outils de préflight appropriés et relu avant commercialisation.
