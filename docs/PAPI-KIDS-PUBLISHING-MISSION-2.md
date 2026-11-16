@@ -121,3 +121,16 @@ Références officielles utilisées :
 - [Paperback Submission Guidelines](https://kdp.amazon.com/en_US/help/topic/G201857950)
 
 **Limites :** le calcul géométrique n'est pas une approbation KDP. Les plages de pages dépendent aussi du format de coupe, de l'encre et du papier ; le calculateur/gabarit KDP doit confirmer les dimensions finales avant dépôt.
+
+
+
+## Mission 11 — Rapport de contrôle éditorial déterministe
+
+Ajout de `runtime/papi_core/quality.py` :
+- blocage explicite si la structure du manuscrit est invalide ;
+- signalement des titres de chapitres répétés et des paragraphes longs identiques ;
+- remontée des avertissements de longueur issus du validateur ;
+- métriques reproductibles et empreinte SHA-256 du manuscrit ;
+- limites et contrôles encore nécessaires affichés dans le rapport.
+
+**Règle de gouvernance :** un manuscrit structurellement valide reçoit le statut `requires_human_review`, jamais `approved`. Ces contrôles ne détectent pas de manière fiable le plagiat, la qualité littéraire, les biais, la sécurité psychologique ou l'exactitude pédagogique. La revue humaine indépendante reste obligatoire.
