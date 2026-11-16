@@ -1,0 +1,262 @@
+{
+  "schema_version": "1.0.0",
+  "providers": [
+    {
+      "id": "llm.gemini",
+      "name": "Google Gemini API",
+      "category": "llm",
+      "capabilities": [
+        "text.generate",
+        "text.analyze"
+      ],
+      "status": "proposed",
+      "enabled": false,
+      "external": true,
+      "pricing": {
+        "model": "unknown",
+        "currency": null,
+        "free_quota": null,
+        "trial_days": null,
+        "notes": "Tarifs, quotas, accès depuis le Sénégal et conditions commerciales à vérifier avant activation."
+      },
+      "quota": {
+        "requests_per_minute": null,
+        "requests_per_day": null,
+        "monthly_limit": null,
+        "max_cost_xof": 0
+      },
+      "required_permissions": [
+        "llm.generate",
+        "network.api"
+      ],
+      "credentials_env": [
+        "GOOGLE_API_KEY"
+      ],
+      "data_classes": [
+        "internal",
+        "confidential",
+        "personal"
+      ],
+      "region_scope": "À vérifier pour le Sénégal",
+      "docs_url": "https://ai.google.dev/gemini-api/docs",
+      "pricing_url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "last_verified_at": null,
+      "owner_approval_required": true
+    },
+    {
+      "id": "llm.local",
+      "name": "Ollama / llama.cpp (runtime local)",
+      "category": "local_runtime",
+      "capabilities": [
+        "text.generate",
+        "text.analyze"
+      ],
+      "status": "proposed",
+      "enabled": false,
+      "external": false,
+      "pricing": {
+        "model": "unknown",
+        "currency": null,
+        "free_quota": null,
+        "trial_days": null,
+        "notes": "Logiciels open source candidats ; matériel, énergie et hébergement à évaluer. Non installés."
+      },
+      "quota": {
+        "requests_per_minute": null,
+        "requests_per_day": null,
+        "monthly_limit": null,
+        "max_cost_xof": 0
+      },
+      "required_permissions": [
+        "llm.generate",
+        "runtime.local"
+      ],
+      "credentials_env": [],
+      "data_classes": [
+        "internal",
+        "confidential",
+        "personal"
+      ],
+      "region_scope": "Machine locale ou serveur à choisir",
+      "docs_url": "https://github.com/ollama/ollama",
+      "pricing_url": "https://github.com/ollama/ollama",
+      "last_verified_at": null,
+      "owner_approval_required": true
+    },
+    {
+      "id": "automation.n8n",
+      "name": "n8n",
+      "category": "automation",
+      "capabilities": [
+        "workflow.execute",
+        "workflow.manage"
+      ],
+      "status": "proposed",
+      "enabled": false,
+      "external": true,
+      "pricing": {
+        "model": "unknown",
+        "currency": null,
+        "free_quota": null,
+        "trial_days": null,
+        "notes": "Projet open source auto-hébergeable ; infrastructure, exploitation, licence et hébergement à vérifier."
+      },
+      "quota": {
+        "requests_per_minute": null,
+        "requests_per_day": null,
+        "monthly_limit": null,
+        "max_cost_xof": 0
+      },
+      "required_permissions": [
+        "workflow.execute",
+        "network.api"
+      ],
+      "credentials_env": [
+        "N8N_BASE_URL",
+        "N8N_API_KEY"
+      ],
+      "data_classes": [
+        "internal",
+        "confidential",
+        "personal"
+      ],
+      "region_scope": "Dépend de l'hébergement choisi",
+      "docs_url": "https://docs.n8n.io/",
+      "pricing_url": "https://n8n.io/pricing/",
+      "last_verified_at": null,
+      "owner_approval_required": true
+    },
+    {
+      "id": "observability.langfuse",
+      "name": "Langfuse",
+      "category": "observability",
+      "capabilities": [
+        "llm.trace",
+        "usage.observe"
+      ],
+      "status": "proposed",
+      "enabled": false,
+      "external": true,
+      "pricing": {
+        "model": "unknown",
+        "currency": null,
+        "free_quota": null,
+        "trial_days": null,
+        "notes": "Cloud ou auto-hébergement à comparer ; classer les prompts et traces avant usage."
+      },
+      "quota": {
+        "requests_per_minute": null,
+        "requests_per_day": null,
+        "monthly_limit": null,
+        "max_cost_xof": 0
+      },
+      "required_permissions": [
+        "observability.write"
+      ],
+      "credentials_env": [
+        "LANGFUSE_PUBLIC_KEY",
+        "LANGFUSE_SECRET_KEY",
+        "LANGFUSE_HOST"
+      ],
+      "data_classes": [
+        "internal",
+        "confidential",
+        "personal"
+      ],
+      "region_scope": "Dépend du mode de déploiement",
+      "docs_url": "https://langfuse.com/docs",
+      "pricing_url": "https://langfuse.com/pricing",
+      "last_verified_at": null,
+      "owner_approval_required": true
+    },
+    {
+      "id": "storage.supabase",
+      "name": "Supabase",
+      "category": "storage",
+      "capabilities": [
+        "database.read",
+        "database.write",
+        "storage.read",
+        "storage.write"
+      ],
+      "status": "proposed",
+      "enabled": false,
+      "external": true,
+      "pricing": {
+        "model": "unknown",
+        "currency": null,
+        "free_quota": null,
+        "trial_days": null,
+        "notes": "Plan, limites, disponibilité et coûts de dépassement à vérifier avant activation."
+      },
+      "quota": {
+        "requests_per_minute": null,
+        "requests_per_day": null,
+        "monthly_limit": null,
+        "max_cost_xof": 0
+      },
+      "required_permissions": [
+        "storage.read",
+        "storage.write",
+        "network.api"
+      ],
+      "credentials_env": [
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY"
+      ],
+      "data_classes": [
+        "internal",
+        "confidential",
+        "personal",
+        "financial",
+        "credentials"
+      ],
+      "region_scope": "Région du projet à choisir et vérifier",
+      "docs_url": "https://supabase.com/docs",
+      "pricing_url": "https://supabase.com/pricing",
+      "last_verified_at": null,
+      "owner_approval_required": true
+    },
+    {
+      "id": "tools.mcp",
+      "name": "Model Context Protocol Python SDK",
+      "category": "tools",
+      "capabilities": [
+        "tools.discover",
+        "tools.invoke"
+      ],
+      "status": "proposed",
+      "enabled": false,
+      "external": false,
+      "pricing": {
+        "model": "unknown",
+        "currency": null,
+        "free_quota": null,
+        "trial_days": null,
+        "notes": "SDK open source ; chaque serveur tiers doit être audité, autorisé et isolé."
+      },
+      "quota": {
+        "requests_per_minute": null,
+        "requests_per_day": null,
+        "monthly_limit": null,
+        "max_cost_xof": 0
+      },
+      "required_permissions": [
+        "tools.discover",
+        "tools.invoke"
+      ],
+      "credentials_env": [],
+      "data_classes": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "region_scope": "Dépend du serveur MCP connecté",
+      "docs_url": "https://github.com/modelcontextprotocol/python-sdk",
+      "pricing_url": "https://github.com/modelcontextprotocol/python-sdk",
+      "last_verified_at": null,
+      "owner_approval_required": true
+    }
+  ]
+}
