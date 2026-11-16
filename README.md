@@ -59,5 +59,6 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Sécurité et préparation au déploiement](docs/SECURITY-RELEASE.md)
 - [Préparation de l'environnement Supabase](docs/ENVIRONMENT-SETUP.md)
 - [PAPI KIDS PUBLISHING — ONE PROMPT → COMPLETE BOOK](docs/PAPI-KIDS-PUBLISHING-ONE-PROMPT.md)
+- [PAPI KIDS PUBLISHING — Mission 2 : premier moteur ONE PROMPT](docs/PAPI-KIDS-PUBLISHING-MISSION-2.md)
 
 GitHub héberge le code et les documents ; il ne fait pas fonctionner à lui seul des agents en continu. L'orchestration, l'hébergement, les connexions et les tâches planifiées restent à déployer et tester.
