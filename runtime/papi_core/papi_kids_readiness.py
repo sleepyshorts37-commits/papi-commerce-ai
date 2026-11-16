@@ -7,6 +7,9 @@ import stat
 from typing import Any, Callable
 
 
+REQUIRED_TRIGGERS = {"kdp_submission_lifecycle_events_append_only"}
+
+
 REQUIRED_TABLES = {
     "books",
     "editorial_jobs",
@@ -101,6 +104,7 @@ def check_papi_kids_readiness(
 
     database_ok = False
     missing_tables = sorted(REQUIRED_TABLES)
+    missing_triggers = sorted(REQUIRED_TRIGGERS)
     connection = None
     try:
         connection = connection_factory()
@@ -115,6 +119,13 @@ def check_papi_kids_readiness(
         )
         existing = {row[0] for row in cursor.fetchall()}
         missing_tables = sorted(REQUIRED_TABLES - existing)
+        cursor.execute(
+            """select tgname from pg_trigger
+                where tgrelid = to_regclass(%s) and not tgisinternal""",
+            ("papi_kids_private.kdp_submission_lifecycle_events",),
+        )
+        existing_triggers = {row[0] for row in cursor.fetchall()}
+        missing_triggers = sorted(REQUIRED_TRIGGERS - existing_triggers)
     except Exception:
         database_ok = False
     finally:
@@ -125,13 +136,19 @@ def check_papi_kids_readiness(
     checks["database"] = {
         "connected": database_ok,
         "missing_required_tables": missing_tables if database_ok else sorted(REQUIRED_TABLES),
+        "missing_required_triggers": missing_triggers if database_ok else sorted(REQUIRED_TRIGGERS),
     }
     if not database_ok:
         blockers.append("Connexion PostgreSQL/Supabase impossible.")
     elif missing_tables:
         blockers.append("Migrations PAPI KIDS incomplètes.")
+    elif missing_triggers:
+        blockers.append("Le journal de soumission KDP ne possède pas son garde-fou append-only.")
 
-    core_ready = storage_ok and storage_private and not core_missing and database_ok and not missing_tables
+    core_ready = (
+        storage_ok and storage_private and not core_missing and database_ok
+        and not missing_tables and not missing_triggers
+    )
     owner_ready = not workflow_missing
     return {
         "status": "ready_for_owner_configuration" if core_ready and owner_ready else "blocked",
