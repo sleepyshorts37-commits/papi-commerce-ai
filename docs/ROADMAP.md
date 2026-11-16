@@ -50,8 +50,9 @@
 
 ## PAPI KIDS PUBLISHING — priorité ONE PROMPT → COMPLETE BOOK
 - [x] Formaliser l'expérience cible, les rôles spécialisés, la chaîne de production, les livrables et les critères d'acceptation dans `docs/PAPI-KIDS-PUBLISHING-ONE-PROMPT.md`.
-- [ ] Définir et valider les schémas de données du projet livre, tâches, actifs, revues et paquet de livraison.
-- [ ] Implémenter l'orchestrateur de production à partir d'une seule requête, avec dépendances, idempotence et reprises.
+- [x] Définir un premier schéma JSON versionné du projet livre et des tâches, avec validation des dépendances.
+- [x] Implémenter la création locale idempotente d’un projet depuis une seule requête et son plan de 13 tâches ; aucune tâche n’est exécutée.
+- [ ] Étendre les schémas aux actifs, revues et paquet de livraison, puis implémenter les transitions et reprises persistantes.
 - [ ] Intégrer les fournisseurs IA de texte et d'images après vérification des coûts, quotas, droits et secrets.
 - [ ] Implémenter la génération des manuscrits, illustrations, PDF intérieur, couverture et formats numériques adaptés.
 - [ ] Ajouter les contrôles qualité éditoriaux, visuels, techniques et de propriété intellectuelle.
