@@ -7,14 +7,17 @@ declare
     upload_ref text := 'PKP-UP-' || replace(gen_random_uuid()::text, '-', '');
     delete_rule "char";
 begin
-    if not exists (
-        select 1 from pg_trigger
+    if (
+        select count(*) from pg_trigger
          where tgrelid = 'papi_kids_private.kdp_submission_lifecycle_events'::regclass
-           and tgname = 'kdp_submission_lifecycle_events_append_only'
+           and tgname in (
+               'kdp_submission_lifecycle_events_append_only',
+               'kdp_submission_lifecycle_events_no_truncate'
+           )
            and not tgisinternal
            and tgenabled <> 'D'
-    ) then
-        raise exception 'Lifecycle append-only trigger is missing or disabled';
+    ) <> 2 then
+        raise exception 'Lifecycle UPDATE/DELETE/TRUNCATE guards are missing or disabled';
     end if;
 
     select confdeltype into delete_rule
@@ -53,6 +56,13 @@ begin
         delete from papi_kids_private.kdp_submission_lifecycle_events
          where lifecycle_event_id = event_id;
         raise exception 'Lifecycle DELETE unexpectedly succeeded';
+    exception when sqlstate '55000' then
+        null;
+    end;
+
+    begin
+        truncate table papi_kids_private.kdp_submission_lifecycle_events;
+        raise exception 'Lifecycle TRUNCATE unexpectedly succeeded';
     exception when sqlstate '55000' then
         null;
     end;
