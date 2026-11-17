@@ -22,7 +22,11 @@ PYTHONPATH=runtime python -m unittest tests.test_connectors -v
 PYTHONPATH=runtime python -m unittest discover -s tests -v
 PYTHONPATH=runtime python -m papi_core validate
 ```
-Le statut des workflows doit être lu sur le SHA final de cette branche ; aucun succès n'est présumé dans ce document avant retour de GitHub Actions.
+CI vérifiée sur le SHA `03ed4beac8a7b1ace4e7d8986519edbaf79e5f7a` :
+- [PAPI core tests — run #2802](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047467587) : succès ; **241 tests Python réussis** (`Ran 241 tests`, `OK`).
+- [PAPI registry validation — run #862](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047467630) : succès.
+- [PAPI documentation checks — run #831](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047467606) : succès.
+- Le job PostgreSQL jetable du workflow core est terminé avec succès. Aucun projet Supabase distant n'a été utilisé.
 
 ## Limites
 - Aucun adaptateur externe n'est autorisé.
