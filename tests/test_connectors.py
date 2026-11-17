@@ -153,7 +153,38 @@ class ConnectorGatewayTests(unittest.TestCase):
                 )
             self.assertEqual(str(raised.exception), "Échec d'exécution de l'adaptateur.")
             self.assertIsNone(raised.exception.__cause__)
+            self.assertIsNone(raised.exception.__context__)
             self.assertNotIn("private provider diagnostic", str(raised.exception))
+            self.assertEqual(adapter.calls, 1)
+
+    def test_unexpected_validation_errors_are_sanitized_without_retaining_context(self):
+        class CountingAdapter(StaticLocalAdapter):
+            def __init__(self, result):
+                super().__init__(result)
+                self.calls = 0
+
+            def generate(self, request):
+                self.calls += 1
+                return self.result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adapter = CountingAdapter(self._result())
+            gateway = self._local_gateway(tmp, adapter=adapter)
+
+            def broken_validation(*args):
+                raise RuntimeError("private validation diagnostic")
+
+            gateway._validate_result = broken_validation
+            with self.assertRaisesRegex(ConnectorError, "Résultat d'adaptateur invalide") as raised:
+                gateway.generate(
+                    "llm.local",
+                    GenerationRequest("demo-validation-error", "text", "Prompt"),
+                    {"llm.generate", "runtime.local"},
+                )
+            self.assertEqual(str(raised.exception), "Résultat d'adaptateur invalide.")
+            self.assertIsNone(raised.exception.__cause__)
+            self.assertIsNone(raised.exception.__context__)
+            self.assertNotIn("private validation diagnostic", str(raised.exception))
             self.assertEqual(adapter.calls, 1)
 
     def test_adapter_result_digest_is_verified(self):
