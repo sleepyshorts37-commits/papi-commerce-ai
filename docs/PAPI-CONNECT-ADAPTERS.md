@@ -35,3 +35,9 @@ PYTHONPATH=runtime python -m unittest discover -s tests -v
 ```
 
 Les tests sont ajoutés au dépôt. Leur réussite doit être confirmée par GitHub Actions ; aucune exécution locale n'est revendiquée dans ce rapport.
+## Fiabilité de la frontière adaptateur — Mission 185
+- L'enregistrement refuse un adaptateur dont la méthode `generate` n'est pas appelable.
+- Les exceptions inattendues d'un adaptateur sont remplacées par une erreur générique ; les diagnostics bruts d'un SDK ne remontent pas à l'appelant.
+- Les erreurs inattendues pendant la validation d'un résultat sont également normalisées.
+- Aucun retry automatique n'est tenté après un échec : un résultat distant peut être ambigu et doit être réconcilié avant une nouvelle tentative.
+- Les tests couvrent la méthode absente, l'absence de fuite du message interne et l'exécution unique de l'adaptateur.
