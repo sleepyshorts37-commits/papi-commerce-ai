@@ -22,10 +22,10 @@ PYTHONPATH=runtime python -m unittest tests.test_connectors -v
 PYTHONPATH=runtime python -m unittest discover -s tests -v
 PYTHONPATH=runtime python -m papi_core validate
 ```
-CI vérifiée sur le SHA `03ed4beac8a7b1ace4e7d8986519edbaf79e5f7a` :
-- [PAPI core tests — run #2802](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047467587) : succès ; **241 tests Python réussis** (`Ran 241 tests`, `OK`).
-- [PAPI registry validation — run #862](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047467630) : succès.
-- [PAPI documentation checks — run #831](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047467606) : succès.
+CI de confirmation vérifiée sur le SHA `5a79e683bb662f91351d7c684a4693a7cd412a47` :
+- [PAPI core tests — run #2803](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047749582) : succès ; **241 tests Python réussis** (`Ran 241 tests`, `OK`).
+- [PAPI registry validation — run #863](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047749569) : succès.
+- [PAPI documentation checks — run #832](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047749593) : succès.
 - Le job PostgreSQL jetable du workflow core est terminé avec succès. Aucun projet Supabase distant n'a été utilisé.
 
 ## Limites
