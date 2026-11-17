@@ -41,3 +41,9 @@ Les tests sont ajoutés au dépôt. Leur réussite doit être confirmée par Git
 - Les erreurs inattendues pendant la validation d'un résultat sont également normalisées.
 - Aucun retry automatique n'est tenté après un échec : un résultat distant peut être ambigu et doit être réconcilié avant une nouvelle tentative.
 - Les tests couvrent la méthode absente, l'absence de fuite du message interne et l'exécution unique de l'adaptateur.
+
+
+## Confidentialité des exceptions — complément Mission 185
+- Les exceptions inattendues des adaptateurs et de la validation sont normalisées sans retry.
+- L'erreur publique est levée après la sortie du bloc de capture : l'objet `ConnectorError` ne conserve pas le diagnostic fournisseur dans son attribut `__context__`.
+- Les tests vérifient explicitement l'absence de cause et de contexte d'exception interne.
