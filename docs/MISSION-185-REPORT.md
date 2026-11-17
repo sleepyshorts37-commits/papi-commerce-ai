@@ -22,11 +22,13 @@ PYTHONPATH=runtime python -m unittest tests.test_connectors -v
 PYTHONPATH=runtime python -m unittest discover -s tests -v
 PYTHONPATH=runtime python -m papi_core validate
 ```
-CI de confirmation vérifiée sur le SHA `5a79e683bb662f91351d7c684a4693a7cd412a47` :
-- [PAPI core tests — run #2803](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047749582) : succès ; **241 tests Python réussis** (`Ran 241 tests`, `OK`).
-- [PAPI registry validation — run #863](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047749569) : succès.
-- [PAPI documentation checks — run #832](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44047749593) : succès.
+CI de confirmation du correctif d'isolation vérifiée sur le SHA `e6f08b5b839a92879c5555b9361023862752ee81` :
+- [PAPI core tests — run #2808](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44193850629) : succès ; **242 tests Python réussis** (`Ran 242 tests`, `OK`).
+- [PAPI registry validation — run #868](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44193850744) : succès.
+- [PAPI documentation checks — run #837](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44193850633) : succès.
+- Les tests ciblés confirment que les erreurs normalisées ne conservent ni cause ni contexte d'exception interne et qu'aucun retry n'est effectué.
 - Le job PostgreSQL jetable du workflow core est terminé avec succès. Aucun projet Supabase distant n'a été utilisé.
+- Le commit documentaire qui actualise ce rapport ne modifie pas le code testé ci-dessus.
 
 ## Limites
 - Aucun adaptateur externe n'est autorisé.
