@@ -8,10 +8,10 @@ La passerelle vérifiait les métadonnées principales de l'adaptateur, mais n'e
 
 ## Changements
 - Refus à l'enregistrement d'un adaptateur sans méthode `generate` appelable.
-- Normalisation des exceptions d'exécution en message générique sans exposer le diagnostic du fournisseur.
+- Normalisation des exceptions d'exécution en message générique sans exposer ni conserver le diagnostic du fournisseur dans la chaîne de contexte Python.
 - Normalisation des erreurs inattendues de validation des résultats.
 - Aucun retry automatique après échec ; l'appelant doit réconcilier un résultat incertain avant toute nouvelle tentative.
-- Deux tests de régression : méthode manquante et exception interne non divulguée, avec vérification d'un seul appel.
+- Tests de régression : méthode manquante, exception d'exécution et erreur inattendue de validation ; vérification de l'absence de cause/contexte interne et de l'exécution unique.
 - Documentation PAPI CONNECT, roadmap et liens README actualisés.
 - Workflows core, registry et documentation explicitement déclenchés sur la branche de cette mission.
 
