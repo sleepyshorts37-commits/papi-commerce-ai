@@ -47,14 +47,14 @@ class ConnectorGatewayTests(unittest.TestCase):
         )
 
     @staticmethod
-    def _local_gateway(tmp_path, result):
+    def _local_gateway(tmp_path, result=None, adapter=None):
         catalog = json.loads(Path("data/providers.json").read_text(encoding="utf-8"))
         local = next(provider for provider in catalog["providers"] if provider["id"] == "llm.local")
         local.update(status="enabled", enabled=True, last_verified_at="2026-11-16", owner_approval_required=False)
         catalog_path = Path(tmp_path) / "providers.json"
         catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
         gateway = ConnectorGateway(catalog_path)
-        gateway.register_adapter("llm.local", StaticLocalAdapter(result))
+        gateway.register_adapter("llm.local", adapter or StaticLocalAdapter(result))
         return gateway
 
     def test_mock_text_generation_uses_common_gateway(self):
@@ -92,6 +92,17 @@ class ConnectorGatewayTests(unittest.TestCase):
         with self.assertRaises(ConnectorError):
             self.gateway.register_adapter("local.mock", MockGenerationProvider())
 
+    def test_adapter_registration_requires_callable_generate(self):
+        class MissingGenerateAdapter:
+            name = "missing-generate"
+            supported_kinds = frozenset({"text"})
+            is_external = False
+            credentials_env = None
+            generate = None
+
+        with self.assertRaisesRegex(ConnectorError, "Fonction d'exécution"):
+            self.gateway.register_adapter("llm.invalid", MissingGenerateAdapter())
+
     def test_external_or_credential_bearing_adapters_cannot_be_registered(self):
         class ExternalAdapter(StaticLocalAdapter):
             is_external = True
@@ -121,6 +132,60 @@ class ConnectorGatewayTests(unittest.TestCase):
                 request = GenerationRequest("demo-bool", "text", "Prompt", **kwargs)
                 with self.assertRaises(ConnectorError):
                     self.gateway.generate("local.mock", request, self.permissions)
+
+    def test_adapter_runtime_errors_are_sanitized_and_not_retried(self):
+        class RaisingAdapter(StaticLocalAdapter):
+            def __init__(self):
+                self.calls = 0
+
+            def generate(self, request):
+                self.calls += 1
+                raise RuntimeError("private provider diagnostic")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adapter = RaisingAdapter()
+            gateway = self._local_gateway(tmp, adapter=adapter)
+            with self.assertRaisesRegex(ConnectorError, "Échec d'exécution") as raised:
+                gateway.generate(
+                    "llm.local",
+                    GenerationRequest("demo-error", "text", "Prompt"),
+                    {"llm.generate", "runtime.local"},
+                )
+            self.assertEqual(str(raised.exception), "Échec d'exécution de l'adaptateur.")
+            self.assertIsNone(raised.exception.__cause__)
+            self.assertIsNone(raised.exception.__context__)
+            self.assertNotIn("private provider diagnostic", str(raised.exception))
+            self.assertEqual(adapter.calls, 1)
+
+    def test_unexpected_validation_errors_are_sanitized_without_retaining_context(self):
+        class CountingAdapter(StaticLocalAdapter):
+            def __init__(self, result):
+                super().__init__(result)
+                self.calls = 0
+
+            def generate(self, request):
+                self.calls += 1
+                return self.result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adapter = CountingAdapter(self._result())
+            gateway = self._local_gateway(tmp, adapter=adapter)
+
+            def broken_validation(*args):
+                raise RuntimeError("private validation diagnostic")
+
+            gateway._validate_result = broken_validation
+            with self.assertRaisesRegex(ConnectorError, "Résultat d'adaptateur invalide") as raised:
+                gateway.generate(
+                    "llm.local",
+                    GenerationRequest("demo-validation-error", "text", "Prompt"),
+                    {"llm.generate", "runtime.local"},
+                )
+            self.assertEqual(str(raised.exception), "Résultat d'adaptateur invalide.")
+            self.assertIsNone(raised.exception.__cause__)
+            self.assertIsNone(raised.exception.__context__)
+            self.assertNotIn("private validation diagnostic", str(raised.exception))
+            self.assertEqual(adapter.calls, 1)
 
     def test_adapter_result_digest_is_verified(self):
         bad_result = self._result(digest="0" * 64)

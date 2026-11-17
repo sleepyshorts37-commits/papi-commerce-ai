@@ -57,6 +57,8 @@ class ConnectorGateway:
             raise ConnectorError("Les adaptateurs externes ne sont pas enregistrables dans cette mission.")
         if credentials_env is not None:
             raise ConnectorError("Un adaptateur local ne doit déclarer aucun credential.")
+        if not callable(getattr(adapter, "generate", None)):
+            raise ConnectorError("Fonction d'exécution d'adaptateur absente ou invalide.")
         self._adapters[provider_id] = adapter
 
     @staticmethod
@@ -127,8 +129,26 @@ class ConnectorGateway:
             max_cost_xof = provider["quota"]["max_cost_xof"]
             if request.estimated_cost_xof > max_cost_xof:
                 raise ConnectorError("Plafond fournisseur dépassé : opération bloquée.")
-            result = adapter.generate(request)
-            self._validate_result(provider_id, adapter, request, result, max_cost_xof)
+            adapter_failed = False
+            try:
+                result = adapter.generate(request)
+            except Exception:
+                # Ne pas conserver l'exception fournisseur dans __context__.
+                # Aucun retry automatique : l'appelant doit réconcilier un résultat incertain.
+                adapter_failed = True
+            if adapter_failed:
+                raise ConnectorError("Échec d'exécution de l'adaptateur.")
+
+            validation_failed = False
+            try:
+                self._validate_result(provider_id, adapter, request, result, max_cost_xof)
+            except ConnectorError:
+                raise
+            except Exception:
+                # Lever après le bloc except évite de conserver le diagnostic interne.
+                validation_failed = True
+            if validation_failed:
+                raise ConnectorError("Résultat d'adaptateur invalide.")
             return result
         except ConnectorError:
             raise

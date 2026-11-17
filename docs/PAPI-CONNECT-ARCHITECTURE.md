@@ -85,9 +85,10 @@ Aucune clé API ni URL privée ne doit figurer dans ce registre.
 1. Mission 182 : architecture, règles, inventaire des projets et contrats (ce document).
 2. Mission 183 : créer le schéma validé du registre des fournisseurs, capacités, quotas, permissions et statuts.
 3. Mission 184 : implémenter les interfaces d'adaptateurs et un fournisseur simulé ; tests sans réseau.
-4. Mission 185 : intégrer un seul fournisseur IA réel après sélection et autorisation explicite ; test manuel non sensible.
-5. Mission 186 : attribuer des outils à deux agents pilotes avec permissions minimales.
-6. Missions suivantes : observabilité, limites de consommation, bascule de secours, automatisation et autres fournisseurs.
+4. Mission 185 : fiabiliser la frontière des adaptateurs, normaliser les erreurs, refuser les retries automatiques ambigus et ajouter des tests de conformité sans réseau.
+5. Mission 186 : intégrer un seul fournisseur IA réel uniquement après sélection, vérification des conditions et autorisation explicite du propriétaire ; test manuel non sensible.
+6. Mission 187 : attribuer des outils à deux agents pilotes avec permissions minimales, après revue de sécurité et autorisation.
+7. Missions suivantes : observabilité, limites de consommation, bascule de secours, automatisation et autres fournisseurs.
 
 ## Critères d'acceptation de la mission
 - Architecture documentée sans prétendre qu'un service est connecté.
