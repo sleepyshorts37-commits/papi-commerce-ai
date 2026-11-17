@@ -69,7 +69,8 @@ Fondations de code et documentation présentes. Le worker vérifie les identité
 - [x] Mission 182 : architecture, règles de gouvernance et inventaire initial des projets open source dans `docs/PAPI-CONNECT-ARCHITECTURE.md`.
 - [x] Mission 183 : schéma JSON, catalogue fournisseurs, validation locale, permissions et tests sans réseau dans `docs/PAPI-CONNECT-PROVIDER-REGISTRY.md`.
 - [x] Mission 184 : passerelle catalogue/adaptateurs, fournisseur mock local, permissions et tests sans réseau dans `docs/PAPI-CONNECT-ADAPTERS.md`.
-- [ ] Mission 185 : premier fournisseur IA réel après choix et autorisation explicites, test non sensible.
-- [ ] Mission 186 : attribution des outils à deux agents pilotes avec permissions minimales.
+- [x] Mission 185 : fiabilisation de la frontière adaptateur, normalisation des exceptions, refus des retries automatiques ambigus et tests sans réseau dans `docs/PAPI-CONNECT-ADAPTERS.md`.
+- [ ] Mission 186 : premier fournisseur IA réel uniquement après sélection, vérification des conditions, coûts/quota/Sénégal et autorisation explicite du propriétaire.
+- [ ] Mission 187 : attribution des outils à deux agents pilotes avec permissions minimales et revue de sécurité.
 - [ ] Missions suivantes : observabilité, plafonds, fallback, automatisation et extension des fournisseurs.
 
