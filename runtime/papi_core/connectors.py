@@ -129,18 +129,26 @@ class ConnectorGateway:
             max_cost_xof = provider["quota"]["max_cost_xof"]
             if request.estimated_cost_xof > max_cost_xof:
                 raise ConnectorError("Plafond fournisseur dépassé : opération bloquée.")
+            adapter_failed = False
             try:
                 result = adapter.generate(request)
             except Exception:
-                # Ne pas exposer les diagnostics bruts d'un fournisseur ou d'un SDK.
+                # Ne pas conserver l'exception fournisseur dans __context__.
                 # Aucun retry automatique : l'appelant doit réconcilier un résultat incertain.
-                raise ConnectorError("Échec d'exécution de l'adaptateur.") from None
+                adapter_failed = True
+            if adapter_failed:
+                raise ConnectorError("Échec d'exécution de l'adaptateur.")
+
+            validation_failed = False
             try:
                 self._validate_result(provider_id, adapter, request, result, max_cost_xof)
             except ConnectorError:
                 raise
             except Exception:
-                raise ConnectorError("Résultat d'adaptateur invalide.") from None
+                # Lever après le bloc except évite de conserver le diagnostic interne.
+                validation_failed = True
+            if validation_failed:
+                raise ConnectorError("Résultat d'adaptateur invalide.")
             return result
         except ConnectorError:
             raise
