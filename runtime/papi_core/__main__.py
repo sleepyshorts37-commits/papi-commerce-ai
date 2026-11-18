@@ -2,6 +2,7 @@
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from .registry import RegistryError, route_department, validate_registries
 from .orchestrator import build_dispatch_plan
@@ -13,6 +14,7 @@ from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
 from .publishing import BookProjectError, BookProjectStore, create_book_project, get_project_summary, transition_task
+from .connect_observability import ConnectorTelemetryError, build_connector_usage_report
 
 
 def main() -> int:
@@ -33,6 +35,8 @@ def main() -> int:
     sub.add_parser("finance-validate", help="Valider le registre financier local")
     sub.add_parser("finance-report", help="Afficher le rapport financier local en lecture seule")
     sub.add_parser("security-check", help="Vérifier la posture de sécurité locale en lecture seule")
+    connect_report = sub.add_parser("connect-report", help="Afficher les métriques PAPI CONNECT locales en lecture seule")
+    connect_report.add_argument("--ledger-path", default="data/telemetry/connectors.jsonl")
     book_create = sub.add_parser("book-create", help="Créer un projet PAPI KIDS depuis une demande, sans exécution IA")
     book_create.add_argument("prompt", help="Description du livre souhaité")
     book_create.add_argument("--store-dir", default="data/book_projects")
@@ -95,6 +99,9 @@ def main() -> int:
         if args.command == "security-check":
             print(json.dumps(check_security(), ensure_ascii=False, indent=2))
             return 0
+        if args.command == "connect-report":
+            print(json.dumps(build_connector_usage_report(Path(args.ledger_path)), ensure_ascii=False, indent=2))
+            return 0
         if args.command == "validate":
             errors = validate_registries()
             if errors:
@@ -107,7 +114,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, BookProjectError, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, BookProjectError, ConnectorTelemetryError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
