@@ -2,7 +2,7 @@ name: PAPI registry validation
 
 on:
   push:
-    branches: [main, mission-183-provider-registry, mission-185-connector-error-isolation]
+    branches: [main, mission-183-provider-registry, mission-185-connector-error-isolation, mission-186-connect-observability]
   pull_request:
     branches: [main]
   workflow_dispatch:

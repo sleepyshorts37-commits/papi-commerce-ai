@@ -24,7 +24,7 @@ Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architect
 
 ## Commandes locales
 Depuis la racine du dépôt :
-- `PYTHONPATH=runtime python -m papi_core validate` — valider les registres.
+- `PYTHONPATH=runtime python -m papi_core validate` — valider les registres agents et tâches.
 - `PYTHONPATH=runtime python -m papi_core doctor` — vérifier la présence des variables Supabase sans afficher leurs valeurs ni effectuer de connexion réseau.
 - `PYTHONPATH=runtime python -m papi_core dashboard` — afficher le tableau de bord en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core schedule-preview` — calculer les échéances récurrentes à examiner, sans exécuter de tâche.
@@ -33,10 +33,11 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core finance-validate` — valider le registre financier local.
 - `PYTHONPATH=runtime python -m papi_core finance-report` — afficher les recettes vérifiées et dépenses payées, en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core security-check` — contrôler les garde-fous locaux sans réseau ni affichage de secrets.
+- `PYTHONPATH=runtime python -m papi_core connect-report` — afficher les appels PAPI CONNECT agrégés depuis le journal local, sans le créer ni effectuer de connexion.
 - `PYTHONPATH=runtime python -m papi_core book-create "Crée un album illustré pour enfants de 6 à 9 ans sur une tortue courageuse"` — créer un dossier de production PAPI KIDS local, sans génération IA ni action externe.
 - `PYTHONPATH=runtime python -m papi_core book-show PKP-<identifiant>` — consulter le plan d’un projet créé.
 
-Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
+Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail. PAPI CONNECT n'enregistre des appels que si un objet de télémétrie local est explicitement injecté ; aucun fournisseur réel n'est connecté.
 
 ## Documents
 - [Organisation](docs/ORGANISATION.md)
@@ -60,6 +61,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [PAPI CONNECT — architecture](docs/PAPI-CONNECT-ARCHITECTURE.md)
 - [PAPI CONNECT — registre fournisseurs](docs/PAPI-CONNECT-PROVIDER-REGISTRY.md)
 - [PAPI CONNECT — adaptateurs et simulation](docs/PAPI-CONNECT-ADAPTERS.md)
+- [PAPI CONNECT — observabilité locale](docs/PAPI-CONNECT-OBSERVABILITY.md)
 - [Préparation de l'environnement Supabase](docs/ENVIRONMENT-SETUP.md)
 - [PAPI KIDS PUBLISHING — ONE PROMPT → COMPLETE BOOK](docs/PAPI-KIDS-PUBLISHING-ONE-PROMPT.md)
 - [PAPI KIDS PUBLISHING — Mission 2 : premier moteur ONE PROMPT](docs/PAPI-KIDS-PUBLISHING-MISSION-2.md)

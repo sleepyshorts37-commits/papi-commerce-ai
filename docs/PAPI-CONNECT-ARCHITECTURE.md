@@ -7,7 +7,7 @@ Construire une couche commune d'intégrations pour PAPI COMMERCE AI en réutilis
 - Le dépôt possède déjà un noyau Python, un worker désactivé par défaut, des permissions, un audit et des adaptateurs de stockage local/Supabase.
 - `requirements.txt` contient actuellement `cryptography` et `reportlab` ; aucune dépendance d'agent ou de fournisseur LLM n'est déclarée ici.
 - Le README et la documentation indiquent qu'aucun fournisseur IA réel, environnement Supabase distant ou worker permanent n'est actuellement connecté.
-- Les PR #353 et #354 sont ouvertes ; #354 dépend de #353. Cette mission est donc développée sur une branche distincte et ne fusionne ni ne modifie ces PR.
+- Les PR #355 à #358 constituent une chaîne de travail ouverte et non fusionnée sur PAPI CONNECT.
 
 ## Principes obligatoires
 1. Budget par défaut : 0 FCFA. Aucun essai payant, abonnement, crédit API, hébergement payant ou dépassement de quota sans accord explicite du propriétaire.
@@ -82,18 +82,20 @@ Statut initial de chaque entrée : `proposed` (non activée).
 Aucune clé API ni URL privée ne doit figurer dans ce registre.
 
 ## Plan d'implémentation progressif
-1. Mission 182 : architecture, règles, inventaire des projets et contrats (ce document).
-2. Mission 183 : créer le schéma validé du registre des fournisseurs, capacités, quotas, permissions et statuts.
-3. Mission 184 : implémenter les interfaces d'adaptateurs et un fournisseur simulé ; tests sans réseau.
-4. Mission 185 : fiabiliser la frontière des adaptateurs, normaliser les erreurs, refuser les retries automatiques ambigus et ajouter des tests de conformité sans réseau.
-5. Mission 186 : intégrer un seul fournisseur IA réel uniquement après sélection, vérification des conditions et autorisation explicite du propriétaire ; test manuel non sensible.
-6. Mission 187 : attribuer des outils à deux agents pilotes avec permissions minimales, après revue de sécurité et autorisation.
-7. Missions suivantes : observabilité, limites de consommation, bascule de secours, automatisation et autres fournisseurs.
 
-## Critères d'acceptation de la mission
+1. Mission 182 : architecture, règles, inventaire des projets et contrats.
+2. Mission 183 : schéma validé du registre des fournisseurs, capacités, quotas, permissions et statuts.
+3. Mission 184 : interfaces d'adaptateurs et fournisseur simulé ; tests sans réseau.
+4. Mission 185 : fiabilisation de la frontière adaptateur, erreurs normalisées et refus des retries automatiques ambigus.
+5. Mission 186 : observabilité locale, agrégats d'utilisation et coûts indicatifs, sans fournisseur réel.
+6. Mission 187 : attribution des outils à deux agents pilotes avec permissions minimales, après revue de sécurité et autorisation explicite.
+7. Mission 188 : premier fournisseur réel uniquement après sélection, vérification des conditions, coûts, quotas, disponibilité au Sénégal, confidentialité et autorisation explicite du propriétaire.
+8. Missions suivantes : observabilité partagée, limites de consommation, fallback et extension des fournisseurs.
+
+## Critères d'acceptation
 - Architecture documentée sans prétendre qu'un service est connecté.
 - Dépendances externes identifiées avec leurs responsabilités et risques.
 - Aucune nouvelle dépendance runtime installée sans usage concret et validation de licence/maintenance.
 - Aucun secret ajouté au dépôt.
 - Aucun compte créé, aucun service distant appelé, aucune dépense, aucun agent activé.
-- Les missions suivantes distinguent clairement simulation, test d'intégration et production.
+- Les missions distinguent clairement simulation, test d'intégration et production.

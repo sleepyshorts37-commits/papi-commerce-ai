@@ -27,23 +27,31 @@ Le dépôt disposait déjà de `papi_core.providers` et de `MockGenerationProvid
 - La simulation renvoie un contenu explicitement marqué comme simulation ; ce n'est pas une vraie image ni un texte final.
 - Aucun secret, compte, service distant, abonnement ou déploiement n'est ajouté.
 
-## Vérification
-Commande prévue :
-```sh
-PYTHONPATH=runtime python -m unittest tests.test_connectors -v
-PYTHONPATH=runtime python -m unittest discover -s tests -v
-```
-
-Les tests sont ajoutés au dépôt. Leur réussite doit être confirmée par GitHub Actions ; aucune exécution locale n'est revendiquée dans ce rapport.
 ## Fiabilité de la frontière adaptateur — Mission 185
 - L'enregistrement refuse un adaptateur dont la méthode `generate` n'est pas appelable.
 - Les exceptions inattendues d'un adaptateur sont remplacées par une erreur générique ; les diagnostics bruts d'un SDK ne remontent pas à l'appelant.
 - Les erreurs inattendues pendant la validation d'un résultat sont également normalisées.
 - Aucun retry automatique n'est tenté après un échec : un résultat distant peut être ambigu et doit être réconcilié avant une nouvelle tentative.
-- Les tests couvrent la méthode absente, l'absence de fuite du message interne et l'exécution unique de l'adaptateur.
-
-
-## Confidentialité des exceptions — complément Mission 185
-- Les exceptions inattendues des adaptateurs et de la validation sont normalisées sans retry.
-- L'erreur publique est levée après la sortie du bloc de capture : l'objet `ConnectorError` ne conserve pas le diagnostic fournisseur dans son attribut `__context__`.
 - Les tests vérifient explicitement l'absence de cause et de contexte d'exception interne.
+
+## Observabilité locale — Mission 186
+- Une instance de `ConnectorTelemetry` peut être injectée dans `ConnectorGateway` ; sans injection, le comportement historique reste inchangé.
+- Les événements de début, fin et échec enregistrent uniquement des métadonnées minimales : fournisseur, type, estimation, durée, coût déclaré, simulation ou code d'erreur.
+- Aucun prompt, sortie, empreinte de contenu, identifiant de projet, donnée client ou credential n'est écrit.
+- Le rapport agrégé vérifie les correspondances début/fin, détecte les événements orphelins/dupliqués et signale les opérations incomplètes.
+- Le journal local est limité à 5 MiB et conçu pour un écrivain unique.
+- Si le début ne peut pas être journalisé, l'adaptateur n'est pas appelé. Si la fin ne peut pas être journalisée, le résultat n'est pas remis et une réconciliation est requise avant tout nouvel essai.
+- Les coûts sont indicatifs et ne remplacent ni facture ni registre financier.
+
+Commande :
+```sh
+PYTHONPATH=runtime python -m papi_core connect-report
+```
+
+## Vérification
+```sh
+PYTHONPATH=runtime python -m unittest tests.test_connectors -v
+PYTHONPATH=runtime python -m unittest tests.test_connect_observability -v
+PYTHONPATH=runtime python -m unittest discover -s tests -v
+```
+Les tests doivent être confirmés par GitHub Actions sur le SHA final. Aucun fournisseur réel n'est connecté.

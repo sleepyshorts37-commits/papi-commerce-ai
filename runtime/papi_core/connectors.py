@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import hashlib
+from time import monotonic_ns
 from typing import Protocol
+from uuid import uuid4
 
+from papi_core.connect_observability import ConnectorTelemetry
 from papi_core.provider_registry import (
     DEFAULT_CATALOG, ProviderRegistryError, authorize_provider, load_provider_catalog,
 )
@@ -27,15 +30,16 @@ class ConnectorAdapter(Protocol):
 
 
 class ConnectorGateway:
-    """Relie le catalogue de fournisseurs au registre d’adaptateurs.
+    """Relie le catalogue de fournisseurs au registre d'adaptateurs.
 
     La passerelle n'effectue elle-même aucun appel réseau. Seuls des adaptateurs
     locaux de confiance peuvent être enregistrés dans cette version ; tout
     adaptateur externe ou porteur de credentials reste refusé.
     """
 
-    def __init__(self, catalog_path=DEFAULT_CATALOG):
+    def __init__(self, catalog_path=DEFAULT_CATALOG, telemetry: ConnectorTelemetry | None = None):
         self.catalog_path = catalog_path
+        self.telemetry = telemetry
         self._adapters: dict[str, ConnectorAdapter] = {
             "local.mock": MockGenerationProvider(),
         }
@@ -97,6 +101,15 @@ class ConnectorGateway:
         ):
             raise ConnectorError("Le connecteur mock doit rester explicitement simulé.")
 
+    def _record_telemetry(self, action: str, provider_id: str, details: dict) -> bool:
+        if self.telemetry is None:
+            return True
+        try:
+            self.telemetry.record(action, provider_id, details)
+        except Exception:
+            return False
+        return True
+
     def generate(
         self,
         provider_id: str,
@@ -129,26 +142,92 @@ class ConnectorGateway:
             max_cost_xof = provider["quota"]["max_cost_xof"]
             if request.estimated_cost_xof > max_cost_xof:
                 raise ConnectorError("Plafond fournisseur dépassé : opération bloquée.")
+
+            operation_id = uuid4().hex if self.telemetry is not None else None
+            started_ns = monotonic_ns() if self.telemetry is not None else None
+            if operation_id is not None and not self._record_telemetry(
+                "connector.call.started",
+                provider_id,
+                {
+                    "operation_id": operation_id,
+                    "kind": request.kind,
+                    "estimated_cost_xof": request.estimated_cost_xof,
+                },
+            ):
+                raise ConnectorError("Journal d'observabilité indisponible ; appel bloqué.")
+
             adapter_failed = False
             try:
                 result = adapter.generate(request)
             except Exception:
                 # Ne pas conserver l'exception fournisseur dans __context__.
-                # Aucun retry automatique : l'appelant doit réconcilier un résultat incertain.
+                # Aucun retry automatique : un résultat incertain doit être réconcilié.
                 adapter_failed = True
+            duration_ms = max(0, (monotonic_ns() - started_ns) // 1_000_000) if started_ns is not None else 0
+
             if adapter_failed:
+                telemetry_ok = operation_id is None or self._record_telemetry(
+                    "connector.call.failed",
+                    provider_id,
+                    {
+                        "operation_id": operation_id,
+                        "kind": request.kind,
+                        "estimated_cost_xof": request.estimated_cost_xof,
+                        "duration_ms": duration_ms,
+                        "error_code": "adapter_error",
+                    },
+                )
+                if not telemetry_ok:
+                    raise ConnectorError(
+                        "Échec d'exécution ; journal indisponible, issue à réconcilier avant nouvel essai."
+                    )
                 raise ConnectorError("Échec d'exécution de l'adaptateur.")
 
-            validation_failed = False
+            validation_message = None
+            unexpected_validation_error = False
             try:
                 self._validate_result(provider_id, adapter, request, result, max_cost_xof)
-            except ConnectorError:
-                raise
+            except ConnectorError as exc:
+                validation_message = str(exc)
             except Exception:
-                # Lever après le bloc except évite de conserver le diagnostic interne.
-                validation_failed = True
-            if validation_failed:
+                # Le diagnostic interne d'un résultat malformé ne doit pas fuiter.
+                unexpected_validation_error = True
+
+            if validation_message is not None or unexpected_validation_error:
+                telemetry_ok = operation_id is None or self._record_telemetry(
+                    "connector.call.failed",
+                    provider_id,
+                    {
+                        "operation_id": operation_id,
+                        "kind": request.kind,
+                        "estimated_cost_xof": request.estimated_cost_xof,
+                        "duration_ms": duration_ms,
+                        "error_code": "invalid_result",
+                    },
+                )
+                if not telemetry_ok:
+                    raise ConnectorError(
+                        "Résultat invalide ; journal indisponible, issue à réconcilier avant nouvel essai."
+                    )
+                if validation_message is not None:
+                    raise ConnectorError(validation_message)
                 raise ConnectorError("Résultat d'adaptateur invalide.")
+
+            if operation_id is not None and not self._record_telemetry(
+                "connector.call.completed",
+                provider_id,
+                {
+                    "operation_id": operation_id,
+                    "kind": request.kind,
+                    "estimated_cost_xof": request.estimated_cost_xof,
+                    "reported_cost_xof": result.estimated_cost_xof,
+                    "duration_ms": duration_ms,
+                    "simulated": result.simulated,
+                },
+            ):
+                raise ConnectorError(
+                    "Appel terminé mais journal indisponible ; résultat non remis, réconciliation requise."
+                )
             return result
         except ConnectorError:
             raise
