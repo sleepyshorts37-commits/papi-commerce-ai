@@ -122,12 +122,17 @@ def _journal_lock(path: Path) -> Iterator[None]:
     """Verrou inter-processus POSIX couvrant lecture, déduplication et ajout."""
     lock_path = path.with_name(path.name + ".lock")
     descriptor = _open_regular_file(lock_path, os.O_CREAT | os.O_RDWR)
+    locked = False
     try:
         fcntl.flock(descriptor, fcntl.LOCK_EX)
+        locked = True
         yield
     finally:
-        fcntl.flock(descriptor, fcntl.LOCK_UN)
-        os.close(descriptor)
+        try:
+            if locked:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
 
 
 def new_event(*, event_id: str, actor: str, action: str, entity_type: str,
