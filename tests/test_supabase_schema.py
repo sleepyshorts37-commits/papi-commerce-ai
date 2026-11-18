@@ -27,6 +27,20 @@ class SupabaseSchemaTests(unittest.TestCase):
         self.assertEqual(body.count("raise exception 'Invalid error code'"), 1)
         self.assertNotIn("\\n        raise exception", body)
 
+    def test_lease_renewal_rejects_null_and_blank_inputs(self):
+        match = re.search(
+            r"create or replace function public\.papi_renew_job_lease\(.*?\n\$lease\$;",
+            self.sql,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        self.assertIsNotNone(match, "papi_renew_job_lease definition must exist")
+        body = match.group(0)
+        self.assertIn("length(trim(p_job_id)) = 0", body)
+        self.assertIn("length(trim(p_worker_id)) = 0", body)
+        self.assertIn("p_lease_seconds is null", body)
+        self.assertIn("p_lease_seconds < 15", body)
+        self.assertIn("p_lease_seconds > 900", body)
+
     def test_security_rpc_is_defined_once_and_service_role_only(self):
         self.assertEqual(self.sql.count("create or replace function public.papi_consume_agent_nonce("), 1)
         self.assertIn(
