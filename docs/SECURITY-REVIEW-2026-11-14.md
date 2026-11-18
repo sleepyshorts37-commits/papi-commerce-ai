@@ -74,20 +74,25 @@ Le worker accepte le chemin Ed25519 versionné et le chemin HMAC historique. Le 
 
 Les PR #85, #94, #95, #96, #97, #98, #99, #100, #101 et #102 sont ouvertes et en brouillon. Les trois workflows core, registre et documentation ont une conclusion `success` sur les SHA de tête observés. Aucune revue indépendante n'est enregistrée ; la PR #95 contient un commentaire de coordination sur l'ordre d'autorisation.
 
-| PR | SHA de tête | Base | Mergeable |
-|---|---|---|---|
-| #85 | `f39fe15040448858d72d81ed4bab676f6b3b294a` | `main` | true |
-| #94 | `f4e07d7b9d14f20cfe454249112663187257d232` | `main` | true |
-| #95 | `ce55f1611338facde9fd74943a84c550d89933f0` | `main` | true |
-| #96 | `7bbeab5650397beda42d3fadac391b8628988e31` | `hardening/audit-hash-chain` | true |
-| #97 | `0b7da99997f4179c5ccf7556b96969ce6d60c0aa` | `main` | true |
-| #98 | `e9b7b97bf8a09b96d893b04880fd9ebcf4591e15` | `integration/security-approval-audit-2026-11-13` | true |
-| #99 | `de6f6884871790c93ca42612c6cd8a69e1c3631a` | `security/worker-authz-attribution-2026-11-14` | true |
-| #100 | `54d8bc8f1858af69baa8792c192ee82b68addb02` | `main` | true |
-| #101 | `3e80fa406c3c44e8c53b758fd8f8e4c12ecbb569` | `main` | true |
-| #102 | `98d506a278d6617ffc42917c0d82382b67376af5` | `feat/durable-job-attempt-ids-2026-11-17` | false |
+| PR | SHA de tête | Base | SHA de base actuel | Mergeable |
+|---|---|---|---|---|
+| #85 | `f39fe15040448858d72d81ed4bab676f6b3b294a` | `main` | `4b775c82e61dd5c9519a4ec92b3d974b5172796a` | true |
+| #94 | `f4e07d7b9d14f20cfe454249112663187257d232` | `main` | `4b775c82e61dd5c9519a4ec92b3d974b5172796a` | true |
+| #95 | `ce55f1611338facde9fd74943a84c550d89933f0` | `main` | `4b775c82e61dd5c9519a4ec92b3d974b5172796a` | true |
+| #96 | `7bbeab5650397beda42d3fadac391b8628988e31` | `hardening/audit-hash-chain` | `f39fe15040448858d72d81ed4bab676f6b3b294a` | true |
+| #97 | `0b7da99997f4179c5ccf7556b96969ce6d60c0aa` | `main` | `4b775c82e61dd5c9519a4ec92b3d974b5172796a` | true |
+| #98 | `e9b7b97bf8a09b96d893b04880fd9ebcf4591e15` | `integration/security-approval-audit-2026-11-13` | `0b7da99997f4179c5ccf7556b96969ce6d60c0aa` | true |
+| #99 | `de6f6884871790c93ca42612c6cd8a69e1c3631a` | `security/worker-authz-attribution-2026-11-14` | `e9b7b97bf8a09b96d893b04880fd9ebcf4591e15` | true |
+| #100 | `54d8bc8f1858af69baa8792c192ee82b68addb02` | `main` | `4b775c82e61dd5c9519a4ec92b3d974b5172796a` | true |
+| #101 | `3e80fa406c3c44e8c53b758fd8f8e4c12ecbb569` | `main` | `4b775c82e61dd5c9519a4ec92b3d974b5172796a` | true |
+| #102 | `98d506a278d6617ffc42917c0d82382b67376af5` | `feat/durable-job-attempt-ids-2026-11-17` | `3e80fa406c3c44e8c53b758fd8f8e4c12ecbb569` | false |
+| #362 | `bdda0b3adb92825eaebd467dd5d8674a1ef79835` | `feat/durable-job-attempt-ids-2026-11-17` | `3e80fa406c3c44e8c53b758fd8f8e4c12ecbb569` | true |
 
 Sur #101, le core a exécuté 215 tests et les étapes PostgreSQL 16 jetables — schéma, fixtures legacy, migration, UUID distincts, expiration, reprise, statuts, épuisement et rollback — ont toutes réussi.
+
+
+
+Comparaison exacte des branches empilées : #96 est en avance de 10 commits et en retard de 4 (merge-base `f31035d8c6402b08f6a4ddd5e2b0787bfb2a1754`) ; #98 est en avance de 8 et en retard de 3 (merge-base `2c3a126b962978246b6219b97c48be10f0657a8f`) ; #99 est en avance de 6 et en retard de 3 (merge-base `da8c3638f23f9cf5628d75fdeabaac4776a083e6`) ; #102 est en avance de 48 et en retard de 6 (merge-base `4f529a97fd6d7f613c38af7df15307a0c7e575fd`). Les workflows passent sur leurs SHA de tête, mais cela ne signifie pas que ces branches contiennent déjà tous les commits de leur base actuelle. #362 est proprement empilée sur #101 : 22 commits en avance, 0 en retard, merge-base égal au SHA actuel de #101.
 
 La PR #102 est divergente de la tête actuelle #101 : 48 commits en avance et 6 en retard par rapport au point commun `4f529a97fd6d7f613c38af7df15307a0c7e575fd`. Ne pas la fusionner en l'état. La PR brouillon #362 (`integration/attempt-audit-authz-2026-11-18`) a été créée depuis le SHA courant #101 `3e80fa406c3c44e8c53b758fd8f8e4c12ecbb569`. Sur son SHA `0524217bedc4f4487e81ceaf0ad39b642b8ce57b`, les trois workflows sont réussis ; le core a exécuté 177 tests et toutes les étapes PostgreSQL 16 jetables (legacy, migration, tentatives distinctes, reprise, retry, épuisement, fencing et rollback) ont réussi. Runs : core `44320188498`, registre `44320188354`, documentation `44320188588`. Les trois workflows utilisent `pull_request:` sans filtre limité à `main`, et les exécutions sur les PR empilées confirment que leurs bases non-`main` sont validées.
 
