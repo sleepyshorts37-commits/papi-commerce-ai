@@ -37,7 +37,7 @@ class AuthenticatedAuthorizationDenied(AccessDenied):
 def load_policy(path: Path = POLICY_FILE) -> dict[str, Any]:
     try:
         policy = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise AccessDenied("Politique globale absente ou invalide : accès fermé.") from exc
     if not isinstance(policy, dict):
         raise AccessDenied("Politique globale invalide : accès fermé.")
