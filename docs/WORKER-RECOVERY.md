@@ -4,6 +4,10 @@
 
 La file est conçue pour une exécution avec bail et reprises, pas pour une garantie « exactly once ». Une réservation possède un `attempt_id` durable ; les événements d'audit sont distincts par couple tentative/action. Un worker ne peut renouveler ou terminer un job qu'avec le jeton du bail courant. Après expiration ou remplacement du bail, un ancien worker doit être refusé par les fonctions SQL de renouvellement et de terminaison.
 
+## Migration et retour arrière
+
+La migration additive crée `papi_job_attempts` et `current_attempt_id`. Son script `down` supprime cette table, la colonne de liaison et la fonction de renouvellement du bail ; les UUID et l'historique durable par tentative sont donc perdus. Les jobs existants et leur compteur historique `attempts` sont conservés. Sauvegarder `public.papi_job_attempts` avant un retour arrière si l'historique doit être préservé. Le test de rollback CI utilise uniquement PostgreSQL jetable ; il n'autorise pas une migration ou un rollback en production.
+
 ## Matrice des pannes
 
 | Point de panne | État observable / reprise | Limite |
