@@ -12,7 +12,7 @@ Revue statique des sources de la branche d'intégration de la PR #97, avec véri
 
 **Correction proposée :** créer un principal scellé après vérification cryptographique, distinguer explicitement le refus de politique post-authentification avec `AuthenticatedAuthorizationDenied`, puis attribuer l'événement `job.blocked` à l'agent vérifié. Une régression vérifie le code `permission_denied`, l'acteur et l'absence d'appel au handler.
 
-**Statut :** implémenté dans la PR #98, en attente d'exécution CI et de revue indépendante. Ne pas considérer comme validé avant ces contrôles.
+**Statut :** implémenté dans la PR #98. Les trois workflows GitHub Actions ont réussi sur son SHA courant `e9b7b97bf8a09b96d893b04880fd9ebcf4591e15` (233 tests core). La PR #99 a ensuite ajouté la conservation du principal lors d'un échec de chargement de politique et ses trois workflows ont réussi sur `de6f6884871790c93ca42612c6cd8a69e1c3631a` (234 tests core). Aucune revue indépendante n'est enregistrée ; une CI verte ne constitue pas une approbation de sécurité.
 
 ### 2. Chaîne d'audit locale
 
@@ -79,6 +79,14 @@ Sur le SHA `2c3a126b962978246b6219b97c48be10f0657a8f` :
 - Le job de tests a également appliqué le schéma Supabase à un PostgreSQL jetable avec succès.
 
 Ces résultats valident ce commit précis, pas les changements ultérieurs de la PR #98.
+
+## Vérification CI complémentaire — 18 novembre 2026
+
+- PR #98, SHA `e9b7b97bf8a09b96d893b04880fd9ebcf4591e15` : core tests **233 tests**, succès ; registre et documentation : succès.
+- PR #99, SHA `de6f6884871790c93ca42612c6cd8a69e1c3631a` : core tests **234 tests**, succès ; registre et documentation : succès.
+- Ces exécutions incluent les tests de non-régression d'attribution post-authentification et de panne de chargement de politique. Elles ne constituent pas une revue indépendante.
+
+**Cas résiduel ajouté le 18 novembre :** un fichier de politique contenant des octets UTF-8 invalides levait `UnicodeDecodeError`, non convertie en refus contrôlé. Le correctif ajoute `UnicodeError` au traitement fail-closed de `load_policy` et un test qui vérifie que le principal cryptographiquement établi est conservé. Ce suivi est soumis dans la PR brouillon #361. La CI GitHub Actions a réussi sur le SHA `f833e16aeaf614ffbdbc4e81aec9bf417345031b` : **235 tests core**, validation du registre et contrôles documentaires réussis ; l'étape de schéma Supabase sur PostgreSQL jetable a également réussi. Aucune revue indépendante n'est enregistrée.
 
 ## Priorités de sortie
 
