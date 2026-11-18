@@ -12,7 +12,7 @@ Revue statique des sources de la branche d'intégration de la PR #97, avec véri
 
 **Correction proposée :** créer un principal scellé après vérification cryptographique, distinguer explicitement le refus de politique post-authentification avec `AuthenticatedAuthorizationDenied`, puis attribuer l'événement `job.blocked` à l'agent vérifié. Une régression vérifie le code `permission_denied`, l'acteur et l'absence d'appel au handler.
 
-**Statut au 18 novembre :** implémenté dans les PR #98 et #99. Les SHA courants #98 (`e9b7b97bf8a09b96d893b04880fd9ebcf4591e15`) et #99 (`de6f6884871790c93ca42612c6cd8a69e1c3631a`) ont chacun les trois workflows CI réussis, avec 233 et 234 tests core respectivement. Aucune revue indépendante n'est enregistrée. La version worker de l'ancienne branche #102 n'interceptait pas encore `AuthenticatedAuthorizationDenied` avant `AccessDenied` ; la nouvelle branche d'intégration corrige cet ordre.
+**Statut au 18 novembre :** implémenté dans les PR #98 et #99. Les SHA courants #98 (`e9b7b97bf8a09b96d893b04880fd9ebcf4591e15`) et #99 (`de6f6884871790c93ca42612c6cd8a69e1c3631a`) ont chacun les trois workflows CI réussis, avec 233 et 234 tests core respectivement. Aucune revue indépendante n'est enregistrée. La version worker de l'ancienne branche #102 n'interceptait pas encore `AuthenticatedAuthorizationDenied` avant `AccessDenied` ; la nouvelle branche d'intégration corrige cet ordre. Une régression complémentaire vérifie qu'un fichier de politique contenant des octets UTF-8 invalides échoue en mode fermé et conserve l'attribution au principal vérifié ; `load_policy()` normalise désormais `UnicodeError` en refus d'accès.
 
 ### 2. Chaîne d'audit locale
 
