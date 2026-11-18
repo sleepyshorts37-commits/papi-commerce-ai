@@ -49,6 +49,7 @@ class ConnectorTelemetry:
                 entity_id=provider_id,
                 details=details,
             )
+            _validate_connector_event(event)
             payload_size = len(
                 (json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
             )
