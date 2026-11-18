@@ -89,7 +89,7 @@ Les PR #85, #94, #95, #96, #97, #98, #99, #100, #101 et #102 sont ouvertes et en
 
 Sur #101, le core a exécuté 215 tests et les étapes PostgreSQL 16 jetables — schéma, fixtures legacy, migration, UUID distincts, expiration, reprise, statuts, épuisement et rollback — ont toutes réussi.
 
-La PR #102 est divergente de la tête actuelle #101 : 48 commits en avance et 6 en retard par rapport au point commun `4f529a97fd6d7f613c38af7df15307a0c7e575fd`. Ne pas la fusionner en l'état. Une branche d'intégration distincte a été créée depuis le SHA courant #101. Les trois workflows utilisent `pull_request:` sans filtre limité à `main`, et les exécutions sur les PR empilées confirment que leurs bases non-`main` sont validées.
+La PR #102 est divergente de la tête actuelle #101 : 48 commits en avance et 6 en retard par rapport au point commun `4f529a97fd6d7f613c38af7df15307a0c7e575fd`. Ne pas la fusionner en l'état. La PR brouillon #362 (`integration/attempt-audit-authz-2026-11-18`) a été créée depuis le SHA courant #101 `3e80fa406c3c44e8c53b758fd8f8e4c12ecbb569`. Sur son SHA `0524217bedc4f4487e81ceaf0ad39b642b8ce57b`, les trois workflows sont réussis ; le core a exécuté 177 tests et toutes les étapes PostgreSQL 16 jetables (legacy, migration, tentatives distinctes, reprise, retry, épuisement, fencing et rollback) ont réussi. Runs : core `44320188498`, registre `44320188354`, documentation `44320188588`. Les trois workflows utilisent `pull_request:` sans filtre limité à `main`, et les exécutions sur les PR empilées confirment que leurs bases non-`main` sont validées.
 
 ## Priorités de sortie
 
