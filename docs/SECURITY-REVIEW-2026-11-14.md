@@ -86,7 +86,7 @@ Ces résultats valident ce commit précis, pas les changements ultérieurs de la
 - PR #99, SHA `de6f6884871790c93ca42612c6cd8a69e1c3631a` : core tests **234 tests**, succès ; registre et documentation : succès.
 - Ces exécutions incluent les tests de non-régression d'attribution post-authentification et de panne de chargement de politique. Elles ne constituent pas une revue indépendante.
 
-**Cas résiduel ajouté le 18 novembre :** un fichier de politique contenant des octets UTF-8 invalides levait `UnicodeDecodeError`, non convertie en refus contrôlé. Le correctif ajoute `UnicodeError` au traitement fail-closed de `load_policy` et un test qui vérifie que le principal cryptographiquement établi est conservé. Ce suivi est soumis en PR brouillon distincte ; son CI reste à confirmer.
+**Cas résiduel ajouté le 18 novembre :** un fichier de politique contenant des octets UTF-8 invalides levait `UnicodeDecodeError`, non convertie en refus contrôlé. Le correctif ajoute `UnicodeError` au traitement fail-closed de `load_policy` et un test qui vérifie que le principal cryptographiquement établi est conservé. Ce suivi est soumis dans la PR brouillon #361. La CI GitHub Actions a réussi sur le SHA `f833e16aeaf614ffbdbc4e81aec9bf417345031b` : **235 tests core**, validation du registre et contrôles documentaires réussis ; l'étape de schéma Supabase sur PostgreSQL jetable a également réussi. Aucune revue indépendante n'est enregistrée.
 
 ## Priorités de sortie
 
