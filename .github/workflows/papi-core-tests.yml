@@ -182,6 +182,58 @@ jobs:
           $attempt$;
 
           insert into public.papi_tasks(id, task, version)
+          values ('retry-ci-task', '{"id":"retry-ci-task"}'::jsonb, 1);
+          insert into public.papi_jobs(
+            id, task_id, handler, payload, idempotency_key, max_attempts
+          ) values (
+            'retry-ci-job', 'retry-ci-task', 'test.noop', '{}'::jsonb,
+            'retry-ci-key', 3
+          );
+          do $retry$
+          declare
+            first_claim jsonb;
+            second_claim jsonb;
+            fail_status text;
+            previous_status text;
+            current_status text;
+          begin
+            first_claim := public.papi_claim_job('worker-ci-retry-1', gen_random_uuid(), 15);
+            if first_claim is null or first_claim->>'id' <> 'retry-ci-job' then
+              raise exception 'retry fixture was not initially claimed';
+            end if;
+
+            fail_status := public.papi_fail_job(
+              'retry-ci-job', 'worker-ci-retry-1',
+              (first_claim->>'lease_token')::uuid, 'transient_error'
+            );
+            if fail_status <> 'retry' then
+              raise exception 'expected retry transition, got %', fail_status;
+            end if;
+            select status into previous_status from public.papi_job_attempts
+             where attempt_id = (first_claim->>'attempt_id')::uuid;
+            if previous_status <> 'retry' then
+              raise exception 'failed attempt status was %, expected retry', previous_status;
+            end if;
+
+            update public.papi_jobs set available_at = now()
+             where id = 'retry-ci-job';
+            second_claim := public.papi_claim_job('worker-ci-retry-2', gen_random_uuid(), 15);
+            if second_claim is null or second_claim->>'id' <> 'retry-ci-job'
+               or second_claim->>'attempt_id' = first_claim->>'attempt_id' then
+              raise exception 'retry reservation did not create a distinct attempt';
+            end if;
+
+            select status into previous_status from public.papi_job_attempts
+             where attempt_id = (first_claim->>'attempt_id')::uuid;
+            select status into current_status from public.papi_job_attempts
+             where attempt_id = (second_claim->>'attempt_id')::uuid;
+            if previous_status <> 'retry' or current_status <> 'running' then
+              raise exception 'retry history statuses are %, %', previous_status, current_status;
+            end if;
+          end;
+          $retry$;
+
+          insert into public.papi_tasks(id, task, version)
           values ('exhausted-ci-task', '{"id":"exhausted-ci-task"}'::jsonb, 1);
           insert into public.papi_jobs(
             id, task_id, handler, payload, idempotency_key, max_attempts
