@@ -6,7 +6,7 @@ La file de travaux ne doit jamais exécuter du code fourni dans un payload. Chaq
 ## Barrières appliquées
 1. Le nom du handler doit exister dans le registre Python et dans `config/policy.json`.
 2. `execution_enabled` doit être explicitement activé.
-3. La tâche doit être au statut `in_progress`.
+3. La tâche doit être au statut `in_progress` et son champ `approval_required` doit être un booléen strict. Si une approbation est requise, `approval_status` doit valoir `approved` ; les statuts inconnus ou incohérents sont refusés.
 4. Une tâche marquée `approval_required` doit avoir une approbation positive.
 5. La classe d'action doit être activée dans `action_permissions`.
 6. Les communications externes, opérations financières et actions juridiques restent bloquées tant que l'approbation et `external_actions_enabled` ne sont pas explicitement configurés.
