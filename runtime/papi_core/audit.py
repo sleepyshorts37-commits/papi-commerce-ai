@@ -152,7 +152,7 @@ def _read_verified(path: Path) -> list[dict[str, Any]]:
         return []
     with os.fdopen(descriptor, "rb") as journal:
         raw = journal.read()
-    if raw and not raw.endswith(b"\\n"):
+    if raw and not raw.endswith(b"\n"):
         raise AuditError("Journal incomplet : dernière ligne tronquée.")
     try:
         content = raw.decode("utf-8")
