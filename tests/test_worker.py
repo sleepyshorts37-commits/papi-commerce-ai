@@ -55,7 +55,7 @@ class WorkerSafetyTests(unittest.TestCase):
     def test_worker_blocks_job_without_signed_agent_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
             job = {"id": "job-1", "task_id": "task-1", "handler": "report.preview",
-                   "payload": {}, "lease_token": "lease-1", "agent_identity": None}
+                   "payload": {}, "lease_token": "lease-1", "attempt_id": "00000000-0000-4000-8000-000000000001", "agent_identity": None}
             queue = QueueSpy(job)
             queue.store = FakeStore()
             registry = HandlerRegistry()

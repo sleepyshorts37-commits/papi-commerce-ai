@@ -1,15 +1,20 @@
-"""File de travaux avec baux, idempotence et preuve d'identité de l'agent."""
+"""File de travaux avec baux, idempotence et identifiant durable de tentative."""
 from __future__ import annotations
+
 import re
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
+
 from .storage import SupabaseStore
+
 
 class QueueError(RuntimeError):
     """Erreur de file ou de propriété d'un travail."""
 
+
 class ExecutionQueue:
     """Client de file ; ne lance aucun handler."""
+
     def __init__(self, store: SupabaseStore):
         self.store = store
 
@@ -43,6 +48,13 @@ class ExecutionQueue:
             return None
         if not isinstance(result, dict) or not result.get("id") or not result.get("lease_token"):
             raise QueueError("Réponse de réservation invalide.")
+        attempt_id = result.get("attempt_id")
+        if not isinstance(attempt_id, str):
+            raise QueueError("La réservation ne contient pas d'identifiant durable de tentative.")
+        try:
+            result["attempt_id"] = str(UUID(attempt_id))
+        except (ValueError, AttributeError) as exc:
+            raise QueueError("Identifiant de tentative invalide.") from exc
         return result
 
     def complete(self, *, job_id: str, worker_id: str, lease_token: str,
