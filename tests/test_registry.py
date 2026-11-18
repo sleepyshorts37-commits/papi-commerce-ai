@@ -399,7 +399,7 @@ class WorkerTests(unittest.TestCase):
                "payload": {}, "lease_token": "lease-3", "attempt_id": "00000000-0000-4000-8000-000000000003"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-a"}
              }), \
              patch.object(worker.queue, "renew", return_value=True), \
              patch.object(worker.queue, "complete", return_value=False):
