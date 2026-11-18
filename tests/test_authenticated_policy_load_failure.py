@@ -53,7 +53,7 @@ class AuthenticatedPolicyLoadFailureTests(unittest.TestCase):
                 encoding="utf-8",
             )
             policy_path = root / "policy.json"
-            policy_path.write_bytes(b"\\xff\\xfe")
+            policy_path.write_bytes(b"\xff\xfe")
             keys = root / "keys"
             key_path = provision_agent_key("agent-a", keys)
             envelope = sign_request(
