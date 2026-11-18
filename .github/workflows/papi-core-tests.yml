@@ -166,6 +166,23 @@ jobs:
               raise exception 'new attempt status was %, expected running', current_status;
             end if;
 
+            if not public.papi_renew_job(
+              'attempt-ci-job', 'worker-ci-2', (second_claim->>'lease_token')::uuid, 60
+            ) then
+              raise exception 'current lease could not be renewed';
+            end if;
+            if public.papi_renew_job(
+              'attempt-ci-job', 'worker-ci-1', (first_claim->>'lease_token')::uuid, 60
+            ) then
+              raise exception 'stale worker renewed a replaced lease';
+            end if;
+            if public.papi_complete_job(
+              'attempt-ci-job', 'worker-ci-1', (first_claim->>'lease_token')::uuid,
+              '{"stale":true}'::jsonb
+            ) then
+              raise exception 'stale worker completed a replaced lease';
+            end if;
+
             completed := public.papi_complete_job(
               'attempt-ci-job', 'worker-ci-2', (second_claim->>'lease_token')::uuid,
               '{"verified":true}'::jsonb
@@ -284,6 +301,9 @@ jobs:
             end if;
             if to_regprocedure('public.papi_sync_job_attempt()') is not null then
               raise exception 'attempt synchronization trigger function remains after rollback';
+            end if;
+            if to_regprocedure('public.papi_renew_job(text,text,uuid,integer)') is not null then
+              raise exception 'lease renewal RPC remains after rollback';
             end if;
             if exists (
               select 1 from information_schema.columns

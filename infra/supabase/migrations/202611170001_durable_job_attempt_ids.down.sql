@@ -1,7 +1,9 @@
+-- WARNING: rollback drops papi_job_attempts and current_attempt_id.
+-- Durable per-attempt history and UUIDs are intentionally discarded; back up
+-- public.papi_job_attempts before rollback if that history must be retained.
+drop function if exists public.papi_renew_job(text, text, uuid, integer);
 -- Rollback for 202611170001_durable_job_attempt_ids.
 -- Existing jobs and their original attempts counter are preserved.
--- WARNING: this rollback intentionally discards the new per-attempt history and UUIDs.
--- Back up papi_job_attempts before rollback if that history must be retained.
 drop trigger if exists papi_jobs_sync_attempt on public.papi_jobs;
 drop function if exists public.papi_sync_job_attempt();
 alter table public.papi_jobs drop constraint if exists papi_jobs_current_attempt_fk;

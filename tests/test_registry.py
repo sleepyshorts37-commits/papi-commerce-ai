@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 from pathlib import Path
 
 from papi_core.registry import load_agents, validate_task, validate_registries
@@ -80,7 +81,12 @@ class AuditTests(unittest.TestCase):
             path = Path(directory) / "events.jsonl"
             event = self.make_event()
             self.assertTrue(append_event(event, path))
-            self.assertEqual(read_events(path), [event])
+            events = read_events(path)
+            self.assertEqual(len(events), 1)
+            stored = events[0]
+            self.assertEqual({key: stored[key] for key in event}, event)
+            self.assertEqual(stored["previous_hash"], "0" * 64)
+            self.assertRegex(stored["event_hash"], r"^[0-9a-f]{64}$")
 
     def test_duplicate_event_is_idempotent(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -332,7 +338,8 @@ class HandlerPermissionTests(unittest.TestCase):
 
 class WorkerTests(unittest.TestCase):
     def make_worker(self, policy=None, job=None, task=None):
-        identity_patch = patch('papi_core.worker.authorize_authenticated_agent')
+        identity_patch = patch('papi_core.worker.authorize_authenticated_agent',
+                              return_value={"principal": SimpleNamespace(agent_id="agent-a")})
         identity_patch.start()
         self.addCleanup(identity_patch.stop)
         from papi_core.execution_queue import ExecutionQueue
@@ -365,8 +372,9 @@ class WorkerTests(unittest.TestCase):
                "payload": {"a": 1}, "lease_token": "lease-1", "attempt_id": "00000000-0000-4000-8000-000000000001"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-a"}
              }), \
+             patch.object(worker.queue, "renew", return_value=True), \
              patch.object(worker.queue, "complete", return_value=True) as complete:
             result = worker.run_once()
         self.assertEqual(result["status"], "completed")
@@ -391,8 +399,9 @@ class WorkerTests(unittest.TestCase):
                "payload": {}, "lease_token": "lease-3", "attempt_id": "00000000-0000-4000-8000-000000000003"}
         with patch.object(worker.queue, "claim", return_value=job), \
              patch.object(worker.queue.store, "get_task", return_value={
-                 "task": {"status": "in_progress", "approval_required": False}
+                 "task": {"status": "in_progress", "approval_required": False, "owner_agent": "agent-a"}
              }), \
+             patch.object(worker.queue, "renew", return_value=True), \
              patch.object(worker.queue, "complete", return_value=False):
             result = worker.run_once()
         self.assertEqual(result["status"], "lease_lost")
