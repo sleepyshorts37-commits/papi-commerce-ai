@@ -43,5 +43,36 @@ class AuthenticatedPolicyLoadFailureTests(unittest.TestCase):
             self.assertIsInstance(caught.exception, AccessDenied)
 
 
+    def test_invalid_utf8_policy_keeps_authenticated_principal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_path = root / "agents.json"
+            agents_path.write_text(
+                '{"agents":[{"id":"agent-a","name":"Agent A","status":"active",'
+                '"permissions":["read_reports"],"prohibited":[]}]}',
+                encoding="utf-8",
+            )
+            policy_path = root / "policy.json"
+            policy_path.write_bytes(b"\\xff\\xfe")
+            keys = root / "keys"
+            key_path = provision_agent_key("agent-a", keys)
+            envelope = sign_request(
+                "agent-a",
+                {"permission":"read_reports","task_id":"task-utf8","handler":"report.preview"},
+                key_path,
+                nonce="policy-invalid-utf8-0001",
+            )
+            with patch("papi_core.authz.POLICY_FILE", policy_path):
+                with self.assertRaises(AuthenticatedAuthorizationDenied) as caught:
+                    authorize_authenticated_agent(
+                        "agent-a", "read_reports", envelope,
+                        task_id="task-utf8", handler="report.preview",
+                        agents_path=agents_path, key_dir=keys,
+                        replay_db=root / "replay.sqlite3",
+                    )
+            self.assertEqual(caught.exception.principal.agent_id, "agent-a")
+            self.assertIsInstance(caught.exception, AccessDenied)
+
+
 if __name__ == "__main__":
     unittest.main()
