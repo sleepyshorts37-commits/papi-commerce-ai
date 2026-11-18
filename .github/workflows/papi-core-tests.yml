@@ -1,4 +1,4 @@
-name: PAPI core tests — attempt audit
+name: PAPI core tests
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
       - name: Run unit tests
         run: PYTHONPATH=runtime python -m unittest discover -s tests -v
 
-      - name: Apply Supabase schema to disposable PostgreSQL
+      - name: Apply base Supabase schema to disposable PostgreSQL
         env:
           PGPASSWORD: papi_test_password
         run: |
@@ -61,39 +61,95 @@ jobs:
             \quit 1
           \endif
           SQL
-          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
-            -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.up.sql
 
-      - name: Verify durable job attempt history
+      - name: Restore legacy queue schema and seed compatibility fixtures
         env:
           PGPASSWORD: papi_test_password
         run: |
           set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.down.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          insert into public.papi_tasks(id, task, version)
+          values
+            ('legacy-done-task', '{"id":"legacy-done-task"}'::jsonb, 1),
+            ('legacy-running-task', '{"id":"legacy-running-task"}'::jsonb, 1);
+          insert into public.papi_jobs(
+            id, task_id, handler, payload, idempotency_key, status, attempts, max_attempts
+          ) values
+            ('legacy-done-job', 'legacy-done-task', 'test.noop', '{}'::jsonb,
+             'legacy-done-key', 'done', 2, 5);
+          insert into public.papi_jobs(
+            id, task_id, handler, payload, idempotency_key, status, attempts, max_attempts,
+            lease_owner, lease_token, lease_until
+          ) values (
+            'legacy-running-job', 'legacy-running-task', 'test.noop', '{}'::jsonb,
+            'legacy-running-key', 'running', 1, 5, 'legacy-worker',
+            gen_random_uuid(), now() + interval '10 minutes'
+          );
+          SQL
+
+      - name: Apply durable attempt migration and verify history, recovery and statuses
+        env:
+          PGPASSWORD: papi_test_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 \
+            -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.up.sql
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          do $legacy$
+          declare
+            legacy_status text;
+            legacy_flag boolean;
+            legacy_finished timestamptz;
+          begin
+            select status, is_legacy, finished_at
+              into legacy_status, legacy_flag, legacy_finished
+              from public.papi_job_attempts where job_id = 'legacy-done-job';
+            if not found or legacy_status <> 'completed' or legacy_flag is not true
+               or legacy_finished is null then
+              raise exception 'completed legacy job was not conservatively backfilled';
+            end if;
+
+            select status, is_legacy, finished_at
+              into legacy_status, legacy_flag, legacy_finished
+              from public.papi_job_attempts where job_id = 'legacy-running-job';
+            if not found or legacy_status <> 'running' or legacy_flag is not true
+               or legacy_finished is not null then
+              raise exception 'running legacy job was not backfilled as running';
+            end if;
+          end;
+          $legacy$;
+
           insert into public.papi_tasks(id, task, version)
           values ('attempt-ci-task', '{"id":"attempt-ci-task"}'::jsonb, 1);
           insert into public.papi_jobs(id, task_id, handler, payload, idempotency_key)
           values ('attempt-ci-job', 'attempt-ci-task', 'test.noop', '{}'::jsonb, 'attempt-ci-key');
+
           do $attempt$
           declare
             first_claim jsonb;
             second_claim jsonb;
             attempt_count integer;
             previous_status text;
+            current_status text;
+            completed boolean;
           begin
             first_claim := public.papi_claim_job('worker-ci-1', gen_random_uuid(), 15);
             if first_claim is null or first_claim->>'attempt_id' is null then
               raise exception 'first reservation did not return attempt_id';
             end if;
+
             update public.papi_jobs set lease_until = now() - interval '1 second'
              where id = 'attempt-ci-job';
             second_claim := public.papi_claim_job('worker-ci-2', gen_random_uuid(), 15);
             if second_claim is null or second_claim->>'attempt_id' is null then
-              raise exception 'second reservation did not return attempt_id';
+              raise exception 'expired reservation was not reclaimed';
             end if;
             if first_claim->>'attempt_id' = second_claim->>'attempt_id' then
               raise exception 'separate reservations reused attempt_id';
             end if;
+
             select count(*) into attempt_count from public.papi_job_attempts
              where job_id = 'attempt-ci-job';
             if attempt_count <> 2 then
@@ -104,6 +160,12 @@ jobs:
             if previous_status <> 'lease_expired' then
               raise exception 'previous attempt status was %, expected lease_expired', previous_status;
             end if;
+            select status into current_status from public.papi_job_attempts
+             where attempt_id = (second_claim->>'attempt_id')::uuid;
+            if current_status <> 'running' then
+              raise exception 'new attempt status was %, expected running', current_status;
+            end if;
+
             if not public.papi_renew_job(
               'attempt-ci-job', 'worker-ci-2', (second_claim->>'lease_token')::uuid, 60
             ) then
@@ -120,24 +182,110 @@ jobs:
             ) then
               raise exception 'stale worker completed a replaced lease';
             end if;
-            if not public.papi_complete_job(
+
+            completed := public.papi_complete_job(
               'attempt-ci-job', 'worker-ci-2', (second_claim->>'lease_token')::uuid,
               '{"verified":true}'::jsonb
-            ) then
+            );
+            if not completed then
               raise exception 'current lease could not complete its job';
             end if;
-            if (select status from public.papi_jobs where id = 'attempt-ci-job') <> 'done' then
-              raise exception 'job did not reach done state after current lease completion';
-            end if;
-            if (select status from public.papi_job_attempts
-                 where attempt_id = (second_claim->>'attempt_id')::uuid) <> 'completed' then
-              raise exception 'current attempt history was not marked completed';
+            select status into current_status from public.papi_job_attempts
+             where attempt_id = (second_claim->>'attempt_id')::uuid;
+            if current_status <> 'completed' then
+              raise exception 'completed attempt status was %, expected completed', current_status;
             end if;
           end;
           $attempt$;
+
+          insert into public.papi_tasks(id, task, version)
+          values ('retry-ci-task', '{"id":"retry-ci-task"}'::jsonb, 1);
+          insert into public.papi_jobs(
+            id, task_id, handler, payload, idempotency_key, max_attempts
+          ) values (
+            'retry-ci-job', 'retry-ci-task', 'test.noop', '{}'::jsonb,
+            'retry-ci-key', 3
+          );
+          do $retry$
+          declare
+            first_claim jsonb;
+            second_claim jsonb;
+            fail_status text;
+            previous_status text;
+            current_status text;
+          begin
+            first_claim := public.papi_claim_job('worker-ci-retry-1', gen_random_uuid(), 15);
+            if first_claim is null or first_claim->>'id' <> 'retry-ci-job' then
+              raise exception 'retry fixture was not initially claimed';
+            end if;
+
+            fail_status := public.papi_fail_job(
+              'retry-ci-job', 'worker-ci-retry-1',
+              (first_claim->>'lease_token')::uuid, 'transient_error'
+            );
+            if fail_status <> 'retry' then
+              raise exception 'expected retry transition, got %', fail_status;
+            end if;
+            select status into previous_status from public.papi_job_attempts
+             where attempt_id = (first_claim->>'attempt_id')::uuid;
+            if previous_status <> 'retry' then
+              raise exception 'failed attempt status was %, expected retry', previous_status;
+            end if;
+
+            update public.papi_jobs set available_at = now()
+             where id = 'retry-ci-job';
+            second_claim := public.papi_claim_job('worker-ci-retry-2', gen_random_uuid(), 15);
+            if second_claim is null or second_claim->>'id' <> 'retry-ci-job'
+               or second_claim->>'attempt_id' = first_claim->>'attempt_id' then
+              raise exception 'retry reservation did not create a distinct attempt';
+            end if;
+
+            select status into previous_status from public.papi_job_attempts
+             where attempt_id = (first_claim->>'attempt_id')::uuid;
+            select status into current_status from public.papi_job_attempts
+             where attempt_id = (second_claim->>'attempt_id')::uuid;
+            if previous_status <> 'retry' or current_status <> 'running' then
+              raise exception 'retry history statuses are %, %', previous_status, current_status;
+            end if;
+          end;
+          $retry$;
+
+          insert into public.papi_tasks(id, task, version)
+          values ('exhausted-ci-task', '{"id":"exhausted-ci-task"}'::jsonb, 1);
+          insert into public.papi_jobs(
+            id, task_id, handler, payload, idempotency_key, max_attempts
+          ) values (
+            'exhausted-ci-job', 'exhausted-ci-task', 'test.noop', '{}'::jsonb,
+            'exhausted-ci-key', 1
+          );
+          do $exhausted$
+          declare
+            claimed jsonb;
+            next_claim jsonb;
+            job_status text;
+            attempt_status text;
+          begin
+            claimed := public.papi_claim_job('worker-ci-max', gen_random_uuid(), 15);
+            if claimed is null or claimed->>'id' <> 'exhausted-ci-job' then
+              raise exception 'max-attempt fixture was not claimed';
+            end if;
+            update public.papi_jobs set lease_until = now() - interval '1 second'
+             where id = 'exhausted-ci-job';
+            next_claim := public.papi_claim_job('worker-ci-next', gen_random_uuid(), 15);
+            if next_claim is not null then
+              raise exception 'job with exhausted attempts was reserved again';
+            end if;
+            select status into job_status from public.papi_jobs where id = 'exhausted-ci-job';
+            select status into attempt_status from public.papi_job_attempts
+             where attempt_id = (claimed->>'attempt_id')::uuid;
+            if job_status <> 'failed' or attempt_status <> 'failed' then
+              raise exception 'exhausted job/attempt statuses are %, %', job_status, attempt_status;
+            end if;
+          end;
+          $exhausted$;
           SQL
 
-      - name: Verify attempt migration rollback on disposable PostgreSQL
+      - name: Verify rollback on disposable PostgreSQL
         env:
           PGPASSWORD: papi_test_password
         run: |
@@ -146,12 +294,31 @@ jobs:
             -f infra/supabase/migrations/202611170001_durable_job_attempt_ids.down.sql
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
           do $rollback$
+          declare preserved_attempts integer;
           begin
             if to_regclass('public.papi_job_attempts') is not null then
               raise exception 'attempt table remains after rollback';
             end if;
+            if to_regprocedure('public.papi_sync_job_attempt()') is not null then
+              raise exception 'attempt synchronization trigger function remains after rollback';
+            end if;
             if to_regprocedure('public.papi_renew_job(text,text,uuid,integer)') is not null then
               raise exception 'lease renewal RPC remains after rollback';
+            end if;
+            if exists (
+              select 1 from information_schema.columns
+               where table_schema = 'public' and table_name = 'papi_jobs'
+                 and column_name = 'current_attempt_id'
+            ) then
+              raise exception 'current_attempt_id remains after rollback';
+            end if;
+            select attempts into preserved_attempts
+              from public.papi_jobs where id = 'attempt-ci-job';
+            if preserved_attempts <> 2 then
+              raise exception 'original attempts counter changed during rollback';
+            end if;
+            if not exists (select 1 from public.papi_jobs where id = 'legacy-done-job') then
+              raise exception 'legacy job was removed during rollback';
             end if;
           end;
           $rollback$;
