@@ -1,3 +1,6 @@
+-- WARNING: rollback drops papi_job_attempts and current_attempt_id.
+-- Durable per-attempt history and UUIDs are intentionally discarded; back up
+-- public.papi_job_attempts before rollback if that history must be retained.
 drop function if exists public.papi_renew_job(text, text, uuid, integer);
 -- Rollback for 202611170001_durable_job_attempt_ids.
 -- Existing jobs and their original attempts counter are preserved.
