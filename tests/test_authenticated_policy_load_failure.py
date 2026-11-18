@@ -8,6 +8,7 @@ from papi_core.authz import (
     AccessDenied,
     AuthenticatedAuthorizationDenied,
     authorize_authenticated_agent,
+    load_policy as read_policy,
 )
 from papi_core.identity import provision_agent_key, sign_request
 
@@ -62,7 +63,7 @@ class AuthenticatedPolicyLoadFailureTests(unittest.TestCase):
                 key_path,
                 nonce="policy-invalid-utf8-0001",
             )
-            with patch("papi_core.authz.POLICY_FILE", policy_path):
+            with patch("papi_core.authz.load_policy", side_effect=lambda: read_policy(policy_path)):
                 with self.assertRaises(AuthenticatedAuthorizationDenied) as caught:
                     authorize_authenticated_agent(
                         "agent-a", "read_reports", envelope,
