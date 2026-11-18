@@ -93,7 +93,7 @@ def _validate_connector_event(event: dict[str, Any]) -> tuple[str, str, dict[str
     _require_keys(details, expected)
     if not isinstance(details["operation_id"], str) or not OPERATION_ID.fullmatch(details["operation_id"]):
         raise ConnectorTelemetryError("Identifiant d'opération invalide.")
-    if details["kind"] not in {"text", "image"}:
+    if not isinstance(details["kind"], str) or details["kind"] not in {"text", "image"}:
         raise ConnectorTelemetryError("Type de génération invalide.")
     if not _require_nonnegative_int(details["estimated_cost_xof"]):
         raise ConnectorTelemetryError("Estimation de coût invalide.")
@@ -106,9 +106,10 @@ def _validate_connector_event(event: dict[str, Any]) -> tuple[str, str, dict[str
             raise ConnectorTelemetryError("Coût déclaré par le fournisseur invalide.")
         if not isinstance(details["simulated"], bool):
             raise ConnectorTelemetryError("Indicateur de simulation invalide.")
-    if action == "connector.call.failed" and details["error_code"] not in {
-        "adapter_error", "invalid_result"
-    }:
+    if action == "connector.call.failed" and (
+        not isinstance(details["error_code"], str)
+        or details["error_code"] not in {"adapter_error", "invalid_result"}
+    ):
         raise ConnectorTelemetryError("Code d'erreur de connecteur invalide.")
     return action, provider_id, details
 
