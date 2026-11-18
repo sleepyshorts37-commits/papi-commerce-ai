@@ -50,4 +50,4 @@ Le rapport lit `data/telemetry/connectors.jsonl` par défaut. Si le fichier n'ex
 
 ## Vérification
 
-Les tests doivent être exécutés par GitHub Actions sur le SHA final de la branche. Aucun test d'intégration fournisseur, aucun appel réseau et aucune vérification de facturation réelle ne sont revendiqués.
+Vérification CI sur le SHA `686704ec48ca91b164a570fb2d8b913045787c1b` : PAPI core tests **250 tests réussis** (run [#44266657500](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44266657500)), registry validation **succès** (run [#44266657368](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44266657368)) et documentation checks **succès** (run [#44266657347](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/44266657347)). Le schéma Supabase a été appliqué à PostgreSQL jetable ; Supabase Preview a été ignoré. Aucun test d'intégration fournisseur, appel réseau ou contrôle de facturation réelle n'est revendiqué.
