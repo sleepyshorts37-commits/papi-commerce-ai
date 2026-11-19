@@ -88,8 +88,10 @@ class PapiWorker:
                   lease_token: str, error_code: str, status: str,
                   actor: str, action: str, handler: str, outcome: str) -> dict[str, Any]:
         try:
-            self.queue.fail(job_id=job_id, worker_id=self.worker_id,
-                            lease_token=lease_token, error_code=error_code)
+            queue_status = self.queue.fail(job_id=job_id, worker_id=self.worker_id,
+                                            lease_token=lease_token, error_code=error_code)
+            if queue_status not in {"retry", "failed"}:
+                raise QueueError("Transition de file non confirmée.")
         except Exception:
             self._audit_best_effort(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                 action="job.failure_transition_error", actor=actor,
@@ -98,7 +100,8 @@ class PapiWorker:
                     "attempt_id": attempt_id}
         self._audit_best_effort(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
             action=action, actor=actor, handler=handler, outcome=outcome)
-        return {"status": status, "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
+        return {"status": status, "queue_status": queue_status, "claimed": True,
+                "job_id": job_id, "attempt_id": attempt_id}
 
     def run_once(self) -> dict[str, Any]:
         """Traite au maximum un travail ; les confirmations réseau ambiguës restent à réconcilier."""
