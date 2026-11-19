@@ -26,6 +26,7 @@ jobs:
               Path("data/tasks.json"),
               Path("data/sales.json"),
               Path("data/finance-ledger.json"),
+              Path("config/policy.json"),
               Path("schemas/sales.schema.json"),
               Path("schemas/finance-ledger.schema.json"),
               Path("schemas/task.schema.json"),
@@ -38,7 +39,7 @@ jobs:
         run: |
           python - <<'PY'
           import json
-          data = json.loads(Path("data/tasks.json").read_text()) if False else json.loads(open("data/tasks.json", encoding="utf-8").read())
+          data = json.loads(open("data/tasks.json", encoding="utf-8").read())
           assert data.get("project") == "PAPI COMMERCE AI"
           assert isinstance(data.get("tasks"), list)
           agents = json.loads(open("data/agents.json", encoding="utf-8").read())
