@@ -310,7 +310,7 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 > /tmp/papi-lock-holder.log 2>&1 <<'SQL' &
           begin;
           select id from public.papi_jobs where id = 'concurrent-first-job' for update;
-          \\! touch /tmp/papi-lock-ready
+          \! touch /tmp/papi-lock-ready
           select pg_sleep(2);
           commit;
           SQL
