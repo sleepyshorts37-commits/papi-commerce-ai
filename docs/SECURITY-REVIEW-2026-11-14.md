@@ -108,3 +108,32 @@ La PR #102 est divergente de la tête actuelle #101 : 48 commits en avance et 6 
 ## État de gouvernance
 
 Aucune modification de `main`, fusion, mise en production, activation d'agent/worker, communication externe ou opération financière n'a été effectuée.
+
+## Addendum — fiabilité worker, audit et profils (19 novembre 2026)
+
+### Modifications vérifiées dans la PR #364
+
+La branche de fiabilité est empilée proprement sur la tête de la PR #362 : base 9719394b50fb9f3eca97019df3067ccb04f3699a, tête testée 87a2d0d5f61dcbd0b156dddfa6fbd990fb30f28c, 15 commits en avance et 0 en retard. La PR #364 reste ouverte et en brouillon ; aucune revue indépendante n'est enregistrée.
+
+- Un échec du RPC de réservation ne lance aucun handler et renvoie claim_unavailable.
+- Une perte de réponse de complete renvoie completion_unknown et ne déclenche pas un second RPC fail, car le serveur a pu valider la transaction avant la coupure.
+- Une transition d'échec expose queue_status seulement après une réponse confirmée (retry ou failed). Une panne du RPC fail renvoie failure_transition_error.
+- La clé de déduplication est calculée depuis une sérialisation JSON canonique de job_id, attempt_id et action.
+- Le workflow PostgreSQL teste deux sessions concurrentes avec une ligne verrouillée : SKIP LOCKED sélectionne l'autre job, puis la première ligne est réservée après libération du verrou. Les deux réservations possèdent des UUID de tentative et jetons de bail distincts.
+
+### Couverture exécutée sur le SHA 87a2d0d5f61dcbd0b156dddfa6fbd990fb30f28c
+
+- PAPI core tests — run 44535816549 : succès, **194 tests unitaires** (OK).
+- PAPI registry validation — run 44535816514 : succès.
+- PAPI documentation checks — run 44535816600 : succès.
+- PostgreSQL 16 jetable : schéma, compatibilité legacy, migration, historique des tentatives, renouvellement/fencing, retry, épuisement, concurrence réelle multi-session et rollback : succès.
+- Le premier run core 44535641081 a échoué sur quatre tests existants, car des doubles de test renvoyaient True au lieu des statuts texte de la file. Le worker conserve désormais cette compatibilité pour les doubles historiques, tandis que le client Supabase réel continue à fournir retry ou failed. Le run final ci-dessus est vert.
+
+### Limites persistantes
+
+- Les pertes réseau Supabase sont simulées par des doubles StoreError ; aucune panne réseau réelle sur une instance Supabase de préproduction ni aucun crash de processus multi-hôte n'a été exécuté.
+- Le handler peut avoir produit un effet externe avant une perte de bail ou de confirmation. Une clé d'idempotence métier stable et une réconciliation distante restent nécessaires ; exactly-once n'est pas garanti.
+- Le journal local est testé pour déduplication, concurrence, verrouillage, corruption, JSON incomplet, UTF-8 invalide, chaîne de hachage, écriture interrompue et redémarrage. Il n'est pas protégé contre un attaquant qui réécrit simultanément journal et checkpoint locaux.
+- Le registre de profils professionnels est livré vide. Le validateur couvre hiérarchie, délégation, suspension/révocation et prévention de l'auto-élévation documentaire. Il n'est pas encore relié à la révocation cryptographique runtime ni à une source partagée multi-hôte.
+- Aucun profil d'agent réel n'a été ajouté, aucun agent/worker n'a été activé et aucune migration distante, publication, action externe ou opération financière n'a été réalisée.
+
