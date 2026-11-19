@@ -8,9 +8,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .agent_profiles import AgentProfileError, load_agent_profiles, validate_agent_profiles
+
 ROOT = Path(__file__).resolve().parents[2]
 AGENTS_FILE = ROOT / "data" / "agents.json"
 TASKS_FILE = ROOT / "data" / "tasks.json"
+AGENT_PROFILES_FILE = ROOT / "data" / "agent_profiles.json"
 VALID_STATUSES = {"backlog", "ready", "in_progress", "blocked", "review", "done", "cancelled"}
 VALID_PRIORITIES = {"low", "normal", "high", "urgent"}
 VALID_APPROVALS = {"not_required", "pending", "approved", "rejected"}
@@ -23,7 +26,7 @@ class RegistryError(ValueError):
 def load_json(path: Path) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise RegistryError(f"Impossible de lire {path}: {exc}") from exc
     if not isinstance(value, dict):
         raise RegistryError(f"{path} doit contenir un objet JSON.")
@@ -86,6 +89,14 @@ def validate_registries(agents_path: Path = AGENTS_FILE, tasks_path: Path = TASK
             errors.append(f"Identifiant de tâche dupliqué: {task_id}")
         seen.add(task_id)
         errors.extend(f"Tâche {task_id}: {error}" for error in validate_task(task, agents))
+
+    profiles_path = agents_path.with_name("agent_profiles.json")
+    if profiles_path.exists():
+        try:
+            profiles = load_agent_profiles(profiles_path)
+            errors.extend(validate_agent_profiles(profiles, agents))
+        except AgentProfileError as exc:
+            errors.append(f"Registre de profils: {exc}")
     return errors
 
 
