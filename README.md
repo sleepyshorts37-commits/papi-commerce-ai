@@ -24,7 +24,8 @@ Astou (coordination), Marietou Diouf (direction générale), Ibrahima (architect
 
 ## Commandes locales
 Depuis la racine du dépôt :
-- `PYTHONPATH=runtime python -m papi_core validate` — valider les registres.
+- `PYTHONPATH=runtime python -m papi_core validate` — valider les registres agents et tâches.
+- `PYTHONPATH=runtime python -m papi_core agent-permission-report` — auditer les permissions déclarées, les refus et les blocages runtime en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core doctor` — vérifier la présence des variables Supabase sans afficher leurs valeurs ni effectuer de connexion réseau.
 - `PYTHONPATH=runtime python -m papi_core dashboard` — afficher le tableau de bord en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core schedule-preview` — calculer les échéances récurrentes à examiner, sans exécuter de tâche.
@@ -52,6 +53,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Persistance partagée Supabase](docs/SHARED-STORAGE.md)
 - [File d'exécution et reprise](docs/EXECUTION-QUEUE.md)
 - [Registre de handlers et permissions](docs/HANDLER-PERMISSIONS.md)
+- [Audit local des permissions agents](docs/AGENT-PERMISSION-AUDIT.md)
 - [Worker contrôlé](docs/WORKER.md)
 - [Planificateur](docs/SCHEDULER.md)
 - [Outils commerciaux](docs/SALES-TOOLS.md)
