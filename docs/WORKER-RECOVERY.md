@@ -46,3 +46,14 @@ La migration additive crée `papi_job_attempts` et `current_attempt_id`. Son scr
 ## Périmètre
 
 Cette documentation décrit le comportement du code et les précautions nécessaires. Elle n'active aucun worker, ne contacte aucun service externe et ne constitue pas une validation de production.
+
+## Résultats ambigus et pannes réseau (mise à jour du 19 novembre 2026)
+
+- Si l'appel de réservation échoue avant qu'un job soit retourné au client, le worker renvoie claim_unavailable et n'appelle aucun handler. Si le serveur a réservé le job mais que la réponse a été perdue, le bail expire ; le client ne peut pas supposer que la réservation n'a pas eu lieu.
+- Si le handler lève une exception, le worker tente une transition d'échec. Si le RPC fail échoue également, le résultat est failure_transition_error ; le job n'est pas annoncé comme échoué de façon confirmée et la reprise dépend de l'état durable et de l'expiration du bail.
+- Si le RPC complete lève StoreError, le serveur peut avoir validé la complétion avant que la réponse soit perdue. Le worker renvoie completion_unknown, journalise au mieux cette incertitude et n'envoie pas un second RPC fail. Il faut relire le job et l'état métier avant toute intervention ou tout rejeu.
+- La concurrence PostgreSQL est vérifiée en CI sur deux sessions et deux jobs : une ligne verrouillée est ignorée par FOR UPDATE SKIP LOCKED, et les deux réservations reçoivent des jobs, UUID de tentative et jetons de bail distincts.
+- Les tests unitaires simulent les pertes réseau, les crashes avant et pendant le handler, la perte de bail et la reprise du journal après redémarrage. Ils ne remplacent pas un test de panne réseau sur un environnement Supabase de préproduction.
+
+Les effets métier externes restent au moins potentiellement répétables après un crash entre l'effet et sa confirmation. Une clé d'idempotence métier stable, la lecture de l'état distant et une procédure de réconciliation sont nécessaires ; aucun exactly-once n'est garanti.
+
