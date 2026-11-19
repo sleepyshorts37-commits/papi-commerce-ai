@@ -29,6 +29,7 @@ jobs:
             docs/SALES-TOOLS.md
             docs/FINANCE-LEDGER.md
             docs/SECURITY-RELEASE.md
+            docs/AGENT-PERMISSION-AUDIT.md
             agents/ASTOU.md
             agents/MARIETOU.md
             agents/IBRAHIMA.md
