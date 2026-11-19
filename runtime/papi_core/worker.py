@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -51,9 +52,11 @@ class PapiWorker:
 
     def _audit(self, *, job_id: str, task_id: str, attempt_id: str, action: str,
                actor: str, outcome: str, handler: str = "unknown") -> bool:
-        """Déduplique par tentative, pas seulement par job : les retries restent distincts."""
+        """Déduplique par tentative avec une sérialisation non ambiguë des composants."""
         job_digest = hashlib.sha256(job_id.encode("utf-8")).hexdigest()
-        dedupe_material = f"{job_id}:{attempt_id}:{action}"
+        dedupe_material = json.dumps(
+            [job_id, attempt_id, action], ensure_ascii=False, separators=(",", ":")
+        )
         dedupe_id = hashlib.sha256(dedupe_material.encode("utf-8")).hexdigest()
         event = new_event(
             event_id="worker:" + dedupe_id,
@@ -98,10 +101,13 @@ class PapiWorker:
         return {"status": status, "claimed": True, "job_id": job_id, "attempt_id": attempt_id}
 
     def run_once(self) -> dict[str, Any]:
-        """Traite au maximum un travail ; handler interdit si l'audit de démarrage échoue."""
+        """Traite au maximum un travail ; les confirmations réseau ambiguës restent à réconcilier."""
         if self.policy.get("execution_enabled") is not True:
             return {"status": "disabled", "claimed": False}
-        job = self.queue.claim(worker_id=self.worker_id)
+        try:
+            job = self.queue.claim(worker_id=self.worker_id)
+        except (QueueError, StoreError):
+            return {"status": "claim_unavailable", "claimed": False}
         if job is None:
             return {"status": "idle", "claimed": False}
         job_id, lease_token, attempt_id = job.get("id"), job.get("lease_token"), job.get("attempt_id")
@@ -191,8 +197,19 @@ class PapiWorker:
                          "attempt_id": attempt_id, "authenticated_agent_id": authenticated_actor,
                          "authenticated_principal": principal, "ensure_lease": ensure_lease},
             )
-            if not self.queue.complete(job_id=job_id, worker_id=self.worker_id,
-                                        lease_token=lease_token, result=result):
+            try:
+                completed = self.queue.complete(
+                    job_id=job_id, worker_id=self.worker_id, lease_token=lease_token, result=result
+                )
+            except StoreError:
+                # Le serveur a pu valider la transaction avant la perte de réponse.
+                # Ne pas envoyer un second RPC fail qui pourrait masquer l'état réel.
+                self._audit_best_effort(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
+                    action="job.completion_unknown", actor=authenticated_actor,
+                    handler=handler, outcome="confirmation_unknown")
+                return {"status": "completion_unknown", "claimed": True, "job_id": job_id,
+                        "attempt_id": attempt_id}
+            if not completed:
                 self._audit_best_effort(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
                     action="job.lease_lost", actor=system_actor, handler=handler, outcome="lease_lost")
                 return {"status": "lease_lost", "claimed": True, "job_id": job_id,
