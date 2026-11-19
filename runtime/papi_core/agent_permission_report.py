@@ -96,28 +96,31 @@ def build_agent_permission_report(
         for permission in permissions:
             declarations += 1
             is_prohibited = permission in prohibited
-            blockers: list[str] = []
+            local_blockers: list[str] = []
             if policy_errors:
-                blockers.append("global_policy_invalid")
+                local_blockers.append("global_policy_invalid")
             if agent_errors:
-                blockers.append("agent_registry_invalid")
+                local_blockers.append("agent_registry_invalid")
             if is_prohibited:
-                blockers.append("explicit_agent_prohibition")
-            if status != "active":
-                blockers.append("agent_not_active")
-            if not execution_enabled:
-                blockers.append("execution_disabled")
+                local_blockers.append("explicit_agent_prohibition")
 
             local_check = "deny"
             reason = "Déclaration ou politique invalide : refus par défaut."
-            if not blockers:
+            if not local_blockers:
                 try:
                     authorize_agent(agent_id, permission, agents_path, policy)
                     local_check = "allow"
                     reason = "Permission déclarée et autorisée par le contrôle local."
                 except AccessDenied as exc:
                     reason = str(exc)
-                    blockers.append("local_authorization_denied")
+                    local_blockers.append("local_authorization_denied")
+
+            runtime_blockers = list(local_blockers)
+            if status != "active":
+                runtime_blockers.append("agent_not_active")
+            if not execution_enabled:
+                runtime_blockers.append("execution_disabled")
+            runtime_blockers.append("runtime_identity_task_handler_not_verified")
 
             if local_check == "allow":
                 local_allow += 1
@@ -132,7 +135,7 @@ def build_agent_permission_report(
                 "local_check": local_check,
                 "reason": reason,
                 "runtime_gate": "blocked",
-                "runtime_blockers": blockers or ["runtime_identity_task_handler_not_verified"],
+                "runtime_blockers": runtime_blockers,
             })
 
         agent_reports.append({
