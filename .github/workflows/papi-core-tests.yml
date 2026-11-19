@@ -306,14 +306,20 @@ jobs:
 
           # Hold the oldest queued row in a separate transaction while another
           # worker executes the real claim RPC. SKIP LOCKED must choose the next row.
+          rm -f /tmp/papi-lock-ready
           psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 > /tmp/papi-lock-holder.log 2>&1 <<'SQL' &
           begin;
           select id from public.papi_jobs where id = 'concurrent-first-job' for update;
+          \\! touch /tmp/papi-lock-ready
           select pg_sleep(2);
           commit;
           SQL
           LOCK_PID=$!
-          sleep 0.3
+          for attempt in $(seq 1 40); do
+            if [[ -f /tmp/papi-lock-ready ]]; then break; fi
+            sleep 0.1
+          done
+          test -f /tmp/papi-lock-ready
 
           psql -h 127.0.0.1 -U postgres -d papi_test -At -v ON_ERROR_STOP=1 \
             -c "select public.papi_claim_job('worker-concurrent-b', gen_random_uuid(), 120)" \
