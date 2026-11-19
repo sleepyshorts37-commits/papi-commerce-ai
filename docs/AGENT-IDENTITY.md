@@ -68,3 +68,14 @@ Aucun agent n'est activé, aucun worker permanent n'est déployé, aucune action
 Le module `papi_core.shared_identity.SupabaseIdentityVerifier` permet au worker de vérifier Ed25519 avec le registre public distant et de consommer le nonce via la RPC transactionnelle. Il est injecté explicitement dans `PapiWorker(shared_identity_verifier=...)`. En son absence, le worker conserve le mode local JSON/SQLite ; il ne bascule pas silencieusement vers un backend distant.
 
 L'adaptateur exige un `SupabaseStore` serveur. Il lit uniquement une clé publique active correspondant exactement à l'agent et à la version, vérifie localement la signature Ed25519, puis appelle `papi_consume_agent_nonce`. Un résultat autre que le booléen `true` bloque l'authentification. Les erreurs de transport Supabase ferment l'accès. Le module n'envoie aucune clé privée.
+
+## Profils professionnels et délégation (19 novembre 2026)
+
+Le fichier data/agent_profiles.json et le module papi_core.agent_profiles ajoutent un schéma documentaire pour l'identifiant, le nom, la fonction, l'équipe, le responsable, la mission, les compétences, les objectifs, le niveau d'autonomie, les permissions, le statut et l'historique.
+
+Le validateur contrôle les références vers le registre central, les responsables inconnus, les auto-références, les cycles hiérarchiques, les doublons, les horodatages et les permissions non déléguées. Les permissions effectives sont limitées par l'intersection avec les permissions que chaque responsable autorise à déléguer. La suspension ou la révocation d'un agent ou d'un responsable retire les permissions effectives.
+
+Le registre est livré vide. Les profils existants n'ont pas été inventés ou activés. Ce mécanisme est un contrôle de cohérence documentaire et ne remplace pas la vérification cryptographique, le registre des clés ni la politique runtime. Une modification du JSON ne peut pas, à elle seule, autoriser un handler.
+
+Les identités distribuées restent limitées par le fait que les registres locaux et SQLite ne constituent pas encore une source transactionnelle partagée multi-hôte. La révocation Ed25519 locale existe ; la suspension dans les profils documentaires n'est pas encore reliée à une révocation cryptographique distante.
+
