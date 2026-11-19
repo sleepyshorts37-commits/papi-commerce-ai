@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "profiles": [],
+  "policy": {
+    "description": "Profils professionnels documentaires ; aucune identité réelle ni activation implicite.",
+    "permission_inheritance": "intersection_with_manager_delegable_permissions",
+    "runtime_authority": "cryptographic_identity_and_policy_only"
+  }
+}
