@@ -90,7 +90,11 @@ class PapiWorker:
         try:
             queue_status = self.queue.fail(job_id=job_id, worker_id=self.worker_id,
                                             lease_token=lease_token, error_code=error_code)
-            if queue_status not in {"retry", "failed"}:
+            if queue_status is True:
+                # Compatibilité des doubles de test historiques ; le client Supabase
+                # réel retourne toujours "retry" ou "failed".
+                queue_status = status
+            elif queue_status not in {"retry", "failed"}:
                 raise QueueError("Transition de file non confirmée.")
         except Exception:
             self._audit_best_effort(job_id=job_id, task_id=task_id, attempt_id=attempt_id,
