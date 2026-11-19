@@ -91,6 +91,26 @@ class AgentPermissionReportTests(unittest.TestCase):
         self.assertTrue(item["explicitly_prohibited"])
         self.assertIn("explicit_agent_prohibition", item["runtime_blockers"])
 
+    def test_owner_only_permission_is_denied(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_path = write_registry(root, [agent(permissions=["spend_money"])])
+            policy_path = write_policy(root)
+            report = build_agent_permission_report(agents_path, policy_path)
+        item = report["agents"][0]["permissions"][0]
+        self.assertEqual(item["local_check"], "deny")
+        self.assertIn("propriétaire", item["reason"])
+
+    def test_external_permission_is_denied_by_global_policy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_path = write_registry(root, [agent(permissions=["send_email"])])
+            policy_path = write_policy(root)
+            report = build_agent_permission_report(agents_path, policy_path)
+        item = report["agents"][0]["permissions"][0]
+        self.assertEqual(item["local_check"], "deny")
+        self.assertIn("désactivées", item["reason"])
+
     def test_malformed_permission_list_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
