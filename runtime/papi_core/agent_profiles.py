@@ -83,9 +83,9 @@ def validate_agent_profiles(
                 raise AgentProfileError("Le nom et la fonction doivent correspondre au registre central.")
             if profile["team"] != source.get("department"):
                 raise AgentProfileError("L'équipe doit correspondre au département déclaré.")
-            if profile["status"] not in VALID_STATUSES:
+            if not isinstance(profile["status"], str) or profile["status"] not in VALID_STATUSES:
                 raise AgentProfileError("Statut de profil inconnu.")
-            if profile["autonomy_level"] not in VALID_AUTONOMY:
+            if not isinstance(profile["autonomy_level"], str) or profile["autonomy_level"] not in VALID_AUTONOMY:
                 raise AgentProfileError("Niveau d'autonomie inconnu.")
             if profile["status"] == "active" and source.get("status") != "active":
                 raise AgentProfileError("Un profil ne peut pas activer seul un agent non actif dans le registre central.")
