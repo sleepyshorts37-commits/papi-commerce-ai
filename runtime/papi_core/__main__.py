@@ -2,6 +2,7 @@
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from .registry import RegistryError, route_department, validate_registries
 from .orchestrator import build_dispatch_plan
@@ -12,6 +13,7 @@ from .sales import SalesError, build_sales_report, load_sales
 from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
+from .agent_permission_report import AGENTS_FILE, POLICY_FILE, build_agent_permission_report
 from .publishing import BookProjectError, BookProjectStore, create_book_project, get_project_summary, transition_task
 
 
@@ -24,6 +26,12 @@ def main() -> int:
     agent_check = sub.add_parser("agent-check", help="Contrôler localement une permission d'agent")
     agent_check.add_argument("agent_id")
     agent_check.add_argument("permission")
+    permission_report = sub.add_parser(
+        "agent-permission-report",
+        help="Auditer les permissions déclarées et les blocages runtime (lecture seule)",
+    )
+    permission_report.add_argument("--agents", type=Path, default=AGENTS_FILE)
+    permission_report.add_argument("--policy", type=Path, default=POLICY_FILE)
     sub.add_parser("plan", help="Préparer un plan consultatif des tâches en attente")
     sub.add_parser("doctor", help="Diagnostiquer la configuration locale sans réseau ni secret affiché")
     sub.add_parser("dashboard", help="Afficher PAPI COMMAND CENTER en lecture seule")
@@ -69,6 +77,10 @@ def main() -> int:
         if args.command == "agent-check":
             print(json.dumps(authorize_agent(args.agent_id, args.permission), ensure_ascii=False, indent=2))
             return 0
+        if args.command == "agent-permission-report":
+            report = build_agent_permission_report(args.agents, args.policy)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return 2 if report["status"] == "blocked" else 0
         if args.command == "dashboard":
             print(json.dumps(build_command_center(), ensure_ascii=False, indent=2))
             return 0
@@ -98,7 +110,7 @@ def main() -> int:
         if args.command == "validate":
             errors = validate_registries()
             if errors:
-                print("\\n".join(errors), file=sys.stderr)
+                print("\n".join(errors), file=sys.stderr)
                 return 1
             print("OK — registres PAPI valides.")
             return 0
