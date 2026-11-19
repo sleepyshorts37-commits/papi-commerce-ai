@@ -285,6 +285,58 @@ jobs:
           $exhausted$;
           SQL
 
+      - name: Verify concurrent claims skip locked rows on disposable PostgreSQL
+        env:
+          PGPASSWORD: papi_test_password
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 <<'SQL'
+          insert into public.papi_tasks(id, task, version)
+          values
+            ('concurrent-first-task', '{"id":"concurrent-first-task"}'::jsonb, 1),
+            ('concurrent-second-task', '{"id":"concurrent-second-task"}'::jsonb, 1);
+          insert into public.papi_jobs(
+            id, task_id, handler, payload, idempotency_key, available_at, created_at
+          ) values
+            ('concurrent-first-job', 'concurrent-first-task', 'test.noop', '{}'::jsonb,
+             'concurrent-first-key', now(), now() - interval '2 minutes'),
+            ('concurrent-second-job', 'concurrent-second-task', 'test.noop', '{}'::jsonb,
+             'concurrent-second-key', now(), now() - interval '1 minute');
+          SQL
+
+          # Hold the oldest queued row in a separate transaction while another
+          # worker executes the real claim RPC. SKIP LOCKED must choose the next row.
+          psql -h 127.0.0.1 -U postgres -d papi_test -v ON_ERROR_STOP=1 > /tmp/papi-lock-holder.log 2>&1 <<'SQL' &
+          begin;
+          select id from public.papi_jobs where id = 'concurrent-first-job' for update;
+          select pg_sleep(2);
+          commit;
+          SQL
+          LOCK_PID=$!
+          sleep 0.3
+
+          psql -h 127.0.0.1 -U postgres -d papi_test -At -v ON_ERROR_STOP=1 \
+            -c "select public.papi_claim_job('worker-concurrent-b', gen_random_uuid(), 120)" \
+            > /tmp/papi-claim-b.json
+          wait "$LOCK_PID"
+
+          psql -h 127.0.0.1 -U postgres -d papi_test -At -v ON_ERROR_STOP=1 \
+            -c "select public.papi_claim_job('worker-concurrent-a', gen_random_uuid(), 120)" \
+            > /tmp/papi-claim-a.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          claim_b = json.loads(Path("/tmp/papi-claim-b.json").read_text())
+          claim_a = json.loads(Path("/tmp/papi-claim-a.json").read_text())
+          assert claim_b["id"] == "concurrent-second-job", claim_b
+          assert claim_a["id"] == "concurrent-first-job", claim_a
+          assert claim_a["attempt_id"] != claim_b["attempt_id"]
+          assert claim_a["lease_token"] != claim_b["lease_token"]
+          print("Concurrent PostgreSQL reservations: two distinct jobs, attempt IDs and lease tokens.")
+          PY
+
       - name: Verify rollback on disposable PostgreSQL
         env:
           PGPASSWORD: papi_test_password
