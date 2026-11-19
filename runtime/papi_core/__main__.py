@@ -110,7 +110,7 @@ def main() -> int:
         if args.command == "validate":
             errors = validate_registries()
             if errors:
-                print("\\n".join(errors), file=sys.stderr)
+                print("\n".join(errors), file=sys.stderr)
                 return 1
             print("OK — registres PAPI valides.")
             return 0
