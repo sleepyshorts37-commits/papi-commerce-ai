@@ -114,15 +114,18 @@ class WorkerReliabilityTests(unittest.TestCase):
             def run(worker):
                 try:
                     barrier.wait()
-                    results.append(self._run_authenticated(worker))
+                    results.append(worker.run_once())
                 except Exception as exc:
                     errors.append(exc)
 
             threads = [threading.Thread(target=run, args=(worker,)) for worker in workers]
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join(timeout=5)
+            with patch("papi_core.worker.authorize_authenticated_agent",
+                       return_value={"principal": SimpleNamespace(agent_id="agent-a")}), \
+                 patch("papi_core.worker.authorize_job", return_value=None):
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join(timeout=5)
             self.assertFalse(errors)
             self.assertTrue(all(not thread.is_alive() for thread in threads))
             self.assertEqual(len(calls), 1)
@@ -174,6 +177,7 @@ class WorkerReliabilityTests(unittest.TestCase):
             result = self._run_authenticated(worker)
             self.assertEqual(result["status"], "failed")
             self.assertEqual(queue.fail_calls[0]["error_code"], "handler_error")
+            self.assertEqual(result["queue_status"], "retry")
             self.assertNotEqual(result["status"], "completed")
 
     def test_lost_complete_response_is_reported_unknown_without_second_transition(self):
