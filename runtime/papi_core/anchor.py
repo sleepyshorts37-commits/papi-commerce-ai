@@ -10,7 +10,10 @@ import json
 import re
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Protocol
+
+from .audit import read_events
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 CHECKPOINT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
@@ -211,3 +214,21 @@ class AnchorClient:
         if not self._call(self.store.compare_and_swap_head, current, target_checkpoint_id):
             raise AnchorConflict("La tête a changé pendant le rollback.")
         return self.verify_checkpoint(target_checkpoint_id)
+
+
+def anchor_audit_journal(
+    client: AnchorClient, journal_path: str | Path, *, checkpoint_id: str | None = None
+) -> dict[str, Any]:
+    """Vérifie le journal local puis ancre son dernier hash et son numéro de séquence.
+
+    read_events valide le JSONL, les doublons et toute la chaîne SHA-256 sous verrou.
+    Un journal vide ou invalide n'est jamais publié.
+    """
+    events = read_events(Path(journal_path))
+    if not events:
+        raise AnchorError("Impossible d'ancrer un journal d'audit vide.")
+    return client.publish_checkpoint(
+        audit_head=events[-1]["event_hash"],
+        sequence=len(events),
+        checkpoint_id=checkpoint_id,
+    )

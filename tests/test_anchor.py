@@ -1,8 +1,15 @@
 import hashlib
+import json
+import tempfile
 import threading
 import unittest
+from pathlib import Path
 
-from papi_core.anchor import AnchorClient, AnchorConflict, AnchorError, AnchorIntegrityError, AnchorUnavailable
+from papi_core.anchor import (
+    AnchorClient, AnchorConflict, AnchorError, AnchorIntegrityError,
+    AnchorUnavailable, anchor_audit_journal,
+)
+from papi_core.audit import AuditError, append_event, new_event, read_events
 
 
 class MemoryAnchorStore:
@@ -64,6 +71,34 @@ class AnchorTests(unittest.TestCase):
     def setUp(self):
         self.store = MemoryAnchorStore()
         self.client = AnchorClient(self.store)
+
+    def test_anchor_reads_and_verifies_the_local_audit_journal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            journal = Path(directory) / "audit.jsonl"
+            append_event(new_event(
+                event_id="audit-event-1", actor="system", action="worker.test",
+                entity_type="job", entity_id="job-1", details={"result": "ok"},
+            ), journal)
+            checkpoint = anchor_audit_journal(
+                self.client, journal, checkpoint_id="journal-checkpoint-1"
+            )
+            events = read_events(journal)
+            self.assertEqual(checkpoint["audit_head"], events[-1]["event_hash"])
+            self.assertEqual(checkpoint["sequence"], 1)
+
+    def test_invalid_audit_journal_fails_closed_before_anchor_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            journal = Path(directory) / "audit.jsonl"
+            append_event(new_event(
+                event_id="audit-event-1", actor="system", action="worker.test",
+                entity_type="job", entity_id="job-1", details={"result": "ok"},
+            ), journal)
+            record = json.loads(journal.read_text(encoding="utf-8"))
+            record["action"] = "tampered"
+            journal.write_text(json.dumps(record) + "\\n", encoding="utf-8")
+            with self.assertRaises(AuditError):
+                anchor_audit_journal(self.client, journal, checkpoint_id="must-not-publish")
+            self.assertIsNone(self.store.head)
 
     def test_publish_and_verify_checkpoint_chain(self):
         first = self.client.publish_checkpoint(audit_head=audit_hash("audit-1"), sequence=1, checkpoint_id="checkpoint-1")

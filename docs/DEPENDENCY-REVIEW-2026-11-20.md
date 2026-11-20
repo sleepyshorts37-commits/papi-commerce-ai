@@ -13,6 +13,8 @@ La contrainte précédente cryptography>=42.0,<47.0 autorisait des versions conc
 
 La contrainte est désormais cryptography==50.0.2. PyPI indique pour cette version une licence Apache-2.0 OR BSD-3-Clause, un état Production/Stable et une publication le 30 septembre 2026. Les avis cités ne couvrent pas cette version selon les plages de versions publiées. Une nouvelle analyse doit être exécutée à chaque mise à jour ; ce constat n'est pas une garantie d'absence de vulnérabilité future.
 
+Sources primaires : [PyPI cryptography 50.0.2](https://pypi.org/project/cryptography/50.0.2/), [GHSA-jwv3-5hgf-82ww](https://github.com/advisories/GHSA-jwv3-5hgf-82ww), [GHSA-537c-gmf6-5ccf](https://github.com/advisories/GHSA-537c-gmf6-5ccf) et [GHSA-p423-j2cm-9vmq](https://github.com/advisories/GHSA-p423-j2cm-9vmq).
+
 ## Licence et maintenance
 
 cryptography est maintenu par le projet Python Cryptographic Authority. Sa double licence permet l'utilisation sous Apache-2.0 ou BSD-3-Clause selon les conditions correspondantes. Les notices et obligations de la distribution choisie doivent être conservées.

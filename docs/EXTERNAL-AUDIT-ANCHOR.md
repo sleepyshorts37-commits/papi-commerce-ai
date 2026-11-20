@@ -10,6 +10,8 @@ L'adaptateur externe devra fournir :
 - put_checkpoint(id, payload) pour une écriture immuable et idempotente ;
 - compare_and_swap_head(expected, replacement) pour empêcher deux écrivains de faire avancer la même tête.
 
+La fonction anchor_audit_journal lit le journal via read_events, qui valide le JSONL, les doublons, le verrou et toute la chaîne SHA-256 avant de publier le dernier event_hash avec son numéro de séquence. Un journal vide ou corrompu reste fail-closed.
+
 Le prototype exige un stockage qui refuse la réécriture d'un identifiant avec un contenu différent. La mise à jour de tête doit être atomique côté fournisseur.
 
 ## Format et vérification
