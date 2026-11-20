@@ -32,6 +32,8 @@ jobs:
         run: python --version
       - name: Create isolated runtime environment
         run: python -m venv /tmp/papi-runtime
+      - name: Upgrade isolated runtime installer
+        run: /tmp/papi-runtime/bin/python -m pip install --upgrade pip==26.2.0
       - name: Install runtime dependencies
         run: /tmp/papi-runtime/bin/python -m pip install -r requirements.txt
       - name: Check runtime dependency consistency
@@ -39,6 +41,7 @@ jobs:
       - name: Audit runtime dependency graph
         run: |
           python -m venv /tmp/papi-dependency-audit
+          /tmp/papi-dependency-audit/bin/python -m pip install --upgrade pip==26.2.0
           /tmp/papi-dependency-audit/bin/python -m pip install --disable-pip-version-check pip-audit==2.10.1
           /tmp/papi-dependency-audit/bin/pip-audit --strict -r requirements.txt
           /tmp/papi-dependency-audit/bin/pip-audit --strict
