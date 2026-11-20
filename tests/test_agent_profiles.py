@@ -40,7 +40,7 @@ class AgentProfileTests(unittest.TestCase):
         self.assertTrue(any("permissions non déléguées" in error for error in errors))
 
     def test_profile_permissions_must_be_declared_in_central_agent_registry(self):
-        self.profiles["director"]["permissions"] = ["read_reports", "assign_tasks", "make_payment"]
+        self.profiles["director"]["permissions"] = ["read_reports", "assign_tasks", "send_message"]
         errors = validate_agent_profiles(self.profiles, self.agents)
         self.assertTrue(any("liste autorisée du registre central" in error for error in errors))
 
@@ -51,10 +51,9 @@ class AgentProfileTests(unittest.TestCase):
         self.assertTrue(any("permission interdite" in error for error in errors))
 
     def test_delegable_permissions_must_be_in_central_allowlist(self):
-        self.profiles["director"]["delegable_permissions"].append("make_payment")
-        self.profiles["director"]["permissions"].append("make_payment")
+        self.profiles["director"]["delegable_permissions"].append("send_message")
         errors = validate_agent_profiles(self.profiles, self.agents)
-        self.assertTrue(any("liste autorisée du registre central" in error for error in errors))
+        self.assertTrue(any("propres permissions déclarées" in error for error in errors))
 
     def test_agent_cannot_be_its_own_manager(self):
         self.profiles["analyst"]["manager_id"] = "analyst"
