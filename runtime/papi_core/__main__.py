@@ -2,6 +2,7 @@
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from .registry import RegistryError, route_department, validate_registries
 from .orchestrator import build_dispatch_plan
@@ -12,6 +13,7 @@ from .sales import SalesError, build_sales_report, load_sales
 from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
+from .opportunities import OpportunityError, rank_opportunities
 
 
 def main() -> int:
@@ -32,6 +34,8 @@ def main() -> int:
     sub.add_parser("finance-validate", help="Valider le registre financier local")
     sub.add_parser("finance-report", help="Afficher le rapport financier local en lecture seule")
     sub.add_parser("security-check", help="Vérifier la posture de sécurité locale en lecture seule")
+    opportunity_rank = sub.add_parser("opportunity-rank", help="Classer des hypothèses commerciales XOF sans action externe")
+    opportunity_rank.add_argument("path", help="Fichier JSON conforme à schemas/opportunity.schema.json")
     args = parser.parse_args()
     try:
         if args.command == "agent-check":
@@ -63,6 +67,10 @@ def main() -> int:
         if args.command == "security-check":
             print(json.dumps(check_security(), ensure_ascii=False, indent=2))
             return 0
+        if args.command == "opportunity-rank":
+            opportunities = json.loads(Path(args.path).read_text(encoding="utf-8"))
+            print(json.dumps({"currency": "XOF", "ranked": rank_opportunities(opportunities)}, ensure_ascii=False, indent=2))
+            return 0
         if args.command == "validate":
             errors = validate_registries()
             if errors:
@@ -75,7 +83,7 @@ def main() -> int:
         else:
             print(json.dumps(build_dispatch_plan(), ensure_ascii=False, indent=2))
         return 0
-    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, ValueError) as exc:
+    except (RegistryError, SchedulerError, SalesError, FinanceError, SecurityError, AccessDenied, OpportunityError, OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 

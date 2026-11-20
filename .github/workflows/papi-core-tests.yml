@@ -32,6 +32,11 @@ jobs:
         run: python --version
       - name: Install runtime dependencies
         run: python -m pip install -r requirements.txt
+      - name: Audit runtime dependency graph
+        run: |
+          python -m venv /tmp/papi-dependency-audit
+          /tmp/papi-dependency-audit/bin/python -m pip install --disable-pip-version-check pip-audit
+          /tmp/papi-dependency-audit/bin/pip-audit --strict -r requirements.txt
       - name: Validate registries
         run: PYTHONPATH=runtime python -m papi_core validate
       - name: Run unit tests

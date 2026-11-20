@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PAPI opportunity evaluation input",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "id", "activity", "price_xof", "direct_cost_xof", "delivery_cost_xof",
+      "commission_pct", "payment_fee_xof", "refund_reserve_pct", "initial_cost_xof",
+      "customer_advance_xof", "supplier_payment_days", "customer_payment_days",
+      "first_revenue_days", "risk_pct", "confidence_pct"
+    ],
+    "properties": {
+      "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"},
+      "name": {"type": "string", "minLength": 1, "maxLength": 120},
+      "activity": {"type": "string", "enum": [
+        "PAPI MARKET", "PAPI DROPSHIPPING", "PAPI AFFILIATION",
+        "PAPI FREELANCE", "PAPI SERVICES", "PAPI BUSINESS PARTNERS"
+      ]},
+      "price_xof": {"type": "integer", "minimum": 1},
+      "direct_cost_xof": {"type": "integer", "minimum": 0},
+      "delivery_cost_xof": {"type": "integer", "minimum": 0},
+      "commission_pct": {"type": "number", "minimum": 0, "maximum": 100},
+      "payment_fee_xof": {"type": "integer", "minimum": 0},
+      "refund_reserve_pct": {"type": "number", "minimum": 0, "maximum": 100},
+      "initial_cost_xof": {"type": "integer", "minimum": 0},
+      "customer_advance_xof": {"type": "integer", "minimum": 0},
+      "supplier_payment_days": {"type": "integer", "minimum": 0},
+      "customer_payment_days": {"type": "integer", "minimum": 0},
+      "first_revenue_days": {"type": "integer", "minimum": 0},
+      "risk_pct": {"type": "number", "minimum": 0, "maximum": 100},
+      "confidence_pct": {"type": "number", "minimum": 0, "maximum": 100}
+    }
+  }
+}
