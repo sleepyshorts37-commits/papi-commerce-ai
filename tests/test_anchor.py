@@ -95,7 +95,7 @@ class AnchorTests(unittest.TestCase):
             ), journal)
             record = json.loads(journal.read_text(encoding="utf-8"))
             record["action"] = "tampered"
-            journal.write_text(json.dumps(record) + "\\n", encoding="utf-8")
+            journal.write_text(json.dumps(record) + chr(10), encoding="utf-8")
             with self.assertRaises(AuditError):
                 anchor_audit_journal(self.client, journal, checkpoint_id="must-not-publish")
             self.assertIsNone(self.store.head)
