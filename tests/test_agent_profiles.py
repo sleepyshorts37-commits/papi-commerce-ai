@@ -36,6 +36,7 @@ class AgentProfileTests(unittest.TestCase):
 
     def test_child_cannot_self_elevate_beyond_manager_delegation(self):
         self.profiles["analyst"]["permissions"] = ["read_reports", "assign_tasks"]
+        self.profiles["director"]["delegable_permissions"] = ["read_reports"]
         errors = validate_agent_profiles(self.profiles, self.agents)
         self.assertTrue(any("permissions non déléguées" in error for error in errors))
 
@@ -50,7 +51,7 @@ class AgentProfileTests(unittest.TestCase):
         errors = validate_agent_profiles(self.profiles, self.agents)
         self.assertTrue(any("permission interdite" in error for error in errors))
 
-    def test_delegable_permissions_must_be_in_central_allowlist(self):
+    def test_delegable_permissions_must_be_declared_by_profile(self):
         self.profiles["director"]["delegable_permissions"].append("send_message")
         errors = validate_agent_profiles(self.profiles, self.agents)
         self.assertTrue(any("propres permissions déclarées" in error for error in errors))
