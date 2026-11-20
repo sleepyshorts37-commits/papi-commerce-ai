@@ -98,9 +98,31 @@ def validate_agent_profiles(
             _strings(profile["skills"], "skills")
             _strings(profile["objectives"], "objectives")
             permissions = _strings(profile["permissions"], "permissions", allow_empty=True)
+            source_permissions = _strings(
+                source.get("permissions"), "agent.permissions", allow_empty=True
+            )
+            source_prohibited = _strings(
+                source.get("prohibited"), "agent.prohibited", allow_empty=True
+            )
+            if not permissions.issubset(source_permissions):
+                raise AgentProfileError(
+                    "Permissions du profil absentes de la liste autorisée du registre central."
+                )
+            if permissions.intersection(source_prohibited):
+                raise AgentProfileError(
+                    "Le profil déclare une permission interdite par le registre central."
+                )
             delegable = _strings(profile.get("delegable_permissions", []), "delegable_permissions", allow_empty=True)
             if not delegable.issubset(permissions):
                 raise AgentProfileError("Un agent ne peut déléguer que ses propres permissions déclarées.")
+            if not delegable.issubset(source_permissions):
+                raise AgentProfileError(
+                    "Permissions déléguables absentes de la liste autorisée du registre central."
+                )
+            if delegable.intersection(source_prohibited):
+                raise AgentProfileError(
+                    "Le profil tente de déléguer une permission interdite par le registre central."
+                )
             history = profile["history"]
             if not isinstance(history, list):
                 raise AgentProfileError("history doit être une liste.")
