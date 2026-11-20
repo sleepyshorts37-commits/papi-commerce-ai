@@ -79,3 +79,15 @@ Le registre est livré vide. Les profils existants n'ont pas été inventés ou 
 
 Les identités distribuées restent limitées par le fait que les registres locaux et SQLite ne constituent pas encore une source transactionnelle partagée multi-hôte. La révocation Ed25519 locale existe ; la suspension dans les profils documentaires n'est pas encore reliée à une révocation cryptographique distante.
 
+
+
+## Limite de permission du registre de profils (20 novembre 2026)
+
+Le validateur de profils vérifie désormais aussi la frontière avec le registre central `data/agents.json` :
+
+- chaque permission de profil doit figurer dans `agents[id].permissions` ;
+- aucune permission de profil ne peut figurer dans `agents[id].prohibited` ;
+- les permissions déléguables restent limitées aux permissions du profil, donc également à la liste centrale autorisée ;
+- les listes centrales `permissions` et `prohibited` doivent être des listes de chaînes valides (elles peuvent être vides).
+
+Un profil documentaire ne peut pas élargir l'autorité déclarée de l'agent dans le registre central, ni neutraliser une interdiction. Ces contrôles de cohérence ne sont pas une autorisation runtime : l'authentification cryptographique, la politique d'accès, l'approbation de tâche et le handler fermé restent obligatoires. Le registre de profils est vide et aucun agent n'est activé.

@@ -24,6 +24,7 @@
 - [x] PAPI COMMAND CENTER local en lecture seule.
 - [x] PAPI CHAT : socle local de communication interne.
 - [x] Contrôle d'accès local : statut actif, permissions déclarées, interdictions et garde-fous globaux.
+- [x] Validation documentaire des profils : permissions limitées aux allowlists du registre central et exclusions des permissions interdites (tests CI ; aucun runtime activé).
 - [x] Prototype local d'authentification cryptographique HMAC-SHA256, horodatage et anti-rejeu.\n- [x] Ajouter révocation et rotation locales des clés HMAC ; tests de rejet des identités révoquées et des signatures périmées.
 - [x] Ajouter un prototype Ed25519, registre public versionné, révocation, rotation et tests unitaires.
 - [x] Brancher Ed25519 au contrôle d'accès et au worker ; maintenir HMAC uniquement pour compatibilité transitoire.
