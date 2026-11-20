@@ -2,7 +2,7 @@ import hashlib
 import threading
 import unittest
 
-from papi_core.anchor import AnchorClient, AnchorConflict, AnchorIntegrityError, AnchorUnavailable
+from papi_core.anchor import AnchorClient, AnchorConflict, AnchorError, AnchorIntegrityError, AnchorUnavailable
 
 
 class MemoryAnchorStore:
@@ -100,6 +100,17 @@ class AnchorTests(unittest.TestCase):
         self.client.rollback("checkpoint-1")
         with self.assertRaises(AnchorConflict):
             self.client.rollback("checkpoint-2")
+
+    def test_checkpoint_ids_and_head_references_are_validated(self):
+        with self.assertRaises(AnchorError):
+            self.client.publish_checkpoint(
+                audit_head=audit_hash("audit"), sequence=1, checkpoint_id=""
+            )
+        with self.assertRaises(AnchorIntegrityError):
+            self.client.verify_checkpoint("../invalid")
+        self.store.head = "../invalid"
+        with self.assertRaises(AnchorIntegrityError):
+            self.client.verify_chain()
 
     def test_sequence_must_increase(self):
         self.client.publish_checkpoint(audit_head=audit_hash("audit-1"), sequence=5, checkpoint_id="checkpoint-1")

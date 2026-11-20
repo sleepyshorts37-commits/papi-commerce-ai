@@ -21,9 +21,11 @@ Le dépôt PAPI lui-même ne déclare pas encore de licence. Aucune licence de p
 
 ## Dépendances transitives et compatibilité
 
-Le dépôt ne contient pas de lockfile transplateforme. La résolution transitive peut donc varier selon Python, OS, architecture et disponibilité des wheels. Le workflow ajoute pip-audit dans un environnement temporaire séparé et analyse le graphe résolu depuis requirements.txt, sans ajouter cet outil aux dépendances runtime.
+Le dépôt ne contient pas de lockfile transplateforme. Sur le runner Ubuntu 26.04 / Python 3.14, l'installation de cryptography 50.0.2 a résolu cffi 2.1.1 puis pycparser 3.12. Ces versions transitives ne sont pas encore verrouillées ; elles sont incluses dans l'audit du graphe résolu.
 
-Les tests CI doivent continuer à vérifier l'installation sur l'environnement Python du runner. Avant une production multi-plateforme, produire un lockfile reproductible par cible (versions et hashes), puis tester Linux, Windows et les versions Python réellement supportées.
+Le premier run a aussi révélé un conflit avec le pyOpenSSL préinstallé globalement sur l'image du runner (pyOpenSSL 25.3.0 exige cryptography<47). Le workflow installe désormais le runtime dans un environnement virtuel isolé et exécute pip check avant les tests, afin de ne pas hériter des paquets système préinstallés. pip-audit est lui-même isolé dans un second environnement temporaire.
+
+Avant une production multi-plateforme, produire un lockfile reproductible par cible (versions et hashes), puis tester Linux, Windows et les versions Python réellement supportées.
 
 ## Risque d'exploitation et verrouillage
 

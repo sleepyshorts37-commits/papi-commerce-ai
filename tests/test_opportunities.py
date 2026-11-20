@@ -54,7 +54,7 @@ class OpportunityTests(unittest.TestCase):
 
     def test_free_low_risk_fast_option_ranks_before_paid_option(self):
         paid = opportunity("paid", initial_cost_xof=4000, direct_cost_xof=1000, risk_pct=5, first_revenue_days=1)
-        free = opportunity("free", risk_pct=15, first_revenue_days=5)
+        free = opportunity("free", direct_cost_xof=0, risk_pct=15, first_revenue_days=5)
         ranked = rank_opportunities([paid, free])
         self.assertEqual([item["id"] for item in ranked], ["free", "paid"])
         self.assertEqual(ranked[0]["priority_tier"], 0)

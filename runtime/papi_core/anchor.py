@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Protocol
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+CHECKPOINT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 CHECKPOINT_FIELDS = {
     "version", "checkpoint_id", "sequence", "audit_head",
     "previous_checkpoint_id", "created_at", "digest",
@@ -93,7 +94,11 @@ class AnchorClient:
         if not isinstance(value, dict) or set(value) != CHECKPOINT_FIELDS:
             raise AnchorIntegrityError("Structure de checkpoint invalide.")
         version = value.get("version")
-        if isinstance(version, bool) or version != 1 or value.get("checkpoint_id") != checkpoint_id:
+        if (
+            isinstance(version, bool) or not isinstance(version, int) or version != 1
+            or not isinstance(checkpoint_id, str) or not CHECKPOINT_ID_RE.fullmatch(checkpoint_id)
+            or value.get("checkpoint_id") != checkpoint_id
+        ):
             raise AnchorIntegrityError("Version ou identifiant de checkpoint incohérent.")
         sequence = value.get("sequence")
         if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 1:
@@ -101,7 +106,9 @@ class AnchorClient:
         if not isinstance(value.get("audit_head"), str) or not SHA256_RE.fullmatch(value["audit_head"]):
             raise AnchorIntegrityError("audit_head doit être un SHA-256.")
         previous = value.get("previous_checkpoint_id")
-        if previous is not None and (not isinstance(previous, str) or not previous):
+        if previous is not None and (
+            not isinstance(previous, str) or not CHECKPOINT_ID_RE.fullmatch(previous)
+        ):
             raise AnchorIntegrityError("previous_checkpoint_id invalide.")
         if not _parse_timestamp(value.get("created_at")):
             raise AnchorIntegrityError("created_at doit être une date ISO 8601 avec fuseau.")
@@ -116,6 +123,8 @@ class AnchorClient:
         return value
 
     def verify_checkpoint(self, checkpoint_id: str) -> dict[str, Any]:
+        if not isinstance(checkpoint_id, str) or not CHECKPOINT_ID_RE.fullmatch(checkpoint_id):
+            raise AnchorIntegrityError("Identifiant de checkpoint invalide.")
         payload = self._call(self.store.get_checkpoint, checkpoint_id)
         if payload is None:
             raise AnchorIntegrityError(f"Checkpoint supprimé ou introuvable : {checkpoint_id}.")
@@ -130,6 +139,8 @@ class AnchorClient:
         seen: set[str] = set()
         child_sequence: int | None = None
         while current is not None:
+            if not isinstance(current, str) or not CHECKPOINT_ID_RE.fullmatch(current):
+                raise AnchorIntegrityError("Pointeur de tête ou parent de checkpoint invalide.")
             if current in seen:
                 raise AnchorIntegrityError("Cycle détecté dans la chaîne des checkpoints.")
             seen.add(current)
@@ -150,8 +161,8 @@ class AnchorClient:
             raise AnchorError("audit_head doit être un SHA-256 hexadécimal.")
         if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 1:
             raise AnchorError("sequence doit être un entier positif.")
-        identifier = checkpoint_id or str(uuid.uuid4())
-        if not isinstance(identifier, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", identifier):
+        identifier = str(uuid.uuid4()) if checkpoint_id is None else checkpoint_id
+        if not isinstance(identifier, str) or not CHECKPOINT_ID_RE.fullmatch(identifier):
             raise AnchorError("checkpoint_id invalide.")
 
         head = self._call(self.store.get_head)

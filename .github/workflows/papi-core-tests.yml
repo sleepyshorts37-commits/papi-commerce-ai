@@ -30,17 +30,21 @@ jobs:
       - uses: actions/checkout@v4
       - name: Python version
         run: python --version
+      - name: Create isolated runtime environment
+        run: python -m venv /tmp/papi-runtime
       - name: Install runtime dependencies
-        run: python -m pip install -r requirements.txt
+        run: /tmp/papi-runtime/bin/python -m pip install -r requirements.txt
+      - name: Check runtime dependency consistency
+        run: /tmp/papi-runtime/bin/python -m pip check
       - name: Audit runtime dependency graph
         run: |
           python -m venv /tmp/papi-dependency-audit
           /tmp/papi-dependency-audit/bin/python -m pip install --disable-pip-version-check pip-audit
           /tmp/papi-dependency-audit/bin/pip-audit --strict -r requirements.txt
       - name: Validate registries
-        run: PYTHONPATH=runtime python -m papi_core validate
+        run: PYTHONPATH=runtime /tmp/papi-runtime/bin/python -m papi_core validate
       - name: Run unit tests
-        run: PYTHONPATH=runtime python -m unittest discover -s tests -v
+        run: PYTHONPATH=runtime /tmp/papi-runtime/bin/python -m unittest discover -s tests -v
 
       - name: Apply base Supabase schema to disposable PostgreSQL
         env:
