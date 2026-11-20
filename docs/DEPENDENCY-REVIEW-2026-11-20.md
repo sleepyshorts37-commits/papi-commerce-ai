@@ -23,7 +23,7 @@ Le dépôt PAPI lui-même ne déclare pas encore de licence. Aucune licence de p
 
 ## Dépendances transitives et compatibilité
 
-Le dépôt ne contient pas de lockfile transplateforme. Sur le runner Ubuntu 26.04 / Python 3.14, l'installation de cryptography 50.0.2 a résolu cffi 2.1.1 puis pycparser 3.12. Ces versions transitives ne sont pas encore verrouillées ; elles sont incluses dans l'audit du graphe résolu.
+Le dépôt ne contient pas de lockfile transplateforme. Sur le runner Ubuntu 26.04 / Python 3.14, l'installation de cryptography 50.0.2 a résolu cffi 2.1.1 puis pycparser 3.12. cffi 2.1.1 déclare MIT-0 ; pycparser 3.12 déclare BSD-3-Clause. Les pages PyPI consultées ne signalent pas de provenance attestée pour ces deux distributions. Ces versions transitives ne sont pas encore verrouillées ; elles sont incluses dans l'audit du graphe résolu.
 
 Le premier run a aussi révélé un conflit avec le pyOpenSSL préinstallé globalement sur l'image du runner (pyOpenSSL 25.3.0 exige cryptography<47). Le workflow installe désormais le runtime dans un environnement virtuel isolé et exécute pip check avant les tests, afin de ne pas hériter des paquets système préinstallés. pip-audit est lui-même isolé dans un second environnement temporaire.
 
@@ -39,4 +39,6 @@ Avant une production multi-plateforme, produire un lockfile reproductible par ci
 
 ## Vérification CI
 
-Le workflow exécute pip-audit --strict -r requirements.txt dans un environnement temporaire séparé. Il vérifie les dépendances directes et transitives résolues au moment du run. Le résultat doit être consulté sur le SHA exact de la PR ; un résultat futur peut changer si l'index de vulnérabilités est actualisé.
+Le workflow épingle pip-audit 2.10.1 (Apache-2.0 ; les exemples réutilisés de resolvelib sont sous ISC) dans un environnement temporaire séparé. Il audite le graphe runtime résolu depuis requirements.txt, puis l'environnement du scanner lui-même. pip-audit n'est pas un scanner de malware et ne garantit pas la détection des vulnérabilités de bibliothèques natives ou de composants système non représentés dans les métadonnées de paquets. Le résultat doit être consulté sur le SHA exact de la PR ; un résultat futur peut changer si l'index d'avis est actualisé.
+
+Références complémentaires : [cffi 2.1.1](https://pypi.org/project/cffi/2.1.1/), [pycparser 3.12](https://pypi.org/project/pycparser/3.12/) et [pip-audit 2.10.1](https://pypi.org/project/pip-audit/2.10.1/).
