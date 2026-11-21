@@ -239,5 +239,22 @@ class AnchorTests(unittest.TestCase):
         self.assertEqual(len(self.client.verify_chain()), 1)
 
 
+    def test_noncanonical_checkpoint_json_with_duplicate_keys_is_rejected(self):
+        self.client.publish_checkpoint(
+            audit_head=audit_hash("audit"), sequence=1, checkpoint_id="checkpoint-1"
+        )
+        canonical_payload = self.store.objects["checkpoint-1"]
+        self.assertIn(b'\"sequence\":1', canonical_payload)
+        ambiguous_payload = canonical_payload.replace(
+            b'\"sequence\":1', b'\"sequence\":0,\"sequence\":1', 1
+        )
+        self.assertNotEqual(ambiguous_payload, canonical_payload)
+        self.assertEqual(json.loads(ambiguous_payload), json.loads(canonical_payload))
+        self.store.tamper("checkpoint-1", ambiguous_payload)
+
+        with self.assertRaises(AnchorIntegrityError):
+            self.client.verify_checkpoint("checkpoint-1")
+
+
 if __name__ == "__main__":
     unittest.main()

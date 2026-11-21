@@ -96,6 +96,12 @@ class AnchorClient:
             raise AnchorIntegrityError("Checkpoint absent ou JSON invalide.") from exc
         if not isinstance(value, dict) or set(value) != CHECKPOINT_FIELDS:
             raise AnchorIntegrityError("Structure de checkpoint invalide.")
+        try:
+            canonical_payload = _canonical(value)
+        except (TypeError, ValueError, UnicodeError) as exc:
+            raise AnchorIntegrityError("Checkpoint non canonique ou contenant une valeur invalide.") from exc
+        if payload != canonical_payload:
+            raise AnchorIntegrityError("Checkpoint JSON non canonique ou contenant des clés dupliquées.")
         version = value.get("version")
         if (
             isinstance(version, bool) or not isinstance(version, int) or version != 1
