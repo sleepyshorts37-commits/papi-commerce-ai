@@ -169,6 +169,11 @@ class AnchorClient:
             raise AnchorError("checkpoint_id invalide.")
 
         head = self._call(self.store.get_head)
+        # Verify every ancestor before extending or accepting an idempotent retry.
+        # A valid head object is not sufficient if an earlier checkpoint is missing
+        # or corrupted: otherwise a new checkpoint would perpetuate a broken chain.
+        chain = self.verify_chain(head) if head is not None else []
+        previous = chain[-1] if chain else None
         existing_payload = self._call(self.store.get_checkpoint, identifier)
         if existing_payload is not None:
             existing = self._decode(identifier, existing_payload)
@@ -178,18 +183,14 @@ class AnchorClient:
                 return existing
             if existing["previous_checkpoint_id"] != head:
                 raise AnchorConflict("Le checkpoint existant ne prolonge plus la tête actuelle.")
-            if head is not None:
-                previous = self.verify_checkpoint(head)
-                if sequence <= previous["sequence"]:
-                    raise AnchorConflict("La séquence doit être supérieure à celle de la tête.")
+            if previous is not None and sequence <= previous["sequence"]:
+                raise AnchorConflict("La séquence doit être supérieure à celle de la tête.")
             if not self._call(self.store.compare_and_swap_head, head, identifier):
                 raise AnchorConflict("La tête d'ancrage a changé pendant la reprise.")
             return existing
 
-        if head is not None:
-            previous = self.verify_checkpoint(head)
-            if sequence <= previous["sequence"]:
-                raise AnchorConflict("La séquence doit être supérieure à celle de la tête.")
+        if previous is not None and sequence <= previous["sequence"]:
+            raise AnchorConflict("La séquence doit être supérieure à celle de la tête.")
 
         body = {
             "version": 1, "checkpoint_id": identifier, "sequence": sequence,
