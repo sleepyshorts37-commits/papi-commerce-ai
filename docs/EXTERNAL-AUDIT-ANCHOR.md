@@ -12,7 +12,7 @@ L'adaptateur externe devra fournir :
 
 La fonction anchor_audit_journal lit le journal via read_events, qui valide le JSONL, les doublons, le verrou et toute la chaîne SHA-256 avant de publier le dernier event_hash avec son numéro de séquence. Un journal vide ou corrompu reste fail-closed.
 
-Le prototype exige un stockage qui refuse la réécriture d'un identifiant avec un contenu différent. La mise à jour de tête doit être atomique côté fournisseur.
+Avant toute nouvelle publication, le client vérifie toute la chaîne depuis la tête actuelle, y compris ses ancêtres, leur digest, les références et l'ordre des séquences. Un checkpoint valide isolément ne suffit pas : une chaîne cassée bloque aussi les publications et les reprises idempotentes. Le prototype exige un stockage qui refuse la réécriture d'un identifiant avec un contenu différent. La mise à jour de tête doit être atomique côté fournisseur.
 
 ## Format et vérification
 
