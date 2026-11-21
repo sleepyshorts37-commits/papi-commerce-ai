@@ -107,6 +107,38 @@ class AnchorTests(unittest.TestCase):
         chain = self.client.verify_chain()
         self.assertEqual([item["checkpoint_id"] for item in chain], ["checkpoint-1", "checkpoint-2"])
 
+    def test_publish_refuses_to_extend_chain_with_missing_ancestor(self):
+        self.client.publish_checkpoint(
+            audit_head=audit_hash("audit-1"), sequence=1, checkpoint_id="checkpoint-1"
+        )
+        self.client.publish_checkpoint(
+            audit_head=audit_hash("audit-2"), sequence=2, checkpoint_id="checkpoint-2"
+        )
+        self.store.delete("checkpoint-1")
+
+        with self.assertRaises(AnchorIntegrityError):
+            self.client.publish_checkpoint(
+                audit_head=audit_hash("audit-3"), sequence=3, checkpoint_id="checkpoint-3"
+            )
+        self.assertEqual(self.store.head, "checkpoint-2")
+        self.assertNotIn("checkpoint-3", self.store.objects)
+
+    def test_idempotent_retry_verifies_all_ancestors(self):
+        second = self.client.publish_checkpoint(
+            audit_head=audit_hash("audit-1"), sequence=1, checkpoint_id="checkpoint-1"
+        )
+        second = self.client.publish_checkpoint(
+            audit_head=audit_hash("audit-2"), sequence=2, checkpoint_id="checkpoint-2"
+        )
+        self.store.delete("checkpoint-1")
+
+        with self.assertRaises(AnchorIntegrityError):
+            self.client.publish_checkpoint(
+                audit_head=second["audit_head"], sequence=second["sequence"],
+                checkpoint_id="checkpoint-2",
+            )
+        self.assertEqual(self.store.head, "checkpoint-2")
+
     def test_tampered_checkpoint_is_detected(self):
         checkpoint = self.client.publish_checkpoint(audit_head=audit_hash("audit"), sequence=1, checkpoint_id="checkpoint-1")
         self.store.tamper("checkpoint-1", b'{"checkpoint_id":"checkpoint-1","digest":"00"}')
