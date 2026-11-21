@@ -124,7 +124,7 @@ class AnchorTests(unittest.TestCase):
         self.assertNotIn("checkpoint-3", self.store.objects)
 
     def test_idempotent_retry_verifies_all_ancestors(self):
-        second = self.client.publish_checkpoint(
+        self.client.publish_checkpoint(
             audit_head=audit_hash("audit-1"), sequence=1, checkpoint_id="checkpoint-1"
         )
         second = self.client.publish_checkpoint(
