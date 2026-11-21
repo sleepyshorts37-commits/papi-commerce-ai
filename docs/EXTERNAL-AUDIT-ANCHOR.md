@@ -16,7 +16,7 @@ Avant toute nouvelle publication, le client vérifie toute la chaîne depuis la 
 
 ## Format et vérification
 
-Chaque checkpoint contient la version, un identifiant, le numéro de séquence du journal, le hash SHA-256 de la tête du journal local, l'identifiant du checkpoint précédent et la date UTC. Le digest est calculé sur un JSON canonique (clés triées, séparateurs stables). La vérification recalcule le digest et parcourt tous les parents jusqu'à la racine.
+Chaque checkpoint contient la version, un identifiant, le numéro de séquence du journal, le hash SHA-256 de la tête du journal local, l'identifiant du checkpoint précédent et la date UTC. Le digest est calculé sur un JSON canonique (clés triées, séparateurs stables). Le vérificateur exige que les octets relus correspondent exactement à cette sérialisation : espaces, ordre de clés alternatif et clés JSON dupliquées sont refusés. La vérification recalcule le digest et parcourt tous les parents jusqu'à la racine.
 
 Un hash détecte une altération par rapport à un checkpoint de confiance ; il ne prouve pas à lui seul l'identité de l'auteur. Une protection contre un administrateur qui contrôle simultanément le stockage et son pointeur exige une séparation des domaines de confiance, une rétention immuable/WORM ou une signature conservée dans un domaine indépendant.
 
