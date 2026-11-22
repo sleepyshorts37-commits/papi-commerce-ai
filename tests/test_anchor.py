@@ -103,7 +103,8 @@ class AnchorTests(unittest.TestCase):
     def test_publish_and_verify_checkpoint_chain(self):
         first = self.client.publish_checkpoint(audit_head=audit_hash("audit-1"), sequence=1, checkpoint_id="checkpoint-1")
         second = self.client.publish_checkpoint(audit_head=audit_hash("audit-2"), sequence=2, checkpoint_id="checkpoint-2")
-        self.assertEqual(second["previous_checkpoint_id"], first["checkpoint_id"])\n        self.assertRegex(first["created_at"], r"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$")
+        self.assertEqual(second["previous_checkpoint_id"], first["checkpoint_id"])
+        self.assertRegex(first["created_at"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
         chain = self.client.verify_chain()
         self.assertEqual([item["checkpoint_id"] for item in chain], ["checkpoint-1", "checkpoint-2"])
 
