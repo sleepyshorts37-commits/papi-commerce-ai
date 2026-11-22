@@ -11,9 +11,15 @@ Le lecteur du journal utilisait le comportement JSON standard « dernière clé 
 - Ajoute une régression pour une clé dupliquée de premier niveau et une clé dupliquée imbriquée. Dans les deux cas, le test vérifie que le décodeur JSON standard produit le même objet apparent avant que le lecteur strict refuse la ligne.
 - Actualise la documentation du journal et la roadmap.
 
-## Validation
+## Validation vérifiée
 
-Les workflows GitHub Actions de la PR doivent exécuter les tests core, la validation des registres et les contrôles documentaires sur le SHA final. Aucun test local n'est déclaré dans cette session.
+Sur le SHA de code et de documentation initial `9de039051aa44bb3a79c34de706450e6c715719a`, les trois workflows GitHub Actions ont terminé avec succès :
+
+- [PAPI core tests — run 45023396064](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45023396064) : **228 tests réussis**, 0 échec ; le test `test_read_rejects_duplicate_json_keys_at_all_nesting_levels` apparaît explicitement avec le résultat `ok`.
+- [PAPI registry validation — run 45023396070](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45023396070) : succès.
+- [PAPI documentation checks — run 45023396162](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45023396162) : succès.
+
+Le workflow core a aussi réussi les étapes de cohérence des dépendances, d'audit du graphe runtime et les vérifications sur PostgreSQL jetable (schéma, fixtures legacy, migration, concurrence des claims et rollback). Tests locaux : non exécutés.
 
 ## Gouvernance et limites
 
