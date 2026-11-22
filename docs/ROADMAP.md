@@ -15,7 +15,7 @@
 - [x] Outils commerciaux locaux : prospects, opportunités, offres, pipeline et interactions.
 - [x] Registre financier append-only : recettes vérifiées, dépenses approuvées/payées, remboursements et rapports XOF.
 - [x] Moteur commun d'évaluation des six activités PAPI (marge, commission, livraison, trésorerie, risque, délai de recette et coût initial), en lecture seule.
-- [x] Contrat d'ancrage externe fournisseur-neutre avec hash SHA-256, CAS, vérification complète des ancêtres avant publication/reprise, rejet du JSON non canonique et des clés dupliquées, rollback et adaptateur mémoire réservé aux tests ; aucun fournisseur distant configuré.
+- [x] Contrat d'ancrage externe fournisseur-neutre avec hash SHA-256, CAS, vérification complète des ancêtres avant publication/reprise, rejet du JSON non canonique et des clés dupliquées, horodatage UTC canonique à la seconde, rollback et adaptateur mémoire réservé aux tests ; aucun fournisseur distant configuré.
 - [x] Audit CI des dépendances directes et transitives avec pip-audit.
 - [x] Contrôle local de posture de sécurité et checklist de préparation au déploiement.
 - [ ] Configurer les secrets et permissions d'hébergement après choix explicite du propriétaire.

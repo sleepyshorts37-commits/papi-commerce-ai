@@ -64,13 +64,14 @@ def _digest(value: dict[str, Any]) -> str:
 
 
 def _parse_timestamp(value: Any) -> bool:
-    if not isinstance(value, str):
+    """Accepte uniquement le format UTC canonique à la seconde, terminé par Z."""
+    if not isinstance(value, str) or not value.endswith("Z"):
         return False
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return parsed.tzinfo is not None and parsed.utcoffset() is not None
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError:
         return False
+    return parsed.isoformat(timespec="seconds").replace("+00:00", "Z") == value
 
 
 class AnchorClient:
@@ -120,7 +121,7 @@ class AnchorClient:
         ):
             raise AnchorIntegrityError("previous_checkpoint_id invalide.")
         if not _parse_timestamp(value.get("created_at")):
-            raise AnchorIntegrityError("created_at doit être une date ISO 8601 avec fuseau.")
+            raise AnchorIntegrityError("created_at doit être un horodatage UTC canonique au format YYYY-MM-DDTHH:MM:SSZ.")
         if not isinstance(value.get("digest"), str) or not SHA256_RE.fullmatch(value["digest"]):
             raise AnchorIntegrityError("digest doit être un SHA-256.")
         try:
