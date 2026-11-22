@@ -239,5 +239,40 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
                 read_events(worker.audit_path)
 
 
+    def test_read_rejects_duplicate_json_keys_at_all_nesting_levels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            event = new_event(
+                event_id="duplicate-json-key",
+                actor="worker-a",
+                action="job.retry",
+                entity_type="job",
+                entity_id="job-duplicate-json",
+                details={"result": "ok"},
+            )
+            append_event(event, path)
+            original = path.read_bytes()
+            duplicate_cases = (
+                (
+                    b'"action": "job.retry"',
+                    b'"action": "tampered", "action": "job.retry"',
+                ),
+                (
+                    b'"result": "ok"',
+                    b'"result": "tampered", "result": "ok"',
+                ),
+            )
+            for needle, replacement in duplicate_cases:
+                with self.subTest(needle=needle):
+                    ambiguous = original.replace(needle, replacement, 1)
+                    self.assertNotEqual(ambiguous, original)
+                    # The default JSON decoder keeps the final value, so the
+                    # decoded object and its event hash still appear unchanged.
+                    self.assertEqual(json.loads(ambiguous), json.loads(original))
+                    path.write_bytes(ambiguous)
+                    with self.assertRaises(AuditError):
+                        read_events(path)
+
+
 if __name__ == "__main__":
     unittest.main()
