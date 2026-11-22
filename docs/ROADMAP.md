@@ -9,6 +9,7 @@
 ## Phase 1 — Socle technique minimal
 - [x] Registre agents et tâches avec validation.
 - [x] Noyau de coordination, audit, machine à états et stockage.
+- [x] Le lecteur du journal JSONL rejette les clés JSON dupliquées à tout niveau, y compris dans les détails, sans imposer de re-sérialisation des lignes historiques.
 - [x] File d'exécution contrôlée, handlers et worker à exécution désactivée.
 - [x] Mémoire partagée locale.
 - [x] Planificateur déterministe sans exécution autonome.

@@ -28,6 +28,16 @@ class AuditError(ValueError):
     """Événement d'audit invalide ou dangereux."""
 
 
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Construit un objet JSON en refusant les clés répétées à tout niveau."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise AuditError(f"Clé JSON dupliquée interdite : {key}")
+        result[key] = value
+    return result
+
+
 def _check_safe(value: Any, path: str = "details", depth: int = 0) -> None:
     if depth > MAX_DETAIL_DEPTH:
         raise AuditError(f"Nesting trop profond: {path}")
@@ -171,7 +181,7 @@ def _read_verified(path: Path) -> list[dict[str, Any]]:
         if not line.strip():
             raise AuditError(f"Ligne vide interdite dans le journal (ligne {line_number}).")
         try:
-            event = json.loads(line)
+            event = json.loads(line, object_pairs_hook=_unique_json_object)
             validate_event(event)
         except (json.JSONDecodeError, AuditError) as exc:
             raise AuditError(f"Événement invalide à la ligne {line_number}: {exc}") from exc

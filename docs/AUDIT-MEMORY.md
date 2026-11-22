@@ -25,7 +25,7 @@ history = read_events(Path("data/events.jsonl"))
 
 ## Protections
 - Refus des clés pouvant contenir secrets, identifiants d'accès, données de carte, coordonnées ou données client.
-- Refus des événements incomplets, champs inconnus, formats invalides et journaux corrompus.
+- Refus des événements incomplets, champs inconnus, formats invalides, clés JSON dupliquées à tout niveau et journaux corrompus.
 - Déduplication par `event_id` pour les appels séquentiels.
 - Permissions de création du fichier restreintes au propriétaire du processus lorsque le système les prend en charge.
 - Le journal est append-only par convention logicielle : ce module n'offre aucune fonction de modification ou suppression.
