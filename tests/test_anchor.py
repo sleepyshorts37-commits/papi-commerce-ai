@@ -103,7 +103,7 @@ class AnchorTests(unittest.TestCase):
     def test_publish_and_verify_checkpoint_chain(self):
         first = self.client.publish_checkpoint(audit_head=audit_hash("audit-1"), sequence=1, checkpoint_id="checkpoint-1")
         second = self.client.publish_checkpoint(audit_head=audit_hash("audit-2"), sequence=2, checkpoint_id="checkpoint-2")
-        self.assertEqual(second["previous_checkpoint_id"], first["checkpoint_id"])
+        self.assertEqual(second["previous_checkpoint_id"], first["checkpoint_id"])\n        self.assertRegex(first["created_at"], r"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$")
         chain = self.client.verify_chain()
         self.assertEqual([item["checkpoint_id"] for item in chain], ["checkpoint-1", "checkpoint-2"])
 
@@ -254,6 +254,35 @@ class AnchorTests(unittest.TestCase):
 
         with self.assertRaises(AnchorIntegrityError):
             self.client.verify_checkpoint("checkpoint-1")
+
+
+    def test_timestamp_must_be_canonical_utc_with_whole_seconds(self):
+        self.client.publish_checkpoint(
+            audit_head=audit_hash("audit"), sequence=1, checkpoint_id="checkpoint-time"
+        )
+        original = json.loads(self.store.objects["checkpoint-time"])
+        invalid_timestamps = (
+            "2026-11-22T08:00:00+00:00",
+            "2026-11-22T09:00:00+01:00",
+            "2026-11-22T08:00:00.000Z",
+            "2026-11-22T08:00Z",
+        )
+        for timestamp in invalid_timestamps:
+            with self.subTest(timestamp=timestamp):
+                checkpoint = dict(original)
+                checkpoint["created_at"] = timestamp
+                body = {key: value for key, value in checkpoint.items() if key != "digest"}
+                canonical_body = json.dumps(
+                    body, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+                ).encode("utf-8")
+                checkpoint["digest"] = hashlib.sha256(canonical_body).hexdigest()
+                payload = json.dumps(
+                    checkpoint, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+                ).encode("utf-8")
+                self.store.tamper("checkpoint-time", payload)
+                with self.assertRaises(AnchorIntegrityError):
+                    self.client.verify_checkpoint("checkpoint-time")
+
 
 
 if __name__ == "__main__":
