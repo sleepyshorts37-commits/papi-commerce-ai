@@ -21,6 +21,9 @@ GENESIS_HASH = "0" * 64
 MAX_DETAIL_DEPTH = 8
 MAX_CONTAINER_ITEMS = 100
 MAX_EVENT_BYTES = 64 * 1024
+MAX_AUDIT_LINE_BYTES = MAX_EVENT_BYTES + 2  # includes LF or CRLF delimiter
+MAX_JOURNAL_BYTES = 32 * 1024 * 1024
+MAX_AUDIT_EVENTS = 50_000
 MAX_INTEGER_BITS = 63
 
 
@@ -36,6 +39,10 @@ def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise AuditError(f"Clé JSON dupliquée interdite : {key}")
         result[key] = value
     return result
+
+def _reject_json_constant(value: str) -> None:
+    """Refuse NaN/Infinity, tolérés par défaut mais non conformes au JSON strict."""
+    raise AuditError(f"Constante JSON non standard interdite : {value}")
 
 
 def _check_safe(value: Any, path: str = "details", depth: int = 0) -> None:
@@ -166,7 +173,20 @@ def _read_verified(path: Path) -> list[dict[str, Any]]:
     except FileNotFoundError:
         return []
     with os.fdopen(descriptor, "rb") as journal:
-        raw = journal.read()
+        initial_size = os.fstat(journal.fileno()).st_size
+        if initial_size > MAX_JOURNAL_BYTES:
+            raise AuditError(f"Journal trop volumineux: maximum {MAX_JOURNAL_BYTES} octets.")
+        raw = journal.read(MAX_JOURNAL_BYTES + 1)
+        if len(raw) > MAX_JOURNAL_BYTES:
+            raise AuditError(f"Journal trop volumineux: maximum {MAX_JOURNAL_BYTES} octets.")
+        if os.fstat(journal.fileno()).st_size != len(raw):
+            raise AuditError("Journal modifié pendant la lecture; contrôle manuel requis.")
+    raw_lines = raw.splitlines(keepends=True)
+    if len(raw_lines) > MAX_AUDIT_EVENTS:
+        raise AuditError(f"Trop d'événements dans le journal: maximum {MAX_AUDIT_EVENTS}.")
+    for line_number, raw_line in enumerate(raw_lines, start=1):
+        if len(raw_line) > MAX_AUDIT_LINE_BYTES:
+            raise AuditError(f"Ligne trop volumineuse dans le journal (ligne {line_number}).")
     if raw and not raw.endswith(b"\n"):
         raise AuditError("Journal incomplet : dernière ligne tronquée.")
     try:
@@ -181,7 +201,11 @@ def _read_verified(path: Path) -> list[dict[str, Any]]:
         if not line.strip():
             raise AuditError(f"Ligne vide interdite dans le journal (ligne {line_number}).")
         try:
-            event = json.loads(line, object_pairs_hook=_unique_json_object)
+            event = json.loads(
+                line,
+                object_pairs_hook=_unique_json_object,
+                parse_constant=_reject_json_constant,
+            )
             validate_event(event)
         except (json.JSONDecodeError, AuditError) as exc:
             raise AuditError(f"Événement invalide à la ligne {line_number}: {exc}") from exc

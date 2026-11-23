@@ -274,5 +274,79 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
                         read_events(path)
 
 
+    def test_read_rejects_journal_over_byte_limit_before_parsing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            path.write_bytes(b"123456789")
+            os.chmod(path, 0o600)
+            with patch("papi_core.audit.MAX_JOURNAL_BYTES", 8):
+                with self.assertRaises(AuditError):
+                    read_events(path)
+
+    def test_read_rejects_oversized_raw_line_even_when_event_is_valid(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            append_event(
+                new_event(
+                    event_id="oversized-line",
+                    actor="worker-a",
+                    action="job.retry",
+                    entity_type="job",
+                    entity_id="job-oversized-line",
+                    details={"result": "ok"},
+                ),
+                path,
+            )
+            original = path.read_bytes()
+            oversized = original[:-1] + (b" " * 64) + b"\\n"
+            path.write_bytes(oversized)
+            with patch("papi_core.audit.MAX_AUDIT_LINE_BYTES", len(original) - 1):
+                with self.assertRaises(AuditError):
+                    read_events(path)
+
+    def test_read_rejects_nonstandard_json_constants(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            append_event(
+                new_event(
+                    event_id="nonstandard-constant",
+                    actor="worker-a",
+                    action="job.retry",
+                    entity_type="job",
+                    entity_id="job-nonstandard",
+                    details={"result": "ok"},
+                ),
+                path,
+            )
+            original = path.read_bytes()
+            for constant in (b"NaN", b"Infinity", b"-Infinity"):
+                with self.subTest(constant=constant):
+                    ambiguous = original.replace(b'"result": "ok"', b'"result": ' + constant, 1)
+                    self.assertNotEqual(ambiguous, original)
+                    path.write_bytes(ambiguous)
+                    with self.assertRaises(AuditError):
+                        read_events(path)
+            path.write_bytes(original)
+
+    def test_read_rejects_too_many_events(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            append_event(
+                new_event(
+                    event_id="event-count-limit",
+                    actor="worker-a",
+                    action="job.retry",
+                    entity_type="job",
+                    entity_id="job-count-limit",
+                    details={},
+                ),
+                path,
+            )
+            with patch("papi_core.audit.MAX_AUDIT_EVENTS", 0):
+                with self.assertRaises(AuditError):
+                    read_events(path)
+
+
+
 if __name__ == "__main__":
     unittest.main()
