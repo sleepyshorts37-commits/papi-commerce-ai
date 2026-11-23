@@ -234,7 +234,13 @@ def append_event(event: dict[str, Any], path: Path) -> bool:
     path.parent.mkdir(parents=True, exist_ok=True)
     with _journal_lock(path):
         existing = _read_verified(path)
-        if any(item["event_id"] == event["event_id"] for item in existing):
+        duplicate = next((item for item in existing if item["event_id"] == event["event_id"]), None)
+        if duplicate is not None:
+            # occurred_at may differ on a retry; the semantic payload must not.
+            original = {key: value for key, value in duplicate.items() if key not in CHAIN_FIELDS and key != "occurred_at"}
+            candidate = {key: value for key, value in event.items() if key != "occurred_at"}
+            if original != candidate:
+                raise AuditError("Identifiant d'événement réutilisé avec un contenu différent.")
             return False
         previous_hash = existing[-1]["event_hash"] if existing else GENESIS_HASH
         record = {**event, "previous_hash": previous_hash}
