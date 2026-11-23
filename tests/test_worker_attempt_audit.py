@@ -81,6 +81,51 @@ class AttemptScopedWorkerAuditTests(unittest.TestCase):
             self.assertEqual(len(events), 1)
             self.assertIsNone(events[0]["details"]["agent_id"])
 
+    def test_duplicate_event_id_same_payload_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            original = new_event(
+                event_id="stable-event-id",
+                actor="worker-a",
+                action="job.retry",
+                entity_type="job",
+                entity_id="job-duplicate",
+                details={"outcome": "retry"},
+            )
+            self.assertTrue(append_event(original, path))
+            duplicate = dict(original)
+            duplicate["occurred_at"] = "2026-11-23T12:00:00Z"
+            self.assertFalse(append_event(duplicate, path))
+            events = read_events(path)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["occurred_at"], original["occurred_at"])
+
+    def test_duplicate_event_id_with_different_payload_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            original = new_event(
+                event_id="conflicting-event-id",
+                actor="worker-a",
+                action="job.retry",
+                entity_type="job",
+                entity_id="job-conflict",
+                details={"outcome": "retry"},
+            )
+            self.assertTrue(append_event(original, path))
+            conflicting = new_event(
+                event_id="conflicting-event-id",
+                actor="worker-a",
+                action="job.failed",
+                entity_type="job",
+                entity_id="job-conflict",
+                details={"outcome": "failed"},
+            )
+            before = path.read_bytes()
+            with self.assertRaisesRegex(AuditError, "Identifiant d'événement réutilisé"):
+                append_event(conflicting, path)
+            self.assertEqual(path.read_bytes(), before)
+            self.assertEqual(len(read_events(path)), 1)
+
     def test_concurrent_duplicate_appends_are_serialized(self):
         with tempfile.TemporaryDirectory() as directory:
             worker = self._worker(directory)
