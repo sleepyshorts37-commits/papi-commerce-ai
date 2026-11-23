@@ -17,7 +17,12 @@ Réduire le risque de consommation mémoire incontrôlée lors de la lecture du 
 ## Validation
 
 - Tests locaux : non exécutés (environnement de session sans checkout Python local du dépôt).
-- CI GitHub Actions : en attente du déclenchement sur cette PR.
+- CI GitHub Actions sur le SHA de code/documentation initial `28f448c354c81f4850e4af6032afeeccc8b113a6` : trois workflows terminés avec succès.
+  - [Core tests — run 45145677903](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45145677903) : **232 tests réussis** ; PostgreSQL jetable, vérifications de migrations, concurrence et rollback réussis.
+  - [Registry validation — run 45145677588](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45145677588) : succès.
+  - [Documentation checks — run 45145677566](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45145677566) : succès.
+  - Supabase Preview : ignoré, aucun projet distant n'est utilisé.
+- Tests locaux : non exécutés.
 - Les tests préexistants de Mission 193 sont validés sur le SHA `9de039051aa44bb3a79c34de706450e6c715719a` (228 tests, workflows core/registry/docs réussis). Le SHA de tête documentaire `b15bf612299ef44ba9da2168cf449093968d0b1c` n'a pas de nouveau run, selon le rapport PR.
 
 ## Limites
