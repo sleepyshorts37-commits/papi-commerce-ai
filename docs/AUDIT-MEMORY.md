@@ -27,7 +27,7 @@ history = read_events(Path("data/events.jsonl"))
 - Refus des clés pouvant contenir secrets, identifiants d'accès, données de carte, coordonnées ou données client.
 - Refus des événements incomplets, champs inconnus, formats invalides, clés JSON dupliquées à tout niveau, constantes JSON non standard (`NaN`, `Infinity`, `-Infinity`) et journaux corrompus.
 - Lecture bornée : 32 Mio maximum par journal, 50 000 événements et 64 Kio par ligne brute (délimiteur LF inclus). Le lecteur vérifie la taille avant lecture et détecte un changement de taille pendant la lecture.
-- Déduplication par `event_id` pour les appels séquentiels.
+- Déduplication idempotente par `event_id` : un retry du même contenu sémantique (horodatage exclu) est ignoré ; la réutilisation d'un identifiant avec un autre acteur, action, entité ou détail échoue fermé.
 - Permissions de création du fichier restreintes au propriétaire du processus lorsque le système les prend en charge.
 - Le journal est append-only par convention logicielle : ce module n'offre aucune fonction de modification ou suppression.
 - Aucune rotation/archivage automatique n'est implémentée. Au-delà des limites, la lecture et les ajouts qui nécessitent une vérification préalable échouent fermé; une procédure d'archivage validée reste nécessaire.
