@@ -30,7 +30,8 @@ history = read_events(Path("data/events.jsonl"))
 - Déduplication idempotente par `event_id` : un retry du même contenu sémantique (horodatage exclu) est ignoré ; la réutilisation d'un identifiant avec un autre acteur, action, entité ou détail échoue fermé.
 - Permissions de création du fichier restreintes au propriétaire du processus lorsque le système les prend en charge.
 - Le journal est append-only par convention logicielle : ce module n'offre aucune fonction de modification ou suppression.
-- Aucune rotation/archivage automatique n'est implémentée. Au-delà des limites, la lecture et les ajouts qui nécessitent une vérification préalable échouent fermé; une procédure d'archivage validée reste nécessaire.
+- Aucune rotation/archivage automatique n'est implémentée. Au-delà des limites, la lecture et les ajouts qui nécessitent une vérification préalable échouent fermé.
+- Un snapshot complet peut être créé avec `papi_core.audit_archive.create_verified_archive` après ancrage de la tête courante. La restauration utilise `restore_verified_archive`, vérifie à nouveau la chaîne et refuse tout chemin de destination existant. La source n'est jamais tronquée ni supprimée.
 
 ## Limites importantes
 - Le module est local et n'est pas encore connecté à GitHub Issues, à une base distante ou à un runtime d'agents.

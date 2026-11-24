@@ -1,0 +1,165 @@
+import os
+import tempfile
+import unittest
+from pathlib import Path
+
+from papi_core.anchor import AnchorClient, AnchorConflict, anchor_audit_journal
+from papi_core.audit import append_event, new_event, read_events
+from papi_core.audit_archive import (
+    AuditArchiveError,
+    create_verified_archive,
+    restore_verified_archive,
+    verify_archive,
+)
+
+
+class MemoryAnchorStore:
+    """Adaptateur mémoire de test uniquement."""
+
+    def __init__(self):
+        self.head = None
+        self.objects = {}
+
+    def get_head(self):
+        return self.head
+
+    def get_checkpoint(self, checkpoint_id):
+        return self.objects.get(checkpoint_id)
+
+    def put_checkpoint(self, checkpoint_id, payload):
+        existing = self.objects.get(checkpoint_id)
+        if existing is not None and existing != payload:
+            raise AnchorConflict("immutable checkpoint collision")
+        self.objects[checkpoint_id] = payload
+
+    def compare_and_swap_head(self, expected, replacement):
+        if self.head != expected:
+            return False
+        self.head = replacement
+        return True
+
+
+class AuditArchiveTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.root = Path(self.temporary.name)
+        self.journal = self.root / "events.jsonl"
+        self.store = MemoryAnchorStore()
+        self.client = AnchorClient(self.store)
+        self._append("event-1", "job.created")
+        self.checkpoint = anchor_audit_journal(
+            self.client, self.journal, checkpoint_id="audit-checkpoint-1"
+        )
+        self.archive = self.root / "archive-001"
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def _append(self, event_id, action):
+        append_event(
+            new_event(
+                event_id=event_id,
+                actor="system:test",
+                action=action,
+                entity_type="job",
+                entity_id="job-archive-test",
+                details={"result": "ok"},
+            ),
+            self.journal,
+        )
+
+    def _create(self):
+        return create_verified_archive(self.journal, self.archive, self.client)
+
+    def test_archive_is_verified_private_and_does_not_modify_source(self):
+        original = self.journal.read_bytes()
+        result = self._create()
+
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["event_count"], 1)
+        self.assertEqual(result["checkpoint_id"], self.checkpoint["checkpoint_id"])
+        self.assertEqual(self.journal.read_bytes(), original)
+        self.assertEqual(set(os.listdir(self.archive)), {"manifest.json", "journal.jsonl"})
+        self.assertEqual(self.archive.stat().st_mode & 0o777, 0o700)
+        self.assertEqual((self.archive / "manifest.json").stat().st_mode & 0o777, 0o600)
+        self.assertEqual((self.archive / "journal.jsonl").stat().st_mode & 0o777, 0o600)
+
+    def test_archive_requires_a_checkpoint_matching_the_current_journal(self):
+        self._append("event-2", "job.updated")
+        with self.assertRaises(AuditArchiveError):
+            self._create()
+        self.assertFalse(self.archive.exists())
+
+    def test_archive_requires_an_existing_verified_anchor(self):
+        unanchored = AnchorClient(MemoryAnchorStore())
+        with self.assertRaises(AuditArchiveError):
+            create_verified_archive(self.journal, self.archive, unanchored)
+        self.assertFalse(self.archive.exists())
+
+    def test_archive_refuses_to_overwrite_an_existing_directory(self):
+        self._create()
+        before = (self.archive / "journal.jsonl").read_bytes()
+        with self.assertRaises(AuditArchiveError):
+            self._create()
+        self.assertEqual((self.archive / "journal.jsonl").read_bytes(), before)
+
+    def test_verification_rejects_modified_journal_bytes(self):
+        self._create()
+        path = self.archive / "journal.jsonl"
+        path.write_bytes(path.read_bytes() + b" ")
+        with self.assertRaises(AuditArchiveError):
+            verify_archive(self.archive, self.client)
+
+    def test_verification_rejects_duplicate_manifest_keys(self):
+        self._create()
+        path = self.archive / "manifest.json"
+        original = path.read_bytes()
+        path.write_bytes(original[:-1] + b',"version":1}')
+        with self.assertRaises(AuditArchiveError):
+            verify_archive(self.archive, self.client)
+
+    def test_verification_rejects_symlinked_archive_files(self):
+        self._create()
+        archived_journal = self.archive / "journal.jsonl"
+        archived_journal.unlink()
+        os.symlink(self.journal, archived_journal)
+        with self.assertRaises(AuditArchiveError):
+            verify_archive(self.archive, self.client)
+
+    def test_restore_recreates_verified_private_journal(self):
+        self._create()
+        restored_path = self.root / "restored.jsonl"
+
+        result = restore_verified_archive(self.archive, restored_path, self.client)
+
+        self.assertTrue(result["restored"])
+        self.assertEqual(read_events(restored_path), read_events(self.journal))
+        self.assertEqual(restored_path.read_bytes(), (self.archive / "journal.jsonl").read_bytes())
+        self.assertEqual(restored_path.stat().st_mode & 0o777, 0o600)
+
+    def test_restore_never_deletes_or_overwrites_an_existing_target(self):
+        self._create()
+        target = self.root / "existing.jsonl"
+        target.write_bytes(b"keep this file")
+
+        with self.assertRaises(FileExistsError):
+            restore_verified_archive(self.archive, target, self.client)
+
+        self.assertEqual(target.read_bytes(), b"keep this file")
+
+    def test_older_archive_remains_verifiable_after_a_new_checkpoint(self):
+        self._create()
+        self._append("event-2", "job.updated")
+        anchor_audit_journal(
+            self.client, self.journal, checkpoint_id="audit-checkpoint-2"
+        )
+
+        result = verify_archive(self.archive, self.client)
+
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["checkpoint_id"], "audit-checkpoint-1")
+        self.assertEqual(result["event_count"], 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
