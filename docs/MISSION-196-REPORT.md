@@ -15,7 +15,11 @@ Préparer un snapshot complet et restaurable du journal d'audit, lié à un chec
 
 ## Validation
 - Tests locaux : non exécutés dans cette session.
-- CI GitHub Actions : déclenchée par la PR ; les résultats doivent être confirmés sur le SHA final.
+- SHA final testé : `6cae93cc03ea486f650bfbf45dfa387e901e52e1`.
+- [PAPI core tests — run #2859](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45357324461) : succès, **244 tests** ; `pip check`, les deux audits `pip-audit --strict`, PostgreSQL 16 jetable, migrations, concurrence et rollback réussis.
+- [PAPI registry validation — run #919](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45357324281) : succès.
+- [PAPI documentation checks — run #886](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45357324269) : succès.
+- Les deux audits pip-audit indiquent « No known vulnerabilities found » sur les graphes analysés ; cela ne garantit pas l'absence de vulnérabilités futures ou non référencées.
 - Les tests utilisent un adaptateur d'ancrage mémoire exclusivement en test. Aucun fournisseur réel ou stockage distant n'est configuré.
 
 ## Limites
