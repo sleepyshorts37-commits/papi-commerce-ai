@@ -137,6 +137,28 @@ def _write_new_private_file(path: Path, payload: bytes) -> None:
         os.close(descriptor)
 
 
+def _fsync_directory(path: Path) -> None:
+    """Synchronise les entrées du répertoire sans suivre de lien symbolique."""
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    directory_flag = getattr(os, "O_DIRECTORY", None)
+    if nofollow is None or directory_flag is None:
+        raise AuditArchiveError(
+            "La plateforme ne permet pas d'ouvrir un répertoire sans suivre de lien symbolique."
+        )
+    try:
+        descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow)
+    except OSError as exc:
+        raise AuditArchiveError("Impossible d'ouvrir le répertoire pour synchroniser l'archive.") from exc
+    try:
+        if not stat.S_ISDIR(os.fstat(descriptor).st_mode):
+            raise AuditArchiveError("La synchronisation exige un véritable répertoire.")
+        os.fsync(descriptor)
+    except OSError as exc:
+        raise AuditArchiveError("Impossible de garantir la durabilité des entrées du répertoire.") from exc
+    finally:
+        os.close(descriptor)
+
+
 def _verify_journal_bytes(raw: bytes) -> list[dict[str, Any]]:
     if not raw or len(raw) > MAX_JOURNAL_BYTES:
         raise AuditArchiveError("Le journal archivé est vide ou dépasse la limite autorisée.")
@@ -298,11 +320,9 @@ def create_verified_archive(
         created.append(destination / JOURNAL_NAME)
         _write_new_private_file(destination / MANIFEST_NAME, manifest_bytes)
         created.append(destination / MANIFEST_NAME)
-        directory_fd = os.open(destination, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+        # Persist both archive entries and the archive directory's own parent entry.
+        _fsync_directory(destination)
+        _fsync_directory(destination.parent)
         return verify_archive(destination, anchor_client)
     except BaseException:
         for path in created:
@@ -313,6 +333,10 @@ def create_verified_archive(
         try:
             destination.rmdir()
         except OSError:
+            pass
+        try:
+            _fsync_directory(destination.parent)
+        except AuditArchiveError:
             pass
         raise
 
@@ -333,11 +357,17 @@ def restore_verified_archive(
         restored = read_events(destination)
         if restored != events:
             raise AuditArchiveError("Le journal restauré ne correspond pas à l'archive.")
+        # read_events also creates the lock file; persist both directory entries.
+        _fsync_directory(destination.parent)
     except BaseException:
         if created:
             try:
                 destination.unlink()
             except OSError:
+                pass
+            try:
+                _fsync_directory(destination.parent)
+            except AuditArchiveError:
                 pass
         raise
     return {
