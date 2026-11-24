@@ -144,19 +144,15 @@ def _verify_journal_bytes(raw: bytes) -> list[dict[str, Any]]:
         temporary_path = Path(directory) / JOURNAL_NAME
         _write_new_private_file(temporary_path, raw)
         try:
-            events = read_events(temporary_path)
-        except AuditError as exc:
+            return read_events(temporary_path)
+        except (AuditError, OSError) as exc:
             raise AuditArchiveError("La copie du journal ne passe pas la vérification cryptographique.") from exc
-        return events
 
 
 def _verified_anchor(
     client: AnchorClient, checkpoint_id: str, *, require_head: bool
 ) -> dict[str, Any]:
-    try:
-        chain = client.verify_chain()
-    except AnchorError:
-        raise
+    chain = client.verify_chain()
     if not chain:
         raise AuditArchiveError("Aucun checkpoint d'ancrage vérifié.")
     if require_head and chain[-1]["checkpoint_id"] != checkpoint_id:
@@ -183,7 +179,8 @@ def _validate_manifest(raw: bytes) -> dict[str, Any]:
             raise AuditArchiveError("Le manifeste n'est pas encodé de manière canonique.")
     except (TypeError, ValueError, UnicodeError) as exc:
         raise AuditArchiveError("Le manifeste contient une valeur non canonique.") from exc
-    if isinstance(manifest["version"], bool) or manifest["version"] != ARCHIVE_VERSION:
+    version = manifest["version"]
+    if isinstance(version, bool) or not isinstance(version, int) or version != ARCHIVE_VERSION:
         raise AuditArchiveError("Version d'archive inconnue.")
     try:
         parsed_id = str(uuid.UUID(manifest["archive_id"]))
@@ -216,7 +213,7 @@ def _load_verified_archive(
     raw = _read_private_file(directory / JOURNAL_NAME, MAX_JOURNAL_BYTES)
     if len(raw) != manifest["journal_size_bytes"]:
         raise AuditArchiveError("La taille du journal ne correspond pas au manifeste.")
-    if not hashlib.sha256(raw).hexdigest() == manifest["journal_sha256"]:
+    if hashlib.sha256(raw).hexdigest() != manifest["journal_sha256"]:
         raise AuditArchiveError("L'empreinte du journal ne correspond pas au manifeste.")
     events = _verify_journal_bytes(raw)
     if (
@@ -265,14 +262,15 @@ def create_verified_archive(
     try:
         events_before = read_events(source)
         raw = _read_private_file(source, MAX_JOURNAL_BYTES)
-    except (AuditError, AuditArchiveError) as exc:
+    except (AuditError, AuditArchiveError, OSError) as exc:
         raise AuditArchiveError("Le journal source ne peut pas être archivé en toute sécurité.") from exc
     events = _verify_journal_bytes(raw)
     if events != events_before or not events:
         raise AuditArchiveError("Le journal a changé ou est vide pendant la préparation de l'archive.")
-    checkpoint = _verified_anchor(
-        anchor_client, anchor_client.verify_chain()[-1]["checkpoint_id"], require_head=True
-    )
+    chain = anchor_client.verify_chain()
+    if not chain:
+        raise AuditArchiveError("Un checkpoint d'ancrage est obligatoire avant archivage.")
+    checkpoint = _verified_anchor(anchor_client, chain[-1]["checkpoint_id"], require_head=True)
     if checkpoint["sequence"] != len(events) or checkpoint["audit_head"] != events[-1]["event_hash"]:
         raise AuditArchiveError("Un checkpoint actuel correspondant exactement au journal est requis.")
 
@@ -293,6 +291,7 @@ def create_verified_archive(
     os.mkdir(destination, 0o700)
     created: list[Path] = []
     try:
+        _check_private_directory(destination)
         _write_new_private_file(destination / JOURNAL_NAME, raw)
         created.append(destination / JOURNAL_NAME)
         _write_new_private_file(destination / MANIFEST_NAME, manifest_bytes)
@@ -322,9 +321,9 @@ def restore_verified_archive(
     anchor_client: AnchorClient,
 ) -> dict[str, Any]:
     """Restaure uniquement vers un chemin absent, après vérification complète."""
-    _check_parent_components(Path(destination_journal))
-    _manifest, raw, events = _load_verified_archive(archive_directory, anchor_client)
     destination = Path(destination_journal)
+    _check_parent_components(destination)
+    _manifest, raw, events = _load_verified_archive(archive_directory, anchor_client)
     try:
         _write_new_private_file(destination, raw)
         restored = read_events(destination)
