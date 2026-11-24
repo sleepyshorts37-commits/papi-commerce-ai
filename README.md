@@ -46,6 +46,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Noyau de coordination](docs/CORE-ENGINE.md)
 - [Orchestrateur consultatif](docs/ORCHESTRATOR.md)
 - [Journal d'audit](docs/AUDIT-MEMORY.md)
+- [Archives vérifiables du journal d'audit](docs/AUDIT-ARCHIVES.md)
 - [Mémoire partagée](docs/SHARED-MEMORY.md)
 - [Machine à états des missions](docs/STATE-MACHINE.md)
 - [Persistance partagée Supabase](docs/SHARED-STORAGE.md)
