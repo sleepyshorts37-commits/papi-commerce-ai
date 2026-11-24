@@ -54,6 +54,12 @@ restored = restore_verified_archive(
 
 La restauration crée aussi le fichier de verrouillage local attendu par le lecteur du journal. Le journal source n'est jamais modifié.
 
+## Durabilité locale
+
+Chaque fichier est synchronisé (fsync) avant fermeture. Après création, le code synchronise le répertoire de l'archive puis son répertoire parent afin de persister les deux fichiers et l'entrée du dossier d'archive. Après restauration, il synchronise le répertoire parent après la vérification du journal restauré et la création du fichier de verrouillage. Si la plateforme ne permet pas d'ouvrir un répertoire sans suivre un lien symbolique, ou si la synchronisation échoue, l'opération échoue fermé et la cible nouvellement créée est supprimée lorsque possible.
+
+Ces appels améliorent la durabilité locale face à un crash du processus ou du système, mais ne prouvent pas la persistance matérielle du contrôleur/disque, la réplication, la sauvegarde hors site ni la durabilité d'un stockage distant.
+
 ## Tests et limites
 
 `tests/test_audit_archive.py` couvre la création, la vérification, le checkpoint périmé, l'absence d'ancrage, la collision de destination, l'altération des octets, les clés dupliquées du manifeste, les liens symboliques, la restauration et la vérification d'une archive après un checkpoint plus récent.

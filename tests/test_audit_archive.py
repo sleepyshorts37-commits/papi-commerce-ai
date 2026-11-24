@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from papi_core.anchor import AnchorClient, AnchorConflict, anchor_audit_journal
@@ -83,6 +84,46 @@ class AuditArchiveTests(unittest.TestCase):
         self.assertEqual(self.archive.stat().st_mode & 0o777, 0o700)
         self.assertEqual((self.archive / "manifest.json").stat().st_mode & 0o777, 0o600)
         self.assertEqual((self.archive / "journal.jsonl").stat().st_mode & 0o777, 0o600)
+
+    def test_archive_creation_syncs_archive_and_parent_directories(self):
+        from papi_core import audit_archive
+
+        with patch(
+            "papi_core.audit_archive._fsync_directory",
+            wraps=audit_archive._fsync_directory,
+        ) as sync_directory:
+            self._create()
+
+        self.assertEqual(
+            [call.args[0] for call in sync_directory.call_args_list],
+            [self.archive, self.root],
+        )
+
+    def test_restore_syncs_parent_directory_before_success(self):
+        from papi_core import audit_archive
+
+        self._create()
+        restored_path = self.root / "durable-restored.jsonl"
+        with patch(
+            "papi_core.audit_archive._fsync_directory",
+            wraps=audit_archive._fsync_directory,
+        ) as sync_directory:
+            result = restore_verified_archive(self.archive, restored_path, self.client)
+
+        self.assertTrue(result["restored"])
+        sync_directory.assert_called_once_with(self.root)
+
+    def test_restore_fails_closed_when_parent_directory_sync_fails(self):
+        self._create()
+        restored_path = self.root / "not-durable.jsonl"
+        with patch(
+            "papi_core.audit_archive._fsync_directory",
+            side_effect=AuditArchiveError("directory fsync unavailable"),
+        ):
+            with self.assertRaisesRegex(AuditArchiveError, "directory fsync unavailable"):
+                restore_verified_archive(self.archive, restored_path, self.client)
+
+        self.assertFalse(restored_path.exists())
 
     def test_archive_requires_a_checkpoint_matching_the_current_journal(self):
         self._append("event-2", "job.updated")
