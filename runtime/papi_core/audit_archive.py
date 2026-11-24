@@ -145,7 +145,7 @@ def _verify_journal_bytes(raw: bytes) -> list[dict[str, Any]]:
         _write_new_private_file(temporary_path, raw)
         try:
             return read_events(temporary_path)
-        except (AuditError, OSError) as exc:
+        except (AuditError, OSError, RecursionError) as exc:
             raise AuditArchiveError("La copie du journal ne passe pas la vérification cryptographique.") from exc
 
 
@@ -170,7 +170,7 @@ def _validate_manifest(raw: bytes) -> dict[str, Any]:
             object_pairs_hook=_unique_object,
             parse_constant=_reject_constant,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError, AuditArchiveError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, AuditArchiveError, RecursionError) as exc:
         raise AuditArchiveError("Manifeste JSON invalide.") from exc
     if not isinstance(manifest, dict) or set(manifest) != MANIFEST_FIELDS:
         raise AuditArchiveError("Structure de manifeste invalide.")
@@ -206,6 +206,7 @@ def _load_verified_archive(
     archive_directory: str | Path, anchor_client: AnchorClient
 ) -> tuple[dict[str, Any], bytes, list[dict[str, Any]]]:
     directory = Path(archive_directory)
+    _check_parent_components(directory)
     _check_private_directory(directory)
     if set(os.listdir(directory)) != {MANIFEST_NAME, JOURNAL_NAME}:
         raise AuditArchiveError("L'archive doit contenir exactement le manifeste et le journal.")
@@ -256,6 +257,7 @@ def create_verified_archive(
     """Crée une copie complète liée à la tête d'ancrage actuelle, sans toucher à la source."""
     source = Path(journal_path)
     destination = Path(archive_directory)
+    _check_parent_components(source)
     _check_parent_components(destination)
     if destination.exists() or destination.is_symlink():
         raise AuditArchiveError("Le dossier d'archive existe déjà; aucun écrasement n'est autorisé.")
