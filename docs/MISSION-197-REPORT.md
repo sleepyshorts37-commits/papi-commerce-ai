@@ -17,7 +17,13 @@ Les octets des fichiers étaient synchronisés avant fermeture, mais la durabili
 ## Limites
 - fsync améliore la durabilité locale, mais ne prouve pas la réplication, la sauvegarde hors site, la rétention WORM ou la persistance matérielle du stockage.
 - Les opérations restent locales et testées avec un adaptateur d'ancrage mémoire.
-- Les tests locaux ne sont pas exécutés dans cette session ; la validation CI sera rapportée après les workflows.
+## Validation CI vérifiée sur le SHA de code 5ec6ca68ab1c512c22c7c91475a501ecd3cb97f3
+- [PAPI core tests — run 2861](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45398989472) : succès, **247 tests** exécutés, dont les trois nouvelles régressions, toutes réussies.
+- [PAPI registry validation — run 921](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45398989298) : succès.
+- [PAPI documentation checks — run 888](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45398989274) : succès.
+- pip check : aucune dépendance cassée ; les deux contrôles pip-audit : aucune vulnérabilité connue sur les graphes analysés.
+- PostgreSQL 16 jetable : schéma, migration, reprise des tentatives, concurrence SKIP LOCKED et rollback réussis.
+- Tests locaux : non exécutés. La validation ci-dessus est celle de GitHub Actions sur le SHA de code indiqué ; un commit documentaire ultérieur sera revalidé séparément.
 - Aucun fournisseur distant, service, agent, worker ou scheduler n'est activé.
 
 ## Gouvernance
