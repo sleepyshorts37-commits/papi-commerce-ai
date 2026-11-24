@@ -324,16 +324,19 @@ def restore_verified_archive(
     destination = Path(destination_journal)
     _check_parent_components(destination)
     _manifest, raw, events = _load_verified_archive(archive_directory, anchor_client)
+    created = False
     try:
         _write_new_private_file(destination, raw)
+        created = True
         restored = read_events(destination)
         if restored != events:
             raise AuditArchiveError("Le journal restauré ne correspond pas à l'archive.")
     except BaseException:
-        try:
-            destination.unlink()
-        except OSError:
-            pass
+        if created:
+            try:
+                destination.unlink()
+            except OSError:
+                pass
         raise
     return {
         "restored": True,
