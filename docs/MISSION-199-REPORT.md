@@ -31,3 +31,15 @@ PR brouillon empilée sur #375. Aucun changement de `main`, aucune fusion, aucun
 
 ## Ajustement de validation
 La première exécution CI sur le SHA `603675e497943b28f74704615f3d9eac3ccdbf07` a exécuté 250 tests et révélé un défaut dans le test d'injection de panne : le compteur interceptait une fermeture du fichier temporaire de vérification avant d'atteindre le descripteur de restauration. Le test a été corrigé pour cibler explicitement le descripteur créé par le second `mkstemp`. Le code de production n'a pas été modifié à la suite de cet échec. La CI de la nouvelle tête doit confirmer les deux scénarios.
+
+## Résultats CI vérifiés
+
+Après correction du ciblage du descripteur dans les tests, la tête de code `4c544a20800f3acca2c1fac209a95092f0bd63f0` a obtenu :
+- [PAPI core tests — run #2867](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45621865603) : succès, **250 tests exécutés, 250 réussis, 0 échec** ; les deux nouveaux tests de fermeture sont `ok`.
+- [PAPI registry validation — run #927](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45621865884) : succès.
+- [PAPI documentation checks — run #894](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45621865551) : succès.
+- `pip check` : aucune dépendance cassée.
+- Deux exécutions `pip-audit --strict` : aucune vulnérabilité connue détectée dans les graphes analysés.
+- PostgreSQL 16 jetable : schéma de base, compatibilité legacy, migration durable, réservations concurrentes avec `SKIP LOCKED` et rollback réussis.
+
+La première exécution sur `603675e497943b28f74704615f3d9eac3ccdbf07` a échoué sur un seul test de régression parce que le mock interceptait une fermeture antérieure pendant la vérification. Le test a été corrigé pour identifier le descripteur du second `mkstemp`. Aucun défaut de production n'a été révélé par cet échec initial. La tête de code corrigée a passé les 250 tests.
