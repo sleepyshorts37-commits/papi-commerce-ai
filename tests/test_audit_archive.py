@@ -152,42 +152,69 @@ class AuditArchiveTests(unittest.TestCase):
     def test_restore_does_not_publish_when_temporary_close_fails(self):
         self._create()
         restored_path = self.root / "close-failed.jsonl"
+        real_mkstemp = tempfile.mkstemp
         real_close = os.close
-        calls = 0
+        target_descriptors = set()
+        mkstemp_calls = 0
+        failed = False
+
+        def track_mkstemp(*args, **kwargs):
+            nonlocal mkstemp_calls
+            descriptor, name = real_mkstemp(*args, **kwargs)
+            mkstemp_calls += 1
+            if mkstemp_calls == 2:
+                target_descriptors.add(descriptor)
+            return descriptor, name
 
         def close_then_fail(descriptor):
-            nonlocal calls
-            calls += 1
+            nonlocal failed
             real_close(descriptor)
-            if calls == 2:
-                # The first close verifies the archive copy; the second closes
-                # the temporary restore file immediately before publication.
+            if descriptor in target_descriptors and not failed:
+                failed = True
                 raise OSError("simulated close failure")
 
-        with patch("papi_core.audit_archive.os.close", side_effect=close_then_fail):
+        with (
+            patch("papi_core.audit_archive.tempfile.mkstemp", side_effect=track_mkstemp),
+            patch("papi_core.audit_archive.os.close", side_effect=close_then_fail),
+        ):
             with self.assertRaisesRegex(AuditArchiveError, "Fermeture"):
                 restore_verified_archive(self.archive, restored_path, self.client)
 
+        self.assertTrue(failed)
         self.assertFalse(restored_path.exists())
         self.assertFalse(Path(f"{restored_path}.lock").exists())
         self.assertEqual(list(self.root.glob(f".{restored_path.name}.*.tmp")), [])
 
     def test_archive_creation_removes_directory_when_temporary_close_fails(self):
+        real_mkstemp = tempfile.mkstemp
         real_close = os.close
-        calls = 0
+        target_descriptors = set()
+        mkstemp_calls = 0
+        failed = False
+
+        def track_mkstemp(*args, **kwargs):
+            nonlocal mkstemp_calls
+            descriptor, name = real_mkstemp(*args, **kwargs)
+            mkstemp_calls += 1
+            if mkstemp_calls == 2:
+                target_descriptors.add(descriptor)
+            return descriptor, name
 
         def close_then_fail(descriptor):
-            nonlocal calls
-            calls += 1
+            nonlocal failed
             real_close(descriptor)
-            if calls == 2:
-                # Verification closes first; archive publication closes second.
+            if descriptor in target_descriptors and not failed:
+                failed = True
                 raise OSError("simulated close failure")
 
-        with patch("papi_core.audit_archive.os.close", side_effect=close_then_fail):
+        with (
+            patch("papi_core.audit_archive.tempfile.mkstemp", side_effect=track_mkstemp),
+            patch("papi_core.audit_archive.os.close", side_effect=close_then_fail),
+        ):
             with self.assertRaisesRegex(AuditArchiveError, "Fermeture"):
                 self._create()
 
+        self.assertTrue(failed)
         self.assertFalse(self.archive.exists())
         self.assertEqual(list(self.root.glob(f".{self.archive.name}.*.tmp")), [])
 
