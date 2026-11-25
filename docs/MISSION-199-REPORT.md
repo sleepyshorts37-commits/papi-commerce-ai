@@ -1,0 +1,30 @@
+# Mission 199 — Fermer le temporaire avant publication atomique des archives
+
+## Date et objectif
+25 novembre 2026. Éliminer le cas où une erreur de fermeture du descripteur après la création du lien final laisse une cible visible alors que l'appelant reçoit un échec et n'enregistre pas la création.
+
+## Constat reproductible
+Dans la version précédente, le lien matériel vers le chemin final était créé avant `os.close(descriptor)`. Si la fermeture échouait, l'appel levait une exception après publication. La restauration pouvait alors laisser un journal final sans fichier de verrouillage, et la création d'archive pouvait laisser un répertoire incomplet que le nettoyage ne pouvait pas retirer.
+
+## Modifications
+- Écrit les octets dans un temporaire privé du même répertoire.
+- Gère les écritures partielles et `InterruptedError`.
+- Synchronise le contenu avec `fsync`, vérifie le type du fichier, puis ferme le descripteur avant publication.
+- Ne crée le lien matériel atomique sans écrasement qu'après une fermeture réussie.
+- Supprime le temporaire dans un bloc de nettoyage exécuté même si la fermeture échoue.
+- Ajoute deux tests de régression : échec de fermeture pendant une restauration et pendant la création d'une archive.
+- Met à jour la documentation d'archives et la roadmap.
+
+## Validation
+- Base de travail : PR #375, branche `mission-198-atomic-audit-file-publication`, SHA `f109a01fa5557c7bc70d56875f9ecc911dddf144`.
+- Tests locaux : non exécutés.
+- Les workflows GitHub Actions seront déclenchés par l'ouverture de la PR #376 ; leur résultat et le SHA exact seront consignés dans le rapport de session.
+- Aucun test de système de fichiers distant, de stockage WORM ou de panne matérielle n'est revendiqué.
+
+## Limites
+- Un échec de suppression du temporaire peut laisser un fichier caché ; la vérification stricte de l'archive refuse les entrées supplémentaires.
+- Les liens matériels et `fsync` de répertoire dépendent des capacités du système de fichiers et de la plateforme.
+- Aucun adaptateur distant, réplication ou sauvegarde hors site n'est ajouté.
+
+## Gouvernance
+PR brouillon empilée sur #375. Aucun changement de `main`, aucune fusion, aucun déploiement, aucun worker/agent activé, aucun secret, service externe ou paiement utilisé.
