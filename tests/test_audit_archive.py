@@ -133,8 +133,11 @@ class AuditArchiveTests(unittest.TestCase):
 
         def partial_then_fail(descriptor, payload):
             nonlocal calls
-            if calls == 0:
-                calls += 1
+            calls += 1
+            if calls == 1:
+                # Archive verification writes its own private temporary copy first.
+                return real_write(descriptor, payload)
+            if calls == 2:
                 return real_write(descriptor, payload[: max(1, len(payload) // 2)])
             raise OSError("simulated interrupted write")
 
