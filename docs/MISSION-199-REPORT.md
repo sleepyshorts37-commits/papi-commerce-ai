@@ -28,3 +28,6 @@ Dans la version précédente, le lien matériel vers le chemin final était cré
 
 ## Gouvernance
 PR brouillon empilée sur #375. Aucun changement de `main`, aucune fusion, aucun déploiement, aucun worker/agent activé, aucun secret, service externe ou paiement utilisé.
+
+## Ajustement de validation
+La première exécution CI sur le SHA `603675e497943b28f74704615f3d9eac3ccdbf07` a exécuté 250 tests et révélé un défaut dans le test d'injection de panne : le compteur interceptait une fermeture du fichier temporaire de vérification avant d'atteindre le descripteur de restauration. Le test a été corrigé pour cibler explicitement le descripteur créé par le second `mkstemp`. Le code de production n'a pas été modifié à la suite de cet échec. La CI de la nouvelle tête doit confirmer les deux scénarios.
