@@ -54,7 +54,7 @@ restored = restore_verified_archive(
 
 La restauration crée aussi le fichier de verrouillage local attendu par le lecteur du journal. Le journal source n'est jamais modifié.
 
-Les fichiers restaurés sont d'abord écrits dans un fichier temporaire privé du même répertoire, puis synchronisés avant publication par lien matériel atomique sans écrasement. Une interruption pendant l'écriture ne rend donc pas visible un journal final partiel. Le système de fichiers doit prendre en charge les liens matériels ; sinon, la restauration échoue fermé. Un arrêt brutal peut laisser un temporaire caché ; un dossier d'archive contenant un tel résidu ne passe pas la vérification stricte et doit être examiné manuellement.
+Les fichiers restaurés sont d'abord écrits dans un fichier temporaire privé du même répertoire, synchronisés puis fermés avec succès avant publication par lien matériel atomique sans écrasement. Si la fermeture échoue, le lien final n'est pas créé et le temporaire est supprimé lorsque possible. Une interruption pendant l'écriture ne rend donc pas visible un journal final partiel. Le système de fichiers doit prendre en charge les liens matériels ; sinon, la restauration échoue fermé. Un arrêt brutal peut laisser un temporaire caché ; un dossier d'archive contenant un tel résidu ne passe pas la vérification stricte et doit être examiné manuellement.
 
 ## Durabilité locale
 
