@@ -111,30 +111,54 @@ def _read_private_file(path: Path, maximum: int) -> bytes:
 
 
 def _write_new_private_file(path: Path, payload: bytes) -> None:
-    nofollow = getattr(os, "O_NOFOLLOW", None)
-    if nofollow is None:
-        raise AuditArchiveError("La plateforme ne permet pas de refuser les liens symboliques.")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow
-    descriptor = os.open(path, flags, 0o600)
+    """Prépare un fichier privé complet puis le publie sans écrasement atomiquement."""
+    try:
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+        )
+    except OSError as exc:
+        raise AuditArchiveError("Impossible de préparer un fichier temporaire privé.") from exc
+    temporary = Path(temporary_name)
     try:
         os.fchmod(descriptor, 0o600)
         view = memoryview(payload)
         written = 0
         while written < len(view):
-            count = os.write(descriptor, view[written:])
+            try:
+                count = os.write(descriptor, view[written:])
+            except InterruptedError:
+                continue
             if count <= 0:
                 raise OSError("Écriture d'archive interrompue.")
             written += count
         os.fsync(descriptor)
-    except BaseException:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise AuditArchiveError("Le fichier temporaire d'archive n'est pas régulier.")
+        try:
+            # A hard link publishes the already-fsynced inode atomically and
+            # fails if the destination exists; unlike rename, it never replaces it.
+            os.link(temporary, path)
+        except FileExistsError:
+            raise
+        except OSError as exc:
+            raise AuditArchiveError(
+                "Publication atomique impossible sur ce système de fichiers."
+            ) from exc
+    except FileExistsError:
+        raise
+    except OSError as exc:
+        raise AuditArchiveError("Écriture temporaire du fichier d'archive impossible.") from exc
+    finally:
         os.close(descriptor)
         try:
-            path.unlink()
-        except OSError:
+            temporary.unlink()
+        except FileNotFoundError:
             pass
-        raise
-    else:
-        os.close(descriptor)
+        except OSError:
+            # The final name, if already published, still references complete
+            # fsynced bytes. A leftover hidden temporary is rejected by archive
+            # verification because archives must contain exactly two files.
+            pass
 
 
 def _fsync_directory(path: Path) -> None:
