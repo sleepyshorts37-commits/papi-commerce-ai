@@ -125,6 +125,27 @@ class AuditArchiveTests(unittest.TestCase):
 
         self.assertFalse(restored_path.exists())
 
+    def test_restore_does_not_publish_a_partial_file_after_interrupted_write(self):
+        self._create()
+        restored_path = self.root / "interrupted.jsonl"
+        real_write = os.write
+        calls = 0
+
+        def partial_then_fail(descriptor, payload):
+            nonlocal calls
+            if calls == 0:
+                calls += 1
+                return real_write(descriptor, payload[: max(1, len(payload) // 2)])
+            raise OSError("simulated interrupted write")
+
+        with patch("papi_core.audit_archive.os.write", side_effect=partial_then_fail):
+            with self.assertRaisesRegex(AuditArchiveError, "Écriture temporaire"):
+                restore_verified_archive(self.archive, restored_path, self.client)
+
+        self.assertFalse(restored_path.exists())
+        self.assertFalse(Path(f"{restored_path}.lock").exists())
+        self.assertEqual(list(self.root.glob(f".{restored_path.name}.*.tmp")), [])
+
     def test_archive_requires_a_checkpoint_matching_the_current_journal(self):
         self._append("event-2", "job.updated")
         with self.assertRaises(AuditArchiveError):
