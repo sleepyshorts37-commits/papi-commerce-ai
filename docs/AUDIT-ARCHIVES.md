@@ -54,6 +54,8 @@ restored = restore_verified_archive(
 
 La restauration crée aussi le fichier de verrouillage local attendu par le lecteur du journal. Le journal source n'est jamais modifié.
 
+Les fichiers restaurés sont d'abord écrits dans un fichier temporaire privé du même répertoire, puis synchronisés avant publication par lien matériel atomique sans écrasement. Une interruption pendant l'écriture ne rend donc pas visible un journal final partiel. Le système de fichiers doit prendre en charge les liens matériels ; sinon, la restauration échoue fermé. Un arrêt brutal peut laisser un temporaire caché ; un dossier d'archive contenant un tel résidu ne passe pas la vérification stricte et doit être examiné manuellement.
+
 ## Durabilité locale
 
 Chaque fichier est synchronisé (fsync) avant fermeture. Après création, le code synchronise le répertoire de l'archive puis son répertoire parent afin de persister les deux fichiers et l'entrée du dossier d'archive. Après restauration, il synchronise le répertoire parent après la vérification du journal restauré et la création du fichier de verrouillage. Si la plateforme ne permet pas d'ouvrir un répertoire sans suivre un lien symbolique, ou si la synchronisation échoue, l'opération échoue fermé et la cible nouvellement créée est supprimée lorsque possible.
