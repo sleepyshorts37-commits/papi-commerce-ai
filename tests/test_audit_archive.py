@@ -149,6 +149,48 @@ class AuditArchiveTests(unittest.TestCase):
         self.assertFalse(Path(f"{restored_path}.lock").exists())
         self.assertEqual(list(self.root.glob(f".{restored_path.name}.*.tmp")), [])
 
+    def test_restore_does_not_publish_when_temporary_close_fails(self):
+        self._create()
+        restored_path = self.root / "close-failed.jsonl"
+        real_close = os.close
+        calls = 0
+
+        def close_then_fail(descriptor):
+            nonlocal calls
+            calls += 1
+            real_close(descriptor)
+            if calls == 2:
+                # The first close verifies the archive copy; the second closes
+                # the temporary restore file immediately before publication.
+                raise OSError("simulated close failure")
+
+        with patch("papi_core.audit_archive.os.close", side_effect=close_then_fail):
+            with self.assertRaisesRegex(AuditArchiveError, "Fermeture"):
+                restore_verified_archive(self.archive, restored_path, self.client)
+
+        self.assertFalse(restored_path.exists())
+        self.assertFalse(Path(f"{restored_path}.lock").exists())
+        self.assertEqual(list(self.root.glob(f".{restored_path.name}.*.tmp")), [])
+
+    def test_archive_creation_removes_directory_when_temporary_close_fails(self):
+        real_close = os.close
+        calls = 0
+
+        def close_then_fail(descriptor):
+            nonlocal calls
+            calls += 1
+            real_close(descriptor)
+            if calls == 2:
+                # Verification closes first; archive publication closes second.
+                raise OSError("simulated close failure")
+
+        with patch("papi_core.audit_archive.os.close", side_effect=close_then_fail):
+            with self.assertRaisesRegex(AuditArchiveError, "Fermeture"):
+                self._create()
+
+        self.assertFalse(self.archive.exists())
+        self.assertEqual(list(self.root.glob(f".{self.archive.name}.*.tmp")), [])
+
     def test_archive_requires_a_checkpoint_matching_the_current_journal(self):
         self._append("event-2", "job.updated")
         with self.assertRaises(AuditArchiveError):
