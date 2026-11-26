@@ -361,4 +361,7 @@ class AuditArchiveTests(unittest.TestCase):
         result = inspect_archive_recovery(target, kind="restore-target")
         self.assertFalse(result["temporary_candidates"][0]["safe_to_inspect"])
         self.assertFalse(result["automatic_recovery"])
+
+
+if __name__ == "__main__":
     unittest.main()
