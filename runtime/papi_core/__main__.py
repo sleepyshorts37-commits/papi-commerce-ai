@@ -14,6 +14,7 @@ from .finance import FinanceError, finance_report, load_ledger
 from .security import SecurityError, check_security
 from .authz import AccessDenied, authorize_agent
 from .opportunities import OpportunityError, rank_opportunities
+from .audit_archive import inspect_archive_recovery
 
 
 def main() -> int:
@@ -34,6 +35,9 @@ def main() -> int:
     sub.add_parser("finance-validate", help="Valider le registre financier local")
     sub.add_parser("finance-report", help="Afficher le rapport financier local en lecture seule")
     sub.add_parser("security-check", help="Vérifier la posture de sécurité locale en lecture seule")
+    archive_inspect = sub.add_parser("audit-archive-inspect", help="Inspecter en lecture seule une archive ou ses temporaires")
+    archive_inspect.add_argument("path", help="Répertoire d’archive ou chemin cible de restauration")
+    archive_inspect.add_argument("--kind", choices=("archive-directory", "restore-target"), required=True)
     opportunity_rank = sub.add_parser("opportunity-rank", help="Classer des hypothèses commerciales XOF sans action externe")
     opportunity_rank.add_argument("path", help="Fichier JSON conforme à schemas/opportunity.schema.json")
     args = parser.parse_args()
@@ -66,6 +70,9 @@ def main() -> int:
             return 0
         if args.command == "security-check":
             print(json.dumps(check_security(), ensure_ascii=False, indent=2))
+            return 0
+        if args.command == "audit-archive-inspect":
+            print(json.dumps(inspect_archive_recovery(args.path, kind=args.kind), ensure_ascii=False, indent=2))
             return 0
         if args.command == "opportunity-rank":
             opportunities = json.loads(Path(args.path).read_text(encoding="utf-8"))
