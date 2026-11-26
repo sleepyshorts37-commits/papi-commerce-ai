@@ -180,7 +180,7 @@ def _fsync_directory(path: Path) -> None:
             "La plateforme ne permet pas d'ouvrir un répertoire sans suivre de lien symbolique."
         )
     try:
-        descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow, dir_fd=dir_fd)
+        descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow)
     except OSError as exc:
         raise AuditArchiveError("Impossible d'ouvrir le répertoire pour synchroniser l'archive.") from exc
     try:
@@ -425,7 +425,7 @@ def _open_inspection_directory(
             "La plateforme ne permet pas une inspection de répertoire sans lien symbolique."
         )
     try:
-        descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow)
+        descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow, dir_fd=dir_fd)
     except OSError as exc:
         raise AuditArchiveError("Répertoire absent ou inaccessible pour inspection.") from exc
     info = os.fstat(descriptor)
