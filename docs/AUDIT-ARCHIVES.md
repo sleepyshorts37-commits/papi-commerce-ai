@@ -73,3 +73,21 @@ Aucune suppression du journal source, aucun transfert réseau, aucun chiffrement
 ## Statut
 
 Prototype local codé ; tests CI à confirmer sur le SHA de la PR. Aucun fournisseur externe, compte, worker, scheduler ou processus permanent n'est configuré. Une revue indépendante et un adaptateur de stockage autorisé restent requis avant toute utilisation opérationnelle.
+
+
+## Inspection après interruption
+
+Commandes locales en lecture seule :
+
+    PYTHONPATH=runtime python -m papi_core audit-archive-inspect private-archives/audit-2026-11-26 --kind archive-directory
+    PYTHONPATH=runtime python -m papi_core audit-archive-inspect recovery/events.jsonl --kind restore-target
+
+- **structurally_complete_unverified** signifie que seuls manifest.json et journal.jsonl sont présents et que leurs métadonnées locales respectent les limites. Ce statut ne vérifie pas les empreintes, le contenu JSONL ni l'ancrage.
+- **incomplete** indique un fichier attendu manquant, une entrée supplémentaire ou un temporaire orphelin.
+- **temporary_candidates_review_required** indique qu'un fichier correspondant au motif temporaire de la cible existe à côté du chemin de restauration absent.
+- **unsafe_archive_directory**, **unsafe_archive_path** et les entrées non régulières signalent un chemin qui ne doit pas être suivi ou modifié.
+- **scan_limit_exceeded** signifie que l'inventaire a atteint sa limite de 4096 entrées ; aucune conclusion d'exhaustivité n'est permise.
+
+L'inspection n'ouvre pas le contenu des temporaires. Elle ne les promeut, ne les renomme et ne les supprime jamais. Un temporaire n'est pas accompagné d'une preuve indépendante de son contenu attendu ; sa taille ou son nom ne suffisent donc pas à le restaurer. Préserver les éléments pour une revue humaine. Si l'archive source est intacte, restaurer vers un nouveau chemin absent avec restore_verified_archive, après vérification cryptographique par un AnchorClient autorisé.
+
+Le rapport **structurally_complete_unverified** reste volontairement distinct du résultat verify_archive : seule cette dernière fonction valide le manifeste, les octets du journal, la chaîne d'événements et le checkpoint.
