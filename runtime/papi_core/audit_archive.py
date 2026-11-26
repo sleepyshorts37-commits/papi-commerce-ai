@@ -180,7 +180,7 @@ def _fsync_directory(path: Path) -> None:
             "La plateforme ne permet pas d'ouvrir un répertoire sans suivre de lien symbolique."
         )
     try:
-        descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow)
+        descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow, dir_fd=dir_fd)
     except OSError as exc:
         raise AuditArchiveError("Impossible d'ouvrir le répertoire pour synchroniser l'archive.") from exc
     try:
@@ -414,7 +414,9 @@ def restore_verified_archive(
 MAX_RECOVERY_SCAN_ENTRIES = 4096
 
 
-def _open_inspection_directory(path: Path, *, require_private: bool) -> int:
+def _open_inspection_directory(
+    path: Path, *, require_private: bool, dir_fd: int | None = None
+) -> int:
     """Ouvre un répertoire sans suivre son dernier composant symbolique."""
     nofollow = getattr(os, "O_NOFOLLOW", None)
     directory_flag = getattr(os, "O_DIRECTORY", None)
@@ -567,7 +569,9 @@ def inspect_archive_recovery(path: str | Path, *, kind: str) -> dict[str, Any]:
             }
 
         try:
-            archive_fd = _open_inspection_directory(target, require_private=True)
+            archive_fd = _open_inspection_directory(
+                Path(target.name), require_private=True, dir_fd=parent_fd
+            )
         except AuditArchiveError:
             return {
                 "kind": kind,
@@ -591,7 +595,9 @@ def inspect_archive_recovery(path: str | Path, *, kind: str) -> dict[str, Any]:
             entries = [
                 _inspection_entry(
                     archive_fd, name,
-                    MAX_MANIFEST_BYTES if name == MANIFEST_NAME else MAX_JOURNAL_BYTES,
+                    MAX_MANIFEST_BYTES
+                    if name == MANIFEST_NAME or _temporary_name(name, MANIFEST_NAME)
+                    else MAX_JOURNAL_BYTES,
                 )
                 for name in names
             ]
