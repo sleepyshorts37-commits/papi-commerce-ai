@@ -57,6 +57,11 @@
 - [ ] Intégrer les prestataires de paiement après validation de l'éligibilité, des frais, des permissions et des conditions.
 - [ ] Mettre en place sauvegardes, rapprochement périodique et séparation des rôles comptables.
 
+## Inspection sûre des archives après interruption
+- [x] Inventorier les entrées et temporaires en lecture seule avec limites de taille et de nombre.
+- [x] Parcourir le chemin parent par descripteurs relatifs avec `O_NOFOLLOW` à chaque composant pour réduire les courses de remplacement d'ancêtres.
+- [ ] Valider les scénarios de crash/panne d'alimentation sur des systèmes de fichiers représentatifs avant toute affirmation de durabilité opérationnelle.
+
 ## Mise en service
 Un composant est opérationnel uniquement si code/configuration, accès autorisés, test reproductible, journaux et procédure d'arrêt sont présents.
 

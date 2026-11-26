@@ -88,6 +88,8 @@ Commandes locales en lecture seule :
 - **unsafe_archive_directory**, **unsafe_archive_path** et les entrées non régulières signalent un chemin qui ne doit pas être suivi ou modifié.
 - **scan_limit_exceeded** signifie que l'inventaire a atteint sa limite de 4096 entrées ; aucune conclusion d'exhaustivité n'est permise.
 
+Le chemin parent est ouvert composant par composant avec des descripteurs relatifs et `O_NOFOLLOW` à chaque niveau. Les opérations suivantes restent attachées aux descripteurs déjà ouverts : remplacer ensuite un ancêtre par un lien symbolique ne redirige pas l'inspection. Cette protection réduit la fenêtre TOCTOU du parcours du chemin, sans protéger contre un acteur qui contrôle les répertoires eux-mêmes.
+
 L'inspection n'ouvre pas le contenu des temporaires. Elle ne les promeut, ne les renomme et ne les supprime jamais. Un temporaire n'est pas accompagné d'une preuve indépendante de son contenu attendu ; sa taille ou son nom ne suffisent donc pas à le restaurer. Préserver les éléments pour une revue humaine. Si l'archive source est intacte, restaurer vers un nouveau chemin absent avec restore_verified_archive, après vérification cryptographique par un AnchorClient autorisé.
 
 Le rapport **structurally_complete_unverified** reste volontairement distinct du résultat verify_archive : seule cette dernière fonction valide le manifeste, les octets du journal, la chaîne d'événements et le checkpoint.

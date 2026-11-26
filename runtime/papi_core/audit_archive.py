@@ -442,6 +442,68 @@ def _open_inspection_directory(
     return descriptor
 
 
+def _open_directory_chain(path: Path, *, require_private: bool) -> int:
+    """Ouvre chaque composant du chemin relativement au descripteur précédent.
+
+    O_NOFOLLOW est appliqué à chaque composant, pas seulement au dernier :
+    un remplacement symbolique d'un ancêtre après son ouverture ne redirige
+    donc pas les opérations suivantes vers un autre arbre de répertoires.
+    """
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    directory_flag = getattr(os, "O_DIRECTORY", None)
+    if nofollow is None or directory_flag is None:
+        raise AuditArchiveError(
+            "La plateforme ne permet pas de parcourir les répertoires sans suivre de liens symboliques."
+        )
+    flags = os.O_RDONLY | directory_flag | nofollow
+    start = path.anchor or "."
+    try:
+        descriptor = os.open(start, flags)
+    except OSError as exc:
+        raise AuditArchiveError("Impossible d'ouvrir le point de départ du chemin d'inspection.") from exc
+    opened = [descriptor]
+    try:
+        components = path.parts[1:] if path.is_absolute() else path.parts
+        for component in components:
+            if component in {"", "."}:
+                continue
+            try:
+                child = os.open(component, flags, dir_fd=opened[-1])
+            except OSError as exc:
+                raise AuditArchiveError(
+                    "Un composant du chemin d'inspection est absent, symbolique ou inaccessible."
+                ) from exc
+            opened.append(child)
+            try:
+                info = os.fstat(child)
+            except OSError as exc:
+                raise AuditArchiveError(
+                    "Impossible de vérifier un composant du chemin d'inspection."
+                ) from exc
+            if not stat.S_ISDIR(info.st_mode):
+                raise AuditArchiveError("Chaque composant du chemin d'inspection doit être un répertoire.")
+        info = os.fstat(opened[-1])
+        if require_private:
+            if stat.S_IMODE(info.st_mode) & 0o077:
+                raise AuditArchiveError("Le répertoire doit être privé (0700).")
+            if not hasattr(os, "geteuid") or info.st_uid != os.geteuid():
+                raise AuditArchiveError("Le répertoire doit appartenir au processus courant.")
+        result = opened[-1]
+        for previous in opened[:-1]:
+            try:
+                os.close(previous)
+            except OSError:
+                pass
+        return result
+    except BaseException:
+        for descriptor in reversed(opened):
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        raise
+
+
 def _inspection_entry(directory_fd: int, name: str, maximum: int) -> dict[str, Any]:
     """Retourne uniquement des métadonnées obtenues sans suivre le lien éventuel."""
     try:
@@ -487,8 +549,10 @@ def inspect_archive_recovery(path: str | Path, *, kind: str) -> dict[str, Any]:
         raise AuditArchiveError("Le chemin d'inspection doit désigner un nom explicite.")
     if kind not in {"archive-directory", "restore-target"}:
         raise AuditArchiveError("Type d'inspection inconnu.")
-    _check_parent_components(target)
-    parent_fd = _open_inspection_directory(target.parent, require_private=False)
+    # Walk every parent component through pinned directory descriptors.
+    # A path-based lstat followed by a single open would leave an ancestor
+    # replacement window even if the final component used O_NOFOLLOW.
+    parent_fd = _open_directory_chain(target.parent, require_private=False)
     try:
         try:
             target_info = os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False)
