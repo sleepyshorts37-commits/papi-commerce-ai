@@ -363,5 +363,49 @@ class AuditArchiveTests(unittest.TestCase):
         self.assertFalse(result["automatic_recovery"])
 
 
+    def test_inspection_pins_parent_before_ancestor_is_replaced(self):
+        base = self.root / "base"
+        alias = base / "alias"
+        parent = alias / "parent"
+        archive = parent / "archive"
+        archive.mkdir(parents=True, mode=0o700)
+        archive.chmod(0o700)
+        for name, payload in (
+            ("manifest.json", b"{}"),
+            ("journal.jsonl", b"{}\\n"),
+        ):
+            item = archive / name
+            item.write_bytes(payload)
+            item.chmod(0o600)
+
+        attacker = self.root / "attacker"
+        (attacker / "parent" / "archive").mkdir(parents=True, mode=0o700)
+        (attacker / "parent" / "archive").chmod(0o700)
+        moved_alias = base / "alias-original"
+        original_open = os.open
+        swapped = False
+
+        def replace_ancestor_before_descending(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if not swapped and Path(path).name == "parent":
+                os.rename(alias, moved_alias)
+                os.symlink(attacker, alias)
+                swapped = True
+            return original_open(path, flags, *args, **kwargs)
+
+        with patch(
+            "papi_core.audit_archive.os.open",
+            side_effect=replace_ancestor_before_descending,
+        ):
+            result = inspect_archive_recovery(archive, kind="archive-directory")
+
+        self.assertTrue(swapped)
+        self.assertEqual(result["status"], "structurally_complete_unverified")
+        self.assertEqual(
+            {entry["name"] for entry in result["entries"]},
+            {"manifest.json", "journal.jsonl"},
+        )
+        self.assertTrue(alias.is_symlink())
+
 if __name__ == "__main__":
     unittest.main()
