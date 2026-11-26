@@ -372,7 +372,7 @@ class AuditArchiveTests(unittest.TestCase):
         archive.chmod(0o700)
         for name, payload in (
             ("manifest.json", b"{}"),
-            ("journal.jsonl", b"{}\\n"),
+            ("journal.jsonl", b"{}\n"),
         ):
             item = archive / name
             item.write_bytes(payload)
