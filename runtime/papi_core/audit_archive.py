@@ -409,3 +409,241 @@ def restore_verified_archive(
         "event_count": len(events),
         "last_event_hash": events[-1]["event_hash"],
     }
+
+
+MAX_RECOVERY_SCAN_ENTRIES = 4096
+
+
+def _open_inspection_directory(
+    path: Path, *, require_private: bool, dir_fd: int | None = None
+) -> int:
+    """Ouvre un répertoire sans suivre son dernier composant symbolique."""
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    directory_flag = getattr(os, "O_DIRECTORY", None)
+    if nofollow is None or directory_flag is None:
+        raise AuditArchiveError(
+            "La plateforme ne permet pas une inspection de répertoire sans lien symbolique."
+        )
+    try:
+        descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow, dir_fd=dir_fd)
+    except OSError as exc:
+        raise AuditArchiveError("Répertoire absent ou inaccessible pour inspection.") from exc
+    info = os.fstat(descriptor)
+    if not stat.S_ISDIR(info.st_mode):
+        os.close(descriptor)
+        raise AuditArchiveError("Le chemin inspecté n'est pas un répertoire réel.")
+    if require_private:
+        if stat.S_IMODE(info.st_mode) & 0o077:
+            os.close(descriptor)
+            raise AuditArchiveError("Le répertoire d'archive doit être privé (0700).")
+        if not hasattr(os, "geteuid") or info.st_uid != os.geteuid():
+            os.close(descriptor)
+            raise AuditArchiveError("Le répertoire d'archive doit appartenir au processus courant.")
+    return descriptor
+
+
+def _inspection_entry(directory_fd: int, name: str, maximum: int) -> dict[str, Any]:
+    """Retourne uniquement des métadonnées obtenues sans suivre le lien éventuel."""
+    try:
+        info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+    except OSError:
+        return {"name": name, "kind": "unavailable", "safe_to_inspect": False}
+    if stat.S_ISLNK(info.st_mode):
+        kind = "symlink"
+    elif stat.S_ISREG(info.st_mode):
+        kind = "regular"
+    elif stat.S_ISDIR(info.st_mode):
+        kind = "directory"
+    else:
+        kind = "other"
+    owner_matches = hasattr(os, "geteuid") and info.st_uid == os.geteuid()
+    private = not bool(stat.S_IMODE(info.st_mode) & 0o077)
+    size_ok = kind == "regular" and info.st_size <= maximum
+    return {
+        "name": name,
+        "kind": kind,
+        "size_bytes": info.st_size if kind == "regular" else None,
+        "mode": format(stat.S_IMODE(info.st_mode), "04o"),
+        "owner_matches": bool(owner_matches),
+        "private": private,
+        "within_size_limit": size_ok,
+        "safe_to_inspect": bool(kind == "regular" and owner_matches and private and size_ok),
+    }
+
+
+def _temporary_name(name: str, target_name: str) -> bool:
+    prefix = f".{target_name}."
+    return name.startswith(prefix) and name.endswith(".tmp") and len(name) > len(prefix) + 4
+
+
+def inspect_archive_recovery(path: str | Path, *, kind: str) -> dict[str, Any]:
+    """Inventorie en lecture seule une archive ou les temporaires d'une restauration.
+
+    Aucun contenu n'est chargé, renommé, promu ou supprimé. Les temporaires ne
+    disposent pas seuls d'une preuve de contenu suffisante pour être restaurés.
+    """
+    target = Path(path)
+    if not target.name or target.name in {".", ".."}:
+        raise AuditArchiveError("Le chemin d'inspection doit désigner un nom explicite.")
+    if kind not in {"archive-directory", "restore-target"}:
+        raise AuditArchiveError("Type d'inspection inconnu.")
+    _check_parent_components(target)
+    parent_fd = _open_inspection_directory(target.parent, require_private=False)
+    try:
+        try:
+            target_info = os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False)
+            target_exists = True
+        except FileNotFoundError:
+            target_info = None
+            target_exists = False
+        except OSError as exc:
+            raise AuditArchiveError("Impossible d'inspecter le chemin cible.") from exc
+
+        if kind == "restore-target":
+            candidates: list[dict[str, Any]] = []
+            truncated = False
+            with os.scandir(parent_fd) as iterator:
+                scanned = 0
+                for entry in iterator:
+                    scanned += 1
+                    if scanned > MAX_RECOVERY_SCAN_ENTRIES:
+                        truncated = True
+                        break
+                    if _temporary_name(entry.name, target.name):
+                        candidates.append(_inspection_entry(parent_fd, entry.name, MAX_JOURNAL_BYTES))
+            if target_exists:
+                target_kind = (
+                    "symlink" if stat.S_ISLNK(target_info.st_mode)
+                    else "regular" if stat.S_ISREG(target_info.st_mode)
+                    else "directory" if stat.S_ISDIR(target_info.st_mode)
+                    else "other"
+                )
+                status = "target_exists_no_recovery"
+            elif truncated:
+                target_kind = "absent"
+                status = "scan_limit_exceeded"
+            elif candidates:
+                target_kind = "absent"
+                status = "temporary_candidates_review_required"
+            else:
+                target_kind = "absent"
+                status = "no_temporary_candidates"
+            return {
+                "kind": kind,
+                "target_name": target.name,
+                "target_state": target_kind,
+                "status": status,
+                "temporary_candidates": candidates,
+                "scan_truncated": truncated,
+                "automatic_recovery": False,
+                "recommended_action": (
+                    "Ne jamais promouvoir ni supprimer automatiquement un temporaire : "
+                    "son contenu n'est pas lié à un manifeste et à un checkpoint vérifiés. "
+                    "Préserver les éléments et, si l'archive source est intacte, restaurer "
+                    "vers un nouveau chemin avec restore_verified_archive."
+                ),
+            }
+
+        if not target_exists:
+            return {
+                "kind": kind,
+                "target_name": target.name,
+                "status": "archive_directory_missing",
+                "entries": [],
+                "temporary_candidates": [],
+                "automatic_recovery": False,
+                "recommended_action": (
+                    "Aucun temporaire d'archive n'est attendu dans un dossier absent. "
+                    "Ne pas reconstruire à partir de fragments non vérifiés."
+                ),
+            }
+        if not stat.S_ISDIR(target_info.st_mode) or stat.S_ISLNK(target_info.st_mode):
+            return {
+                "kind": kind,
+                "target_name": target.name,
+                "status": "unsafe_archive_path",
+                "entries": [],
+                "temporary_candidates": [],
+                "automatic_recovery": False,
+                "recommended_action": "Ne pas suivre ni modifier ce chemin ; inspection humaine requise.",
+            }
+
+        try:
+            archive_fd = _open_inspection_directory(
+                Path(target.name), require_private=True, dir_fd=parent_fd
+            )
+        except AuditArchiveError:
+            return {
+                "kind": kind,
+                "target_name": target.name,
+                "status": "unsafe_archive_directory",
+                "entries": [],
+                "temporary_candidates": [],
+                "automatic_recovery": False,
+                "recommended_action": "Ne pas modifier ce dossier ; vérifier manuellement propriétaire et permissions.",
+            }
+        try:
+            names: list[str] = []
+            truncated = False
+            with os.scandir(archive_fd) as iterator:
+                for entry in iterator:
+                    if len(names) >= MAX_RECOVERY_SCAN_ENTRIES:
+                        truncated = True
+                        break
+                    names.append(entry.name)
+            names.sort()
+            entries = [
+                _inspection_entry(
+                    archive_fd, name,
+                    MAX_MANIFEST_BYTES
+                    if name == MANIFEST_NAME or _temporary_name(name, MANIFEST_NAME)
+                    else MAX_JOURNAL_BYTES,
+                )
+                for name in names
+            ]
+            temporary_candidates = [
+                item for item in entries
+                if _temporary_name(item["name"], MANIFEST_NAME)
+                or _temporary_name(item["name"], JOURNAL_NAME)
+            ]
+            unexpected_entries = [
+                item for item in entries
+                if item["name"] not in {MANIFEST_NAME, JOURNAL_NAME}
+                and item not in temporary_candidates
+            ]
+            by_name = {item["name"]: item for item in entries}
+            expected_safe = all(
+                name in by_name and by_name[name]["safe_to_inspect"]
+                for name in (MANIFEST_NAME, JOURNAL_NAME)
+            )
+            exact_structure = (
+                not truncated
+                and set(names) == {MANIFEST_NAME, JOURNAL_NAME}
+                and expected_safe
+            )
+            return {
+                "kind": kind,
+                "target_name": target.name,
+                "status": "structurally_complete_unverified" if exact_structure else (
+                    "scan_limit_exceeded" if truncated else "incomplete"
+                ),
+                "entries": entries,
+                "temporary_candidates": temporary_candidates,
+                "unexpected_entries": unexpected_entries,
+                "scan_truncated": truncated,
+                "cryptographic_verification_performed": False,
+                "automatic_recovery": False,
+                "recommended_action": (
+                    "La structure semble complète, mais ce rapport ne vérifie ni le SHA-256 "
+                    "du manifeste, ni le JSONL, ni le checkpoint. Appeler verify_archive avec "
+                    "un AnchorClient autorisé avant toute confiance."
+                    if exact_structure else
+                    "Préserver tous les fichiers. Ne pas promouvoir, renommer ou supprimer "
+                    "les temporaires. Si le journal source est encore disponible et vérifié, "
+                    "recréer une archive vers un nouveau répertoire absent."
+                ),
+            }
+        finally:
+            os.close(archive_fd)
+    finally:
+        os.close(parent_fd)
