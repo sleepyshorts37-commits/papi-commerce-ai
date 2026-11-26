@@ -46,3 +46,17 @@ Le statut structurally_complete_unverified ne remplace pas verify_archive. La v�
 ## Gouvernance
 
 PR brouillon empilée sur #376. Aucun changement de main, aucune fusion, aucun déploiement, aucun agent/worker/scheduler activé, aucun compte externe, secret, paiement ou transfert réseau.
+
+
+## Résultats CI vérifiés
+
+Sur le SHA de code 58d17347bb1b8878dc6ca15889ffaaab92aca35d :
+
+- [PAPI core tests — run #2870](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45782926613) : succès, **255 tests exécutés, 255 réussis, 0 échec**.
+- [PAPI registry validation — run #930](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45782926658) : succès.
+- [PAPI documentation checks — run #897](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45782926708) : succès.
+- pip check : aucune dépendance cassée.
+- Deux audits pip-audit : aucune vulnérabilité connue détectée dans les graphes analysés.
+- PostgreSQL 16 jetable : schéma de base, migrations, compatibilité legacy, concurrence SKIP LOCKED et rollback réussis.
+
+Les tests locaux n'ont pas été exécutés. La validation provient des workflows GitHub Actions.
