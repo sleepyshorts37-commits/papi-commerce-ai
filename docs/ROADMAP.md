@@ -13,6 +13,7 @@
 - [x] Le lecteur du journal d'audit applique des limites de taille de fichier, de ligne et de nombre d'événements; les constantes JSON non standard sont refusées.
 - [x] Le journal d'audit refuse la réutilisation d'un `event_id` avec un payload sémantique différent, tout en dédupliquant les retries équivalents (horodatage exclu).
 - [x] Archives locales complètes du journal : manifeste canonique, empreinte SHA-256, correspondance avec un checkpoint vérifié, restauration vers un chemin absent, publication atomique sans écrasement après fsync et fermeture réussie du temporaire, tests d'écriture/fermeture interrompues et synchronisation fsync des fichiers/répertoires ; aucune rotation ou suppression automatique.
+- [x] Inspection en lecture seule des archives incomplètes et des temporaires de restauration ; séparation explicite entre structure locale et vérification cryptographique, sans promotion ni suppression automatique.
 - [x] File d'exécution contrôlée, handlers et worker à exécution désactivée.
 - [x] Mémoire partagée locale.
 - [x] Planificateur déterministe sans exécution autonome.
