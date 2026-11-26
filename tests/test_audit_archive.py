@@ -11,6 +11,7 @@ from papi_core.audit_archive import (
     create_verified_archive,
     restore_verified_archive,
     verify_archive,
+    inspect_archive_recovery,
 )
 
 
@@ -295,5 +296,69 @@ class AuditArchiveTests(unittest.TestCase):
         self.assertEqual(result["event_count"], 1)
 
 
-if __name__ == "__main__":
+    def test_inspect_archive_reports_complete_structure_without_claiming_verification(self):
+        self._create()
+        result = inspect_archive_recovery(self.archive, kind="archive-directory")
+        self.assertEqual(result["status"], "structurally_complete_unverified")
+        self.assertFalse(result["cryptographic_verification_performed"])
+        self.assertFalse(result["automatic_recovery"])
+        self.assertEqual(
+            {entry["name"] for entry in result["entries"]},
+            {"manifest.json", "journal.jsonl"},
+        )
+
+    def test_inspect_archive_finds_orphan_temporary_without_mutating_it(self):
+        self._create()
+        temporary = self.archive / ".journal.jsonl.orphan.tmp"
+        temporary.write_bytes(b"partial archive")
+        temporary.chmod(0o600)
+        original = temporary.read_bytes()
+        result = inspect_archive_recovery(self.archive, kind="archive-directory")
+        self.assertEqual(result["status"], "incomplete")
+        self.assertEqual(
+            [item["name"] for item in result["temporary_candidates"]],
+            [temporary.name],
+        )
+        self.assertTrue(result["temporary_candidates"][0]["safe_to_inspect"])
+        self.assertEqual(temporary.read_bytes(), original)
+        self.assertTrue(temporary.exists())
+
+    def test_inspect_restore_target_reports_candidate_without_promoting_or_deleting(self):
+        target = self.root / "recovered.jsonl"
+        temporary = self.root / ".recovered.jsonl.orphan.tmp"
+        temporary.write_bytes(b"partial journal")
+        temporary.chmod(0o600)
+        original = temporary.read_bytes()
+        result = inspect_archive_recovery(target, kind="restore-target")
+        self.assertEqual(result["status"], "temporary_candidates_review_required")
+        self.assertEqual(result["target_state"], "absent")
+        self.assertEqual(
+            [item["name"] for item in result["temporary_candidates"]],
+            [temporary.name],
+        )
+        self.assertFalse(result["automatic_recovery"])
+        self.assertFalse(target.exists())
+        self.assertEqual(temporary.read_bytes(), original)
+
+    def test_inspect_restore_target_flags_symlink_candidate_as_unsafe(self):
+        target = self.root / "linked.jsonl"
+        temporary = self.root / ".linked.jsonl.fake.tmp"
+        try:
+            os.symlink(self.journal, temporary)
+        except (OSError, NotImplementedError):
+            self.skipTest("Liens symboliques indisponibles sur cette plateforme.")
+        result = inspect_archive_recovery(target, kind="restore-target")
+        self.assertEqual(result["status"], "temporary_candidates_review_required")
+        self.assertEqual(result["temporary_candidates"][0]["kind"], "symlink")
+        self.assertFalse(result["temporary_candidates"][0]["safe_to_inspect"])
+        self.assertTrue(temporary.is_symlink())
+
+    def test_inspect_restore_target_flags_overly_permissive_temporary(self):
+        target = self.root / "private.jsonl"
+        temporary = self.root / ".private.jsonl.orphan.tmp"
+        temporary.write_bytes(b"partial journal")
+        temporary.chmod(0o644)
+        result = inspect_archive_recovery(target, kind="restore-target")
+        self.assertFalse(result["temporary_candidates"][0]["safe_to_inspect"])
+        self.assertFalse(result["automatic_recovery"])
     unittest.main()
