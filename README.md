@@ -34,6 +34,7 @@ Depuis la racine du dépôt :
 - `PYTHONPATH=runtime python -m papi_core finance-report` — afficher les recettes vérifiées et dépenses payées, en lecture seule.
 - `PYTHONPATH=runtime python -m papi_core opportunity-rank path/to/opportunities.json` — classer des hypothèses commerciales XOF, sans action externe.
 - `PYTHONPATH=runtime python -m papi_core security-check` — contrôler les garde-fous locaux sans réseau ni affichage de secrets.
+- `PYTHONPATH=runtime python -m papi_core audit-archive-inspect CHEMIN --kind archive-directory|restore-target` — inventorier les archives/temporaires en lecture seule, sans les promouvoir ni les supprimer.
 
 Le worker reste désactivé par défaut. Le planificateur ne démarre aucun processus permanent et n'enfile aucun travail.
 
@@ -46,6 +47,7 @@ Le worker reste désactivé par défaut. Le planificateur ne démarre aucun proc
 - [Noyau de coordination](docs/CORE-ENGINE.md)
 - [Orchestrateur consultatif](docs/ORCHESTRATOR.md)
 - [Journal d'audit](docs/AUDIT-MEMORY.md)
+- [Archives vérifiables du journal d'audit](docs/AUDIT-ARCHIVES.md)
 - [Archives vérifiables du journal d'audit](docs/AUDIT-ARCHIVES.md)
 - [Mémoire partagée](docs/SHARED-MEMORY.md)
 - [Machine à états des missions](docs/STATE-MACHINE.md)
