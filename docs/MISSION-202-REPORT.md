@@ -22,12 +22,22 @@ L'inspection de récupération utilisait désormais des descripteurs épinglés,
 - Ajoute `_read_private_file_at` : ouvre manifeste et journal relativement au descripteur du dossier avec `O_NOFOLLOW`, contrôle type, propriétaire, permissions, taille et stabilité des métadonnées pendant la lecture.
 - Refactorise `_load_verified_archive` pour lister et lire les deux fichiers par descripteur. `verify_archive` et la vérification préalable de `restore_verified_archive` bénéficient de cette lecture épinglée.
 - Ferme le descripteur dans `_open_inspection_directory` même si `fstat` échoue, et convertit cette erreur système en erreur d'archive contrôlée.
-- Ajoute deux tests : remplacement d'un ancêtre par un lien symbolique pendant la descente, et fermeture du descripteur après échec de `fstat`.
+- Ajoute deux tests : remplacement d'un ancêtre par un lien symbolique pendant la descente, et fermeture du descripteur après échec de `fstat`. Le test de course ne saute que si la plateforme ne permet pas de créer un lien symbolique ; les erreurs de vérification ne sont pas transformées en skip.
 - Actualise la documentation des archives et la roadmap.
 
-## Validation
+## Validation GitHub Actions
 
-Les contrôles GitHub Actions de cette mission seront consignés après leur achèvement sur le SHA final. Les tests locaux ne sont pas exécutés dans cette session.
+Code et tests validés sur le SHA `1e29f0a7ae5480388caa4a3c1137d78c55a8b616` :
+
+- [PAPI core tests — run #2877](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45966752097) : succès, **258 tests exécutés, 258 réussis, 0 échec**. Les deux nouveaux tests sont explicitement `ok`.
+- [PAPI registry validation — run #937](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45966752226) : succès.
+- [PAPI documentation checks — run #904](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/45966752224) : succès.
+- `pip check` : `No broken requirements found`.
+- Deux audits `pip-audit` : `No known vulnerabilities found`.
+- PostgreSQL 16 jetable : initialisation, schéma, fixtures legacy, migration des tentatives durables, concurrence `SKIP LOCKED` et rollback : succès.
+- Tests locaux : non exécutés ; la validation provient des workflows GitHub Actions.
+
+Le commit de documentation de ce rapport est postérieur au SHA de code testé ; il ne modifie ni le runtime ni les tests.
 
 ## Limites
 
