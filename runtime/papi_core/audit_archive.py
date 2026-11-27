@@ -5,6 +5,7 @@ checkpoint d'ancrage déjà vérifié. La source n'est jamais tronquée ni suppr
 """
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -15,6 +16,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+SUPPORTS_OPEN_DIR_FD = os.open in getattr(os, "supports_dir_fd", set())
 
 from .anchor import AnchorClient, AnchorError, CHECKPOINT_ID_RE
 from .audit import AuditError, MAX_AUDIT_EVENTS, MAX_JOURNAL_BYTES, read_events
@@ -374,6 +377,185 @@ def verify_archive(
     }
 
 
+def _open_restore_parent(path: Path) -> int:
+    """Ouvre et épingle le parent de restauration dans un répertoire de confiance."""
+    descriptor = _open_directory_chain(path, require_private=False)
+    try:
+        info = os.fstat(descriptor)
+        if not hasattr(os, "geteuid") or info.st_uid != os.geteuid():
+            raise AuditArchiveError(
+                "Le répertoire de destination doit appartenir au processus courant."
+            )
+        if stat.S_IMODE(info.st_mode) & 0o022:
+            raise AuditArchiveError(
+                "Le répertoire de destination ne doit pas être modifiable par le groupe ou les autres."
+            )
+        return descriptor
+    except BaseException:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        raise
+
+
+def _open_restore_lock_at(directory_fd: int, name: str) -> int:
+    """Ouvre et verrouille le sidecar sans re-résoudre le chemin parent."""
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    if nofollow is None or not SUPPORTS_OPEN_DIR_FD:
+        raise AuditArchiveError(
+            "La plateforme ne permet pas d'ouvrir le verrou relativement au répertoire."
+        )
+    flags = os.O_RDWR | nofollow | getattr(os, "O_NONBLOCK", 0)
+    created = False
+    try:
+        try:
+            descriptor = os.open(
+                name, flags | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=directory_fd
+            )
+            created = True
+        except FileExistsError:
+            descriptor = os.open(name, flags, dir_fd=directory_fd)
+        try:
+            if created:
+                os.fchmod(descriptor, 0o600)
+            info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or stat.S_IMODE(info.st_mode) & 0o077
+                or not hasattr(os, "geteuid")
+                or info.st_uid != os.geteuid()
+                or info.st_size != 0
+            ):
+                raise AuditArchiveError(
+                    "Le verrou de restauration doit être un fichier régulier privé et vide."
+                )
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+            os.fsync(descriptor)
+            return descriptor
+        except BaseException:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+            if created:
+                try:
+                    os.unlink(name, dir_fd=directory_fd)
+                except OSError:
+                    pass
+            raise
+    except AuditArchiveError:
+        raise
+    except OSError as exc:
+        raise AuditArchiveError(
+            "Impossible d'ouvrir ou de verrouiller le fichier de destination."
+        ) from exc
+
+
+def _write_new_private_file_at(directory_fd: int, name: str, payload: bytes) -> None:
+    """Publie un fichier privé par lien matériel, entièrement relatif au parent épinglé."""
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    if (
+        nofollow is None
+        or not SUPPORTS_OPEN_DIR_FD
+        or os.link not in os.supports_dir_fd
+        or os.unlink not in os.supports_dir_fd
+    ):
+        raise AuditArchiveError(
+            "La plateforme ne permet pas une publication relative au répertoire épinglé."
+        )
+    temporary_name = f".{name}.{uuid.uuid4().hex}.tmp"
+    flags = (
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    try:
+        descriptor = os.open(
+            temporary_name, flags, 0o600, dir_fd=directory_fd
+        )
+    except OSError as exc:
+        raise AuditArchiveError(
+            "Impossible de préparer un temporaire privé dans le répertoire de destination."
+        ) from exc
+    descriptor_open = True
+    try:
+        try:
+            os.fchmod(descriptor, 0o600)
+            view = memoryview(payload)
+            written = 0
+            while written < len(view):
+                try:
+                    count = os.write(descriptor, view[written:])
+                except InterruptedError:
+                    continue
+                if count <= 0:
+                    raise OSError("Écriture de restauration interrompue.")
+                written += count
+            os.fsync(descriptor)
+            info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or stat.S_IMODE(info.st_mode) & 0o077
+                or not hasattr(os, "geteuid")
+                or info.st_uid != os.geteuid()
+            ):
+                raise AuditArchiveError(
+                    "Le temporaire de restauration n'est pas un fichier privé régulier."
+                )
+        except OSError as exc:
+            raise AuditArchiveError(
+                "Écriture temporaire du journal restauré impossible."
+            ) from exc
+
+        descriptor_open = False
+        try:
+            os.close(descriptor)
+        except OSError as exc:
+            raise AuditArchiveError(
+                "Fermeture du temporaire de restauration impossible."
+            ) from exc
+
+        try:
+            os.link(
+                temporary_name,
+                name,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+        except FileExistsError:
+            raise
+        except (OSError, NotImplementedError, TypeError) as exc:
+            raise AuditArchiveError(
+                "Publication atomique relative au répertoire impossible."
+            ) from exc
+    finally:
+        if descriptor_open:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        try:
+            os.unlink(temporary_name, dir_fd=directory_fd)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            # Un temporaire résiduel reste visible pour une inspection manuelle.
+            pass
+
+
+def _fsync_directory_fd(directory_fd: int) -> None:
+    """Synchronise le répertoire déjà épinglé, sans résoudre à nouveau son chemin."""
+    try:
+        if not stat.S_ISDIR(os.fstat(directory_fd).st_mode):
+            raise AuditArchiveError("La synchronisation exige un véritable répertoire.")
+        os.fsync(directory_fd)
+    except OSError as exc:
+        raise AuditArchiveError(
+            "Impossible de garantir la durabilité du répertoire de destination."
+        ) from exc
+
+
 def create_verified_archive(
     journal_path: str | Path,
     archive_directory: str | Path,
@@ -449,30 +631,63 @@ def restore_verified_archive(
     destination_journal: str | Path,
     anchor_client: AnchorClient,
 ) -> dict[str, Any]:
-    """Restaure uniquement vers un chemin absent, après vérification complète."""
+    """Restaure dans un parent épinglé, après vérification complète de l'archive."""
     destination = Path(destination_journal)
-    _check_parent_components(destination)
+    if not destination.name or destination.name in {".", ".."}:
+        raise AuditArchiveError("La destination doit désigner un nom de fichier explicite.")
     _manifest, raw, events = _load_verified_archive(archive_directory, anchor_client)
-    created = False
+    parent_fd = _open_restore_parent(destination.parent)
+    lock_fd: int | None = None
+    published = False
     try:
-        _write_new_private_file(destination, raw)
-        created = True
-        restored = read_events(destination)
+        lock_fd = _open_restore_lock_at(parent_fd, f"{destination.name}.lock")
+        _write_new_private_file_at(parent_fd, destination.name, raw)
+        published = True
+        restored_raw = _read_private_file_at(parent_fd, destination.name, MAX_JOURNAL_BYTES)
+        if restored_raw != raw:
+            raise AuditArchiveError("Les octets restaurés ne correspondent pas à l'archive.")
+        restored = _verify_journal_bytes(restored_raw)
         if restored != events:
             raise AuditArchiveError("Le journal restauré ne correspond pas à l'archive.")
-        # read_events also creates the lock file; persist both directory entries.
-        _fsync_directory(destination.parent)
+        _fsync_directory_fd(parent_fd)
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        os.close(lock_fd)
+        lock_fd = None
     except BaseException:
-        if created:
+        if published:
             try:
-                destination.unlink()
+                os.unlink(destination.name, dir_fd=parent_fd)
+            except OSError:
+                pass
+        if lock_fd is not None:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
             except OSError:
                 pass
             try:
-                _fsync_directory(destination.parent)
-            except AuditArchiveError:
+                os.close(lock_fd)
+            except OSError:
                 pass
+            lock_fd = None
+        try:
+            _fsync_directory_fd(parent_fd)
+        except AuditArchiveError:
+            pass
         raise
+    finally:
+        if lock_fd is not None:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            except OSError:
+                pass
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+        try:
+            os.close(parent_fd)
+        except OSError:
+            pass
     return {
         "restored": True,
         "event_count": len(events),
