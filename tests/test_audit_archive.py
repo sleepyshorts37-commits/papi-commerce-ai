@@ -100,31 +100,33 @@ class AuditArchiveTests(unittest.TestCase):
             [self.archive, self.root],
         )
 
-    def test_restore_syncs_parent_directory_before_success(self):
+    def test_restore_syncs_pinned_parent_directory_before_success(self):
         from papi_core import audit_archive
 
         self._create()
         restored_path = self.root / "durable-restored.jsonl"
         with patch(
-            "papi_core.audit_archive._fsync_directory",
-            wraps=audit_archive._fsync_directory,
+            "papi_core.audit_archive._fsync_directory_fd",
+            wraps=audit_archive._fsync_directory_fd,
         ) as sync_directory:
             result = restore_verified_archive(self.archive, restored_path, self.client)
 
         self.assertTrue(result["restored"])
-        sync_directory.assert_called_once_with(self.root)
+        sync_directory.assert_called_once()
+        self.assertIsInstance(sync_directory.call_args.args[0], int)
 
-    def test_restore_fails_closed_when_parent_directory_sync_fails(self):
+    def test_restore_fails_closed_when_pinned_parent_directory_sync_fails(self):
         self._create()
         restored_path = self.root / "not-durable.jsonl"
         with patch(
-            "papi_core.audit_archive._fsync_directory",
+            "papi_core.audit_archive._fsync_directory_fd",
             side_effect=AuditArchiveError("directory fsync unavailable"),
         ):
             with self.assertRaisesRegex(AuditArchiveError, "directory fsync unavailable"):
                 restore_verified_archive(self.archive, restored_path, self.client)
 
         self.assertFalse(restored_path.exists())
+        self.assertTrue(Path(f"{restored_path}.lock").exists())
 
     def test_restore_does_not_publish_a_partial_file_after_interrupted_write(self):
         self._create()
@@ -147,25 +149,27 @@ class AuditArchiveTests(unittest.TestCase):
                 restore_verified_archive(self.archive, restored_path, self.client)
 
         self.assertFalse(restored_path.exists())
-        self.assertFalse(Path(f"{restored_path}.lock").exists())
+        self.assertTrue(Path(f"{restored_path}.lock").exists())
+        self.assertEqual(Path(f"{restored_path}.lock").stat().st_mode & 0o777, 0o600)
         self.assertEqual(list(self.root.glob(f".{restored_path.name}.*.tmp")), [])
 
     def test_restore_does_not_publish_when_temporary_close_fails(self):
         self._create()
         restored_path = self.root / "close-failed.jsonl"
-        real_mkstemp = tempfile.mkstemp
+        real_open = os.open
         real_close = os.close
         target_descriptors = set()
-        mkstemp_calls = 0
         failed = False
 
-        def track_mkstemp(*args, **kwargs):
-            nonlocal mkstemp_calls
-            descriptor, name = real_mkstemp(*args, **kwargs)
-            mkstemp_calls += 1
-            if mkstemp_calls == 2:
+        def track_open(path, flags, *args, **kwargs):
+            descriptor = real_open(path, flags, *args, **kwargs)
+            if (
+                isinstance(path, str)
+                and path.startswith(f".{restored_path.name}.")
+                and path.endswith(".tmp")
+            ):
                 target_descriptors.add(descriptor)
-            return descriptor, name
+            return descriptor
 
         def close_then_fail(descriptor):
             nonlocal failed
@@ -175,7 +179,7 @@ class AuditArchiveTests(unittest.TestCase):
                 raise OSError("simulated close failure")
 
         with (
-            patch("papi_core.audit_archive.tempfile.mkstemp", side_effect=track_mkstemp),
+            patch("papi_core.audit_archive.os.open", side_effect=track_open),
             patch("papi_core.audit_archive.os.close", side_effect=close_then_fail),
         ):
             with self.assertRaisesRegex(AuditArchiveError, "Fermeture"):
@@ -183,7 +187,7 @@ class AuditArchiveTests(unittest.TestCase):
 
         self.assertTrue(failed)
         self.assertFalse(restored_path.exists())
-        self.assertFalse(Path(f"{restored_path}.lock").exists())
+        self.assertTrue(Path(f"{restored_path}.lock").exists())
         self.assertEqual(list(self.root.glob(f".{restored_path.name}.*.tmp")), [])
 
     def test_archive_creation_removes_directory_when_temporary_close_fails(self):
@@ -346,6 +350,44 @@ class AuditArchiveTests(unittest.TestCase):
         os.symlink(self.journal, archived_journal)
         with self.assertRaises(AuditArchiveError):
             verify_archive(self.archive, self.client)
+
+    def test_restore_pins_destination_parent_before_ancestor_is_replaced(self):
+        self._create()
+        base = self.root / "base"
+        alias = base / "alias"
+        parent = alias / "parent"
+        parent.mkdir(parents=True)
+        attacker_parent = self.root / "attacker" / "parent"
+        attacker_parent.mkdir(parents=True)
+        moved_alias = base / "alias-original"
+        restored_path = parent / "restored.jsonl"
+        original_open = os.open
+        swapped = False
+
+        def replace_ancestor_before_descending(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if (
+                not swapped
+                and path == "parent"
+                and kwargs.get("dir_fd") is not None
+            ):
+                os.rename(alias, moved_alias)
+                os.symlink(self.root / "attacker", alias)
+                swapped = True
+            return original_open(path, flags, *args, **kwargs)
+
+        with patch(
+            "papi_core.audit_archive.os.open",
+            side_effect=replace_ancestor_before_descending,
+        ):
+            result = restore_verified_archive(self.archive, restored_path, self.client)
+
+        pinned_destination = moved_alias / "parent" / "restored.jsonl"
+        self.assertTrue(swapped)
+        self.assertTrue(result["restored"])
+        self.assertTrue(pinned_destination.exists())
+        self.assertFalse((attacker_parent / "restored.jsonl").exists())
+        self.assertEqual(read_events(pinned_destination), read_events(self.journal))
 
     def test_restore_recreates_verified_private_journal(self):
         self._create()

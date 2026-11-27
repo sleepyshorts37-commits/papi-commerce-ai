@@ -68,6 +68,14 @@ Ces appels améliorent la durabilité locale face à un crash du processus ou du
 
 Cette protection empêche qu'un remplacement ultérieur d'un ancêtre par un lien symbolique redirige la vérification vers un autre arbre. Elle ne protège pas contre un acteur qui contrôle le contenu du répertoire déjà ouvert, les permissions, les montages ou le système de fichiers. Elle ne remplace pas la vérification cryptographique du manifeste, du journal et du checkpoint.
 
+## Restauration attachée au descripteur de destination
+
+La restauration ouvre le parent cible composant par composant et conserve son descripteur. Le dernier répertoire doit appartenir au processus courant et ne pas être modifiable par le groupe ou les autres. Le fichier de verrouillage est ouvert relativement à ce descripteur, validé comme fichier régulier privé et vide, puis verrouillé avec flock. Le temporaire, la publication par lien matériel sans écrasement, la relecture des octets, le rollback et le fsync du répertoire utilisent tous le même descripteur ; aucun de ces accès ne re-résout le chemin parent.
+
+Le sidecar .lock peut rester présent après un échec de restauration. Il est volontairement conservé lorsqu'il a été créé : le supprimer alors qu'un autre processus peut déjà l'avoir ouvert risquerait de créer deux inodes de verrou distincts. Un verrou existant n'est réutilisé que s'il est régulier, vide, privé et appartient au processus courant. Une destination déjà présente n'est jamais remplacée.
+
+La garantie suppose que les répertoires ancêtres sont des emplacements de confiance et ne protège pas contre un processus de même UID qui peut modifier le répertoire déjà ouvert ou le système de fichiers. Les plateformes sans primitives dir_fd, O_NOFOLLOW, O_DIRECTORY ou lien matériel échouent fermé.
+
 ## Tests et limites
 
 `tests/test_audit_archive.py` couvre la création, la vérification, le checkpoint périmé, l'absence d'ancrage, la collision de destination, l'altération des octets, les clés dupliquées du manifeste, les liens symboliques, la restauration et la vérification d'une archive après un checkpoint plus récent.
