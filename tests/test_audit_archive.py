@@ -245,6 +245,87 @@ class AuditArchiveTests(unittest.TestCase):
         with self.assertRaises(AuditArchiveError):
             verify_archive(self.archive, self.client)
 
+    def test_verification_pins_parent_before_ancestor_is_replaced(self):
+        base = self.root / "base"
+        alias = base / "alias"
+        parent = alias / "parent"
+        archive = parent / "archive"
+        parent.mkdir(parents=True)
+        create_verified_archive(self.journal, archive, self.client)
+
+        attacker_archive = self.root / "attacker" / "parent" / "archive"
+        attacker_archive.mkdir(parents=True, mode=0o700)
+        attacker_archive.chmod(0o700)
+        moved_alias = base / "alias-original"
+        original_open = os.open
+        swapped = False
+
+        def replace_ancestor_before_descending(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if not swapped and Path(path).name == "parent":
+                os.rename(alias, moved_alias)
+                os.symlink(self.root / "attacker", alias)
+                swapped = True
+            return original_open(path, flags, *args, **kwargs)
+
+        try:
+            with patch(
+                "papi_core.audit_archive.os.open",
+                side_effect=replace_ancestor_before_descending,
+            ):
+                result = verify_archive(archive, self.client)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"Remplacement symbolique indisponible : {exc}")
+
+        self.assertTrue(swapped)
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["event_count"], 1)
+
+    def test_open_inspection_directory_closes_descriptor_when_fstat_fails(self):
+        from papi_core import audit_archive
+
+        directory_flag = getattr(os, "O_DIRECTORY", None)
+        if directory_flag is None:
+            self.skipTest("O_DIRECTORY indisponible sur cette plateforme.")
+        archive = self.root / "fstat-failure"
+        archive.mkdir(mode=0o700)
+        parent_fd = os.open(self.root, os.O_RDONLY | directory_flag)
+        real_open = os.open
+        real_fstat = os.fstat
+        real_close = os.close
+        opened = []
+        closed = []
+
+        def capture_open(path, flags, *args, **kwargs):
+            descriptor = real_open(path, flags, *args, **kwargs)
+            opened.append(descriptor)
+            return descriptor
+
+        def fail_fstat(descriptor):
+            if descriptor in opened:
+                raise OSError("simulated fstat failure")
+            return real_fstat(descriptor)
+
+        def capture_close(descriptor):
+            if descriptor in opened:
+                closed.append(descriptor)
+            return real_close(descriptor)
+
+        try:
+            with (
+                patch("papi_core.audit_archive.os.open", side_effect=capture_open),
+                patch("papi_core.audit_archive.os.fstat", side_effect=fail_fstat),
+                patch("papi_core.audit_archive.os.close", side_effect=capture_close),
+            ):
+                with self.assertRaisesRegex(AuditArchiveError, "Impossible de vérifier"):
+                    audit_archive._open_inspection_directory(
+                        Path("fstat-failure"), require_private=True, dir_fd=parent_fd
+                    )
+        finally:
+            real_close(parent_fd)
+
+        self.assertEqual(opened, closed)
+
     def test_verification_rejects_duplicate_manifest_keys(self):
         self._create()
         path = self.archive / "manifest.json"
