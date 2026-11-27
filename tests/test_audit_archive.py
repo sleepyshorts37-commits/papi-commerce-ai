@@ -268,14 +268,19 @@ class AuditArchiveTests(unittest.TestCase):
                 swapped = True
             return original_open(path, flags, *args, **kwargs)
 
+        symlink_probe = self.root / "symlink-probe"
         try:
-            with patch(
-                "papi_core.audit_archive.os.open",
-                side_effect=replace_ancestor_before_descending,
-            ):
-                result = verify_archive(archive, self.client)
+            os.symlink(self.root, symlink_probe)
         except (OSError, NotImplementedError) as exc:
-            self.skipTest(f"Remplacement symbolique indisponible : {exc}")
+            self.skipTest(f"Liens symboliques indisponibles : {exc}")
+        else:
+            symlink_probe.unlink()
+
+        with patch(
+            "papi_core.audit_archive.os.open",
+            side_effect=replace_ancestor_before_descending,
+        ):
+            result = verify_archive(archive, self.client)
 
         self.assertTrue(swapped)
         self.assertTrue(result["verified"])
