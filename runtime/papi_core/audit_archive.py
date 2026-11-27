@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+SUPPORTS_OPEN_DIR_FD = os.open in getattr(os, "supports_dir_fd", set())
+
 from .anchor import AnchorClient, AnchorError, CHECKPOINT_ID_RE
 from .audit import AuditError, MAX_AUDIT_EVENTS, MAX_JOURNAL_BYTES, read_events
 
@@ -400,7 +402,7 @@ def _open_restore_parent(path: Path) -> int:
 def _open_restore_lock_at(directory_fd: int, name: str) -> int:
     """Ouvre et verrouille le sidecar sans re-résoudre le chemin parent."""
     nofollow = getattr(os, "O_NOFOLLOW", None)
-    if nofollow is None or os.open not in os.supports_dir_fd:
+    if nofollow is None or not SUPPORTS_OPEN_DIR_FD:
         raise AuditArchiveError(
             "La plateforme ne permet pas d'ouvrir le verrou relativement au répertoire."
         )
@@ -455,7 +457,7 @@ def _write_new_private_file_at(directory_fd: int, name: str, payload: bytes) -> 
     nofollow = getattr(os, "O_NOFOLLOW", None)
     if (
         nofollow is None
-        or os.open not in os.supports_dir_fd
+        or not SUPPORTS_OPEN_DIR_FD
         or os.link not in os.supports_dir_fd
         or os.unlink not in os.supports_dir_fd
     ):
