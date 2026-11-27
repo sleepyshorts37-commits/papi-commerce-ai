@@ -110,6 +110,55 @@ def _read_private_file(path: Path, maximum: int) -> bytes:
         return raw
 
 
+
+def _read_private_file_at(directory_fd: int, name: str, maximum: int) -> bytes:
+    """Lit un fichier privé relativement à un répertoire déjà épinglé."""
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    if nofollow is None:
+        raise AuditArchiveError("La plateforme ne permet pas de refuser les liens symboliques.")
+    try:
+        descriptor = os.open(
+            name, os.O_RDONLY | nofollow | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=directory_fd,
+        )
+    except OSError as exc:
+        raise AuditArchiveError("Fichier d'archive absent ou inaccessible.") from exc
+
+    try:
+        stream = os.fdopen(descriptor, "rb")
+        descriptor = -1
+        with stream:
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode):
+                raise AuditArchiveError("Les fichiers d'archive doivent être réguliers.")
+            if stat.S_IMODE(before.st_mode) & 0o077:
+                raise AuditArchiveError("Les fichiers d'archive doivent être privés (0600).")
+            if not hasattr(os, "geteuid") or before.st_uid != os.geteuid():
+                raise AuditArchiveError("Les fichiers d'archive doivent appartenir au processus courant.")
+            if before.st_size > maximum:
+                raise AuditArchiveError("Fichier d'archive trop volumineux.")
+            raw = stream.read(maximum + 1)
+            after = os.fstat(stream.fileno())
+            stable_identity = (
+                before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns,
+            ) == (
+                after.st_dev, after.st_ino, after.st_size,
+                after.st_mtime_ns, after.st_ctime_ns,
+            )
+            if len(raw) > maximum or len(raw) != before.st_size or not stable_identity:
+                raise AuditArchiveError("Fichier modifié pendant sa lecture ou limite dépassée.")
+            return raw
+    except OSError as exc:
+        raise AuditArchiveError("Lecture du fichier d'archive impossible.") from exc
+    finally:
+        if descriptor >= 0:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
 def _write_new_private_file(path: Path, payload: bytes) -> None:
     """Prépare, synchronise et ferme un fichier privé avant publication atomique."""
     try:
@@ -258,36 +307,56 @@ def _validate_manifest(raw: bytes) -> dict[str, Any]:
     return manifest
 
 
+def _open_archive_directory(archive_directory: str | Path) -> int:
+    """Ouvre un dossier d'archive via une chaîne de parents déjà épinglés."""
+    directory = Path(archive_directory)
+    if not directory.name or directory.name in {".", ".."}:
+        raise AuditArchiveError("Le chemin d'archive doit désigner un dossier explicite.")
+    parent_fd = _open_directory_chain(directory.parent, require_private=False)
+    try:
+        return _open_inspection_directory(
+            Path(directory.name), require_private=True, dir_fd=parent_fd
+        )
+    finally:
+        try:
+            os.close(parent_fd)
+        except OSError:
+            pass
+
+
 def _load_verified_archive(
     archive_directory: str | Path, anchor_client: AnchorClient
 ) -> tuple[dict[str, Any], bytes, list[dict[str, Any]]]:
-    directory = Path(archive_directory)
-    _check_parent_components(directory)
-    _check_private_directory(directory)
-    if set(os.listdir(directory)) != {MANIFEST_NAME, JOURNAL_NAME}:
-        raise AuditArchiveError("L'archive doit contenir exactement le manifeste et le journal.")
-    manifest = _validate_manifest(_read_private_file(directory / MANIFEST_NAME, MAX_MANIFEST_BYTES))
-    raw = _read_private_file(directory / JOURNAL_NAME, MAX_JOURNAL_BYTES)
-    if len(raw) != manifest["journal_size_bytes"]:
-        raise AuditArchiveError("La taille du journal ne correspond pas au manifeste.")
-    if hashlib.sha256(raw).hexdigest() != manifest["journal_sha256"]:
-        raise AuditArchiveError("L'empreinte du journal ne correspond pas au manifeste.")
-    events = _verify_journal_bytes(raw)
-    if (
-        len(events) != manifest["event_count"]
-        or events[0]["event_hash"] != manifest["first_event_hash"]
-        or events[-1]["event_hash"] != manifest["last_event_hash"]
-    ):
-        raise AuditArchiveError("Les événements ne correspondent pas au manifeste.")
-    checkpoint = _verified_anchor(anchor_client, manifest["checkpoint_id"], require_head=False)
-    if (
-        checkpoint["digest"] != manifest["checkpoint_digest"]
-        or checkpoint["sequence"] != manifest["checkpoint_sequence"]
-        or checkpoint["sequence"] != len(events)
-        or checkpoint["audit_head"] != events[-1]["event_hash"]
-    ):
-        raise AuditArchiveError("L'archive ne correspond pas au checkpoint d'audit vérifié.")
-    return manifest, raw, events
+    directory_fd = _open_archive_directory(archive_directory)
+    try:
+        if set(os.listdir(directory_fd)) != {MANIFEST_NAME, JOURNAL_NAME}:
+            raise AuditArchiveError("L'archive doit contenir exactement le manifeste et le journal.")
+        manifest = _validate_manifest(
+            _read_private_file_at(directory_fd, MANIFEST_NAME, MAX_MANIFEST_BYTES)
+        )
+        raw = _read_private_file_at(directory_fd, JOURNAL_NAME, MAX_JOURNAL_BYTES)
+        if len(raw) != manifest["journal_size_bytes"]:
+            raise AuditArchiveError("La taille du journal ne correspond pas au manifeste.")
+        if hashlib.sha256(raw).hexdigest() != manifest["journal_sha256"]:
+            raise AuditArchiveError("L'empreinte du journal ne correspond pas au manifeste.")
+        events = _verify_journal_bytes(raw)
+        if (
+            len(events) != manifest["event_count"]
+            or events[0]["event_hash"] != manifest["first_event_hash"]
+            or events[-1]["event_hash"] != manifest["last_event_hash"]
+        ):
+            raise AuditArchiveError("Les événements ne correspondent pas au manifeste.")
+        checkpoint = _verified_anchor(anchor_client, manifest["checkpoint_id"], require_head=False)
+        if (
+            checkpoint["digest"] != manifest["checkpoint_digest"]
+            or checkpoint["sequence"] != manifest["checkpoint_sequence"]
+            or checkpoint["sequence"] != len(events)
+            or checkpoint["audit_head"] != events[-1]["event_hash"]
+        ):
+            raise AuditArchiveError("L'archive ne correspond pas au checkpoint d'audit vérifié.")
+        return manifest, raw, events
+    finally:
+        os.close(directory_fd)
 
 
 def verify_archive(
@@ -428,17 +497,27 @@ def _open_inspection_directory(
         descriptor = os.open(path, os.O_RDONLY | directory_flag | nofollow, dir_fd=dir_fd)
     except OSError as exc:
         raise AuditArchiveError("Répertoire absent ou inaccessible pour inspection.") from exc
-    info = os.fstat(descriptor)
-    if not stat.S_ISDIR(info.st_mode):
-        os.close(descriptor)
-        raise AuditArchiveError("Le chemin inspecté n'est pas un répertoire réel.")
-    if require_private:
-        if stat.S_IMODE(info.st_mode) & 0o077:
+    try:
+        info = os.fstat(descriptor)
+        if not stat.S_ISDIR(info.st_mode):
+            raise AuditArchiveError("Le chemin inspecté n'est pas un répertoire réel.")
+        if require_private:
+            if stat.S_IMODE(info.st_mode) & 0o077:
+                raise AuditArchiveError("Le répertoire d'archive doit être privé (0700).")
+            if not hasattr(os, "geteuid") or info.st_uid != os.geteuid():
+                raise AuditArchiveError("Le répertoire d'archive doit appartenir au processus courant.")
+    except OSError as exc:
+        try:
             os.close(descriptor)
-            raise AuditArchiveError("Le répertoire d'archive doit être privé (0700).")
-        if not hasattr(os, "geteuid") or info.st_uid != os.geteuid():
+        except OSError:
+            pass
+        raise AuditArchiveError("Impossible de vérifier un répertoire d'archive.") from exc
+    except BaseException:
+        try:
             os.close(descriptor)
-            raise AuditArchiveError("Le répertoire d'archive doit appartenir au processus courant.")
+        except OSError:
+            pass
+        raise
     return descriptor
 
 

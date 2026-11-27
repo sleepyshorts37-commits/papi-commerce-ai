@@ -62,6 +62,12 @@ Chaque fichier est synchronisé (fsync) avant fermeture. Après création, le co
 
 Ces appels améliorent la durabilité locale face à un crash du processus ou du système, mais ne prouvent pas la persistance matérielle du contrôleur/disque, la réplication, la sauvegarde hors site ni la durabilité d'un stockage distant.
 
+## Lecture de vérification attachée aux descripteurs
+
+`verify_archive` et la vérification préalable à `restore_verified_archive` ouvrent le répertoire parent composant par composant, avec un descripteur conservé pour chaque niveau. Le dossier d'archive est ensuite ouvert relativement au parent épinglé avec `O_NOFOLLOW` et `O_DIRECTORY`. `manifest.json` et `journal.jsonl` sont ouverts relativement au descripteur du dossier, sans re-résoudre leur chemin depuis la racine. La lecture contrôle le type régulier, le propriétaire, les permissions, la taille et la stabilité des métadonnées entre le début et la fin de lecture.
+
+Cette protection empêche qu'un remplacement ultérieur d'un ancêtre par un lien symbolique redirige la vérification vers un autre arbre. Elle ne protège pas contre un acteur qui contrôle le contenu du répertoire déjà ouvert, les permissions, les montages ou le système de fichiers. Elle ne remplace pas la vérification cryptographique du manifeste, du journal et du checkpoint.
+
 ## Tests et limites
 
 `tests/test_audit_archive.py` couvre la création, la vérification, le checkpoint périmé, l'absence d'ancrage, la collision de destination, l'altération des octets, les clés dupliquées du manifeste, les liens symboliques, la restauration et la vérification d'une archive après un checkpoint plus récent.
