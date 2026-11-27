@@ -18,9 +18,18 @@ Date : 2026-11-27
 - Ajoute un test de régression qui remplace un ancêtre par un lien symbolique juste avant l'ouverture du composant enfant ; la restauration doit rester attachée au répertoire initial.
 - Met à jour la documentation et la roadmap.
 
-## Validation
+## Validation vérifiée
 
-La validation locale n'est pas exécutée dans cet environnement. Les tests et contrôles CI seront vérifiés après ouverture de la PR et sur le SHA exact.
+Le premier commit de code, SHA 83caba8c6031955fa291e07b27e9020820c81af0, a échoué sur deux tests : l'instrumentation de test remplaçait os.open et invalidait un contrôle de capacité fondé sur l'identité de cette fonction. Le contrôle est désormais calculé une seule fois à l'import du module.
+
+Sur le SHA de code corrigé 2494573f634646be52523a6b196347a4e702c6b9 :
+- PAPI core tests, run #2880 : succès ; 259 tests exécutés, aucun échec. Les régressions de fermeture du temporaire et de remplacement d'un ancêtre sont passées.
+- PAPI registry validation, run #940 : succès.
+- PAPI documentation checks, run #907 : succès.
+- Les étapes PostgreSQL 16 jetable du workflow principal (schéma, fixtures legacy, migration des tentatives, concurrence SKIP LOCKED et rollback) sont terminées avec succès.
+- Les tests locaux n'ont pas été exécutés ; la validation provient de GitHub Actions.
+
+Le présent rapport est un ajout documentaire postérieur au SHA de code testé ; ses propres workflows sont vérifiés sur le SHA final de la PR.
 
 ## Limites
 
