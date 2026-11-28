@@ -76,6 +76,14 @@ Le sidecar .lock peut rester présent après un échec de restauration. Il est v
 
 La garantie suppose que les répertoires ancêtres sont des emplacements de confiance et ne protège pas contre un processus de même UID qui peut modifier le répertoire déjà ouvert ou le système de fichiers. Les plateformes sans primitives dir_fd, O_NOFOLLOW, O_DIRECTORY ou lien matériel échouent fermé.
 
+## Création attachée aux descripteurs
+
+La création ouvre le parent du journal source composant par composant et lit le fichier relativement au descripteur épinglé. Elle ouvre ensuite le parent de destination, vérifie son propriétaire et refuse les répertoires modifiables par le groupe ou les autres. Le dossier d'archive est créé par `mkdir(dir_fd=...)`, ouvert avec `O_NOFOLLOW | O_DIRECTORY`, puis les deux fichiers sont écrits dans des temporaires privés et publiés par lien matériel relativement au descripteur du dossier.
+
+La synchronisation du parent après `mkdir`, du dossier après écriture, puis du parent après publication est effectuée sans re-résoudre les chemins. La vérification finale relit manifeste et journal via le descripteur d'archive déjà ouvert. Le rollback supprime uniquement les entrées attendues relativement à ce même descripteur et ne retire le dossier que si son identité inode correspond encore au descripteur épinglé. Si le rollback ne peut pas être prouvé complet, l'opération signale qu'une inspection manuelle est nécessaire ; aucun temporaire ambigu n'est promu ou supprimé automatiquement.
+
+La protection suppose que les ancêtres et le système de fichiers restent des emplacements de confiance. Un processus de même UID qui contrôle le répertoire déjà ouvert demeure hors du modèle de menace. Les plateformes sans ouvertures relatives, création/suppression par descripteur, liens matériels ou synchronisation de répertoire échouent fermé.
+
 ## Tests et limites
 
 `tests/test_audit_archive.py` couvre la création, la vérification, le checkpoint périmé, l'absence d'ancrage, la collision de destination, l'altération des octets, les clés dupliquées du manifeste, les liens symboliques, la restauration et la vérification d'une archive après un checkpoint plus récent.
