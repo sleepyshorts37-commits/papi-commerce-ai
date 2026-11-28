@@ -29,7 +29,16 @@ Fermer la fenêtre TOCTOU restante dans `create_verified_archive`. Après les Mi
 
 ## Validation
 
-La validation GitHub Actions sera consignée après exécution sur la tête finale de cette PR. Les tests locaux ne sont pas exécutés dans cette session.
+Code validé sur le commit `5139eb94f2cc8e04acc9795d7d813a1ecc2c09af` :
+
+- [PAPI core tests — run 46125817023](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/46125817023) : succès, **263 tests exécutés, 263 réussis, 0 échec**. Les quatre nouvelles régressions (source épinglée, destination épinglée, rollback après échec de synchronisation et refus sans `dir_fd`) sont explicitement passées.
+- [PAPI registry validation — run 46125817053](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/46125817053) : succès.
+- [PAPI documentation checks — run 46125817034](https://github.com/sleepyshorts37-commits/papi-commerce-ai/actions/runs/46125817034) : succès.
+- `pip check` : aucune dépendance cassée.
+- Deux contrôles `pip-audit` : aucune vulnérabilité connue détectée dans les graphes analysés.
+- PostgreSQL 16 jetable : schéma, fixtures legacy, migration des tentatives, concurrence `SKIP LOCKED` et rollback : succès.
+
+Les tests locaux ne sont pas exécutés ; la validation provient des workflows GitHub Actions. Le commit qui ajoute ce rapport de validation ne modifie ni le runtime ni les tests.
 
 ## Limites
 
