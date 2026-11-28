@@ -90,15 +90,19 @@ class AuditArchiveTests(unittest.TestCase):
         from papi_core import audit_archive
 
         with patch(
-            "papi_core.audit_archive._fsync_directory",
-            wraps=audit_archive._fsync_directory,
+            "papi_core.audit_archive._fsync_directory_fd",
+            wraps=audit_archive._fsync_directory_fd,
         ) as sync_directory:
             self._create()
 
-        self.assertEqual(
-            [call.args[0] for call in sync_directory.call_args_list],
-            [self.archive, self.root],
-        )
+        self.assertEqual(len(sync_directory.call_args_list), 3)
+        parent_fd_before = sync_directory.call_args_list[0].args[0]
+        archive_fd = sync_directory.call_args_list[1].args[0]
+        parent_fd_after = sync_directory.call_args_list[2].args[0]
+        self.assertIsInstance(parent_fd_before, int)
+        self.assertIsInstance(archive_fd, int)
+        self.assertEqual(parent_fd_before, parent_fd_after)
+        self.assertNotEqual(parent_fd_before, archive_fd)
 
     def test_restore_syncs_pinned_parent_directory_before_success(self):
         from papi_core import audit_archive
@@ -191,19 +195,20 @@ class AuditArchiveTests(unittest.TestCase):
         self.assertEqual(list(self.root.glob(f".{restored_path.name}.*.tmp")), [])
 
     def test_archive_creation_removes_directory_when_temporary_close_fails(self):
-        real_mkstemp = tempfile.mkstemp
+        real_open = os.open
         real_close = os.close
         target_descriptors = set()
-        mkstemp_calls = 0
         failed = False
 
-        def track_mkstemp(*args, **kwargs):
-            nonlocal mkstemp_calls
-            descriptor, name = real_mkstemp(*args, **kwargs)
-            mkstemp_calls += 1
-            if mkstemp_calls == 2:
+        def track_open(path, flags, *args, **kwargs):
+            descriptor = real_open(path, flags, *args, **kwargs)
+            if (
+                isinstance(path, str)
+                and path.startswith(".journal.jsonl.")
+                and path.endswith(".tmp")
+            ):
                 target_descriptors.add(descriptor)
-            return descriptor, name
+            return descriptor
 
         def close_then_fail(descriptor):
             nonlocal failed
@@ -213,7 +218,7 @@ class AuditArchiveTests(unittest.TestCase):
                 raise OSError("simulated close failure")
 
         with (
-            patch("papi_core.audit_archive.tempfile.mkstemp", side_effect=track_mkstemp),
+            patch("papi_core.audit_archive.os.open", side_effect=track_open),
             patch("papi_core.audit_archive.os.close", side_effect=close_then_fail),
         ):
             with self.assertRaisesRegex(AuditArchiveError, "Fermeture"):
@@ -222,6 +227,155 @@ class AuditArchiveTests(unittest.TestCase):
         self.assertTrue(failed)
         self.assertFalse(self.archive.exists())
         self.assertEqual(list(self.root.glob(f".{self.archive.name}.*.tmp")), [])
+
+    def test_archive_creation_rolls_back_when_archive_directory_sync_fails(self):
+        from papi_core import audit_archive
+
+        real_sync = audit_archive._fsync_directory_fd
+        calls = 0
+
+        def fail_archive_sync(directory_fd):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise AuditArchiveError("archive directory sync unavailable")
+            return real_sync(directory_fd)
+
+        with patch(
+            "papi_core.audit_archive._fsync_directory_fd",
+            side_effect=fail_archive_sync,
+        ):
+            with self.assertRaisesRegex(AuditArchiveError, "archive directory sync unavailable"):
+                self._create()
+
+        self.assertFalse(self.archive.exists())
+        self.assertGreaterEqual(calls, 3)
+
+    def test_archive_creation_fails_closed_without_dir_fd_support(self):
+        with patch("papi_core.audit_archive.SUPPORTS_OPEN_DIR_FD", False):
+            with self.assertRaisesRegex(AuditArchiveError, "par descripteur"):
+                self._create()
+        self.assertFalse(self.archive.exists())
+
+    def test_archive_creation_pins_destination_parent_before_ancestor_is_replaced(self):
+        base = self.root / "base"
+        alias = base / "alias"
+        parent = alias / "parent"
+        parent.mkdir(parents=True)
+        attacker_parent = self.root / "attacker" / "parent"
+        attacker_parent.mkdir(parents=True)
+        moved_alias = base / "alias-original"
+        original_open = os.open
+        swapped = False
+
+        symlink_probe = self.root / "symlink-probe"
+        try:
+            os.symlink(self.root, symlink_probe)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"Liens symboliques indisponibles : {exc}")
+        else:
+            symlink_probe.unlink()
+
+        def replace_ancestor_before_descending(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if (
+                not swapped
+                and path == "parent"
+                and kwargs.get("dir_fd") is not None
+            ):
+                os.rename(alias, moved_alias)
+                os.symlink(self.root / "attacker", alias)
+                swapped = True
+            return original_open(path, flags, *args, **kwargs)
+
+        archive_path = parent / "archive"
+        with patch(
+            "papi_core.audit_archive.os.open",
+            side_effect=replace_ancestor_before_descending,
+        ):
+            result = create_verified_archive(self.journal, archive_path, self.client)
+
+        pinned_archive = moved_alias / "parent" / "archive"
+        self.assertTrue(swapped)
+        self.assertTrue(result["verified"])
+        self.assertTrue(pinned_archive.is_dir())
+        self.assertFalse((attacker_parent / "archive").exists())
+        self.assertTrue(verify_archive(pinned_archive, self.client)["verified"])
+
+    def test_archive_creation_pins_source_parent_before_ancestor_is_replaced(self):
+        base = self.root / "source-base"
+        alias = base / "alias"
+        parent = alias / "parent"
+        parent.mkdir(parents=True)
+        source = parent / "events.jsonl"
+        append_event(
+            new_event(
+                event_id="source-pinned-event",
+                actor="system:test",
+                action="job.created",
+                entity_type="job",
+                entity_id="source-pinned-job",
+                details={"result": "original"},
+            ),
+            source,
+        )
+        source_client = AnchorClient(MemoryAnchorStore())
+        anchor_audit_journal(
+            source_client, source, checkpoint_id="source-pinned-checkpoint"
+        )
+        original_raw = source.read_bytes()
+
+        attacker_parent = self.root / "source-attacker" / "parent"
+        attacker_parent.mkdir(parents=True)
+        attacker_source = attacker_parent / "events.jsonl"
+        append_event(
+            new_event(
+                event_id="attacker-event",
+                actor="system:test",
+                action="job.created",
+                entity_type="job",
+                entity_id="attacker-job",
+                details={"result": "attacker"},
+            ),
+            attacker_source,
+        )
+
+        moved_alias = base / "alias-original"
+        original_open = os.open
+        swapped = False
+
+        symlink_probe = self.root / "source-symlink-probe"
+        try:
+            os.symlink(self.root, symlink_probe)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"Liens symboliques indisponibles : {exc}")
+        else:
+            symlink_probe.unlink()
+
+        def replace_ancestor_before_descending(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if (
+                not swapped
+                and path == "parent"
+                and kwargs.get("dir_fd") is not None
+            ):
+                os.rename(alias, moved_alias)
+                os.symlink(self.root / "source-attacker", alias)
+                swapped = True
+            return original_open(path, flags, *args, **kwargs)
+
+        destination = self.root / "source-pinned-archive"
+        with patch(
+            "papi_core.audit_archive.os.open",
+            side_effect=replace_ancestor_before_descending,
+        ):
+            result = create_verified_archive(source, destination, source_client)
+
+        self.assertTrue(swapped)
+        self.assertTrue(result["verified"])
+        self.assertEqual((destination / "journal.jsonl").read_bytes(), original_raw)
+        self.assertEqual((moved_alias / "parent" / "events.jsonl").read_bytes(), original_raw)
+        self.assertNotEqual(attacker_source.read_bytes(), original_raw)
 
     def test_archive_requires_a_checkpoint_matching_the_current_journal(self):
         self._append("event-2", "job.updated")
