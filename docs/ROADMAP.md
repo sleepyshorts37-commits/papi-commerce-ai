@@ -60,7 +60,8 @@
 
 ## Inspection sûre des archives après interruption
 - [x] Inventorier les entrées et temporaires en lecture seule avec limites de taille et de nombre.
-- [x] Parcourir le chemin parent par descripteurs relatifs avec `O_NOFOLLOW` à chaque composant pour réduire les courses de remplacement d'ancêtres.
+- [x] Parcourir les chemins parents par descripteurs relatifs avec `O_NOFOLLOW` à chaque composant pour réduire les courses de remplacement d'ancêtres.
+- [x] Lire la source et créer/vérifier une archive via descripteurs épinglés, `dir_fd`, publication sans écrasement, synchronisation et rollback attachés au même répertoire.
 - [ ] Valider les scénarios de crash/panne d'alimentation sur des systèmes de fichiers représentatifs avant toute affirmation de durabilité opérationnelle.
 
 ## Mise en service
