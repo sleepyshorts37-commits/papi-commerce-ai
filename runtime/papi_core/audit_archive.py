@@ -327,37 +327,44 @@ def _open_archive_directory(archive_directory: str | Path) -> int:
             pass
 
 
+def _load_verified_archive_at(
+    directory_fd: int, anchor_client: AnchorClient
+) -> tuple[dict[str, Any], bytes, list[dict[str, Any]]]:
+    """Vérifie une archive via un descripteur de répertoire déjà épinglé."""
+    if set(os.listdir(directory_fd)) != {MANIFEST_NAME, JOURNAL_NAME}:
+        raise AuditArchiveError("L'archive doit contenir exactement le manifeste et le journal.")
+    manifest = _validate_manifest(
+        _read_private_file_at(directory_fd, MANIFEST_NAME, MAX_MANIFEST_BYTES)
+    )
+    raw = _read_private_file_at(directory_fd, JOURNAL_NAME, MAX_JOURNAL_BYTES)
+    if len(raw) != manifest["journal_size_bytes"]:
+        raise AuditArchiveError("La taille du journal ne correspond pas au manifeste.")
+    if hashlib.sha256(raw).hexdigest() != manifest["journal_sha256"]:
+        raise AuditArchiveError("L'empreinte du journal ne correspond pas au manifeste.")
+    events = _verify_journal_bytes(raw)
+    if (
+        len(events) != manifest["event_count"]
+        or events[0]["event_hash"] != manifest["first_event_hash"]
+        or events[-1]["event_hash"] != manifest["last_event_hash"]
+    ):
+        raise AuditArchiveError("Les événements ne correspondent pas au manifeste.")
+    checkpoint = _verified_anchor(anchor_client, manifest["checkpoint_id"], require_head=False)
+    if (
+        checkpoint["digest"] != manifest["checkpoint_digest"]
+        or checkpoint["sequence"] != manifest["checkpoint_sequence"]
+        or checkpoint["sequence"] != len(events)
+        or checkpoint["audit_head"] != events[-1]["event_hash"]
+    ):
+        raise AuditArchiveError("L'archive ne correspond pas au checkpoint d'audit vérifié.")
+    return manifest, raw, events
+
+
 def _load_verified_archive(
     archive_directory: str | Path, anchor_client: AnchorClient
 ) -> tuple[dict[str, Any], bytes, list[dict[str, Any]]]:
     directory_fd = _open_archive_directory(archive_directory)
     try:
-        if set(os.listdir(directory_fd)) != {MANIFEST_NAME, JOURNAL_NAME}:
-            raise AuditArchiveError("L'archive doit contenir exactement le manifeste et le journal.")
-        manifest = _validate_manifest(
-            _read_private_file_at(directory_fd, MANIFEST_NAME, MAX_MANIFEST_BYTES)
-        )
-        raw = _read_private_file_at(directory_fd, JOURNAL_NAME, MAX_JOURNAL_BYTES)
-        if len(raw) != manifest["journal_size_bytes"]:
-            raise AuditArchiveError("La taille du journal ne correspond pas au manifeste.")
-        if hashlib.sha256(raw).hexdigest() != manifest["journal_sha256"]:
-            raise AuditArchiveError("L'empreinte du journal ne correspond pas au manifeste.")
-        events = _verify_journal_bytes(raw)
-        if (
-            len(events) != manifest["event_count"]
-            or events[0]["event_hash"] != manifest["first_event_hash"]
-            or events[-1]["event_hash"] != manifest["last_event_hash"]
-        ):
-            raise AuditArchiveError("Les événements ne correspondent pas au manifeste.")
-        checkpoint = _verified_anchor(anchor_client, manifest["checkpoint_id"], require_head=False)
-        if (
-            checkpoint["digest"] != manifest["checkpoint_digest"]
-            or checkpoint["sequence"] != manifest["checkpoint_sequence"]
-            or checkpoint["sequence"] != len(events)
-            or checkpoint["audit_head"] != events[-1]["event_hash"]
-        ):
-            raise AuditArchiveError("L'archive ne correspond pas au checkpoint d'audit vérifié.")
-        return manifest, raw, events
+        return _load_verified_archive_at(directory_fd, anchor_client)
     finally:
         os.close(directory_fd)
 
@@ -561,21 +568,30 @@ def create_verified_archive(
     archive_directory: str | Path,
     anchor_client: AnchorClient,
 ) -> dict[str, Any]:
-    """Crée une copie complète liée à la tête d'ancrage actuelle, sans toucher à la source."""
+    """Crée une archive liée au checkpoint courant sans re-résoudre les chemins ouverts."""
     source = Path(journal_path)
     destination = Path(archive_directory)
-    _check_parent_components(source)
-    _check_parent_components(destination)
-    if destination.exists() or destination.is_symlink():
-        raise AuditArchiveError("Le dossier d'archive existe déjà; aucun écrasement n'est autorisé.")
+    if not source.name or source.name in {".", ".."}:
+        raise AuditArchiveError("Le journal source doit désigner un fichier explicite.")
+    if not destination.name or destination.name in {".", ".."}:
+        raise AuditArchiveError("La destination d'archive doit désigner un dossier explicite.")
+    required_dir_fd = (os.mkdir, os.rmdir, os.stat)
+    if (
+        not SUPPORTS_OPEN_DIR_FD
+        or any(operation not in os.supports_dir_fd for operation in required_dir_fd)
+    ):
+        raise AuditArchiveError(
+            "La plateforme ne permet pas de créer et vérifier une archive par descripteur."
+        )
+
+    source_parent_fd = _open_directory_chain(source.parent, require_private=False)
     try:
-        events_before = read_events(source)
-        raw = _read_private_file(source, MAX_JOURNAL_BYTES)
-    except (AuditError, AuditArchiveError, OSError) as exc:
-        raise AuditArchiveError("Le journal source ne peut pas être archivé en toute sécurité.") from exc
+        raw = _read_private_file_at(source_parent_fd, source.name, MAX_JOURNAL_BYTES)
+    finally:
+        os.close(source_parent_fd)
     events = _verify_journal_bytes(raw)
-    if events != events_before or not events:
-        raise AuditArchiveError("Le journal a changé ou est vide pendant la préparation de l'archive.")
+    if not events:
+        raise AuditArchiveError("Le journal source est vide.")
     chain = anchor_client.verify_chain()
     if not chain:
         raise AuditArchiveError("Un checkpoint d'ancrage est obligatoire avant archivage.")
@@ -597,33 +613,114 @@ def create_verified_archive(
         "checkpoint_sequence": checkpoint["sequence"],
     }
     manifest_bytes = _canonical(manifest)
-    os.mkdir(destination, 0o700)
-    created: list[Path] = []
+
+    parent_fd = _open_restore_parent(destination.parent)
+    archive_fd: int | None = None
+    created_directory = False
     try:
-        _check_private_directory(destination)
-        _write_new_private_file(destination / JOURNAL_NAME, raw)
-        created.append(destination / JOURNAL_NAME)
-        _write_new_private_file(destination / MANIFEST_NAME, manifest_bytes)
-        created.append(destination / MANIFEST_NAME)
-        # Persist both archive entries and the archive directory's own parent entry.
-        _fsync_directory(destination)
-        _fsync_directory(destination.parent)
-        return verify_archive(destination, anchor_client)
-    except BaseException:
-        for path in created:
+        try:
+            os.mkdir(destination.name, 0o700, dir_fd=parent_fd)
+        except FileExistsError as exc:
+            raise AuditArchiveError(
+                "Le dossier d'archive existe déjà; aucun écrasement n'est autorisé."
+            ) from exc
+        except OSError as exc:
+            raise AuditArchiveError("Impossible de créer le dossier d'archive.") from exc
+        created_directory = True
+        archive_fd = _open_inspection_directory(
+            Path(destination.name), require_private=True, dir_fd=parent_fd
+        )
+        # Persist the new directory entry before populating it. If interrupted
+        # afterwards, recovery inspection sees an incomplete archive, never a valid one.
+        _fsync_directory_fd(parent_fd)
+        _write_new_private_file_at(archive_fd, JOURNAL_NAME, raw)
+        _write_new_private_file_at(archive_fd, MANIFEST_NAME, manifest_bytes)
+        _fsync_directory_fd(archive_fd)
+        _fsync_directory_fd(parent_fd)
+
+        verified_manifest, _verified_raw, verified_events = _load_verified_archive_at(
+            archive_fd, anchor_client
+        )
+        return {
+            "archive_id": verified_manifest["archive_id"],
+            "event_count": len(verified_events),
+            "journal_sha256": verified_manifest["journal_sha256"],
+            "last_event_hash": verified_events[-1]["event_hash"],
+            "checkpoint_id": verified_manifest["checkpoint_id"],
+            "verified": True,
+        }
+    except BaseException as original_error:
+        cleanup_errors: list[BaseException] = []
+        archive_identity: tuple[int, int] | None = None
+        if archive_fd is not None:
             try:
-                path.unlink()
+                info = os.fstat(archive_fd)
+                archive_identity = (info.st_dev, info.st_ino)
+            except OSError as exc:
+                cleanup_errors.append(exc)
+            for name in (MANIFEST_NAME, JOURNAL_NAME):
+                try:
+                    os.unlink(name, dir_fd=archive_fd)
+                except FileNotFoundError:
+                    pass
+                except OSError as exc:
+                    cleanup_errors.append(exc)
+            try:
+                _fsync_directory_fd(archive_fd)
+            except AuditArchiveError as exc:
+                cleanup_errors.append(exc)
+            try:
+                os.close(archive_fd)
+                archive_fd = None
+            except OSError as exc:
+                cleanup_errors.append(exc)
+                archive_fd = None
+
+        if created_directory and archive_identity is not None:
+            try:
+                current = os.stat(
+                    destination.name, dir_fd=parent_fd, follow_symlinks=False
+                )
+                if (
+                    stat.S_ISDIR(current.st_mode)
+                    and (current.st_dev, current.st_ino) == archive_identity
+                ):
+                    os.rmdir(destination.name, dir_fd=parent_fd)
+                else:
+                    cleanup_errors.append(
+                        AuditArchiveError(
+                            "Le dossier d'archive a changé d'identité; rollback refusé."
+                        )
+                    )
+            except OSError as exc:
+                cleanup_errors.append(exc)
+        elif created_directory:
+            cleanup_errors.append(
+                AuditArchiveError(
+                    "Le dossier créé n'a pas pu être épinglé; il doit être inspecté manuellement."
+                )
+            )
+
+        if created_directory:
+            try:
+                _fsync_directory_fd(parent_fd)
+            except AuditArchiveError as exc:
+                cleanup_errors.append(exc)
+        if cleanup_errors:
+            raise AuditArchiveError(
+                "La création a échoué et le rollback est incomplet; inspecter la destination sans la supprimer automatiquement."
+            ) from original_error
+        raise
+    finally:
+        if archive_fd is not None:
+            try:
+                os.close(archive_fd)
             except OSError:
                 pass
         try:
-            destination.rmdir()
+            os.close(parent_fd)
         except OSError:
             pass
-        try:
-            _fsync_directory(destination.parent)
-        except AuditArchiveError:
-            pass
-        raise
 
 
 def restore_verified_archive(
@@ -745,9 +842,13 @@ def _open_directory_chain(path: Path, *, require_private: bool) -> int:
     """
     nofollow = getattr(os, "O_NOFOLLOW", None)
     directory_flag = getattr(os, "O_DIRECTORY", None)
-    if nofollow is None or directory_flag is None:
+    if (
+        nofollow is None
+        or directory_flag is None
+        or not SUPPORTS_OPEN_DIR_FD
+    ):
         raise AuditArchiveError(
-            "La plateforme ne permet pas de parcourir les répertoires sans suivre de liens symboliques."
+            "La plateforme ne permet pas de parcourir les répertoires par descripteur sans suivre de liens symboliques."
         )
     flags = os.O_RDONLY | directory_flag | nofollow
     start = path.anchor or "."
